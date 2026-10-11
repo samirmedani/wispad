@@ -12,6 +12,11 @@ enum Theme {
     static let subtleFill = Color.adaptive(light: NSColor(white: 0, alpha: 0.05), dark: NSColor(white: 1, alpha: 0.07))
     static let raised = Color.adaptive(light: .white, dark: NSColor(white: 0.28, alpha: 1))
     static let cardShadow = Color.adaptive(light: NSColor(white: 0, alpha: 0.05), dark: .clear)
+    /// Touches dessinées : face à peine dégradée, contour fin et lèvre plus sombre en bas, pour un léger relief.
+    static let keyTop = Color.adaptive(light: .white, dark: NSColor(white: 0.31, alpha: 1))
+    static let keyBottom = Color.adaptive(light: NSColor(white: 0.955, alpha: 1), dark: NSColor(white: 0.255, alpha: 1))
+    static let keyBorder = Color.adaptive(light: NSColor(white: 0, alpha: 0.13), dark: NSColor(white: 1, alpha: 0.09))
+    static let keyEdge = Color.adaptive(light: NSColor(white: 0, alpha: 0.22), dark: NSColor(white: 0, alpha: 0.6))
 
     static let radius: CGFloat = 14
     static let sidebarWidth: CGFloat = 220

@@ -55,45 +55,21 @@ enum PasteShortcutText {
     }
 }
 
-/// Réglages › Raccourci : enregistreur de « Coller la dernière dictée ». Clic sur Modifier, puis la combinaison ;
-/// Échap annule. « Par défaut » remet ⌃⌥V, l'interrupteur le désactive sans oublier la combinaison.
+/// Réglages › Raccourci : enregistreur de « Coller la dernière dictée ». Modifier, puis la combinaison ; Échap ou
+/// Annuler arrête. ↺, montré seulement hors de ⌃⌥V, la remet ; l'interrupteur, à droite comme les autres, désactive
+/// le raccourci sans oublier la combinaison.
 struct PasteShortcutRow: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
         let shortcut = model.settings.pasteLastShortcut
         let recording = model.isRecordingPasteShortcut
-        let keys = ShortcutKeys.paste(shortcut)
+        let prompt: String? = recording ? String(localized: "Tape la combinaison…") : nil
+        let keysHelp: String = recording ? String(localized: "Échap annule") : PasteShortcutText.label(shortcut)
         VStack(alignment: .leading, spacing: 6) {
-            SettingRow(text: SettingsPresentation.pasteLast, keys: keys) {
-                HStack(spacing: 10) {
-                    if recording {
-                        ShortcutKeyCap(key: ShortcutKey(keyCode: -1, name: "…"))
-                    } else {
-                        ShortcutKeyCaps(keys: keys)
-                            .opacity(shortcut.enabled ? 1 : 0.5)
-                            .help(PasteShortcutText.label(shortcut))
-                    }
-                    Button(recording ? String(localized: "Tape la combinaison… (Échap annule)") : String(localized: "Modifier")) {
-                        if recording {
-                            model.stopRecordingPasteShortcut()
-                        } else {
-                            model.startRecordingPasteShortcut()
-                        }
-                    }
-                    .hoverFeedback()
-                    Button("Par défaut") { model.resetPasteShortcut() }
-                        .disabled(shortcut == .standard && !recording)
-                        .hoverFeedback()
-                        .help(String(localized: "Revenir à \(KeyLabels.describe(PasteShortcut.standard))"))
-                    Toggle("Activé", isOn: Binding(
-                        get: { shortcut.enabled },
-                        set: { model.setPasteShortcutEnabled($0) }
-                    ))
-                    .toggleStyle(.switch)
-                    .labelsHidden()
-                    .help(String(localized: "Activer ou désactiver ce raccourci"))
-                }
+            ShortcutRow(text: SettingsPresentation.pasteLast, keys: ShortcutKeys.paste(shortcut), prompt: prompt,
+                        keysHelp: keysHelp, dimmed: !shortcut.enabled) { compact in
+                actions(shortcut: shortcut, recording: recording, compact: compact)
             }
             if let problem = model.pasteShortcutProblem {
                 Label(problem, systemImage: "exclamationmark.triangle.fill")
@@ -103,5 +79,34 @@ struct PasteShortcutRow: View {
             }
         }
         .onDisappear { model.stopRecordingPasteShortcut() }
+    }
+
+    /// Modifier (ou Annuler), ↺ hors de ⌃⌥V, puis l'interrupteur, à droite comme les autres.
+    @ViewBuilder private func actions(shortcut: PasteShortcut, recording: Bool, compact: Bool) -> some View {
+        ShortcutEditButton(recording: recording, compact: compact) {
+            if recording {
+                model.stopRecordingPasteShortcut()
+            } else {
+                model.startRecordingPasteShortcut()
+            }
+        }
+        if Self.showsReset(shortcut, recording: recording) {
+            let standard = KeyLabels.describe(PasteShortcut.standard)
+            HoverIconButton(symbol: "arrow.counterclockwise", help: String(localized: "Revenir à \(standard)")) {
+                model.resetPasteShortcut()
+            }
+        }
+        Toggle("Activé", isOn: Binding(
+            get: { shortcut.enabled },
+            set: { model.setPasteShortcutEnabled($0) }
+        ))
+        .toggleStyle(.switch)
+        .labelsHidden()
+        .help(String(localized: "Activer ou désactiver ce raccourci"))
+    }
+
+    /// ↺ seulement quand la combinaison n'est pas déjà ⌃⌥V (activée ou non), et pas pendant l'enregistrement.
+    nonisolated static func showsReset(_ shortcut: PasteShortcut, recording: Bool) -> Bool {
+        !recording && !shortcut.sameCombination(as: .standard)
     }
 }

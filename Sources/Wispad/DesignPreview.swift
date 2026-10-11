@@ -25,6 +25,7 @@ import SwiftUI
 /// `--report-preview` : rend aussi le détail de la première dictée, saisie « Signaler une erreur » ouverte.
 /// `--onboarding-step <étape> [--onboarding-state done|failed|progress]` : une étape du premier lancement guidé
 /// avec un état fictif (réussi, problème, en cours), sans aucune demande d'autorisation.
+/// `--shortcut-preview custom|long|disabled|recording` : Réglages › Raccourci avec des raccourcis fictifs.
 @MainActor
 enum DesignPreview {
     static func run(arguments: [String]) {
@@ -109,6 +110,9 @@ enum DesignPreview {
         if arguments.contains("--banner") {
             model.statusBanner = "Ajouté au dictionnaire : Seedance."
         }
+        if let index = arguments.firstIndex(of: "--shortcut-preview"), arguments.indices.contains(index + 1) {
+            previewShortcuts(model, state: arguments[index + 1])
+        }
         let offscreen = arguments.contains("--offscreen") || arguments.contains("--background") || !arguments.contains("--show-window")
         let renderedRows = HistoryProbeRenderCount()
         let rowDidRender: HistoryRowRenderCallback?
@@ -175,6 +179,31 @@ enum DesignPreview {
             exit(0)
         }
         app.run()
+    }
+
+    /// Raccourcis fictifs de Réglages › Raccourci : choisis par l'utilisateur (↺ visible), la plus longue
+    /// combinaison possible, raccourci désactivé, ou les deux enregistrements en cours avec une combinaison refusée.
+    /// Rien n'est écouté : seul l'affichage change.
+    private static func previewShortcuts(_ model: AppModel, state: String) {
+        let control = ModifierMask.control, option = ModifierMask.option
+        switch state {
+        case "custom":
+            model.settings.keyCode = 49
+            model.settings.modifierFlags = option
+            model.settings.pasteLastShortcut = PasteShortcut(keyCode: 35, modifiers: control | ModifierMask.shift)
+        case "long":
+            model.settings.pasteLastShortcut = PasteShortcut(
+                keyCode: PasteShortcut.vKeyCode, modifiers: control | option | ModifierMask.shift | ModifierMask.command)
+        case "disabled":
+            model.settings.pasteLastShortcut.enabled = false
+        case "recording":
+            model.isRecordingShortcut = true
+            model.isRecordingPasteShortcut = true
+            let copy = PasteShortcut(keyCode: 8, modifiers: ModifierMask.command)
+            model.pasteShortcutProblem = PasteShortcutText.message(for: .reserved(.copy), shortcut: KeyLabels.describe(copy))
+        default:
+            break
+        }
     }
 
     /// ImageRenderer prend en charge ce composant purement SwiftUI, contrairement au cache NSHostingView.

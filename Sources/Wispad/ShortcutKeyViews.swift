@@ -18,6 +18,9 @@ struct ShortcutKey: Hashable {
 
     /// Lettre, chiffre ou flèche : un seul caractère, écrit en grand au centre de la touche.
     var isGlyph: Bool { symbol == nil && systemImage == nil && name.count == 1 }
+
+    /// Inscription réduite, quand la place manque : le symbole (« ⌃ »), sinon le nom (« fn », « V »).
+    var compactLabel: String { symbol ?? name }
 }
 
 /// Touches à dessiner pour un raccourci, dans l'ordre de macOS (fn ⌃ ⌥ ⇧ ⌘, puis la touche).
@@ -67,98 +70,166 @@ enum ShortcutKeys {
     }
 }
 
-/// Tailles des touches dessinées : petite dans une carte, moyenne dans une rangée de réglage, grande pour un test.
+/// Tailles des touches dessinées ; dans une taille, toutes les touches ont la même hauteur. `regular` dans une
+/// rangée de réglage, un popover ou une carte ; `large` pour le test de la touche du premier lancement.
 enum KeyCapSize {
-    case small, medium, large
+    case regular, large
 
-    var height: CGFloat {
-        switch self {
-        case .small: 28
-        case .medium: 36
-        case .large: 48
-        }
-    }
-
-    /// Largeur d'un modificateur (« control »), plus large qu'une lettre comme sur le clavier.
-    var modifierWidth: CGFloat { height * 1.45 }
-    var radius: CGFloat { height * 0.2 }
-    var glyphFont: CGFloat { height * 0.44 }
-    var symbolFont: CGFloat { height * 0.32 }
-    var nameFont: CGFloat { max(8.5, height * 0.25) }
-    var inset: CGFloat { height * 0.14 }
-    var spacing: CGFloat { height * 0.16 }
+    var height: CGFloat { self == .large ? 32 : 22 }
+    /// Corps du symbole et du nom.
+    var font: CGFloat { self == .large ? 14 : 11 }
+    /// Une lettre seule : un point de plus, en demi-gras.
+    var glyphFont: CGFloat { self == .large ? 15 : 12 }
+    var radius: CGFloat { self == .large ? 8 : 5.5 }
+    var padding: CGFloat { self == .large ? 9 : 5.5 }
+    /// Entre le symbole et le nom d'une touche.
+    var gap: CGFloat { self == .large ? 4 : 3 }
+    /// Espace de part et d'autre du « + » qui sépare deux touches.
+    var spacing: CGFloat { self == .large ? 5 : 3.5 }
 }
 
-/// Une touche arrondie, style clavier Mac : lettre au centre, ou symbole en haut et nom en bas.
-/// `tint` colore la touche (touche reçue, par exemple).
+/// Une touche dessinée, compacte : symbole et nom sur une même ligne (« ⌃ control », « 🌐 fn »), ou la seule lettre
+/// (« V »). Léger relief : face à peine dégradée, contour fin, lèvre plus sombre en bas. `compact` n'écrit que
+/// `compactLabel` ; `tint` colore la touche (touche reçue, par exemple).
 struct ShortcutKeyCap: View {
     var key: ShortcutKey
-    var size: KeyCapSize = .medium
+    var size: KeyCapSize = .regular
+    var compact = false
     var tint: Color?
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: size.radius, style: .continuous)
-        label
-            .foregroundStyle(tint ?? Color.primary)
+        let ink: Color = tint ?? Color.primary
+        let border: Color = tint ?? Theme.keyBorder
+        let borderWidth: CGFloat = tint == nil ? 0.5 : 1
+        inscription
+            .foregroundStyle(ink)
+            .lineLimit(1)
+            .fixedSize()
+            .padding(.horizontal, size.padding)
+            .frame(minWidth: size.height)
             .frame(height: size.height)
-            .background {
-                shape
-                    .fill(tint?.opacity(0.16) ?? Theme.raised)
-                    .shadow(color: .black.opacity(0.2), radius: 0, y: size == .small ? 1 : 1.5)
-            }
-            .overlay {
-                shape.strokeBorder(tint ?? Theme.cardBorder, lineWidth: tint == nil ? 1 : 1.5)
-            }
+            .background { face(shape) }
+            .overlay { shape.strokeBorder(border, lineWidth: borderWidth) }
     }
 
-    @ViewBuilder private var label: some View {
-        if key.isGlyph {
-            Text(key.name)
-                .font(.system(size: size.glyphFont, weight: .medium))
-                .padding(.horizontal, size.inset)
-                .frame(minWidth: size.height)
+    @ViewBuilder private var inscription: some View {
+        if let text = singleText {
+            Text(text)
+                .font(singleFont(text))
         } else {
-            Text(key.name)
-                .font(.system(size: size.nameFont, weight: .medium))
-                .lineLimit(1)
-                .fixedSize()
-                .padding(.horizontal, size.inset)
-                .padding(.bottom, size.inset * 0.8)
-                .frame(minWidth: size.modifierWidth, maxHeight: .infinity, alignment: .bottomLeading)
-                .overlay(alignment: .topTrailing) {
-                    symbol
-                        .padding(.top, size.inset * 0.7)
-                        .padding(.trailing, size.inset)
-                }
+            HStack(alignment: .firstTextBaseline, spacing: size.gap) {
+                symbol
+                Text(key.name)
+                    .font(.system(size: size.font, weight: .medium))
+            }
         }
     }
 
     @ViewBuilder private var symbol: some View {
+        let ink: Color = tint ?? Color.secondary
         if let systemImage = key.systemImage {
             Image(systemName: systemImage)
-                .font(.system(size: size.symbolFont * 0.85, weight: .regular))
+                .font(.system(size: size.font, weight: .regular))
+                .imageScale(.small)
+                .foregroundStyle(ink)
         } else if let symbol = key.symbol {
             Text(symbol)
-                .font(.system(size: size.symbolFont, weight: .regular))
+                .font(.system(size: size.font, weight: .medium))
+                .foregroundStyle(ink)
+        }
+    }
+
+    /// Une seule inscription : touche réduite, ou touche sans symbole (lettre, « espace »).
+    private var singleText: String? {
+        if compact { return key.compactLabel }
+        return key.symbol == nil && key.systemImage == nil ? key.name : nil
+    }
+
+    /// Un seul caractère (« V », « ⌃ ») en demi-gras d'un point plus grand ; un mot (« espace ») comme un nom.
+    private func singleFont(_ text: String) -> Font {
+        if text.count == 1 { return .system(size: size.glyphFont, weight: .semibold) }
+        return .system(size: size.font, weight: .medium)
+    }
+
+    @ViewBuilder private func face(_ shape: RoundedRectangle) -> some View {
+        if let tint {
+            shape.fill(tint.opacity(0.14))
+        } else {
+            let gradient = LinearGradient(colors: [Theme.keyTop, Theme.keyBottom], startPoint: .top, endPoint: .bottom)
+            shape
+                .fill(gradient)
+                .shadow(color: Theme.keyEdge, radius: 0, x: 0, y: 1)
         }
     }
 }
 
-/// Les touches d'un raccourci côte à côte, lues d'un bloc par VoiceOver.
+/// Les touches d'un raccourci séparées par un petit « + » discret (« control + option + V »), lues d'un bloc par
+/// VoiceOver. `compact` n'écrit que les symboles (« ⌃ + ⌥ + V »), quand la place manque.
 struct ShortcutKeyCaps: View {
     var keys: [ShortcutKey]
-    var size: KeyCapSize = .medium
+    var size: KeyCapSize = .regular
+    var compact = false
     var tint: Color?
 
     var body: some View {
         HStack(spacing: size.spacing) {
-            ForEach(Array(keys.enumerated()), id: \.offset) { _, key in
-                ShortcutKeyCap(key: key, size: size, tint: tint)
+            ForEach(Array(keys.enumerated()), id: \.offset) { index, key in
+                cell(index, key)
             }
         }
         .fixedSize()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(ShortcutKeys.spoken(keys))
+    }
+
+    /// Une touche, précédée d'un « + » sauf la première.
+    @ViewBuilder private func cell(_ index: Int, _ key: ShortcutKey) -> some View {
+        if index > 0 {
+            plus
+        }
+        ShortcutKeyCap(key: key, size: size, compact: compact, tint: tint)
+    }
+
+    private var plus: some View {
+        Text(verbatim: "+")
+            .font(.system(size: size.font, weight: .medium))
+            .foregroundStyle(.tertiary)
+    }
+}
+
+/// À la place des touches pendant l'enregistrement d'un raccourci : point rouge qui pulse et consigne, à la hauteur
+/// des touches.
+struct ShortcutRecordingField: View {
+    var prompt: String
+    var size: KeyCapSize = .regular
+    @Environment(\.interactionReduceMotion) private var reduceMotion
+    @State private var dimmed = false
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: size.radius, style: .continuous)
+        HStack(spacing: size.gap * 2) {
+            dot
+            Text(prompt)
+                .font(.system(size: size.font, weight: .medium))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .fixedSize()
+        }
+        .padding(.horizontal, size.padding)
+        .frame(height: size.height)
+        .background(Theme.brand.opacity(0.07), in: shape)
+        .overlay { shape.strokeBorder(Theme.brand.opacity(0.5), lineWidth: 1) }
+        .onAppear { if !reduceMotion { dimmed = true } }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var dot: some View {
+        Circle()
+            .fill(Theme.brand)
+            .frame(width: size.gap * 2, height: size.gap * 2)
+            .opacity(dimmed ? 0.3 : 1)
+            .animation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true), value: dimmed)
     }
 }
 

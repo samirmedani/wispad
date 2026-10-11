@@ -3769,22 +3769,12 @@
         }
       }
     },
-    "Tape la combinaison… (Échap annule)" : {
+    "Tape la combinaison…" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Type the combination… (Esc cancels)"
-          }
-        }
-      }
-    },
-    "Par défaut" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Default"
+            "value" : "Type the combination…"
           }
         }
       }
@@ -6717,6 +6707,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Opening the microphone…"
+          }
+        }
+      }
+    },
+    "Échap annule" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esc cancels"
           }
         }
       }

@@ -963,7 +963,7 @@ private struct GestureCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 4) {
-                ShortcutKeyCaps(keys: keys, size: .small)
+                ShortcutKeyCaps(keys: keys)
                 if twice {
                     Text(verbatim: "× 2")
                         .font(.system(size: 12, weight: .semibold))

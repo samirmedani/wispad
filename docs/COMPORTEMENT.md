@@ -35,8 +35,9 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   pendant une écoute ; les dictées qui se terminent se collent d'abord.
 - fn n'en fait jamais partie : fn enfoncé (dictée en maintien), ⌃⌥V n'est pas le raccourci, et un appui simple sur
   fn ne déclenche toujours rien.
-- Réglages › Raccourci › « Coller la dernière dictée » : Modifier, puis la combinaison voulue (Échap annule) ;
-  « Par défaut » remet ⌃⌥V ; l'interrupteur le désactive sans oublier la combinaison. Refusées, avec la raison :
+- Réglages › Raccourci › « Coller la dernière dictée » : Modifier, puis la combinaison voulue (Échap ou Annuler
+  arrête) ; ↺ remet ⌃⌥V, montré seulement quand la combinaison en est une autre ; l'interrupteur le désactive sans
+  oublier la combinaison. Refusées, avec la raison :
   touche seule ou avec ⇧ seulement (elle écrirait), ⌘ avec une seule touche (menus des apps), fn, Échap, le
   raccourci de dictée, les combinaisons connues de macOS et des apps (⌘⇧V, ⌥⌘V, ⌘Espace, captures d'écran…) et
   celles déclarées dans Réglages Système › Clavier › Raccourcis. Le raccourci actuel est suspendu pendant
@@ -101,11 +102,17 @@ explication d'une ligne sous son libellé, en langage simple (ni montant, ni chi
 (fournisseurs et modèles réellement utilisés, coût, délais, ce qui est envoyé ou gardé) s'ouvrent dans un popover
 avec le bouton ⓘ de la rangée ; ceux de la correction suivent les clés enregistrées.
 
-- **Raccourci** : chaque raccourci (dictée, « Coller la dernière dictée ») est dessiné en touches de clavier Mac,
-  une touche arrondie par touche à enfoncer, symbole et nom (« ⌃ control », « ⌥ option », « V », « fn »). Son
-  popover ⓘ ajoute un schéma du clavier de MacBook où ces touches sont en couleur, à leur place ; il suit le
-  raccourci choisi. Lettres et chiffres portent l'inscription de la disposition active (A en haut à gauche en
-  AZERTY, Q en QWERTY), ici comme dans les messages.
+- **Raccourci** : chaque raccourci (dictée, « Coller la dernière dictée ») est dessiné en touches de clavier Mac
+  compactes, toutes de la même hauteur, une par touche à enfoncer, symbole et nom sur une ligne, séparées par un
+  petit « + » : « ⌃ control + ⌥ option + V », « 🌐 fn ». Les deux rangées ont la même disposition : libellé et
+  explication à gauche ; à droite, sur la même ligne et centrés verticalement, ⓘ, les touches, puis Modifier ;
+  pour « Coller la dernière dictée », ↺ et l'interrupteur, à droite comme les autres. Pendant un enregistrement,
+  une consigne remplace les touches et Modifier devient Annuler, qui arrête sans rien changer (raccourci de dictée
+  compris). Rien ne passe sous le libellé : faute de place, l'explication va à la ligne, puis Modifier devient une
+  icône, enfin les touches ne gardent que leur symbole (« ⌃ + ⌥ + V »). Le popover ⓘ ajoute un schéma du clavier
+  de MacBook où ces touches sont en couleur, à leur place ; il suit le raccourci choisi. Lettres et chiffres
+  portent l'inscription de la disposition active (A en haut à gauche en AZERTY, Q en QWERTY), ici comme dans les
+  messages.
 - **Confidentialité** : « Ce qui est envoyé » (audio et, si disponibles, app active, sélection et court extrait
   autour du curseur ; historique et audio restent sur ce Mac), « Comprendre le sujet grâce à la fenêtre active »
   (inactif sans la correction), conservation, durée et plafond de l'audio.
