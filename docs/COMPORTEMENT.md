@@ -257,9 +257,10 @@ gardé tel quel).
 
 ## Version et dépôt
 
-- Bas de la barre latérale, au-dessus des raccourcis : un petit bandeau jaune « Mettre une étoile sur GitHub »,
-  entièrement cliquable. Un clic ouvre la page du dépôt dans le navigateur, affiche « Merci ! » 1,6 s, puis le
-  bandeau disparaît pour de bon (réglage `githubStarClicked`, enregistré dès le clic). Wispad ne peut pas savoir si
+- Bas de la barre latérale, au-dessus des raccourcis : un petit bandeau jaune « Une étoile sur GitHub »
+  (« Star on GitHub » en anglais), sur une seule ligne et sans troncature à la largeur fixe de la barre, entièrement
+  cliquable. Un clic ouvre la page du dépôt dans le navigateur, affiche « Merci ! » 1,6 s, puis le bandeau
+  disparaît pour de bon (réglage `githubStarClicked`, enregistré dès le clic). Wispad ne peut pas savoir si
   l'étoile a été donnée : le clic suffit. Dessous, toujours visibles : la version (« Wispad 0.1.0 · abc1234 » :
   version et commit court gravé à la compilation), puis « À jour » ou « N commits de retard » (« 1 commit de
   retard ») sur la branche `main` du dépôt public. Un clic sur le retard ouvre la page des commits.
