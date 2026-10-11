@@ -34,14 +34,7 @@ struct SettingsView: View {
     var body: some View {
         FormScreen(title: String(localized: "Réglages"), subtitle: String(localized: "Raccourci, correction, audio et autorisations.")) {
             Section("Raccourci") {
-                SettingRow(text: SettingsPresentation.dictationShortcut, keys: dictationKeys) {
-                    ShortcutKeyCaps(keys: dictationKeys)
-                    Button(model.isRecordingShortcut ? String(localized: "Appuie sur le raccourci…") : String(localized: "Modifier")) {
-                        model.stopRecordingPasteShortcut()
-                        model.isRecordingShortcut = true
-                    }
-                    .hoverFeedback()
-                }
+                DictationShortcutRow()
                 PasteShortcutRow()
             }
             Section("Transcription") {
@@ -171,10 +164,6 @@ struct SettingsView: View {
         .onAppear { model.refreshPermissions() }
     }
 
-    private var dictationKeys: [ShortcutKey] {
-        ShortcutKeys.dictation(keyCode: model.settings.keyCode, modifiers: model.settings.modifierFlags)
-    }
-
     /// Correction réellement faite, d'après les clés du coffre.
     private var cleanupText: SettingText {
         _ = model.keysLoadedAt
@@ -199,6 +188,34 @@ struct SettingsView: View {
         case .restricted: return String(localized: "Restreint")
         case .notDetermined: return String(localized: "Pas encore demandé")
         @unknown default: return String(localized: "Inconnu")
+        }
+    }
+}
+
+/// Réglages › Raccourci : raccourci de dictée, même rangée que « Coller la dernière dictée ». Modifier, puis la
+/// touche ou la combinaison voulue ; Annuler arrête l'enregistrement sans rien changer.
+struct DictationShortcutRow: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        let keyCode = model.settings.keyCode
+        let modifiers = model.settings.modifierFlags
+        let recording = model.isRecordingShortcut
+        let keys = ShortcutKeys.dictation(keyCode: keyCode, modifiers: modifiers)
+        let prompt: String? = recording ? String(localized: "Appuie sur le raccourci…") : nil
+        let keysHelp: String = KeyLabels.describe(keyCode: keyCode, modifiers: modifiers)
+        ShortcutRow(text: SettingsPresentation.dictationShortcut, keys: keys, prompt: prompt,
+                    keysHelp: keysHelp) { compact in
+            ShortcutEditButton(recording: recording, compact: compact) { toggleRecording(recording) }
+        }
+    }
+
+    private func toggleRecording(_ recording: Bool) {
+        if recording {
+            model.isRecordingShortcut = false
+        } else {
+            model.stopRecordingPasteShortcut()
+            model.isRecordingShortcut = true
         }
     }
 }

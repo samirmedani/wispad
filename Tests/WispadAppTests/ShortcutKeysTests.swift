@@ -36,6 +36,29 @@ struct ShortcutKeysTests {
         #expect(arrow.map(\.name) == ["control", "↑"])
     }
 
+    /// Faute de place, une touche ne garde que son symbole ; fn et les lettres, sans symbole, gardent leur nom.
+    @Test func compactKeysKeepTheirSymbols() {
+        #expect(ShortcutKeys.paste(.standard, name: names).map(\.compactLabel) == ["⌃", "⌥", "V"])
+        let all = ModifierMask.command | ModifierMask.shift | ModifierMask.option | ModifierMask.control
+        let long = ShortcutKeys.dictation(keyCode: 49, modifiers: all | ModifierMask.function, name: names)
+        #expect(long.map(\.compactLabel) == ["fn", "⌃", "⌥", "⇧", "⌘", "espace"])
+    }
+
+    /// ↺ (revenir à ⌃⌥V) n'apparaît que pour une autre combinaison, activée ou non, et jamais pendant
+    /// l'enregistrement : il n'est jamais montré grisé.
+    @Test func resetShowsOnlyForAnotherCombination() {
+        let custom = PasteShortcut(keyCode: 35, modifiers: ModifierMask.control | ModifierMask.shift)
+        var disabledStandard = PasteShortcut.standard
+        disabledStandard.enabled = false
+        var disabledCustom = custom
+        disabledCustom.enabled = false
+        #expect(!PasteShortcutRow.showsReset(.standard, recording: false))
+        #expect(!PasteShortcutRow.showsReset(disabledStandard, recording: false))
+        #expect(PasteShortcutRow.showsReset(custom, recording: false))
+        #expect(PasteShortcutRow.showsReset(disabledCustom, recording: false))
+        #expect(!PasteShortcutRow.showsReset(custom, recording: true))
+    }
+
     /// Toute touche qu'un raccourci peut montrer a sa place sur le schéma.
     @Test func everyShortcutKeyIsOnTheDiagram() {
         let codes = Set(MacKeyboardLayout.keys.map(\.code))

@@ -94,10 +94,13 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
 ## Raccourcis dessinés
 
 `ShortcutKeyViews.swift` : `ShortcutKeys` traduit un raccourci (dictée ou collage) en touches `ShortcutKey`
-(symbole, nom, code de touche) ; `ShortcutKeyCaps` les dessine, `MacKeyboardDiagram` allume leurs codes sur le
-clavier de MacBook décrit par `MacKeyboardLayout` (unités de touche, codes de macOS, testé par `ShortcutKeysTests`).
-Inscriptions des lettres et chiffres : `KeyboardLayout.characters` (disposition active). Une rangée de réglage
-passe ses touches à `SettingRow(keys:)` pour que son popover ⓘ montre le schéma.
+(symbole, nom, code de touche) ; `ShortcutKeyCaps` les dessine en touches compactes séparées par « + »
+(`compact` : symboles seuls), `ShortcutRecordingField` les remplace pendant un enregistrement, `MacKeyboardDiagram`
+allume leurs codes sur le clavier de MacBook décrit par `MacKeyboardLayout` (unités de touche, codes de macOS,
+testé par `ShortcutKeysTests`). Inscriptions des lettres et chiffres : `KeyboardLayout.characters` (disposition
+active). Les deux rangées de Réglages › Raccourci sont des `ShortcutRow` (`SettingsRows.swift`) : libellé à
+gauche ; ⓘ (popover avec le schéma), touches et boutons à droite, sur une ligne ; un `ViewThatFits` réduit les
+boutons, puis les touches, plutôt que de passer à la ligne.
 
 Toutes les frontières du système (micro, réseau, clés, collage, son) passent par
 `AppDependencies` : les tests les remplacent et n'ouvrent jamais le vrai micro ni le vrai réseau.
@@ -189,7 +192,8 @@ fournisseur retiré : `APIKeys.LocalFile` garde les comptes qu'il ne connaît pa
   `Wispad --design-preview --offscreen --snapshot fichier.png [--section providers] [--dark] [--size 900x700]`
   avec le build Debug ; options d'état : `--onboarding-step <étape>` (welcome, permissions, microphone, provider,
   shortcut, trial, finish) avec `--onboarding-state done|failed|progress` (états fictifs, aucune autorisation
-  demandée ni micro ouvert), `--customer-preview`, `-AppleLanguages "(en)"`.
+  demandée ni micro ouvert), `--shortcut-preview custom|long|disabled|recording` (Réglages › Raccourci avec des
+  raccourcis fictifs), `--customer-preview`, `-AppleLanguages "(en)"`.
 - Fluidité de l'historique, hors écran : `Wispad --design-preview --offscreen --history-count 1000
   --performance-probe [--scroll-steps 240]` avec le build Debug. Lignes `PERFORMANCE` : deux ouvertures de l'écran
   (temps, vues natives, lignes rendues), puis un défilement simulé vers le bas et vers le haut (temps par étape :

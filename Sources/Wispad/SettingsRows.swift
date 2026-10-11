@@ -175,15 +175,13 @@ enum SettingsPresentation {
 /// Rangée de réglage au style macOS : libellé et explication courte à gauche, bouton « i » puis contrôle à droite.
 struct SettingRow<Control: View>: View {
     var text: SettingText
-    /// Touches d'un raccourci : son popover les montre sur un schéma du clavier.
-    var keys: [ShortcutKey] = []
     @ViewBuilder var control: Control
 
     var body: some View {
         LabeledContent {
             HStack(spacing: 8) {
                 if !text.details.isEmpty {
-                    InfoButton(text: text, keys: keys)
+                    InfoButton(text: text)
                 }
                 control
             }
@@ -199,6 +197,102 @@ struct SettingRow<Control: View>: View {
 extension SettingRow where Control == EmptyView {
     init(text: SettingText) {
         self.init(text: text) { EmptyView() }
+    }
+}
+
+/// Rangée d'un raccourci (dictée, « Coller la dernière dictée ») : libellé et explication à gauche ; à droite, sur
+/// la même ligne et centrés verticalement, ⓘ, les touches (ou la consigne pendant l'enregistrement) puis les
+/// boutons. Rien ne passe sous le libellé : faute de place, l'explication va à la ligne, puis les boutons deviennent
+/// des icônes et enfin les touches ne gardent que leurs symboles. Le popover ⓘ montre les touches sur le schéma.
+struct ShortcutRow<Actions: View>: View {
+    var text: SettingText
+    var keys: [ShortcutKey]
+    /// Consigne montrée à la place des touches pendant l'enregistrement.
+    var prompt: String?
+    /// Info-bulle des touches, ou de la consigne pendant l'enregistrement.
+    var keysHelp: String
+    /// Raccourci désactivé : touches estompées.
+    var dimmed: Bool
+    /// Boutons à droite des touches ; `compact` : en icônes, faute de place.
+    var actions: (_ compact: Bool) -> Actions
+
+    init(text: SettingText, keys: [ShortcutKey], prompt: String? = nil, keysHelp: String, dimmed: Bool = false,
+         @ViewBuilder actions: @escaping (_ compact: Bool) -> Actions) {
+        self.text = text
+        self.keys = keys
+        self.prompt = prompt
+        self.keysHelp = keysHelp
+        self.dimmed = dimmed
+        self.actions = actions
+    }
+
+    /// Largeur gardée par le libellé (son titre tient sur une ligne) avant que les boutons, puis les touches, se
+    /// réduisent.
+    static var labelWidth: CGFloat { 158 }
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            row(compactButtons: false, compactKeys: false)
+            row(compactButtons: true, compactKeys: false)
+            row(compactButtons: true, compactKeys: true)
+        }
+    }
+
+    private func row(compactButtons: Bool, compactKeys: Bool) -> some View {
+        HStack(spacing: 12) {
+            label
+            controls(compactButtons: compactButtons, compactKeys: compactKeys)
+                .fixedSize()
+        }
+    }
+
+    /// Titre et explication ; l'explication passe à la ligne dans la place que laissent les contrôles.
+    private var label: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(text.title)
+            if let summary = text.summary {
+                Text(summary)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(minWidth: 0, idealWidth: Self.labelWidth, maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func controls(compactButtons: Bool, compactKeys: Bool) -> some View {
+        HStack(spacing: 7) {
+            InfoButton(text: text, keys: keys)
+            keyView(compact: compactKeys)
+                .help(keysHelp)
+            actions(compactButtons)
+        }
+    }
+
+    @ViewBuilder private func keyView(compact: Bool) -> some View {
+        if let prompt {
+            ShortcutRecordingField(prompt: prompt)
+        } else {
+            ShortcutKeyCaps(keys: keys, compact: compact)
+                .opacity(dimmed ? 0.45 : 1)
+        }
+    }
+}
+
+/// « Modifier » d'un raccourci, « Annuler » pendant son enregistrement ; en icône quand la place manque.
+struct ShortcutEditButton: View {
+    var recording: Bool
+    var compact: Bool
+    var action: () -> Void
+
+    var body: some View {
+        let title = recording ? String(localized: "Annuler") : String(localized: "Modifier")
+        if compact {
+            HoverIconButton(symbol: recording ? "xmark" : "pencil", help: title, action: action)
+        } else {
+            Button(title, action: action)
+                .hoverFeedback()
+        }
     }
 }
 
@@ -251,7 +345,7 @@ struct InfoPopover: View {
             Text(text.title)
                 .font(.headline)
             if !keys.isEmpty {
-                ShortcutKeyCaps(keys: keys, size: .medium)
+                ShortcutKeyCaps(keys: keys)
                     .padding(.vertical, 2)
                 MacKeyboardDiagram(highlighted: Set(keys.map(\.keyCode)), unit: 26)
                     .padding(.bottom, 4)
