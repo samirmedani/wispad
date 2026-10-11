@@ -61,14 +61,16 @@ struct TranscriptionSection: View {
 
 struct APIKeysSection: View {
     @Environment(AppModel.self) private var model
-    @State private var showsAdvanced = false
 
     var body: some View {
         Section {
             APIKeyRow(account: ProviderID.xai.rawValue, title: "xAI", purpose: String(localized: "Voix recommandée, correction Grok"))
             APIKeyRow(account: ProviderID.openAI.rawValue, title: "OpenAI", purpose: String(localized: "Voix, relais et correction"))
             APIKeyRow(account: CleanupModel.deepSeekAccount, title: "DeepSeek", purpose: String(localized: "Correction la moins chère"))
-            DisclosureGroup("Clés facultatives", isExpanded: $showsAdvanced) {
+            DisclosureGroup("Clés facultatives", isExpanded: Binding(
+                get: { model.settings.showsOptionalKeys },
+                set: { model.setDisplayChoice(\.showsOptionalKeys, $0) }
+            )) {
                 APIKeyRow(account: APIKeys.xaiManagement, title: String(localized: "Gestion xAI"), purpose: String(localized: "Affiche le solde prépayé xAI"))
                 if model.dependencies.keyStore == .vault || model.hasKey(account: APIKeys.typesafe) {
                     APIKeyRow(account: APIKeys.typesafe, title: "TypeSafe", purpose: String(localized: "Jev, premier avis sur les mots à apprendre"))
