@@ -64,7 +64,7 @@ struct PasteShortcutRow: View {
         let shortcut = model.settings.pasteLastShortcut
         let recording = model.isRecordingPasteShortcut
         VStack(alignment: .leading, spacing: 6) {
-            LabeledContent("Coller la dernière dictée") {
+            SettingRow(text: SettingsPresentation.pasteLast) {
                 HStack(spacing: 10) {
                     KeyCap(label: recording ? "…" : PasteShortcutText.label(shortcut))
                         .opacity(shortcut.enabled || recording ? 1 : 0.5)

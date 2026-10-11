@@ -83,6 +83,21 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   éphémères : la recherche de l'Historique, une saisie en cours (clé, terme du dictionnaire), une dictée dépliée
   dans l'Historique, le détail ouvert.
 
+## Réglages
+
+Sections, dans l'ordre : Raccourci, Transcription, Correction, Ton selon l'app, Confidentialité, Apprentissage,
+Général, Autorisations, Diagnostic. Aucun bloc de texte sous une liste : chaque réglage porte, dans sa rangée, une
+explication d'une ligne sous son libellé, en langage simple (ni montant, ni chiffre, ni nom de modèle). Les détails
+(fournisseurs et modèles réellement utilisés, coût, délais, ce qui est envoyé ou gardé) s'ouvrent dans un popover
+avec le bouton ⓘ de la rangée ; ceux de la correction suivent les clés enregistrées.
+
+- **Confidentialité** : « Ce qui est envoyé » (audio et, si disponibles, app active, sélection et court extrait
+  autour du curseur ; historique et audio restent sur ce Mac), « Comprendre le sujet grâce à la fenêtre active »
+  (inactif sans la correction), conservation, durée et plafond de l'audio.
+- **Correction** : « Corriger le texte avant insertion », « Structurer les listes et paragraphes », « Réécrire la
+  sélection sur consigne » (inactif sans la correction). Le ton se règle dans la section suivante, inactive sans la
+  correction.
+
 ## Premier lancement guidé
 
 Au premier lancement (aucun réglage enregistré), la fenêtre affiche une configuration en sept étapes, avec une
@@ -224,11 +239,11 @@ gardé tel quel).
 
 ## Ton et consignes
 
-- **Ton selon l'app** (Réglages › Ton et consignes) : par catégorie (e-mails, messageries, documents, notes, code et
+- **Ton selon l'app** (Réglages › Ton selon l'app) : par catégorie (e-mails, messageries, documents, notes, code et
   terminal, navigateur, autres apps), « Comme dicté » (par défaut, comportement d'origine), « Soigné » (tournures familières écrites
   en forme standard, « ne » rétabli) ou « Détendu » (tournures gardées, pas de point final pour un message court).
   Le ton ne change que le registre, jamais les mots ni le sens ; le garde-fou de fidélité s'applique toujours.
-- **Consigne sur la sélection** (réglage « Réécrire la sélection sur consigne », actif par défaut) : avec du texte
+- **Consigne sur la sélection** (Réglages › Correction › « Réécrire la sélection sur consigne », actif par défaut) : avec du texte
   sélectionné, une dictée qui commence par une consigne d'écriture (« reformule », « traduis », « résume », « corrige »,
   « raccourcis », « rends-le… », « mets ça en… », « rewrite », « translate », « make it… ») réécrit la sélection
   (6 000 caractères au plus) avec les fournisseurs de correction, sans garde-fou de fidélité. Une autre dictée remplace
