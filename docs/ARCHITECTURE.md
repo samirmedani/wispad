@@ -80,6 +80,14 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
   (`CopySymbolicHotKeys`, via `AppDependencies.systemShortcuts`). L'enregistreur (`AppModel.recordPasteShortcut`,
   vue `PasteShortcutRow`) écoute les frappes de la fenêtre avec un moniteur local, le temps d'un enregistrement.
 
+## Raccourcis dessinés
+
+`ShortcutKeyViews.swift` : `ShortcutKeys` traduit un raccourci (dictée ou collage) en touches `ShortcutKey`
+(symbole, nom, code de touche) ; `ShortcutKeyCaps` les dessine, `MacKeyboardDiagram` allume leurs codes sur le
+clavier de MacBook décrit par `MacKeyboardLayout` (unités de touche, codes de macOS, testé par `ShortcutKeysTests`).
+Inscriptions des lettres et chiffres : `KeyboardLayout.characters` (disposition active). Une rangée de réglage
+passe ses touches à `SettingRow(keys:)` pour que son popover ⓘ montre le schéma.
+
 Toutes les frontières du système (micro, réseau, clés, collage, son) passent par
 `AppDependencies` : les tests les remplacent et n'ouvrent jamais le vrai micro ni le vrai réseau.
 

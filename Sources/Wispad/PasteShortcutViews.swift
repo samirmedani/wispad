@@ -63,11 +63,17 @@ struct PasteShortcutRow: View {
     var body: some View {
         let shortcut = model.settings.pasteLastShortcut
         let recording = model.isRecordingPasteShortcut
+        let keys = ShortcutKeys.paste(shortcut)
         VStack(alignment: .leading, spacing: 6) {
-            SettingRow(text: SettingsPresentation.pasteLast) {
+            SettingRow(text: SettingsPresentation.pasteLast, keys: keys) {
                 HStack(spacing: 10) {
-                    KeyCap(label: recording ? "…" : PasteShortcutText.label(shortcut))
-                        .opacity(shortcut.enabled || recording ? 1 : 0.5)
+                    if recording {
+                        ShortcutKeyCap(key: ShortcutKey(keyCode: -1, name: "…"))
+                    } else {
+                        ShortcutKeyCaps(keys: keys)
+                            .opacity(shortcut.enabled ? 1 : 0.5)
+                            .help(PasteShortcutText.label(shortcut))
+                    }
                     Button(recording ? String(localized: "Tape la combinaison… (Échap annule)") : String(localized: "Modifier")) {
                         if recording {
                             model.stopRecordingPasteShortcut()

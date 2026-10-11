@@ -175,13 +175,15 @@ enum SettingsPresentation {
 /// Rangée de réglage au style macOS : libellé et explication courte à gauche, bouton « i » puis contrôle à droite.
 struct SettingRow<Control: View>: View {
     var text: SettingText
+    /// Touches d'un raccourci : son popover les montre sur un schéma du clavier.
+    var keys: [ShortcutKey] = []
     @ViewBuilder var control: Control
 
     var body: some View {
         LabeledContent {
             HStack(spacing: 8) {
                 if !text.details.isEmpty {
-                    InfoButton(text: text)
+                    InfoButton(text: text, keys: keys)
                 }
                 control
             }
@@ -220,6 +222,7 @@ struct SettingToggle: View {
 /// « i » : détails d'un réglage dans un popover, à la demande.
 struct InfoButton: View {
     var text: SettingText
+    var keys: [ShortcutKey] = []
     @State private var shown = false
 
     var body: some View {
@@ -233,18 +236,26 @@ struct InfoButton: View {
         .help(String(localized: "En savoir plus"))
         .accessibilityLabel(String(localized: "En savoir plus : \(text.title)"))
         .popover(isPresented: $shown, arrowEdge: .bottom) {
-            InfoPopover(text: text)
+            InfoPopover(text: text, keys: keys)
         }
     }
 }
 
+/// Avec les touches d'un raccourci : touches dessinées et schéma du clavier, sous le titre.
 struct InfoPopover: View {
     var text: SettingText
+    var keys: [ShortcutKey] = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(text.title)
                 .font(.headline)
+            if !keys.isEmpty {
+                ShortcutKeyCaps(keys: keys, size: .medium)
+                    .padding(.vertical, 2)
+                MacKeyboardDiagram(highlighted: Set(keys.map(\.keyCode)), unit: 26)
+                    .padding(.bottom, 4)
+            }
             ForEach(text.details, id: \.self) { detail in
                 Text(detail)
                     .foregroundStyle(.secondary)
@@ -253,7 +264,7 @@ struct InfoPopover: View {
         }
         .font(.callout)
         .padding(16)
-        .frame(width: 340, alignment: .leading)
+        .frame(width: keys.isEmpty ? 340 : 430, alignment: .leading)
     }
 }
 

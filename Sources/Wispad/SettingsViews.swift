@@ -34,8 +34,8 @@ struct SettingsView: View {
     var body: some View {
         FormScreen(title: String(localized: "Réglages"), subtitle: String(localized: "Raccourci, correction, audio et autorisations.")) {
             Section("Raccourci") {
-                SettingRow(text: SettingsPresentation.dictationShortcut) {
-                    KeyCap(label: KeyLabels.describe(keyCode: model.settings.keyCode, modifiers: model.settings.modifierFlags))
+                SettingRow(text: SettingsPresentation.dictationShortcut, keys: dictationKeys) {
+                    ShortcutKeyCaps(keys: dictationKeys)
                     Button(model.isRecordingShortcut ? String(localized: "Appuie sur le raccourci…") : String(localized: "Modifier")) {
                         model.stopRecordingPasteShortcut()
                         model.isRecordingShortcut = true
@@ -169,6 +169,10 @@ struct SettingsView: View {
             DiagnosticsSection()
         }
         .onAppear { model.refreshPermissions() }
+    }
+
+    private var dictationKeys: [ShortcutKey] {
+        ShortcutKeys.dictation(keyCode: model.settings.keyCode, modifiers: model.settings.modifierFlags)
     }
 
     /// Correction réellement faite, d'après les clés du coffre.
