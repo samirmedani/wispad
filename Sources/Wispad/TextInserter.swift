@@ -11,11 +11,27 @@ private struct InsertionField: @unchecked Sendable {
     var isSecure = false
     var value: String?
     var before: String?
+    /// Rôle d'accessibilité et curseur de texte : de quoi reconnaître un focus qui n'est sur aucun champ.
+    var role: String?
+    var subrole: String?
+    var hasTextCursor = false
 
     static func read(pid: pid_t) -> InsertionField {
         guard let element = ContextProbe.focusedElement(pid: pid) else { return InsertionField() }
         guard !ContextProbe.isSecure(element) else { return InsertionField(element: element, isSecure: true) }
-        return InsertionField(element: element, value: ContextProbe.valueForCheck(element), before: ContextProbe.textBeforeCursor(element))
+        return InsertionField(
+            element: element,
+            value: ContextProbe.valueForCheck(element),
+            before: ContextProbe.textBeforeCursor(element),
+            role: ContextProbe.string(kAXRoleAttribute, element),
+            subrole: ContextProbe.string(kAXSubroleAttribute, element),
+            hasTextCursor: ContextProbe.hasTextCursor(element)
+        )
+    }
+
+    func kind(bundleID: String?) -> FocusedFieldKind {
+        if isSecure { return .text }
+        return FocusedField.kind(role: role, subrole: subrole, hasTextCursor: hasTextCursor, bundleID: bundleID)
     }
 }
 
@@ -74,9 +90,12 @@ enum TextInserter {
             log.notice("collage impossible : app cible pas au premier plan")
             return .failed
         }
+        let bundleID = NSRunningApplication(processIdentifier: pid)?.bundleIdentifier
         // Relu au dernier moment : le focus a pu changer pendant la transcription.
         let reading = Task.detached(priority: .userInitiated) { InsertionField.read(pid: pid) }
         let field = await DictationCoordinator.value(of: reading, within: fieldReadLimit) ?? InsertionField()
+        // Nature du focus avant ⌘V, puis à chaque relecture : liste, bouton ou bureau du Finder = aucun champ.
+        var kinds = [field.kind(bundleID: bundleID)]
         let secure = InsertionPlanner.route(
             isSecureField: field.isSecure,
             secureInputActive: IsSecureEventInputEnabled(),
@@ -111,26 +130,44 @@ enum TextInserter {
         let readFocused = field.element == nil
         while Date() < deadline {
             try? await Task.sleep(nanoseconds: 100_000_000)
-            let read = Task.detached(priority: .userInitiated) {
-                UncheckedSendable(readFocused ? InsertionField.read(pid: pid).value : ContextProbe.valueForCheck(element.value))
+            let read = Task.detached(priority: .userInitiated) { () -> UncheckedSendable<(String?, InsertionField?)> in
+                guard readFocused else { return UncheckedSendable((ContextProbe.valueForCheck(element.value), nil)) }
+                let refreshed = InsertionField.read(pid: pid)
+                return UncheckedSendable((refreshed.value, refreshed))
             }
             let remaining = deadline.timeIntervalSinceNow
             guard remaining > 0, let after = await DictationCoordinator.value(of: read, within: remaining) else { break }
-            if after.value != nil { sawValue = true }
-            if InsertionCheck.confirms(before: field.value, after: after.value, inserted: joined) {
+            let (afterValue, refreshed) = after.value
+            if let refreshed { kinds.append(refreshed.kind(bundleID: bundleID)) }
+            if afterValue != nil { sawValue = true }
+            if InsertionCheck.confirms(before: field.value, after: afterValue, inserted: joined) {
                 confirmed = true
                 break
             }
         }
-        if !confirmed {
+        let status = FocusedField.status(confirmed: confirmed, kinds: kinds)
+        if status == .noTarget {
+            // Le focus était sur une liste, un bouton ou le bureau, avant comme après ⌘V : aucun champ où écrire.
+            log.notice("collage non confirmé : aucun champ de texte au focus")
+        } else if !confirmed {
             // Cause seulement, jamais de texte : de quoi expliquer les collages non confirmés par app.
             log.notice("collage non confirmé : \(sawValue ? "texte absent du champ" : readFocused ? "champ toujours illisible" : "valeur du champ illisible", privacy: .public)")
-            try? await Task.sleep(nanoseconds: 200_000_000)
         }
-        // Cmd+V a été envoyé. Un champ absent, non textuel ou devenu inaccessible via AX ne prouve
-        // pas un échec : certains éditeurs collent bien sans exposer leur texte. Reste « Collage envoyé ».
+        if !confirmed { try? await Task.sleep(nanoseconds: 200_000_000) }
+        // Cmd+V a été envoyé. Un champ illisible ou un conteneur (groupe, zone web, fenêtre) ne prouve pas un
+        // échec : certains éditeurs collent bien sans exposer leur texte. Reste « Collage envoyé ».
         last = Memory(pid: pid, element: field.element, text: joined, confirmed: confirmed, keystrokes: keystrokes, at: Date())
-        return confirmed ? .inserted : .pasteSent
+        return status
+    }
+
+    /// Attend que ⌃, ⌥, ⇧ et ⌘ soient relâchés (0,6 s au plus) : un ⌘V envoyé pendant que l'utilisateur tient
+    /// encore ⌃⌥ du raccourci « Coller la dernière dictée » deviendrait ⌃⌥⌘V dans certaines apps.
+    static func waitForModifierRelease(limit: Double = 0.6) async {
+        let held: CGEventFlags = [.maskControl, .maskAlternate, .maskShift, .maskCommand]
+        let deadline = Date().addingTimeInterval(limit)
+        while !CGEventSource.flagsState(.hidSystemState).intersection(held).isEmpty, Date() < deadline {
+            try? await Task.sleep(nanoseconds: 20_000_000)
+        }
     }
 
     /// Dernier collage, s'il précède sans doute encore le curseur : même app, même champ, moins de 30 s,

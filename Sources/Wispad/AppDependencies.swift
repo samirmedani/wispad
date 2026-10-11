@@ -10,9 +10,17 @@ protocol AudioRecording: AnyObject, Sendable {
     var inputDeviceUID: String? { get set }
     func start(directory: URL) async throws -> URL
     func stop() -> (url: URL?, duration: Double)
+    /// Écoute en cours mais muette : redémarre le micro sur un moteur neuf, dans le même fichier.
+    func restart() async throws
+    /// Démarrage trop long : la dictée ne l'attend plus, il se refermera seul en rendant la main.
+    func abandonStart()
 }
 
 extension AudioRecording {
+    /// Un enregistreur sans moteur à relancer (tests) : rien à faire.
+    func restart() async throws {}
+    func abandonStart() {}
+
     /// Un enregistreur qui ne choisit pas son micro (tests) : toujours celui du système.
     var inputDeviceUID: String? {
         get { nil }
@@ -58,6 +66,8 @@ struct AppDependencies {
     var requestMicrophone: () async -> Bool = { await PermissionCenter.requestMicrophone() }
     /// App au premier plan tout de suite, champ actif lu en parallèle : le micro n'attend pas une app lente.
     var captureContext: () -> (DictationContext, Task<FieldSnapshot?, Never>) = { ContextProbe.begin() }
+    /// App au premier plan, sans lire son champ : cible de « Coller la dernière dictée ».
+    var frontmostApp: () -> DictationContext = { ContextProbe.frontmost() }
     /// Conversation visible dans la fenêtre de l'app où l'on dicte, lue hors du fil principal (300 ms au plus).
     /// Elle reste en mémoire le temps de la correction : jamais journalisée ni enregistrée.
     var readWindow: (pid_t) async -> String? = { pid in
@@ -91,6 +101,10 @@ struct AppDependencies {
     var insert: (String, DictationContext, @escaping @MainActor () -> Bool) async -> InsertionStatus = {
         await TextInserter.insert($0, context: $1, shouldProceed: $2)
     }
+    /// « Coller la dernière dictée » : attend que les touches du raccourci soient relâchées avant ⌘V.
+    var modifiersReleased: () async -> Void = { await TextInserter.waitForModifierRelease() }
+    /// Raccourcis déclarés par macOS (Réglages Système › Clavier › Raccourcis), pour refuser une combinaison prise.
+    var systemShortcuts: () -> [PasteShortcut] = { SystemShortcuts.enabled() }
 }
 
 enum DictationCue: Hashable {

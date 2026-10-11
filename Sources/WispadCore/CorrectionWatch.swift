@@ -54,6 +54,14 @@ public struct CorrectionWatch: Sendable {
     private var misses = 0
     private var finished: Outcome?
 
+    /// Une surveillance suit un texte livré dans un champ, après une dictée comme après « Coller la dernière
+    /// dictée » : seulement si l'apprentissage est activé, jamais pour une sélection réécrite (le texte n'a pas
+    /// été dicté mot pour mot) ni pour un texte que Wispad écrit lui-même dans sa fenêtre (essai du premier
+    /// lancement, sans collage).
+    public static func shouldStart(status: InsertionStatus, learnCorrections: Bool, selectionCommand: Bool, writtenByWispad: Bool) -> Bool {
+        status.delivered && learnCorrections && !selectionCommand && !writtenByWispad
+    }
+
     public init(inserted: String, known: [String]) {
         self.inserted = inserted
         self.known = known

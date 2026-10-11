@@ -17,10 +17,18 @@ private final class FakeAudio: AudioRecording, @unchecked Sendable {
     var emitsPCMOnStart = true
     var startGate: AsyncResult<Void>?
     var onStarting: (@Sendable () -> Void)?
+    var startError: Error?
+    /// Démarrages qui ont rendu la main (même abandonnés par la dictée).
+    var finishedStarts = 0
+    var restarts = 0
+    var restartEmitsPCM = true
+    var abandoned = 0
     func start(directory: URL) async throws -> URL {
         starts += 1
         onStarting?()
         if let startGate { try await startGate.value() }
+        defer { finishedStarts += 1 }
+        if let startError { throw startError }
         isRunning = true
         let url = directory.appendingPathComponent(UUID().uuidString + ".wav")
         try Data(repeating: 0, count: 128).write(to: url)
@@ -32,6 +40,24 @@ private final class FakeAudio: AudioRecording, @unchecked Sendable {
         isRunning = false
         return (url, duration)
     }
+    func restart() async throws {
+        restarts += 1
+        if restartEmitsPCM { onPCM?(Data(repeating: 0, count: 1024)) }
+    }
+    func abandonStart() {
+        abandoned += 1
+    }
+}
+
+/// Attend qu'une condition devienne vraie (2 s au plus), sans bloquer le fil principal.
+@MainActor
+private func waitFor(_ condition: () -> Bool, seconds: Double = 2) async -> Bool {
+    let deadline = Date().addingTimeInterval(seconds)
+    while !condition() {
+        if Date() > deadline { return false }
+        try? await Task.sleep(nanoseconds: 10_000_000)
+    }
+    return true
 }
 
 private final class OpenedAt: @unchecked Sendable {
@@ -184,6 +210,13 @@ private final class Fixture {
         deps.refreshKeys = { true }
         deps.requestMicrophone = { [weak self] in self?.microphoneRequests += 1; return true }
         deps.captureContext = { let context = DictationContext(); context.pid = 4242; return (context, Task { nil }) }
+        deps.frontmostApp = {
+            let context = DictationContext()
+            context.pid = 5151
+            context.appName = "Éditeur de test"
+            context.bundleID = "test.editeur"
+            return context
+        }
         deps.makeCapture = { [audio] in audio }
         deps.makeSession = { [stream] _ in stream }
         deps.transcribe = { [weak self] _, _ in self?.transcriptions += 1; return "Phrase de test." }
@@ -205,6 +238,8 @@ private final class Fixture {
             self?.insertedTexts.append(text)
             return .inserted
         }
+        deps.modifiersReleased = {}
+        deps.systemShortcuts = { [] }
         configure(&deps)
         model = try AppModel(supportDirectory: directory, settings: AppSettings(), dependencies: deps)
     }
@@ -652,8 +687,8 @@ struct AppRegressionTests {
         f.model.overlay.displaysPanel = false
         await f.model.coordinator.begin(.pushToTalk)
         await f.model.coordinator.end()
-        // Le texte n'est allé nulle part : il est déjà copié, la bulle le dit et propose encore de le copier pendant 10 s.
-        #expect(f.model.coordinator.phase == .failure("Aucun champ actif : texte copié, colle-le avec ⌘V."))
+        // Le texte n'est allé nulle part : il est déjà copié, la bulle le dit et propose Copier assez longtemps.
+        #expect(f.model.coordinator.phase == .failure("Pas de champ où écrire : le texte est prêt"))
         #expect(f.model.coordinator.failureText == "Phrase de test.")
         #expect(box.texts == ["Phrase de test."])
         #expect(DictationCoordinator.failureSeconds >= 10)
@@ -901,6 +936,115 @@ struct AppRegressionTests {
         #expect(!FileManager.default.fileExists(atPath: audio.path))
     }
 
+    // MARK: Démarrage du micro (première dictée après un lancement)
+
+    @Test func audioStartThatHangsEndsWithMessageAndNextDictationWorks() async throws {
+        let gate = AsyncResult<Void>()
+        let f = try Fixture()
+        defer {
+            gate.resolve(.success(()))
+            f.dispose()
+        }
+        f.audio.startGate = gate
+        f.model.coordinator.audioStartLimit = 0.05
+        await f.model.coordinator.begin(.toggle)
+        // La bulle ne reste pas figée : elle dit pourquoi, sans bouton Historique (rien n'a été enregistré).
+        #expect(f.model.coordinator.phase == .failure(DictationCoordinator.microphoneStalledMessage))
+        #expect(!f.model.coordinator.failureOffersHistory)
+        #expect(f.model.statusBanner == DictationCoordinator.microphoneStalledMessage)
+        #expect(f.audio.abandoned == 1)
+        #expect(!f.cues.contains(.start))
+        // Le démarrage lent finit par rendre la main : la dictée abandonnée ne reprend pas.
+        f.audio.startGate = nil
+        gate.resolve(.success(()))
+        let finished = await waitFor { f.audio.finishedStarts == 1 }
+        #expect(finished)
+        #expect(f.model.coordinator.phase == .failure(DictationCoordinator.microphoneStalledMessage))
+        // Un nouvel appui relance une dictée, message encore affiché ; délai réel (en CI, les tests se partagent
+        // le fil principal : 50 ms ne suffiraient pas à un démarrage normal).
+        f.model.coordinator.audioStartLimit = MicrophoneStartWatch.startLimit
+        await f.model.coordinator.begin(.toggle)
+        #expect(f.model.coordinator.phase == .listening(.toggle))
+        let heard = await waitFor { f.cues.contains(.start) }
+        #expect(heard)
+    }
+
+    @Test func silentMicrophoneRestartsOnceThenListensNormally() async throws {
+        let f = try Fixture()
+        defer { f.dispose() }
+        f.audio.emitsPCMOnStart = false
+        f.model.coordinator.firstPacketLimit = 0.05
+        await f.model.coordinator.begin(.toggle)
+        #expect(f.model.coordinator.phase == .listening(.toggle))
+        #expect(!f.cues.contains(.start))
+        // Moteur muet au premier démarrage : relancé une fois, le son de début suit le premier vrai paquet.
+        let heard = await waitFor { f.cues.contains(.start) }
+        #expect(heard)
+        #expect(f.audio.restarts == 1)
+        #expect(f.model.coordinator.phase == .listening(.toggle))
+        try await Task.sleep(nanoseconds: 150_000_000)
+        #expect(f.audio.restarts == 1)
+        #expect(f.model.coordinator.phase == .listening(.toggle))
+        await f.model.coordinator.end()
+        #expect(f.inserted == 1)
+    }
+
+    @Test func microphoneThatStaysSilentEndsWithMessageAndNextDictationWorks() async throws {
+        let f = try Fixture()
+        defer { f.dispose() }
+        f.audio.emitsPCMOnStart = false
+        f.audio.restartEmitsPCM = false
+        f.model.coordinator.firstPacketLimit = 0.05
+        await f.model.coordinator.begin(.toggle)
+        let failed = await waitFor { f.model.coordinator.phase == .failure(DictationCoordinator.microphoneStalledMessage) }
+        #expect(failed)
+        #expect(f.audio.restarts == 1)
+        #expect(!f.audio.isRunning)
+        #expect(!f.cues.contains(.start))
+        #expect(!f.model.coordinator.failureOffersHistory)
+        #expect(f.transcriptions == 0 && f.inserted == 0)
+        let audio = try #require(f.audio.url)
+        #expect(!FileManager.default.fileExists(atPath: audio.path))
+        // Wispad est de nouveau prêt : la dictée suivante écoute et entend.
+        f.audio.emitsPCMOnStart = true
+        await f.model.coordinator.begin(.toggle)
+        #expect(f.model.coordinator.phase == .listening(.toggle))
+        let heard = await waitFor { f.cues.contains(.start) }
+        #expect(heard)
+    }
+
+    @Test func audioStartErrorIsShownInTheBubble() async throws {
+        let f = try Fixture()
+        defer { f.dispose() }
+        f.audio.startError = AudioCaptureError.noInput
+        await f.model.coordinator.begin(.pushToTalk)
+        let message = try #require(AudioCaptureError.noInput.errorDescription)
+        #expect(f.model.coordinator.phase == .failure(message))
+        #expect(f.model.statusBanner == message)
+        #expect(!f.model.coordinator.failureOffersHistory)
+        #expect(!f.cues.contains(.start))
+    }
+
+    @Test func releaseDuringSlowAudioStartStillEndsTheDictation() async throws {
+        let entered = AsyncResult<Void>()
+        let gate = AsyncResult<Void>()
+        let f = try Fixture()
+        defer { f.dispose() }
+        f.audio.startGate = gate
+        f.audio.onStarting = { entered.resolve(.success(())) }
+        let coordinator = f.model.coordinator
+        coordinator.enqueue { await coordinator.begin(.pushToTalk) }
+        // Touche relâchée pendant le démarrage à froid : la fin attend son tour, elle n'est pas perdue.
+        coordinator.enqueue { coordinator.endCapture() }
+        try await entered.value()
+        #expect(coordinator.phase == .starting)
+        gate.resolve(.success(()))
+        let pasted = await waitFor { f.inserted == 1 }
+        #expect(pasted)
+        #expect(coordinator.phase == .idle)
+        #expect(!f.audio.isRunning)
+    }
+
     @Test func cancellingPlaysCancelCue() async throws {
         let f = try Fixture()
         defer { f.dispose() }
@@ -973,7 +1117,7 @@ struct AppRegressionTests {
         #expect(coordinator.learningOffer == "Seedance")
         #expect(OverlayMode.resolve(phase: coordinator.phase, notice: coordinator.notice, confirmsLearning: true) == .learning(message))
         #expect(OverlayMode.learning("x").isInteractive)
-        #expect(!OverlayMode.notice("x").isInteractive)
+        #expect(OverlayMode.notice("x").isInteractive)
         // Une dictée qui commence remplace le message, sans le perdre.
         await coordinator.begin(.pushToTalk)
         #expect(coordinator.notice == nil)
@@ -1053,6 +1197,46 @@ struct AppRegressionTests {
         // Même geste que la minuterie de 8 s : le mot reste, le message part, rien n'est refusé.
         f.model.coordinator.dismissCurrentNotice()
         #expect(f.model.coordinator.notice == nil)
+        #expect(f.model.dictionary.map(\.term) == ["Seedance"])
+        #expect(try !f.model.store.hasRefused("Seedance"))
+    }
+
+    @Test func hoveringHoldsAMessageAndTheCrossClosesIt() async throws {
+        let f = try Fixture()
+        defer { f.dispose() }
+        f.model.overlay.displaysPanel = false
+        let coordinator = f.model.coordinator
+        // Messages seulement : la bulle d'enregistrement n'a ni décompte ni ✕.
+        #expect(OverlayMode.notice("x").isMessage && OverlayMode.failure("x").isMessage && OverlayMode.learning("x").isMessage)
+        #expect(!OverlayMode.listening.isMessage && !OverlayMode.handsFree.isMessage && !OverlayMode.finishing.isMessage)
+
+        coordinator.announce("Collé", relay: false, seconds: 0.2)
+        coordinator.holdMessages(true)
+        #expect(coordinator.noticeTimer.countdown?.isPaused == true)
+        try await Task.sleep(nanoseconds: 400_000_000)
+        #expect(coordinator.notice == "Collé")
+        // Le pointeur sort : le décompte reprend où il s'était arrêté, puis le message part.
+        coordinator.holdMessages(false)
+        #expect(coordinator.noticeTimer.countdown?.isPaused == false)
+        let deadline = Date().addingTimeInterval(2)
+        while coordinator.notice != nil, Date() < deadline { try await Task.sleep(nanoseconds: 20_000_000) }
+        #expect(coordinator.notice == nil)
+        #expect(coordinator.noticeTimer.countdown == nil)
+
+        // Un message qui paraît sous le pointeur attend aussi ; ✕ le ferme tout de suite.
+        coordinator.holdMessages(true)
+        coordinator.announce("Collé", relay: false)
+        #expect(coordinator.noticeTimer.countdown?.isPaused == true)
+        coordinator.closeMessage()
+        #expect(coordinator.notice == nil)
+        #expect(coordinator.noticeTimer.countdown == nil)
+        coordinator.holdMessages(false)
+
+        // ✕ sur une proposition de mot : le mot reste, comme à la fin du décompte.
+        f.model.learn(["Seedance"])
+        #expect(coordinator.notice == DictationCoordinator.learningMessage("Seedance"))
+        coordinator.closeMessage()
+        #expect(coordinator.notice == nil)
         #expect(f.model.dictionary.map(\.term) == ["Seedance"])
         #expect(try !f.model.store.hasRefused("Seedance"))
     }
@@ -1146,7 +1330,7 @@ struct AppRegressionTests {
         #expect(OverlayMode.handsFree.isInteractive)
         #expect(OverlayMode.failure("x").isInteractive)
         #expect(OverlayMode.learning("x").isInteractive)
-        #expect(!OverlayMode.notice("x").isInteractive)
+        #expect(OverlayMode.notice("x").isInteractive)
     }
 
     @Test func overlaySitsJustAboveTheDockOrNearTheScreenEdge() {
@@ -1775,7 +1959,7 @@ struct AppRegressionTests {
         #expect(coordinator.phase == .listening(.toggle))
         #expect(coordinator.failureText == nil)
         coordinator.cancel()
-        #expect(coordinator.phase == .failure("Aucun champ actif : texte copié, colle-le avec ⌘V."))
+        #expect(coordinator.phase == .failure("Pas de champ où écrire : le texte est prêt"))
         #expect(coordinator.failureText == "Phrase de test.")
     }
 
@@ -1986,10 +2170,10 @@ private final class SilentProvider: NSObject, NSPasteboardItemDataProvider {
 struct InsertionFailureTests {
     @Test func copyButtonKeepsItsActionWithATrailingClosure() {
         // Le 5 octobre, la fermeture finale se rattachait au bouton secondaire : « Copier » disparaissait.
-        let line = MessageLine(symbol: "exclamationmark.circle.fill", tint: .red, message: "Échec.", duration: 10, actionTitle: "Copier") {}
+        let line = MessageLine(symbol: "exclamationmark.circle.fill", tint: .red, message: "Échec.", actionTitle: "Copier") {}
         #expect(line.action != nil)
         #expect(line.secondaryAction == nil)
-        let labeled = MessageLine(symbol: "checkmark.circle.fill", tint: .green, message: "Garder ?", duration: 8,
+        let labeled = MessageLine(symbol: "checkmark.circle.fill", tint: .green, message: "Garder ?",
                                   actionTitle: "Oui", action: {}, secondaryTitle: "Non", secondaryAction: {})
         #expect(labeled.action != nil && labeled.secondaryAction != nil)
     }
@@ -2022,7 +2206,7 @@ struct InsertionFailureTests {
         await f.model.coordinator.begin(.pushToTalk)
         await f.model.coordinator.end()
         #expect(box.texts == ["Phrase de test."])
-        #expect(f.model.coordinator.phase == .failure("Insertion impossible : texte copié, colle-le avec ⌘V."))
+        #expect(f.model.coordinator.phase == .failure("Collage impossible : le texte est prêt"))
         #expect(f.model.coordinator.failureText == "Phrase de test.")
     }
 
@@ -2037,5 +2221,288 @@ struct InsertionFailureTests {
         await f.model.coordinator.begin(.pushToTalk)
         await f.model.coordinator.end()
         #expect(box.texts.isEmpty)
+        // Rien n'est copié d'office, mais la bulle propose toujours Copier.
+        #expect(f.model.coordinator.phase == .failure("Champ sécurisé : le texte est prêt"))
+        #expect(f.model.coordinator.failureText == "Phrase de test.")
+    }
+
+    @Test func copyConfirmsCopiedThenTheBubbleLeaves() async throws {
+        let box = CopyBox()
+        let f = try Fixture {
+            $0.insert = { _, _, _ in .noTarget }
+            $0.copyText = { box.texts.append($0) }
+        }
+        defer { f.dispose() }
+        f.model.overlay.displaysPanel = false
+        let coordinator = f.model.coordinator
+        await coordinator.begin(.pushToTalk)
+        await coordinator.end()
+        coordinator.copyReadyText()
+        #expect(box.texts == ["Phrase de test.", "Phrase de test."])
+        #expect(coordinator.phase == .failure("Copié"))
+        #expect(coordinator.failureCopied)
+        #expect(coordinator.failureText == nil)
+        #expect(DictationCoordinator.copiedSeconds < DictationCoordinator.failureSeconds)
+        let deadline = Date().addingTimeInterval(DictationCoordinator.copiedSeconds + 1.5)
+        while coordinator.phase != .idle, Date() < deadline {
+            try await Task.sleep(nanoseconds: 50_000_000)
+        }
+        #expect(coordinator.phase == .idle)
+        #expect(!coordinator.failureCopied)
+    }
+
+    @Test func escapeOrTheCrossClosesTheReadyText() async throws {
+        let f = try Fixture { $0.insert = { _, _, _ in .noTarget } }
+        defer { f.dispose() }
+        f.model.overlay.displaysPanel = false
+        let coordinator = f.model.coordinator
+        await coordinator.begin(.pushToTalk)
+        await coordinator.end()
+        #expect(coordinator.failureText != nil)
+        // Échap (ou ✕) : la bulle part, le texte reste dans l'historique.
+        coordinator.cancel()
+        #expect(coordinator.phase == .idle)
+        #expect(coordinator.failureText == nil)
+        #expect(f.model.history.first?.finalText == "Phrase de test.")
+    }
+
+    @Test func hoveringHoldsTheReadyTextAndTheCrossClosesIt() async throws {
+        let f = try Fixture { $0.insert = { _, _, _ in .noTarget } }
+        defer { f.dispose() }
+        f.model.overlay.displaysPanel = false
+        let coordinator = f.model.coordinator
+        await coordinator.begin(.pushToTalk)
+        await coordinator.end()
+        #expect(coordinator.phase == .failure(DictationCoordinator.readyMessage(for: .noTarget)))
+        #expect(coordinator.failureTimer.countdown?.isPaused == false)
+        coordinator.holdMessages(true)
+        #expect(coordinator.failureTimer.countdown?.isPaused == true)
+        coordinator.holdMessages(false)
+        #expect(coordinator.failureTimer.countdown?.isPaused == false)
+        coordinator.closeMessage()
+        #expect(coordinator.phase == .idle)
+        #expect(coordinator.failureText == nil)
+        #expect(coordinator.failureTimer.countdown == nil)
+        #expect(f.model.history.first?.finalText == "Phrase de test.")
+    }
+
+    @Test func readyTextWithItsButtonsFitsOnOneLine() async throws {
+        let f = try Fixture { $0.insert = { _, _, _ in .noTarget } }
+        defer { f.dispose() }
+        f.model.overlay.displaysPanel = false
+        await f.model.coordinator.begin(.pushToTalk)
+        await f.model.coordinator.end()
+        let renderer = ImageRenderer(content: OverlayCluster(mode: .failure(DictationCoordinator.readyMessage(for: .noTarget)))
+            .environment(f.model)
+            .environment(\.colorScheme, .dark)
+            .environment(\.overlayGlass, false))
+        renderer.scale = 2
+        let image = try #require(renderer.nsImage)
+        #expect(image.size.height <= OverlayLayout.pillHeight + 1)
+        #expect(image.size.width <= OverlayLayout.panelSize.width - 40)
+    }
+}
+
+/// « Coller la dernière dictée » : même collage qu'une dictée, même message sans champ.
+@MainActor
+struct PasteLastDictationTests {
+    @Test func theShortcutPastesTheUndeliveredDictationAndUpdatesItsStatus() async throws {
+        let box = CopyBox()
+        var next: InsertionStatus = .noTarget
+        var pasted: [String] = []
+        var targets: [pid_t?] = []
+        let f = try Fixture {
+            $0.copyText = { box.texts.append($0) }
+            $0.insert = { text, context, _ in
+                pasted.append(text)
+                targets.append(context.pid)
+                return next
+            }
+        }
+        defer { f.dispose() }
+        f.model.overlay.displaysPanel = false
+        let coordinator = f.model.coordinator
+        await coordinator.begin(.pushToTalk)
+        await coordinator.end()
+        #expect(f.model.history.first?.insertionStatus == InsertionStatus.noTarget.rawValue)
+        // Un champ est maintenant actif : le raccourci colle le texte au curseur de l'app au premier plan.
+        next = .inserted
+        await coordinator.pasteLastDictation()
+        #expect(pasted == ["Phrase de test.", "Phrase de test."])
+        #expect(targets == [4242, 5151])
+        #expect(coordinator.phase == .idle)
+        #expect(coordinator.failureText == nil)
+        #expect(f.model.history.first?.insertionStatus == InsertionStatus.inserted.rawValue)
+        #expect(f.model.history.first?.targetApp == "Éditeur de test")
+        #expect(f.model.history.first?.targetBundle == "test.editeur")
+        #expect(box.texts == ["Phrase de test."])
+    }
+
+    @Test func aSuccessfulPasteEndsLikeADictation() async throws {
+        var next: InsertionStatus = .noTarget
+        let f = try Fixture {
+            $0.insert = { _, _, _ in next }
+        }
+        defer { f.dispose() }
+        f.model.overlay.displaysPanel = false
+        let coordinator = f.model.coordinator
+        await coordinator.begin(.pushToTalk)
+        await coordinator.end()
+        #expect(f.watches.isEmpty)
+        next = .inserted
+        await coordinator.pasteLastDictation()
+        // Même fin qu'une dictée insérée : bref « Collé » qui part seul, champ surveillé pour l'apprentissage.
+        #expect(coordinator.notice == "Collé")
+        #expect(!coordinator.noticeIsInfo && !coordinator.noticeIsRelay)
+        #expect(coordinator.phase == .idle)
+        let watch = try #require(f.watches.first)
+        #expect(f.watches.count == 1)
+        #expect(watch.0 == "Phrase de test.")
+        #expect(watch.1 == 5151)
+    }
+
+    @Test func aPasteLearnsNothingWhenLearningIsOff() async throws {
+        var next: InsertionStatus = .noTarget
+        let f = try Fixture {
+            $0.insert = { _, _, _ in next }
+        }
+        defer { f.dispose() }
+        f.model.overlay.displaysPanel = false
+        f.model.settings.learnCorrections = false
+        let coordinator = f.model.coordinator
+        await coordinator.begin(.pushToTalk)
+        await coordinator.end()
+        next = .pasteSent
+        await coordinator.pasteLastDictation()
+        #expect(coordinator.notice == "Collé")
+        #expect(f.watches.isEmpty)
+        #expect(f.model.history.first?.insertionStatus == InsertionStatus.pasteSent.rawValue)
+    }
+
+    @Test func withoutAFieldTheShortcutCopiesAndShowsTheSameMessage() async throws {
+        let box = CopyBox()
+        let f = try Fixture {
+            $0.insert = { _, _, _ in .noTarget }
+            $0.copyText = { box.texts.append($0) }
+        }
+        defer { f.dispose() }
+        f.model.overlay.displaysPanel = false
+        let coordinator = f.model.coordinator
+        await coordinator.begin(.pushToTalk)
+        await coordinator.end()
+        coordinator.dismissFailure()
+        await coordinator.pasteLastDictation()
+        #expect(coordinator.phase == .failure("Pas de champ où écrire : le texte est prêt"))
+        #expect(coordinator.failureText == "Phrase de test.")
+        #expect(coordinator.notice == nil)
+        #expect(f.watches.isEmpty)
+        #expect(box.texts == ["Phrase de test.", "Phrase de test."])
+        #expect(f.model.history.first?.insertionStatus == InsertionStatus.noTarget.rawValue)
+        #expect(f.model.history.first?.targetApp == nil)
+    }
+
+    @Test func aDeliveredDictationIsPastedAgainWithoutLosingItsStatus() async throws {
+        var results: [InsertionStatus] = [.inserted, .noTarget]
+        let f = try Fixture {
+            $0.insert = { _, _, _ in results.isEmpty ? .inserted : results.removeFirst() }
+        }
+        defer { f.dispose() }
+        f.model.overlay.displaysPanel = false
+        let coordinator = f.model.coordinator
+        await coordinator.begin(.pushToTalk)
+        await coordinator.end()
+        await coordinator.pasteLastDictation()
+        // Le nouveau collage a échoué, mais la dictée avait bien été écrite la première fois.
+        #expect(f.model.history.first?.insertionStatus == InsertionStatus.inserted.rawValue)
+        #expect(coordinator.phase == .failure("Pas de champ où écrire : le texte est prêt"))
+    }
+
+    @Test func nothingToPasteSaysSoWithoutPasting() async throws {
+        let f = try Fixture()
+        defer { f.dispose() }
+        f.model.overlay.displaysPanel = false
+        await f.model.coordinator.pasteLastDictation()
+        #expect(f.inserted == 0)
+        #expect(f.model.coordinator.notice == "Aucune dictée à coller")
+        #expect(f.model.coordinator.noticeIsInfo)
+    }
+
+    @Test func theShortcutIsIgnoredWhileListening() async throws {
+        let f = try Fixture()
+        defer { f.dispose() }
+        f.model.overlay.displaysPanel = false
+        let coordinator = f.model.coordinator
+        await coordinator.begin(.pushToTalk)
+        await coordinator.end()
+        await coordinator.begin(.toggle)
+        await coordinator.pasteLastDictation()
+        #expect(f.inserted == 1)
+        #expect(coordinator.phase == .listening(.toggle))
+        coordinator.cancel()
+    }
+
+    @Test func thePasteButtonOfTheBubblePastesTheReadyText() async throws {
+        var next: InsertionStatus = .noTarget
+        let f = try Fixture {
+            $0.insert = { _, _, _ in next }
+        }
+        defer { f.dispose() }
+        f.model.overlay.displaysPanel = false
+        let coordinator = f.model.coordinator
+        await coordinator.begin(.pushToTalk)
+        await coordinator.end()
+        next = .pasteSent
+        coordinator.pasteReadyText()
+        let deadline = Date().addingTimeInterval(2)
+        while f.model.history.first?.insertionStatus != InsertionStatus.pasteSent.rawValue, Date() < deadline {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        #expect(f.model.history.first?.insertionStatus == InsertionStatus.pasteSent.rawValue)
+        #expect(coordinator.phase == .idle)
+    }
+}
+
+/// Enregistreur du raccourci dans Réglages, sans vrai clavier : les combinaisons arrivent comme du moniteur.
+@MainActor
+struct PasteShortcutRecorderTests {
+    private let ctrlOpt = ModifierMask.control | ModifierMask.option
+
+    @Test func aFreeCombinationIsSavedAndEndsTheRecording() throws {
+        let f = try Fixture()
+        defer { f.dispose() }
+        f.model.isRecordingPasteShortcut = true
+        #expect(f.model.recordPasteShortcut(keyCode: 11, flags: ctrlOpt))
+        #expect(f.model.settings.pasteLastShortcut == PasteShortcut(keyCode: 11, modifiers: ctrlOpt))
+        #expect(!f.model.isRecordingPasteShortcut)
+        #expect(f.model.pasteShortcutProblem == nil)
+    }
+
+    @Test func aTakenCombinationIsRefusedWithAClearMessage() throws {
+        let f = try Fixture { $0.systemShortcuts = { [PasteShortcut(keyCode: 11, modifiers: ModifierMask.control | ModifierMask.option)] } }
+        defer { f.dispose() }
+        f.model.isRecordingPasteShortcut = true
+        #expect(!f.model.recordPasteShortcut(keyCode: 9, flags: ModifierMask.command | ModifierMask.shift))
+        #expect(f.model.pasteShortcutProblem == "⇧ ⌘ V est déjà pris : coller sans mise en forme.")
+        #expect(!f.model.recordPasteShortcut(keyCode: 11, flags: ctrlOpt))
+        #expect(f.model.pasteShortcutProblem == "⌃ ⌥ B est déjà pris par macOS (Réglages Système › Clavier › Raccourcis).")
+        #expect(!f.model.recordPasteShortcut(keyCode: 9, flags: ctrlOpt | ModifierMask.function))
+        #expect(f.model.pasteShortcutProblem == "fn est réservée à la dictée : choisis une combinaison sans fn.")
+        // Toujours en enregistrement, avec le raccourci d'avant.
+        #expect(f.model.isRecordingPasteShortcut)
+        #expect(f.model.settings.pasteLastShortcut == .standard)
+    }
+
+    @Test func escapeCancelsAndResetOrDisableKeepTheChoice() throws {
+        let f = try Fixture()
+        defer { f.dispose() }
+        f.model.isRecordingPasteShortcut = true
+        #expect(!f.model.recordPasteShortcut(keyCode: HotkeyLogic.escapeKeyCode, flags: 0))
+        #expect(!f.model.isRecordingPasteShortcut)
+        #expect(f.model.settings.pasteLastShortcut == .standard)
+        f.model.settings.pasteLastShortcut = PasteShortcut(keyCode: 11, modifiers: ctrlOpt)
+        f.model.setPasteShortcutEnabled(false)
+        #expect(f.model.settings.pasteLastShortcut == PasteShortcut(keyCode: 11, modifiers: ctrlOpt, enabled: false))
+        f.model.resetPasteShortcut()
+        #expect(f.model.settings.pasteLastShortcut == .standard)
     }
 }

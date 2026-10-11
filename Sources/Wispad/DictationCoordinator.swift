@@ -45,6 +45,12 @@ final class DictationCoordinator {
     }
     @ObservationIgnored private var outputMuted = false
     var failureText: String?
+    /// Copier vient d'être cliqué : la bulle confirme « Copié » avant de partir.
+    var failureCopied = false
+    /// Le message d'erreur propose d'ouvrir l'historique (faux pour un micro qui n'a pas démarré).
+    var failureOffersHistory = true
+    /// Un collage de « Coller la dernière dictée » (ou du bouton Coller) est en cours.
+    @ObservationIgnored private var pastingAgain = false
     /// Barres du spectre affiché : graves au centre, aigus sur les bords.
     var spectrum = Array(repeating: Float(0), count: DictationCoordinator.barCount)
     /// Relais qui travaille sur cette dictée (« OpenAI ») : la bulle change de couleur.
@@ -55,6 +61,8 @@ final class DictationCoordinator {
     @ObservationIgnored private var pendingAnnouncement: String?
     /// Le message de la bulle annonce une bascule vers un relais (icône et couleur dédiées).
     private(set) var noticeIsRelay = false
+    /// Le message de la bulle est une simple information (rien à coller) : icône neutre.
+    private(set) var noticeIsInfo = false
     /// Le message demande de garder ou non un mot déjà ajouté au dictionnaire.
     private(set) var noticeConfirmsLearning = false
 
@@ -67,7 +75,10 @@ final class DictationCoordinator {
     /// Erreur à montrer dans la bulle, dès que le micro est libre.
     @ObservationIgnored private var shownFailure: ShownFailure?
     @ObservationIgnored private var dismissing: UUID?
-    @ObservationIgnored private var failureDismissal: Task<Void, Never>?
+    /// Départ automatique du message d'erreur, en pause au survol.
+    let failureTimer = MessageTimer()
+    /// Le pointeur survole un message de la bulle : son décompte attend.
+    @ObservationIgnored private(set) var messagesHeld = false
     /// Nouvelle transcription demandée depuis l'historique.
     @ObservationIgnored private var retrying = false
     @ObservationIgnored private var meter: FrameTicker?
@@ -78,8 +89,10 @@ final class DictationCoordinator {
     /// En dessous, l'enregistrement est jeté sans appel API (appui trop bref, souffle).
     static let minimumDuration = 0.3
     /// Durées d'affichage des messages ; une fine barre se vide pendant ce temps.
-    /// Le temps de cliquer sur Copier quand le texte n'a pas pu être collé.
-    static let failureSeconds = 10.0
+    /// Le temps de lire et de cliquer sur Copier ou Coller quand le texte n'a pas pu être collé.
+    static let failureSeconds = 12.0
+    /// Confirmation « Copié », puis la bulle part.
+    static let copiedSeconds = 1.5
     static let noticeSeconds = 3.5
     /// Confirmation d'un mot appris : assez longtemps pour cliquer, puis le mot reste.
     static let learningSeconds = 8.0
@@ -90,6 +103,14 @@ final class DictationCoordinator {
     static let contextWait = 0.15
     /// Attente supplémentaire de la lecture de fenêtre à la fin d'une dictée très courte.
     static let windowWait = 0.25
+    static let audioLog = Logger.wispad("audio")
+    /// Message de la bulle quand le micro ne démarre pas (trop lent ou sans aucun audio).
+    static var microphoneStalledMessage: String {
+        String(localized: "Le micro n'a pas démarré : réessaie")
+    }
+    /// Délais de démarrage du micro (`MicrophoneStartWatch`) ; raccourcis par les tests.
+    @ObservationIgnored var audioStartLimit = MicrophoneStartWatch.startLimit
+    @ObservationIgnored var firstPacketLimit = MicrophoneStartWatch.firstPacketLimit
 
     var isListening: Bool {
         if case .listening = phase { return true }
@@ -156,44 +177,68 @@ final class DictationCoordinator {
             model.open(.settings)
             return
         }
-        do {
-            try FileManager.default.createDirectory(at: model.audioDirectory, withIntermediateDirectories: true)
-            let audio = model.dependencies.makeCapture()
-            audio.inputDeviceUID = model.settings.microphoneUID.isEmpty ? nil : model.settings.microphoneUID
-            current.audio = audio
-            let pcm = current.pcm
-            let firstPacket = OSAllocatedUnfairLock<Int?>(initialState: nil)
-            audio.onPCM = { [weak self, weak current] data in
-                guard !data.isEmpty else { return }
-                pcm.push(data)
-                let at = KeyboardTap.now()
-                let isFirst = firstPacket.withLock { first in
-                    guard first == nil else { return false }
-                    first = at
-                    return true
-                }
-                if isFirst {
-                    Task { @MainActor in
-                        guard let self, let current, self.capture === current, !current.cancelled else { return }
-                        current.marks.firstAudio = at
-                        self.signalAudioReady(current)
-                    }
+        let audio = model.dependencies.makeCapture()
+        audio.inputDeviceUID = model.settings.microphoneUID.isEmpty ? nil : model.settings.microphoneUID
+        let pcm = current.pcm
+        let firstPacket = OSAllocatedUnfairLock<Int?>(initialState: nil)
+        audio.onPCM = { [weak self, weak current] data in
+            guard !data.isEmpty else { return }
+            pcm.push(data)
+            let at = KeyboardTap.now()
+            let isFirst = firstPacket.withLock { first in
+                guard first == nil else { return false }
+                first = at
+                return true
+            }
+            if isFirst {
+                Task { @MainActor in
+                    guard let self, let current, self.capture === current, !current.cancelled else { return }
+                    current.marks.firstAudio = at
+                    self.signalAudioReady(current)
                 }
             }
-            let url = try await audio.start(directory: model.audioDirectory)
-            guard capture === current, !current.cancelled else {
-                // Le démarrage async peut même être enfilé après stop(). L'arrêter de nouveau avant
-                // de rendre la main à la dictée suivante (enqueue sérialise les démarrages).
+        }
+        let directory = model.audioDirectory
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        } catch {
+            failMicrophone(current, message: error.localizedDescription)
+            return
+        }
+        // Premier démarrage à froid du moteur : il peut tarder. Au-delà du délai, la dictée est abandonnée
+        // (la bulle le dit) et le démarrage se refermera seul ; jamais une bulle figée en attente.
+        // Lancé hors du fil principal, sans y repasser : le micro n'attend jamais une file principale occupée.
+        let starting = Task.detached(priority: Task.currentPriority) { () async -> Result<URL, Error> in
+            do {
+                return .success(try await audio.start(directory: directory))
+            } catch {
+                return .failure(error)
+            }
+        }
+        guard let started = await Self.value(of: starting, within: audioStartLimit) else {
+            audio.abandonStart()
+            guard capture === current, !current.cancelled else { return }
+            Self.audioLog.error("démarrage du micro trop long : dictée abandonnée")
+            failMicrophone(current, message: Self.microphoneStalledMessage)
+            return
+        }
+        guard capture === current, !current.cancelled else {
+            // Le démarrage async peut même être enfilé après stop(). L'arrêter de nouveau avant
+            // de rendre la main à la dictée suivante (enqueue sérialise les démarrages).
+            if case .success(let url) = started {
                 _ = audio.stop()
                 delete(url)
-                return
             }
+            return
+        }
+        switch started {
+        case .success(let url):
+            current.audio = audio
             current.audioURL = url
             current.marks.firstAudio = firstPacket.withLock { $0 }
-        } catch {
-            guard capture === current, !current.cancelled else { return }
-            discard(current)
-            model.statusBanner = error.localizedDescription
+        case .failure(let error):
+            Self.audioLog.error("démarrage du micro impossible")
+            failMicrophone(current, message: error.localizedDescription)
             return
         }
         current.marks.microphone = KeyboardTap.now()
@@ -202,6 +247,7 @@ final class DictationCoordinator {
         changed()
         startMeter()
         signalAudioReady(current)
+        watchFirstAudio(current, audio: audio) { firstPacket.withLock { $0 != nil } }
         // Le flux en direct reçoit les mots utiles du champ actif : attendus au plus 150 ms, l'audio est gardé
         // pendant ce temps et part dès que le flux est branché.
         if case .some(let snapshot) = await Self.value(of: field, within: Self.contextWait) {
@@ -248,6 +294,47 @@ final class DictationCoordinator {
         muteOutputAfterCue(current)
     }
 
+    /// Le premier paquet se fait attendre : le micro redémarre une fois sur un moteur neuf, puis la dictée est
+    /// abandonnée (`MicrophoneStartWatch`). L'écoute ne reste jamais muette avec une bulle figée.
+    /// `packetArrived` lit l'arrivée du paquet là où le micro la note, sans attendre le fil principal.
+    private func watchFirstAudio(_ current: Capture, audio: any AudioRecording, packetArrived: @escaping @Sendable () -> Bool) {
+        guard !packetArrived() else { return }
+        let limit = firstPacketLimit
+        current.audioWatch = Task { @MainActor [weak self] in
+            var watch = MicrophoneStartWatch()
+            while true {
+                try? await Task.sleep(nanoseconds: UInt64(limit * 1_000_000_000))
+                guard !Task.isCancelled, let self, self.isCapturing(current) else { return }
+                switch watch.deadlinePassed(packetReceived: packetArrived()) {
+                case .done:
+                    return
+                case .restart:
+                    Self.audioLog.notice("aucun audio du micro : redémarrage sur un moteur neuf")
+                    do {
+                        try await audio.restart()
+                    } catch {
+                        guard self.isCapturing(current) else { return }
+                        _ = watch.restartFailed()
+                        Self.audioLog.error("redémarrage du micro impossible : dictée abandonnée")
+                        self.failMicrophone(current, message: Self.microphoneStalledMessage)
+                        return
+                    }
+                case .fail:
+                    Self.audioLog.error("toujours aucun audio du micro : dictée abandonnée")
+                    self.failMicrophone(current, message: Self.microphoneStalledMessage)
+                    return
+                }
+            }
+        }
+    }
+
+    /// Le micro n'a pas démarré : la dictée est abandonnée, Wispad revient prêt et la bulle dit pourquoi.
+    private func failMicrophone(_ current: Capture, message: String) {
+        shownFailure = ShownFailure(message: message, text: nil, offersHistory: false)
+        model?.statusBanner = message
+        discard(current)
+    }
+
     /// Relais pris d'emblée : voix chez l'autre fournisseur si le principal est en panne, correction par OpenAI
     /// si DeepSeek l'est.
     private func routed(_ speech: SpeechRequest, model: AppModel) -> (speech: SpeechRequest, relay: String?) {
@@ -266,6 +353,7 @@ final class DictationCoordinator {
     func endCapture() -> Task<Void, Never>? {
         guard let current = capture, current.listening else { return nil }
         capture = nil
+        current.audioWatch?.cancel()
         stopMeter()
         let stopped = current.audio?.stop()
         current.audio = nil
@@ -312,8 +400,7 @@ final class DictationCoordinator {
     func dismissFailure() {
         guard shownFailure != nil || phase.isFailure else { return }
         shownFailure = nil
-        failureDismissal?.cancel()
-        failureDismissal = nil
+        failureTimer.cancel()
         refreshPhase()
         changed()
     }
@@ -344,6 +431,7 @@ final class DictationCoordinator {
     private func cancelCapture(_ current: Capture) {
         current.cancelled = true
         current.correctionClaimed = true
+        current.audioWatch?.cancel()
         capture = nil
         stopMeter()
         current.startTask?.cancel()
@@ -368,6 +456,7 @@ final class DictationCoordinator {
     /// Écoute qui n'a pas pu commencer (micro refusé, capture impossible).
     private func discard(_ current: Capture, outcome: DictationOutcome = .captureFailed) {
         current.cancelled = true
+        current.audioWatch?.cancel()
         capture = nil
         current.field.cancel()
         current.pcm.close()
@@ -601,37 +690,35 @@ final class DictationCoordinator {
             LatencyLog.line(current.marks, mode: current.mode, status: status.rawValue),
             to: model.supportURL.appendingPathComponent(LatencyLog.fileName)
         )
-        if status == .inserted || status == .pasteSent {
-            // Une sélection réécrite n'apprend rien : le texte collé n'a pas été dicté mot pour mot.
-            if model.settings.learnCorrections, commandSelection == nil, trial == nil, let pid = context.pid {
-                let traceID = current.run.trace.id
-                model.dependencies.watchCorrections(finalText, pid, model.dictionary.map(\.term)) { [weak model] candidates in
-                    model?.considerLearning(candidates, dictated: finalText, speech: speech, traceID: traceID)
-                }
-            }
+        if status.delivered {
+            watchCorrections(
+                of: finalText, status: status, pid: context.pid, selectionCommand: commandSelection != nil,
+                writtenByWispad: trial != nil, speech: speech, traceID: current.run.trace.id
+            )
             // Collage normal : rien à signaler, la dictée reste de toute façon dans l'historique.
             model.statusBanner = nil
             job.delivered = true
             if let note = job.announcement { pendingAnnouncement = note.message }
         } else {
-            let message: String
-            switch status {
-            case .refusedSecure: message = String(localized: "Champ sécurisé : texte gardé dans l'historique.")
-            case .noTarget:
-                model.dependencies.copyText(finalText)
-                message = String(localized: "Aucun champ actif : texte copié, colle-le avec ⌘V.")
-            default:
-                // Le texte est déjà dans le presse-papiers : un ⌘V suffit, sans chercher le bouton.
-                model.dependencies.copyText(finalText)
-                message = String(localized: "Insertion impossible : texte copié, colle-le avec ⌘V.")
-            }
-            Self.insertionLog.notice("échec du collage : \(status.rawValue, privacy: .public)")
-            model.statusBanner = message
-            showFailure(message, text: finalText)
+            offerReadyText(finalText, status: status, recordID: record.id)
         }
         // La bulle part d'abord ; le ménage des vieux audios vient après.
         settle(job)
         model.purgeAudio()
+    }
+
+    /// Texte livré : le champ est surveillé pour apprendre les mots corrigés à la main (`CorrectionWatch.shouldStart`).
+    private func watchCorrections(
+        of text: String, status: InsertionStatus, pid: pid_t?, selectionCommand: Bool, writtenByWispad: Bool,
+        speech: SpeechRequest, traceID: String?
+    ) {
+        guard let model, let pid, CorrectionWatch.shouldStart(
+            status: status, learnCorrections: model.settings.learnCorrections,
+            selectionCommand: selectionCommand, writtenByWispad: writtenByWispad
+        ) else { return }
+        model.dependencies.watchCorrections(text, pid, model.dictionary.map(\.term)) { [weak model] candidates in
+            model?.considerLearning(candidates, dictated: text, speech: speech, traceID: traceID)
+        }
     }
 
     /// Attend que la dictée précédente soit collée (ou abandonnée).
@@ -650,10 +737,110 @@ final class DictationCoordinator {
         changed()
     }
 
-    private func showFailure(_ message: String, text: String?) {
-        shownFailure = ShownFailure(message: message, text: text)
+    private func showFailure(_ message: String, text: String?, recordID: String? = nil) {
+        shownFailure = ShownFailure(message: message, text: text, recordID: recordID)
         refreshPhase()
         changed()
+    }
+
+    // MARK: - Texte prêt, faute de champ
+
+    /// Message de la bulle quand le texte n'a pu être écrit nulle part : court, toujours suivi de Copier.
+    static func readyMessage(for status: InsertionStatus) -> String {
+        switch status {
+        case .noTarget: return String(localized: "Pas de champ où écrire : le texte est prêt")
+        case .refusedSecure: return String(localized: "Champ sécurisé : le texte est prêt")
+        default: return String(localized: "Collage impossible : le texte est prêt")
+        }
+    }
+
+    /// Aucun chemin d'échec ne finit en silence : le texte est copié (sauf vers un champ sécurisé, où il ne doit
+    /// pas traîner dans le presse-papiers) et la bulle propose Copier et Coller, sans prendre le focus.
+    private func offerReadyText(_ text: String, status: InsertionStatus, recordID: String?) {
+        guard let model else { return }
+        if status != .refusedSecure { model.dependencies.copyText(text) }
+        Self.insertionLog.notice("échec du collage : \(status.rawValue, privacy: .public)")
+        let message = Self.readyMessage(for: status)
+        model.statusBanner = message
+        showFailure(message, text: text, recordID: recordID)
+    }
+
+    /// Copier, dans la bulle : le texte part dans le presse-papiers et la bulle confirme « Copié ».
+    func copyReadyText() {
+        guard let model, let failure = shownFailure, let text = failure.text else { return }
+        model.dependencies.copyText(text)
+        model.statusBanner = String(localized: "Texte copié.")
+        shownFailure = ShownFailure(message: String(localized: "Copié"), text: nil, copied: true)
+        refreshPhase()
+        changed()
+    }
+
+    /// Coller, dans la bulle : la bulle ne prend jamais le focus, le texte va donc au champ de l'app active.
+    func pasteReadyText() {
+        guard let failure = shownFailure, let text = failure.text else { return }
+        let record = failure.recordID.flatMap { id in model?.history.first { $0.id == id } }
+        dismissFailure()
+        Task { @MainActor [weak self] in await self?.pasteAgain(text, record: record) }
+    }
+
+    /// Raccourci « Coller la dernière dictée » : la dernière dictée non insérée, sinon la dernière dictée, au
+    /// curseur actuel. Ignoré pendant une écoute : la bulle et le micro servent à cette dictée.
+    func pasteLastDictation() async {
+        guard let model, capture == nil, !pastingAgain else { return }
+        // Les dictées qui se terminent se collent d'abord, dans l'ordre.
+        while let last = jobs.last {
+            try? await last.pasted.value()
+            if jobs.last === last { break }
+        }
+        guard capture == nil, !pastingAgain else { return }
+        guard let record = PasteLastChoice.pick(model.history) else {
+            dismissFailure()
+            announce(String(localized: "Aucune dictée à coller"), relay: false, info: true)
+            return
+        }
+        await pasteAgain(record.finalText, record: record)
+    }
+
+    /// Même collage qu'une dictée (presse-papiers restauré après), dans l'app au premier plan. Collé, il finit comme
+    /// une dictée : statut et app dans l'historique, surveillance des corrections, et « Collé » dans la bulle.
+    /// Sans champ, même message que la dictée.
+    private func pasteAgain(_ text: String, record: DictationRecord?) async {
+        guard let model, capture == nil, !pastingAgain else { return }
+        pastingAgain = true
+        defer { pastingAgain = false }
+        dismissFailure()
+        await model.dependencies.modifiersReleased()
+        guard capture == nil else { return }
+        let target = model.dependencies.frontmostApp()
+        let status = await model.dependencies.insert(text, target, { [weak self] in self?.capture == nil })
+        if let record, let updated = PasteLastChoice.updatedStatus(previous: record.insertionStatus, outcome: status) {
+            let category = target.appName == nil && target.bundleID == nil
+                ? nil
+                : UsageClassifier.classify(bundleIdentifier: target.bundleID, appName: target.appName).rawValue
+            model.persist("statut d'une dictée") {
+                try model.store.updateDelivery(
+                    id: record.id, status: updated.rawValue,
+                    targetApp: target.appName, targetBundle: target.bundleID, usageCategory: category
+                )
+            }
+            model.reloadHistory()
+        }
+        switch status {
+        case .inserted, .pasteSent:
+            model.statusBanner = nil
+            if let record {
+                // Une trace illisible compte comme une consigne : dans le doute, rien n'est appris.
+                let traces = try? model.store.traces(dictationID: record.id)
+                watchCorrections(
+                    of: text, status: status, pid: target.pid,
+                    selectionCommand: traces.map { list in list.contains { $0.selectionCommand == true } } ?? true,
+                    writtenByWispad: false, speech: model.speechRequest(context: target), traceID: traces?.first?.id
+                )
+            }
+            announce(String(localized: "Collé"), relay: false)
+        case .cancelled: break
+        default: offerReadyText(text, status: status, recordID: record?.id)
+        }
     }
 
     /// Couleur de relais : seulement si la bulle montre cette dictée, pas l'écoute d'une autre.
@@ -675,6 +862,10 @@ final class DictationCoordinator {
         }
         let text = capture == nil ? shownFailure?.text : nil
         if failureText != text { failureText = text }
+        let copied = capture == nil && shownFailure?.copied == true
+        if failureCopied != copied { failureCopied = copied }
+        let offersHistory = shownFailure?.offersHistory ?? true
+        if failureOffersHistory != offersHistory { failureOffersHistory = offersHistory }
         if phase != next { phase = next }
         scheduleFailureDismissal()
         // Relais, puis confirmation d'un mot appris, dès que la bulle est libre.
@@ -693,11 +884,27 @@ final class DictationCoordinator {
     private func scheduleFailureDismissal() {
         guard phase.isFailure, let failure = shownFailure, dismissing != failure.id else { return }
         dismissing = failure.id
-        failureDismissal?.cancel()
-        failureDismissal = Task { @MainActor [weak self] in
-            try? await Task.sleep(nanoseconds: UInt64(Self.failureSeconds * 1_000_000_000))
-            guard !Task.isCancelled, let self, self.shownFailure?.id == failure.id else { return }
+        let seconds = failure.copied ? Self.copiedSeconds : Self.failureSeconds
+        failureTimer.start(seconds: seconds, paused: messagesHeld) { [weak self] in
+            guard let self, self.shownFailure?.id == failure.id else { return }
             self.dismissFailure()
+        }
+    }
+
+    /// Survol d'un message par le pointeur : les décomptes s'arrêtent, puis reprennent à la sortie.
+    func holdMessages(_ held: Bool) {
+        guard messagesHeld != held else { return }
+        messagesHeld = held
+        failureTimer.setPaused(held)
+        noticeTimer.setPaused(held)
+    }
+
+    /// ✕ de la bulle : le message affiché part tout de suite, comme à la fin de son décompte.
+    func closeMessage() {
+        if phase.isFailure {
+            dismissFailure()
+        } else if phase == .idle {
+            dismissCurrentNotice()
         }
     }
 
@@ -935,7 +1142,8 @@ final class DictationCoordinator {
 
     /// Message bref montré dans la bulle quand aucune dictée n'est en cours.
     var notice: String?
-    @ObservationIgnored private var noticeDismissal: Task<Void, Never>?
+    /// Départ automatique du message bref, en pause au survol.
+    let noticeTimer = MessageTimer()
 
     /// Coupe le son du Mac juste après le son de début, pour qu'il reste audible.
     private func muteOutputAfterCue(_ current: Capture) {
@@ -1021,23 +1229,22 @@ extension DictationCoordinator {
     }
 
     /// Message bref dans la bulle, hors dictée.
-    func announce(_ message: String, relay: Bool, confirmsLearning: Bool = false, seconds: Double? = nil) {
+    func announce(_ message: String, relay: Bool, confirmsLearning: Bool = false, info: Bool = false, seconds: Double? = nil) {
         // Pendant une dictée, la bulle sert à la dictée : le message est ignoré.
         guard phase == .idle, let model else { return }
         noticeIsRelay = relay
+        noticeIsInfo = info
         noticeConfirmsLearning = confirmsLearning
         notice = message
         model.overlay.show()
         let duration = seconds ?? (confirmsLearning ? Self.learningSeconds : Self.noticeSeconds)
-        noticeDismissal?.cancel()
-        noticeDismissal = Task { @MainActor [weak self] in
-            try? await Task.sleep(nanoseconds: UInt64(duration * 1_000_000_000))
-            guard !Task.isCancelled, let self, self.notice == message else { return }
+        noticeTimer.start(seconds: duration, paused: messagesHeld) { [weak self] in
+            guard let self, self.notice == message else { return }
             self.dismissCurrentNotice()
         }
     }
 
-    /// Délai écoulé sans Oui ni Non : un mot proposé reste dans le dictionnaire.
+    /// Délai écoulé ou ✕, sans Oui ni Non : un mot proposé reste dans le dictionnaire.
     func dismissCurrentNotice() {
         guard notice != nil else { return }
         if noticeConfirmsLearning {
@@ -1069,8 +1276,7 @@ extension DictationCoordinator {
     }
 
     private func clearNotice() {
-        noticeDismissal?.cancel()
-        noticeDismissal = nil
+        noticeTimer.cancel()
         if phase != .idle, let term = learningOffer {
             learningQueue.insert(term, at: 0)
             learningOffer = nil
@@ -1078,6 +1284,7 @@ extension DictationCoordinator {
         let hadNotice = notice != nil
         notice = nil
         noticeIsRelay = false
+        noticeIsInfo = false
         noticeConfirmsLearning = false
         guard phase == .idle else { return }
         if presentIdleBubble() { return }

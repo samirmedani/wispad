@@ -18,11 +18,48 @@ Raccourci par défaut : fn seule. Wispad intercepte la touche fn pour que macOS 
 - Une nouvelle dictée peut commencer pendant que la précédente se termine : les textes se collent dans l'ordre
   où ils ont été dits, séparés par une espace, sans changer de majuscule.
 
+### Coller la dernière dictée
+
+Raccourci global, ⌃⌥V par défaut : faisable d'une main (⌃⌥ sous le pouce et l'annulaire gauches, V sous l'index),
+libre dans macOS et rare dans les apps courantes, contrairement à ⌘⇧V (coller sans mise en forme) et ⌥⌘V (déplacer
+dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
+
+- Il colle au curseur actuel la dernière dictée non insérée de la dernière demi-heure (prête à copier, aucun champ,
+  collage raté, champ sécurisé), sinon la dernière dictée. Jamais une dictée annulée, vide ou sans transcription.
+  Rien à coller : la bulle le dit (« Aucune dictée à coller »).
+- Même collage qu'une dictée (⌘V, presse-papiers restauré après), dans l'app au premier plan, envoyé une fois ⌃ et
+  ⌥ relâchés (0,6 s au plus).
+- Collé (inséré ou collage envoyé), il se termine comme une dictée : la bulle affiche « Collé » (coche verte, sans
+  bouton, disparaît seule), le champ est surveillé 30 s pour apprendre les mots corrigés (mêmes règles qu'après
+  une dictée, voir « Dictionnaire et apprentissage »), et la dictée non insérée passe à « Inséré » ou « Collage
+  envoyé » avec l'app où elle a été collée. Un nouvel échec ne change jamais le statut d'une dictée déjà livrée.
+  Toujours pas de champ : le texte est copié et la bulle affiche le même message qu'après une dictée. Même fin pour
+  **Coller** dans la bulle.
+- Avalé : la combinaison n'atteint pas l'app. Une fois par enfoncement (la répétition ne recolle pas). Ignoré
+  pendant une écoute ; les dictées qui se terminent se collent d'abord.
+- fn n'en fait jamais partie : fn enfoncé (dictée en maintien), ⌃⌥V n'est pas le raccourci, et un appui simple sur
+  fn ne déclenche toujours rien.
+- Réglages › Raccourci › « Coller la dernière dictée » : Modifier, puis la combinaison voulue (Échap ou Annuler
+  arrête) ; ↺ remet ⌃⌥V, montré seulement quand la combinaison en est une autre ; l'interrupteur le désactive sans
+  oublier la combinaison. Refusées, avec la raison :
+  touche seule ou avec ⇧ seulement (elle écrirait), ⌘ avec une seule touche (menus des apps), fn, Échap, le
+  raccourci de dictée, les combinaisons connues de macOS et des apps (⌘⇧V, ⌥⌘V, ⌘Espace, captures d'écran…) et
+  celles déclarées dans Réglages Système › Clavier › Raccourcis. Le raccourci actuel est suspendu pendant
+  l'enregistrement.
+- Affiché dans la carte « Raccourcis » de la barre latérale quand il est activé.
+
 ## Réactivité
 
 - L'écoute du clavier tourne sur son propre fil : le clavier n'attend jamais l'app. Elle est vérifiée toutes les
   3 s et rétablie si macOS l'a coupée.
 - L'audio s'initialise sur une file dédiée, la bulle s'affiche tout de suite ; le moteur arrêté est réutilisé.
+- Démarrage du micro surveillé, première dictée après un lancement comprise : si macOS reconfigure l'entrée
+  (micro Bluetooth qui change de profil, autre fréquence, micro débranché), le moteur repart aussitôt, dans le même
+  enregistrement ; au repos, il est remplacé par un neuf à la dictée suivante. Aucun audio 1,5 s après le
+  démarrage : le micro redémarre une fois sur un moteur neuf. Toujours rien 1,5 s plus tard, ou démarrage qui ne
+  rend pas la main en 4 s : la dictée est abandonnée, rien n'est envoyé, Wispad revient prêt (le raccourci
+  redémarre une dictée) et la bulle affiche « Le micro n'a pas démarré : réessaie ». Une erreur du micro (aucun
+  micro, moteur refusé) s'affiche de même dans la bulle. Jamais de bulle figée sur un spectre immobile.
 - Le micro reste fermé au repos ; un appui simple ne le prépare pas.
 - La lecture du champ actif (lente dans les apps Electron) ne retarde pas l'enregistrement : l'audio est gardé
   jusqu'à ce que la transcription en direct soit branchée (le champ est attendu 150 ms au plus pour ses mots-clés).
@@ -43,9 +80,13 @@ Raccourci par défaut : fn seule. Wispad intercepte la touche fn pour que macOS 
 
 - Verre noir (Liquid Glass sur macOS 26+) au-dessus du Dock, sur le bureau comme au-dessus d'une app en plein
   écran, avec le spectre de la voix (graves au centre) à la cadence de l'écran (120 Hz en ProMotion).
-- Elle laisse passer les clics, sauf sur ses boutons : ✕ / ■ en mains libres, Copier d'un message d'erreur,
-  Oui / Non d'un mot appris.
-- Messages (erreur, mot appris) sur une ligne, avec une barre qui se vide avant leur départ.
+- Elle laisse passer les clics, sauf sur ses boutons : ✕ / ■ en mains libres, Copier et Coller d'un texte non
+  écrit, Oui / Non d'un mot appris, ✕ d'un message.
+- Messages (erreur, « Collé », mot appris, relais, texte prêt à copier) sur une ligne, avec une barre qui se vide
+  de droite à gauche avant leur départ. Pointeur sur la bulle, sans clic préalable : une petite ✕ paraît en fondu à
+  droite et le décompte (barre comprise) s'arrête ; il reprend où il en était à la sortie. Un message qui paraît
+  sous le pointeur attend aussi. La ✕ ferme le message tout de suite, sans prendre le focus ni le premier plan à
+  l'app active. La bulle d'enregistrement (spectre, finalisation) n'a ni ✕ ni décompte.
 - Deux notes montantes signalent le premier audio réellement reçu, une seule fois ; d'autres sons marquent la fin
   et l'annulation. Tous se coupent dans Réglages.
 - Une app passée en plein écran après la première bulle reçoit une bulle neuve : macOS ne rattache une fenêtre de
@@ -67,6 +108,32 @@ Raccourci par défaut : fn seule. Wispad intercepte la touche fn pour que macOS 
   Un choix illisible ou inconnu reprend sa valeur par défaut, sans toucher aux autres réglages. Restent
   éphémères : la recherche de l'Historique, une saisie en cours (clé, terme du dictionnaire), une dictée dépliée
   dans l'Historique, le détail ouvert.
+
+## Réglages
+
+Sections, dans l'ordre : Raccourci, Transcription, Correction, Ton selon l'app, Confidentialité, Apprentissage,
+Général, Autorisations, Diagnostic. Aucun bloc de texte sous une liste : chaque réglage porte, dans sa rangée, une
+explication d'une ligne sous son libellé, en langage simple (ni montant, ni chiffre, ni nom de modèle). Les détails
+(fournisseurs et modèles réellement utilisés, coût, délais, ce qui est envoyé ou gardé) s'ouvrent dans un popover
+avec le bouton ⓘ de la rangée ; ceux de la correction suivent les clés enregistrées.
+
+- **Raccourci** : chaque raccourci (dictée, « Coller la dernière dictée ») est dessiné en touches de clavier Mac
+  compactes, toutes de la même hauteur, une par touche à enfoncer, symbole et nom sur une ligne, séparées par un
+  petit « + » : « ⌃ control + ⌥ option + V », « 🌐 fn ». Les deux rangées ont la même disposition : libellé et
+  explication à gauche ; à droite, sur la même ligne et centrés verticalement, ⓘ, les touches, puis Modifier ;
+  pour « Coller la dernière dictée », ↺ et l'interrupteur, à droite comme les autres. Pendant un enregistrement,
+  une consigne remplace les touches et Modifier devient Annuler, qui arrête sans rien changer (raccourci de dictée
+  compris). Rien ne passe sous le libellé : faute de place, l'explication va à la ligne, puis Modifier devient une
+  icône, enfin les touches ne gardent que leur symbole (« ⌃ + ⌥ + V »). Le popover ⓘ ajoute un schéma du clavier
+  de MacBook où ces touches sont en couleur, à leur place ; il suit le raccourci choisi. Lettres et chiffres
+  portent l'inscription de la disposition active (A en haut à gauche en AZERTY, Q en QWERTY), ici comme dans les
+  messages.
+- **Confidentialité** : « Ce qui est envoyé » (audio et, si disponibles, app active, sélection et court extrait
+  autour du curseur ; historique et audio restent sur ce Mac), « Comprendre le sujet grâce à la fenêtre active »
+  (inactif sans la correction), conservation, durée et plafond de l'audio.
+- **Correction** : « Corriger le texte avant insertion », « Structurer les listes et paragraphes », « Réécrire la
+  sélection sur consigne » (inactif sans la correction). Le ton se règle dans la section suivante, inactive sans la
+  correction.
 
 ## Premier lancement guidé
 
@@ -94,7 +161,8 @@ réussie. « Plus tard » est proposé seulement pour le micro, la touche et l'e
   clé acceptée. Lien vers la page de création de clé de chaque fournisseur. Correction facultative (DeepSeek, relais
   OpenAI) avec la même vérification, et les réglages « Comprendre le sujet grâce à la fenêtre active » et
   « Apprendre de mes corrections ».
-- **Touche** : maintien et double appui expliqués ; pendant cette étape, chaque appui est seulement constaté
+- **Touche** : maintien et double appui expliqués, avec les touches du raccourci dessinées et le schéma du clavier
+  de MacBook où elles sont en couleur (elles passent au vert dès qu'un appui est reçu) ; pendant cette étape, chaque appui est seulement constaté
   (« Touche détectée », gestes reconnus allumés) et aucune dictée ne démarre. Rien reçu en 10 s : rappel de la
   surveillance des entrées, et du réglage macOS « Touche fn/🌐 : Ne rien faire » s'il lance autre chose.
 - **Essai** : vraie dictée avec la touche dans un champ de l'écran, phrase suggérée. Le test de la touche est
@@ -213,11 +281,11 @@ gardé tel quel).
 
 ## Ton et consignes
 
-- **Ton selon l'app** (Réglages › Ton et consignes) : par catégorie (e-mails, messageries, documents, notes, code et
+- **Ton selon l'app** (Réglages › Ton selon l'app) : par catégorie (e-mails, messageries, documents, notes, code et
   terminal, navigateur, autres apps), « Comme dicté » (par défaut, comportement d'origine), « Soigné » (tournures familières écrites
   en forme standard, « ne » rétabli) ou « Détendu » (tournures gardées, pas de point final pour un message court).
   Le ton ne change que le registre, jamais les mots ni le sens ; le garde-fou de fidélité s'applique toujours.
-- **Consigne sur la sélection** (réglage « Réécrire la sélection sur consigne », actif par défaut) : avec du texte
+- **Consigne sur la sélection** (Réglages › Correction › « Réécrire la sélection sur consigne », actif par défaut) : avec du texte
   sélectionné, une dictée qui commence par une consigne d'écriture (« reformule », « traduis », « résume », « corrige »,
   « raccourcis », « rends-le… », « mets ça en… », « rewrite », « translate », « make it… ») réécrit la sélection
   (6 000 caractères au plus) avec les fournisseurs de correction, sans garde-fou de fidélité. Une autre dictée remplace
@@ -229,12 +297,14 @@ gardé tel quel).
 - Les termes du dictionnaire partent à la transcription (mots attendus) et à la correction.
 - Les raccourcis vocaux (« Quand je dis… » → « Écrire… ») ont été retirés : ceux déjà enregistrés n'ont plus
   aucun effet et sont effacés des réglages au lancement.
-- Après une dictée insérée, le champ est relu toutes les 250 ms pendant 30 s, hors du fil principal. Un mot mal
+- Après une dictée insérée (ou collée par « Coller la dernière dictée »), le champ est relu toutes les 250 ms
+  pendant 30 s, hors du fil principal. Jamais avec « Apprendre de mes corrections » coupé, après une sélection
+  réécrite sur consigne, ni pour le champ d'essai du premier lancement. Un mot mal
   entendu corrigé à la main (« Sidance » → « Seedance ») est jugé : marque, nom, sigle ou jargon seulement. Avec
   une clé TypeSafe, Jev le note d'abord et tranche les cas nets ; le modèle de correction décide des autres (et
   de tous sans clé TypeSafe). Sans réponse du modèle de correction, la note de Jev suffit.
 - Le mot retenu est ajouté, puis la bulle demande « Le garder ? » (Oui / Non, 8 s, sans prendre le focus). Non
-  le retire et ne le propose plus jamais.
+  le retire et ne le propose plus jamais ; sans réponse ou avec ✕, le mot reste.
 - Seuls la phrase dictée et le mot corrigé sont envoyés (à Jev et au modèle de correction) ; le journal ne contient ni mot ni texte.
 
 ## Relais en cas de panne
@@ -248,9 +318,19 @@ gardé tel quel).
 ## Reprise après erreur
 
 - Erreur réseau, de clé ou de quota : l'audio reste dans l'historique ; **Retranscrire** puis **Copier**.
-- Collage raté : le texte est copié, la bulle propose **Copier**. Le collage garde tous les formats du
+- Texte qui n'a pu être écrit nulle part : jamais en silence. La bulle le dit en une ligne, avec **Copier** en
+  évidence et **Coller** : « Pas de champ où écrire : le texte est prêt » (focus sur une liste, un bouton, un menu,
+  ou le bureau et les fenêtres du Finder, avant comme après ⌘V), « Collage impossible : le texte est prêt »
+  (accessibilité refusée, app cible fermée ou qui n'a pas repris le premier plan, presse-papiers non modifiable,
+  ⌘V non envoyé), « Champ sécurisé : le texte est prêt ». Le texte est déjà copié, sauf pour un champ sécurisé.
+  12 s, avec une barre qui se vide (en pause au survol) ; ✕ au survol ou Échap la ferment. Elle ne prend jamais
+  le focus : **Copier** remet le texte au presse-papiers et confirme « Copié » (1,5 s), **Coller** le colle dans
+  le champ de l'app active (même collage que « Coller la dernière dictée »). Le collage garde tous les formats du
   presse-papiers précédent et refuse les champs sécurisés.
-- Sans confirmation d'accessibilité, le statut reste « Collage envoyé », sans fausse alerte.
+- Sans confirmation d'accessibilité, le statut reste « Collage envoyé », sans fausse alerte : un champ illisible
+  ou un conteneur (groupe, zone web, fenêtre, tableau) ne prouve pas l'échec, beaucoup d'éditeurs (Electron,
+  terminaux, éditeurs dessinés) collent sans exposer leur texte. « Coller la dernière dictée » rattrape un tel
+  collage parti dans le vide.
 - Lectures d'accessibilité bornées au collage : champ actif 0,3 s avant ⌘V, confirmation 0,7 s après. Une app qui
   construit encore son arbre (Chrome à la première dictée) ne retarde ni le texte ni la dictée suivante.
   Champ non lu avant ⌘V : il est relu pendant la confirmation. La confirmation ne compare que lettres et chiffres

@@ -11,16 +11,6 @@
         }
       }
     },
-    " Ajoute une clé DeepSeek pour une correction moins chère." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : " Add a DeepSeek key for cheaper correction."
-          }
-        }
-      }
-    },
     "%lld commits de retard" : {
       "localizations" : {
         "en" : {
@@ -41,12 +31,482 @@
         }
       }
     },
+    "À la fin de la dictée, l'enregistrement complet est transcrit une seconde fois et comparé au texte reçu en direct." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When the dictation ends, the full recording is transcribed a second time and compared with the live text."
+          }
+        }
+      }
+    },
+    "Ajoute au dictionnaire les noms que tu corriges après une dictée." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adds the names you fix after a dictation to the dictionary."
+          }
+        }
+      }
+    },
+    "Ajoute une clé DeepSeek pour une correction moins chère." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a DeepSeek key for cheaper correction."
+          }
+        }
+      }
+    },
+    "Apprentissage" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Learning"
+          }
+        }
+      }
+    },
+    "Appui simple au repos : rien ne se passe, ni micro ni bulle." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Single press while idle: nothing happens, no microphone and no bubble."
+          }
+        }
+      }
+    },
+    "Au-delà d'environ %@ s (un peu plus pour une longue dictée), %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "After about %1$@ s (a little longer for a long dictation), %2$@."
+          }
+        }
+      }
+    },
+    "Aucun texte dicté, audio, contexte d'application ni clé. Rien n'est envoyé automatiquement." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No dictated text, audio, app context or key. Nothing is sent automatically."
+          }
+        }
+      }
+    },
+    "Avec du texte sélectionné, commence par « reformule » ou « traduis »." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "With text selected, start with “rewrite” or “translate”."
+          }
+        }
+      }
+    },
+    "Ce qui est envoyé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What is sent"
+          }
+        }
+      }
+    },
+    "Ce texte part avec la dictée chez le fournisseur de correction ; il n'est ni enregistré ni journalisé, et n'ajoute jamais un mot que tu n'as pas dit." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This text goes with the dictation to the correction provider; it is never saved or logged, and never adds a word you didn't say."
+          }
+        }
+      }
+    },
+    "Change le registre (tournures familières, ponctuation), jamais les mots ni le sens." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Changes the register (casual phrasing, punctuation), never the words or the meaning."
+          }
+        }
+      }
+    },
+    "Colle la dernière dictée qui n'a pas pu être écrite, sinon la dernière dictée." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pastes the last dictation that couldn't be written, otherwise the last dictation."
+          }
+        }
+      }
+    },
+    "Combien de temps l'audio des dictées reste sur ce Mac." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How long dictation audio stays on this Mac."
+          }
+        }
+      }
+    },
+    "Confidentialité" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privacy"
+          }
+        }
+      }
+    },
+    "Demande que la correction soit active." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Requires correction to be on."
+          }
+        }
+      }
+    },
+    "Double appui rapide : mains libres ; un nouvel appui l'arrête." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quick double press: hands-free; another press stops it."
+          }
+        }
+      }
+    },
+    "Échap annule l'écoute en cours sans atteindre l'app." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esc cancels the current listening without reaching the app."
+          }
+        }
+      }
+    },
+    "Elle lit la fin de la conversation visible dans la fenêtre où tu dictes (2 000 caractères au plus) et tes dernières dictées dans cette app, pour comprendre le sujet, les noms et les nombres." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "It reads the end of the conversation visible in the window where you dictate (2,000 characters at most) and your latest dictations in that app, to understand the topic, names and numbers."
+          }
+        }
+      }
+    },
+    "En savoir plus" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Learn more"
+          }
+        }
+      }
+    },
+    "En savoir plus : %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Learn more: %@"
+          }
+        }
+      }
+    },
+    "Exemples : « reformule plus poliment », « traduis en anglais », « rends-le plus court »." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Examples: “rewrite it more politely”, “translate into French”, “make it shorter”."
+          }
+        }
+      }
+    },
+    "Fichier local pour comprendre un problème, sans rien de dicté." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A local file to understand a problem, with nothing you dictated."
+          }
+        }
+      }
+    },
+    "L'audio et un peu de contexte, à tes seuls fournisseurs." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The audio and a little context, only to your providers."
+          }
+        }
+      }
+    },
+    "L'historique et l'audio restent sur ce Mac." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "History and audio stay on this Mac."
+          }
+        }
+      }
+    },
+    "La correction lit aussi la conversation visible où tu dictes." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Correction also reads the visible conversation where you dictate."
+          }
+        }
+      }
+    },
+    "La correction passe par %@, puis %@ s'il ne répond pas." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Correction goes through %1$@, then %2$@ if it doesn't respond."
+          }
+        }
+      }
+    },
+    "La correction passe par %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Correction goes through %@."
+          }
+        }
+      }
+    },
+    "La sélection est réécrite par le service de correction ; s'il ne répond pas, elle reste intacte." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The selection is rewritten by the correction service; if it doesn't respond, it stays untouched."
+          }
+        }
+      }
+    },
+    "Langue de tes dictées ; « Automatique » la devine à chaque fois." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The language you dictate in; “Automatic” detects it each time."
+          }
+        }
+      }
+    },
+    "Le mot est ajouté, puis la bulle te demande si tu le gardes." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The word is added, then the bubble asks whether to keep it."
+          }
+        }
+      }
+    },
+    "Le son revient dès que tu arrêtes de parler." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sound comes back as soon as you stop talking."
+          }
+        }
+      }
+    },
+    "Maintien : la dictée dure tant que la touche est tenue." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hold: dictation lasts as long as the key is held."
+          }
+        }
+      }
+    },
+    "Maintiens pour dicter, appuie deux fois pour les mains libres." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hold to dictate, press twice for hands-free."
+          }
+        }
+      }
+    },
     "Merci !" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Thanks!"
+          }
+        }
+      }
+    },
+    "Met en forme les énumérations et les changements d'idée." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Formats lists and changes of topic."
+          }
+        }
+      }
+    },
+    "Pendant 30 s après une dictée, si tu corriges un mot mal entendu (« Sidance » → « Seedance »), %@ : marques, noms et jargon oui, mots courants et fautes de frappe non." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "For 30 s after a dictation, if you fix a misheard word (“Sidance” → “Seedance”), %@: brands, names and jargon yes, common words and typos no."
+          }
+        }
+      }
+    },
+    "Plus fiable sur la fin des phrases et les mots techniques." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "More reliable on sentence endings and technical words."
+          }
+        }
+      }
+    },
+    "Rapport de diagnostic" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diagnostic report"
+          }
+        }
+      }
+    },
+    "Rapport JSON : autorisations, état du raccourci et de la bulle, durées, API utilisées et résultats des 50 dernières tentatives." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JSON report: permissions, shortcut and bubble status, durations, APIs used and results of the last 50 attempts."
+          }
+        }
+      }
+    },
+    "Remet au curseur une dictée qui n'a pas pu être écrite." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Puts a dictation that couldn't be written back at the cursor."
+          }
+        }
+      }
+    },
+    "Retire les hésitations et les faux départs, écrit les nombres en chiffres." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Removes hesitations and false starts, writes numbers as digits."
+          }
+        }
+      }
+    },
+    "Sans champ où écrire, le texte est copié et la bulle propose Copier." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "With no field to write in, the text is copied and the bubble offers Copy."
+          }
+        }
+      }
+    },
+    "Schéma du clavier, touches du raccourci en couleur" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keyboard diagram, shortcut keys highlighted"
+          }
+        }
+      }
+    },
+    "Seul le texte part chez le service de correction, jamais l'audio." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only the text goes to the correction service, never the audio."
+          }
+        }
+      }
+    },
+    "Seuls l'extrait dicté et le mot corrigé sont envoyés ; le reste du champ n'est ni enregistré ni envoyé." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only the dictated excerpt and the corrected word are sent; the rest of the field is never saved or sent."
+          }
+        }
+      }
+    },
+    "Si cette vérification échoue ou tarde, le texte reçu en direct est gardé." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "If this check fails or is slow, the live text is kept."
+          }
+        }
+      }
+    },
+    "Ton selon l'app" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tone by app"
+          }
+        }
+      }
+    },
+    "Tu peux aussi dire « première puce », « deuxième puce » ou « nouveau paragraphe »." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can also say “first bullet”, “second bullet” or “new paragraph”."
           }
         }
       }
@@ -61,12 +521,42 @@
         }
       }
     },
+    "Une nouvelle dictée peut commencer pendant que la précédente se termine." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A new dictation can start while the previous one finishes."
+          }
+        }
+      }
+    },
+    "Une transcription de plus par dictée, environ 0,0005 $." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "One more transcription per dictation, about $0.0005."
+          }
+        }
+      }
+    },
     "Voir les nouveaux commits sur GitHub" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "See new commits on GitHub"
+          }
+        }
+      }
+    },
+    "Wispad envoie l'audio et, si disponible, l'application active, la sélection et un court extrait autour du curseur." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wispad sends the audio and, when available, the active app, the selection and a short excerpt around the cursor."
           }
         }
       }
@@ -345,22 +835,6 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$@ sur %2$@"
-          }
-        }
-      }
-    },
-    "%@. Au-delà d'environ %@ s (un peu plus pour une longue dictée), %@.%@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@. After about %2$@ s (a little more for a long dictation), %3$@.%4$@"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@. Au-delà d'environ %2$@ s (un peu plus pour une longue dictée), %3$@.%4$@"
           }
         }
       }
@@ -953,16 +1427,6 @@
         }
       }
     },
-    "Aucun champ actif : texte copié, colle-le avec ⌘V." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No active field: text copied, paste it with ⌘V."
-          }
-        }
-      }
-    },
     "Aucun microphone n'est disponible." : {
       "localizations" : {
         "en" : {
@@ -1089,16 +1553,6 @@
         }
       }
     },
-    "Audio local" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Local audio"
-          }
-        }
-      }
-    },
     "Aujourd'hui" : {
       "localizations" : {
         "en" : {
@@ -1219,16 +1673,6 @@
         }
       }
     },
-    "Avec du texte sélectionné, commence la dictée par une consigne : « reformule plus poliment », « traduis en anglais », « rends-le plus court ». La sélection est réécrite ; si le service ne répond pas, elle reste intacte." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "With text selected, start the dictation with an instruction: “rewrite it more politely”, “translate to French”, “make it shorter”. The selection is rewritten; if the service does not respond, it stays untouched."
-          }
-        }
-      }
-    },
     "Bienvenue dans Wispad" : {
       "localizations" : {
         "en" : {
@@ -1295,16 +1739,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Secure field"
-          }
-        }
-      }
-    },
-    "Champ sécurisé : texte gardé dans l'historique." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Secure field: text kept in History."
           }
         }
       }
@@ -1905,16 +2339,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Diagnostics exported."
-          }
-        }
-      }
-    },
-    "Dictée" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dictation"
           }
         }
       }
@@ -2615,16 +3039,6 @@
         }
       }
     },
-    "Insertion impossible : texte copié, colle-le avec ⌘V." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Couldn't insert: text copied, paste it with ⌘V."
-          }
-        }
-      }
-    },
     "Insertion refusée dans un champ sécurisé" : {
       "localizations" : {
         "en" : {
@@ -2715,42 +3129,6 @@
         }
       }
     },
-    "La correction lit aussi la fin de la conversation visible dans la fenêtre où tu dictes (2 000 caractères au plus) et tes dernières dictées dans cette app, pour comprendre le sujet, les noms et les nombres. Ce texte part avec la dictée chez le fournisseur de correction ; il n'est ni enregistré ni journalisé, et n'ajoute jamais un mot que tu n'as pas dit." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The correction also reads the end of the conversation visible in the window where you dictate (2,000 characters at most) and your latest dictations in this app, to understand the topic, names and numbers. This text goes with the dictation to the correction provider; it's never saved or logged, and never adds a word you didn't say."
-          }
-        }
-      }
-    },
-    "La correction passe par %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Correction goes through %@"
-          }
-        }
-      }
-    },
-    "La correction passe par %@, puis %@ s'il ne répond pas" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Correction goes through %1$@, then %2$@ if it doesn't respond"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "La correction passe par %1$@, puis %2$@ s'il ne répond pas"
-          }
-        }
-      }
-    },
     "La durée d’un flux API correspond à sa finalisation après l’arrêt. « — » : durée non mesurée. Les appels d’apprentissage différés apparaissent ici lorsqu’ils sont terminés." : {
       "localizations" : {
         "en" : {
@@ -2811,16 +3189,6 @@
         }
       }
     },
-    "Le son revient dès que tu arrêtes de parler. « Haut-parleurs seulement » : rien n'est coupé si le son sort par un casque ou des AirPods." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sound comes back as soon as you stop talking. “Speakers only”: nothing is muted if sound plays through headphones or AirPods."
-          }
-        }
-      }
-    },
     "Le suivi commence avec cette mise à jour. Les anciennes durées ne peuvent pas être reconstituées." : {
       "localizations" : {
         "en" : {
@@ -2861,16 +3229,6 @@
         }
       }
     },
-    "Le ton ne change que le registre (tournures familières, ponctuation), jamais les mots ni le sens." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The tone only changes the register (casual forms, punctuation), never the words or the meaning."
-          }
-        }
-      }
-    },
     "Lecture impossible." : {
       "localizations" : {
         "en" : {
@@ -2887,16 +3245,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "The explicit commands “first bullet”, “second bullet” and “new paragraph” work locally. To structure natural dictation, turn on correction with a configured provider."
-          }
-        }
-      }
-    },
-    "Les énumérations et les changements d'idée sont mis en forme automatiquement. Tu peux aussi dire « première puce », « deuxième puce » ou « nouveau paragraphe »." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lists and changes of idea are formatted automatically. You can also say “first bullet”, “second bullet” or “new paragraph”."
           }
         }
       }
@@ -2967,16 +3315,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hold"
-          }
-        }
-      }
-    },
-    "Maintien : dictée. Double appui rapide : mains libres, un appui l'arrête. Appui simple au repos : rien. Échap annule l'écoute en cours sans atteindre l'app. Une nouvelle dictée peut commencer pendant que la précédente se termine." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hold: dictate. Quick double press: hands-free, one press stops it. Single press when idle: nothing. Esc cancels the current recording without reaching the app. A new dictation can start while the previous one finishes."
           }
         }
       }
@@ -3077,6 +3415,416 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Change"
+          }
+        }
+      }
+    },
+    "Pas de champ où écrire : le texte est prêt" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No field to write in: the text is ready"
+          }
+        }
+      }
+    },
+    "Champ sécurisé : le texte est prêt" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Secure field: the text is ready"
+          }
+        }
+      }
+    },
+    "Collage impossible : le texte est prêt" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't paste: the text is ready"
+          }
+        }
+      }
+    },
+    "Copié" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copied"
+          }
+        }
+      }
+    },
+    "Aucune dictée à coller" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No dictation to paste"
+          }
+        }
+      }
+    },
+    "Collé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pasted"
+          }
+        }
+      }
+    },
+    "Ajoute une touche aux modificateurs, par exemple ⌃⌥V." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a key to the modifiers, for example ⌃⌥V."
+          }
+        }
+      }
+    },
+    "fn est réservée à la dictée : choisis une combinaison sans fn." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "fn is reserved for dictation: choose a combination without fn."
+          }
+        }
+      }
+    },
+    "Échap sert à annuler : choisis une autre touche." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esc is used to cancel: choose another key."
+          }
+        }
+      }
+    },
+    "Ajoute ⌃, ⌥ ou ⌘ : seule, cette touche écrirait un caractère." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add ⌃, ⌥ or ⌘: on its own, this key would type a character."
+          }
+        }
+      }
+    },
+    "« Haut-parleurs seulement » laisse le son d'un casque ou des AirPods." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“Speakers only” leaves headphones and AirPods playing."
+          }
+        }
+      }
+    },
+    "⌘ avec une seule touche sert aux menus des apps : ajoute ⌃ ou ⌥." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "⌘ with a single key is used by app menus: add ⌃ or ⌥."
+          }
+        }
+      }
+    },
+    "%@ est déjà le raccourci de dictée." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ is already the dictation shortcut."
+          }
+        }
+      }
+    },
+    "%@ est déjà pris par macOS (Réglages Système › Clavier › Raccourcis)." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ is already used by macOS (System Settings › Keyboard › Keyboard Shortcuts)."
+          }
+        }
+      }
+    },
+    "%@ est déjà pris : %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ is already used: %@."
+          }
+        }
+      }
+    },
+    "coller" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "paste"
+          }
+        }
+      }
+    },
+    "coller sans mise en forme" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "paste without formatting"
+          }
+        }
+      }
+    },
+    "déplacer dans le Finder" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "move in the Finder"
+          }
+        }
+      }
+    },
+    "copier" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "copy"
+          }
+        }
+      }
+    },
+    "couper" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "cut"
+          }
+        }
+      }
+    },
+    "annuler" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "undo"
+          }
+        }
+      }
+    },
+    "tout sélectionner" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "select all"
+          }
+        }
+      }
+    },
+    "quitter l'app" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "quit the app"
+          }
+        }
+      }
+    },
+    "fermer la fenêtre" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "close the window"
+          }
+        }
+      }
+    },
+    "masquer l'app" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "hide the app"
+          }
+        }
+      }
+    },
+    "réduire la fenêtre" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "minimize the window"
+          }
+        }
+      }
+    },
+    "changer d'app" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "switch apps"
+          }
+        }
+      }
+    },
+    "changer de source de saisie" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "switch input source"
+          }
+        }
+      }
+    },
+    "emojis et symboles" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "emoji and symbols"
+          }
+        }
+      }
+    },
+    "capture d'écran" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "screenshot"
+          }
+        }
+      }
+    },
+    "verrouiller l'écran" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "lock the screen"
+          }
+        }
+      }
+    },
+    "plein écran" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "full screen"
+          }
+        }
+      }
+    },
+    "forcer à quitter" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "force quit"
+          }
+        }
+      }
+    },
+    "afficher ou masquer le Dock" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "show or hide the Dock"
+          }
+        }
+      }
+    },
+    "désactivé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "off"
+          }
+        }
+      }
+    },
+    "Coller la dernière dictée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paste last dictation"
+          }
+        }
+      }
+    },
+    "Tape la combinaison…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Type the combination…"
+          }
+        }
+      }
+    },
+    "Revenir à %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back to %@"
+          }
+        }
+      }
+    },
+    "Activé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On"
+          }
+        }
+      }
+    },
+    "Activer ou désactiver ce raccourci" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn this shortcut on or off"
+          }
+        }
+      }
+    },
+    "Coller la dernière" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paste last"
           }
         }
       }
@@ -3291,16 +4039,6 @@
         }
       }
     },
-    "Pendant 30 s après une dictée, si tu corriges un mot mal entendu (« Sidance » → « Seedance »), %@ : marques, noms et jargon oui, mots courants et fautes de frappe non. Le mot est ajouté, puis la bulle te demande si tu le gardes. Seuls l'extrait dicté et le mot corrigé sont envoyés ; le reste du champ n'est ni enregistré ni envoyé." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "For 30 s after a dictation, if you fix a misheard word (“Sidance” → “Seedance”), %@: brands, names and jargon yes, common words and typos no. The word is added, then the bubble asks whether to keep it. Only the dictated excerpt and the corrected word are sent; the rest of the field is never saved or sent."
-          }
-        }
-      }
-    },
     "Période" : {
       "localizations" : {
         "en" : {
@@ -3317,16 +4055,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Audio limit: %lld MB"
-          }
-        }
-      }
-    },
-    "Plus fiable sur la fin de phrase et les mots techniques. Une transcription de plus par dictée, environ 0,0005 $." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "More reliable at the end of sentences and on technical words. One more transcription per dictation, about $0.0005."
           }
         }
       }
@@ -3477,16 +4205,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Shortcuts"
-          }
-        }
-      }
-    },
-    "Rapport JSON local : autorisations, état du raccourci et de la bulle, durées, API utilisées et résultats des 50 dernières tentatives. Aucun texte dicté, audio, contexte d'application ni clé. Rien n'est envoyé automatiquement." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Local JSON report: permissions, shortcut and bubble status, durations, APIs used and results of the last 50 attempts. No dictated text, audio, app context or key. Nothing is sent automatically."
           }
         }
       }
@@ -4013,16 +4731,6 @@
         }
       }
     },
-    "Ton et consignes" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tone and instructions"
-          }
-        }
-      }
-    },
     "Total (minimum)" : {
       "localizations" : {
         "en" : {
@@ -4309,16 +5017,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Wispad"
-          }
-        }
-      }
-    },
-    "Wispad envoie l'audio et, si disponible, l'application active, la sélection et un court extrait autour du curseur. L'historique et l'audio restent sur ce Mac." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wispad sends the audio and, when available, the active app, the selection and a short excerpt around the cursor. History and audio stay on this Mac."
           }
         }
       }
@@ -6019,6 +6717,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Opening the microphone…"
+          }
+        }
+      }
+    },
+    "Échap annule" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esc cancels"
+          }
+        }
+      }
+    },
+    "Le micro n'a pas démarré : réessaie" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The microphone didn't start: try again"
           }
         }
       }

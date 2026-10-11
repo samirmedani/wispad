@@ -48,6 +48,9 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
 2. `DictationCoordinator.begin` vérifie la clé du fournisseur de voix, lit l'app au premier plan et lance en
    parallèle la lecture du champ actif (`ContextProbe`) et, si la correction et le réglage le permettent, de la
    conversation visible (`WindowTextProbe`). Puis il affiche la bulle et ouvre le micro (`AudioCapture`).
+   Le démarrage est surveillé : délai de `audio.start`, puis premier paquet attendu, un redémarrage sur un moteur
+   neuf, puis abandon expliqué dans la bulle (règle `MicrophoneStartWatch`, WispadCore). `AudioCapture` relance
+   aussi son moteur sur `AVAudioEngineConfigurationChange` et referme seul un démarrage abandonné (`abandonStart`).
 3. Le flux en direct (`LiveSpeechSession`) reçoit l'audio dès que le champ actif est lu (150 ms au plus), et
    l'audio est aussi enregistré ; à chaque pause, une correction est préparée (`DictationCoordinator+EarlyCorrection`).
 4. `endCapture` ferme le micro ; un `FinishJob` termine la dictée en arrière-plan.
@@ -58,13 +61,46 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
    consigne sur la sélection passe par `TextCleaner.transform`, sans garde-fou. Les raccourcis vocaux
    (`VoiceSnippets`) s'appliquent ensuite.
 7. La dictée est enregistrée (`HistoryStore`), collée dans l'ordre (`TextInserter`, raccord `SmartJoin`), puis
-   surveillée pour l'apprentissage (`CorrectionWatcher`, tri par `JevJudge` et `TermJudge`).
+   surveillée pour l'apprentissage (`CorrectionWatcher`, tri par `JevJudge` et `TermJudge`). Le statut du collage
+   vient de `FocusedField` (WispadCore) : confirmé, aucun champ (`FocusedFieldKind.notText` avant comme après ⌘V)
+   ou envoyé. Tout statut non livré passe par `DictationCoordinator.offerReadyText` : texte copié, bulle avec
+   Copier et Coller (`readyMessage`). Les messages de la bulle partent seuls (`MessageTimer`, décompte
+   `MessageCountdown` de WispadCore) ; `OverlayController` met ce décompte en pause pendant le survol
+   (`DictationCoordinator.holdMessages`) et la ✕ appelle `closeMessage`.
 8. Chaque appel facturable devient un `UsageEvent` ; la trace sans texte (`DictationTraceRecorder`) alimente le
    détail et le diagnostic.
    L'écran Consommation compte tous les appels enregistrés, filtrés par la seule période
    (`UsagePresentation.events`) ; les bascules vers un fournisseur de secours sont lues dans ces appels
    (`FallbackSummary`, textes de la carte dans `FallbackPresentation`).
    Une clé devenue inutile dans `app_metadata` est supprimée à l'ouverture de `HistoryStore`, jamais les appels.
+
+## Coller la dernière dictée
+
+- **Clavier** : `HotkeyConfig.paste` (nil si désactivé ou en cours d'enregistrement) ; `HotkeyLogic` reconnaît la
+  combinaison avant le raccourci de dictée (`PasteShortcut.matches` : modificateurs exacts, jamais avec fn), l'avale
+  et rend `HotkeyOutput.pasteLast`. `HotkeyMonitor` appelle `DictationCoordinator.pasteLastDictation`.
+- **Choix et statut** : `PasteLastChoice` (WispadCore) choisit la dictée et dit si un nouveau collage améliore son
+  statut ; le collage passe par `AppDependencies.insert` (`TextInserter`), après `modifiersReleased`, vers
+  `AppDependencies.frontmostApp`.
+- **Fin** : collé (`InsertionStatus.delivered`), il finit comme une dictée : `HistoryStore.updateDelivery` (statut
+  et app cible), surveillance par le même `DictationCoordinator.watchCorrections` (règle
+  `CorrectionWatch.shouldStart`, consigne lue dans la trace de la dictée) et « Collé » par `announce`.
+- **Réglage** : `AppSettings.pasteLastShortcut` (`PasteShortcut`, lecture tolérante champ par champ, combinaison
+  invalide → ⌃⌥V via `PasteShortcut.restored`). `PasteShortcutRules.problem` refuse une combinaison (raisons sans
+  texte, écrites par `PasteShortcutText`) ; les raccourcis de macOS viennent de `SystemShortcuts`
+  (`CopySymbolicHotKeys`, via `AppDependencies.systemShortcuts`). L'enregistreur (`AppModel.recordPasteShortcut`,
+  vue `PasteShortcutRow`) écoute les frappes de la fenêtre avec un moniteur local, le temps d'un enregistrement.
+
+## Raccourcis dessinés
+
+`ShortcutKeyViews.swift` : `ShortcutKeys` traduit un raccourci (dictée ou collage) en touches `ShortcutKey`
+(symbole, nom, code de touche) ; `ShortcutKeyCaps` les dessine en touches compactes séparées par « + »
+(`compact` : symboles seuls), `ShortcutRecordingField` les remplace pendant un enregistrement, `MacKeyboardDiagram`
+allume leurs codes sur le clavier de MacBook décrit par `MacKeyboardLayout` (unités de touche, codes de macOS,
+testé par `ShortcutKeysTests`). Inscriptions des lettres et chiffres : `KeyboardLayout.characters` (disposition
+active). Les deux rangées de Réglages › Raccourci sont des `ShortcutRow` (`SettingsRows.swift`) : libellé à
+gauche ; ⓘ (popover avec le schéma), touches et boutons à droite, sur une ligne ; un `ViewThatFits` réduit les
+boutons, puis les touches, plutôt que de passer à la ligne.
 
 Toutes les frontières du système (micro, réseau, clés, collage, son) passent par
 `AppDependencies` : les tests les remplacent et n'ouvrent jamais le vrai micro ni le vrai réseau.
@@ -96,7 +132,9 @@ la sonde de compter les lignes évaluées.
 `LiveSpeechSession`, le fichier dans `BatchTranscriber`, les coûts dans `UsageAPI` et `ProviderCatalog`.
 
 **Un réglage** : une propriété dans `AppSettings` (`AppSettings.swift`) avec sa lecture tolérante dans
-`init(from:)`, puis son contrôle dans l'écran. Voir « Réglages et mises à jour » ci-dessous.
+`init(from:)`, puis son contrôle dans l'écran : une rangée `SettingRow` ou `SettingToggle` (`SettingsRows.swift`)
+dont les textes (libellé, résumé d'une ligne, détails du popover ⓘ) sont dans `SettingsPresentation`, testés par
+`SettingsPresentationTests`. Pas de texte sous la section. Voir « Réglages et mises à jour » ci-dessous.
 
 **Un texte d'interface** : en français, comme littéral SwiftUI (`Text("…")`, `Button("…")`) ou avec
 `String(localized: "…")` pour un texte construit. Puis `scripts/localize.sh export`, traduire `en.xliff`,
@@ -154,7 +192,8 @@ fournisseur retiré : `APIKeys.LocalFile` garde les comptes qu'il ne connaît pa
   `Wispad --design-preview --offscreen --snapshot fichier.png [--section providers] [--dark] [--size 900x700]`
   avec le build Debug ; options d'état : `--onboarding-step <étape>` (welcome, permissions, microphone, provider,
   shortcut, trial, finish) avec `--onboarding-state done|failed|progress` (états fictifs, aucune autorisation
-  demandée ni micro ouvert), `--customer-preview`, `-AppleLanguages "(en)"`.
+  demandée ni micro ouvert), `--shortcut-preview custom|long|disabled|recording` (Réglages › Raccourci avec des
+  raccourcis fictifs), `--customer-preview`, `-AppleLanguages "(en)"`.
 - Fluidité de l'historique, hors écran : `Wispad --design-preview --offscreen --history-count 1000
   --performance-probe [--scroll-steps 240]` avec le build Debug. Lignes `PERFORMANCE` : deux ouvertures de l'écran
   (temps, vues natives, lignes rendues), puis un défilement simulé vers le bas et vers le haut (temps par étape :

@@ -10,6 +10,12 @@ public enum InsertionStatus: String, Sendable, Codable {
     /// Collage parti dans le vide : aucun champ de texte n'avait le focus.
     case noTarget = "no_target"
     case cancelled
+
+    /// Le texte est parti dans un champ : inséré et confirmé, ou ⌘V envoyé sans confirmation possible.
+    /// Une dictée comme « Coller la dernière dictée » se termine alors de la même façon.
+    public var delivered: Bool {
+        self == .inserted || self == .pasteSent
+    }
 }
 
 public enum InsertionRoute: Equatable, Sendable {
@@ -52,5 +58,47 @@ public enum InsertionCheck {
             searchRange = found.upperBound..<text.endIndex
         }
         return count
+    }
+}
+
+/// Nature de l'élément qui a le focus au moment du collage, lue dans l'arbre d'accessibilité.
+public enum FocusedFieldKind: Equatable, Sendable {
+    /// Champ où l'on écrit : rôle de texte ou curseur de texte exposé.
+    case text
+    /// Élément où l'on n'écrit sûrement pas (liste, bouton, menu… ou rien de lisible dans le Finder).
+    case notText
+    /// Impossible de conclure : rien de lisible, ou un conteneur (groupe, fenêtre, zone web, canevas) qui peut
+    /// cacher un éditeur. Les apps Electron, les terminaux GPU et les éditeurs dessinés en sont souvent là.
+    case unknown
+}
+
+public enum FocusedField {
+    static let textRoles: Set<String> = ["AXTextField", "AXTextArea", "AXComboBox", "AXSearchField"]
+    /// Rôles qui ne reçoivent jamais de texte collé. Pas de tableau ni de cellule (tableurs), pas de groupe ni de
+    /// fenêtre (éditeurs dessinés, terminaux GPU, champs web) : dans le doute, le collage reste « envoyé ».
+    static let nonTextRoles: Set<String> = [
+        "AXList", "AXOutline", "AXBrowser", "AXButton", "AXImage", "AXLink", "AXMenu", "AXMenuBar", "AXMenuItem",
+        "AXMenuBarItem", "AXMenuButton", "AXCheckBox", "AXRadioButton", "AXPopUpButton", "AXSlider", "AXTabGroup",
+        "AXToolbar", "AXDisclosureTriangle", "AXIncrementor", "AXColorWell", "AXDockItem",
+    ]
+    /// Apps sans saisie de texte hors de leurs champs (renommer, rechercher) : le bureau et les fenêtres du Finder.
+    static let textlessApps: Set<String> = ["com.apple.finder"]
+
+    /// `role` : nil quand aucun élément n'a le focus (ou qu'il n'a pas pu être lu).
+    public static func kind(role: String?, subrole: String? = nil, hasTextCursor: Bool, bundleID: String?) -> FocusedFieldKind {
+        if hasTextCursor { return .text }
+        if let role, textRoles.contains(role) { return .text }
+        if let subrole, textRoles.contains(subrole) { return .text }
+        if let bundleID, textlessApps.contains(bundleID) { return .notText }
+        guard let role else { return .unknown }
+        return nonTextRoles.contains(role) ? .notText : .unknown
+    }
+
+    /// Statut d'un collage envoyé : confirmé, parti dans le vide (le focus n'était sur aucun champ, avant comme
+    /// après ⌘V) ou envoyé sans preuve. Un champ de texte vu une seule fois suffit à garder « Collage envoyé ».
+    public static func status(confirmed: Bool, kinds: [FocusedFieldKind]) -> InsertionStatus {
+        if confirmed { return .inserted }
+        if kinds.contains(.notText), !kinds.contains(.text) { return .noTarget }
+        return .pasteSent
     }
 }

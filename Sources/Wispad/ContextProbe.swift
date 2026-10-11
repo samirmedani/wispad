@@ -65,7 +65,8 @@ enum ContextProbe {
         return context
     }
 
-    @MainActor private static func frontmost() -> DictationContext {
+    /// App au premier plan, sans lire son champ.
+    @MainActor static func frontmost() -> DictationContext {
         let context = DictationContext()
         if let app = NSWorkspace.shared.frontmostApplication {
             context.appName = app.localizedName
@@ -133,6 +134,12 @@ enum ContextProbe {
 
     static func isSecure(_ element: AXUIElement) -> Bool {
         string(kAXSubroleAttribute, element) == "AXSecureTextField"
+    }
+
+    /// L'élément expose un curseur ou une sélection de texte : on peut y écrire.
+    static func hasTextCursor(_ element: AXUIElement) -> Bool {
+        var range: CFTypeRef?
+        return AXUIElementCopyAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, &range) == .success && range != nil
     }
 
     /// Valeur courte du champ, pour constater un collage. Jamais journalisée.
