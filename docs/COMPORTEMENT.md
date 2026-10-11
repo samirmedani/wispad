@@ -73,10 +73,14 @@ réussie. « Plus tard » est proposé seulement pour le micro, la touche et l'e
 - **Touche** : maintien et double appui expliqués ; pendant cette étape, chaque appui est seulement constaté
   (« Touche détectée », gestes reconnus allumés) et aucune dictée ne démarre. Rien reçu en 10 s : rappel de la
   surveillance des entrées, et du réglage macOS « Touche fn/🌐 : Ne rien faire » s'il lance autre chose.
-- **Essai** : vraie dictée avec la touche dans un champ de l'écran, phrase suggérée. ✓ quand une dictée se termine
-  et que son texte arrive dans le champ (2 s au plus après le collage), avec le nombre de mots et la durée. Un texte
-  tapé à la main ne compte pas. En cas d'échec, la cause : micro, clé, réseau, fournisseur, rien entendu, collage ou
-  annulation, avec « Réessayer » et l'étape à revoir.
+- **Essai** : vraie dictée avec la touche dans un champ de l'écran, phrase suggérée. Le test de la touche est
+  toujours rendu en arrivant ici (un test resté actif hors de l'étape « Touche » est abandonné) : le raccourci
+  dicte pour de vrai. Dictée faite dans la fenêtre de Wispad : son texte final s'écrit directement dans le champ
+  d'essai, sans collage système. ✓ quand une dictée se termine et que son texte arrive dans le champ (2 s au plus
+  après un collage), avec le nombre de mots et la durée. Un texte tapé à la main ne compte pas. Aucune attente
+  n'est infinie : geste reçu sans écoute ouverte en 4 s, ou micro qui s'ouvre / dictée qui se termine sans aboutir
+  en 45 s, et l'essai passe en échec avec sa cause. En cas d'échec, la cause : micro, clé, réseau, fournisseur,
+  rien entendu, collage, annulation, dictée non démarrée ou délai dépassé, avec « Réessayer » et l'étape à revoir.
 - **Fin** : rappel des deux gestes, lien vers Réglages, « Terminer ».
 
 Une installation existante (réglages sans ce champ) ne refait pas la configuration après une mise à jour.

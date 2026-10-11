@@ -89,6 +89,11 @@ final class OnboardingController {
     private(set) var trialSummary: TrialSummary?
     /// État d'essai imposé par l'aperçu de développement (aucune vraie dictée).
     private var previewTrialStatus: OnboardingStatus?
+    /// Geste de dictée reçu pendant l'essai, pas encore suivi d'une écoute ni d'une issue.
+    private var trialPressedAt: Date?
+    /// Depuis quand la dictée ouvre le micro ou se termine, sans avancer (phase observée par le sondage).
+    @ObservationIgnored private var stalledPhase: DictationPhase?
+    @ObservationIgnored private var stalledSince: Date?
 
     struct TrialSummary: Equatable {
         var words: Int
@@ -181,6 +186,7 @@ final class OnboardingController {
         guard !isPreview else { return }
         now = system.now()
         refreshPermissions()
+        noteStall()
         noteTrialProgress()
     }
 
@@ -192,7 +198,10 @@ final class OnboardingController {
         case .microphone: startMicrophoneTest()
         case .provider: checkStoredKeys()
         case .shortcut: startShortcutProbe()
-        case .trial: beginTrial()
+        case .trial:
+            // Le test de la touche ne doit jamais survivre à son étape : sinon fn ne dicterait plus.
+            stopShortcutProbe()
+            beginTrial()
         case .welcome, .permissions, .finish: break
         }
     }
@@ -399,9 +408,12 @@ final class OnboardingController {
     }
 
     private var liveTrialStatus: OnboardingStatus {
-        TrialCheck.status(dictating: dictating, outcome: trialCompletion?.outcome, online: model.dependencies.isOnline(),
-                          textArrived: trialTextArrived,
-                          waited: trialOutcomeAt.map { now.timeIntervalSince($0) } ?? 0)
+        let current = now
+        return TrialCheck.status(dictating: dictating, outcome: trialCompletion?.outcome, online: model.dependencies.isOnline(),
+                                 textArrived: trialTextArrived,
+                                 waited: trialOutcomeAt.map { current.timeIntervalSince($0) } ?? 0,
+                                 stalled: stalledSince.map { max(0, current.timeIntervalSince($0)) } ?? 0,
+                                 sincePress: trialPressedAt.map { max(0, current.timeIntervalSince($0)) })
     }
 
     func beginTrial() {
@@ -410,6 +422,7 @@ final class OnboardingController {
         trialBaseline = trialText
         trialOutcomeAt = nil
         trialSummary = nil
+        trialPressedAt = nil
     }
 
     /// Une dictée commence : le texte déjà dans le champ ne compte pas pour elle.
@@ -419,6 +432,44 @@ final class OnboardingController {
         trialMark = model.lastCompletion?.serial ?? 0
         trialOutcomeAt = nil
         trialSummary = nil
+        trialPressedAt = nil
+    }
+
+    /// Le raccourci vient de demander une dictée pendant l'essai : l'attente commence, avec un délai maximal
+    /// (`TrialCheck.startGrace`) au lieu d'un « Prêt » sans fin si l'écoute ne s'ouvre pas.
+    func noteTrialPress() {
+        guard !isPreview, step == .trial, !dictating else { return }
+        dictationStarted()
+        trialPressedAt = system.now()
+    }
+
+    /// Ouverture du micro ou fin de dictée qui n'avance plus : mesurée pour le délai maximal de l'essai.
+    private func noteStall() {
+        let phase = model.coordinator.phase
+        switch phase {
+        case .starting, .finishing:
+            if stalledPhase != phase {
+                stalledPhase = phase
+                stalledSince = system.now()
+            }
+        case .idle, .listening, .failure:
+            stalledPhase = nil
+            stalledSince = nil
+        }
+    }
+
+    /// La dictée vise Wispad lui-même (fenêtre de l'essai au premier plan) : son texte s'écrit directement dans
+    /// le champ d'essai, sans collage système ni lecture d'accessibilité de la propre fenêtre de Wispad.
+    func acceptsDictation(targetPID: pid_t?) -> Bool {
+        !isPreview && step == .trial && targetPID == ProcessInfo.processInfo.processIdentifier
+    }
+
+    /// Texte final de la dictée, ajouté au champ d'essai (séparé du texte précédent par une espace).
+    func receiveDictation(_ text: String) {
+        let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        if let last = trialText.last, !last.isWhitespace { trialText += " " }
+        trialText += text
     }
 
     /// Une dictée vient de se terminer, ou le champ a changé : réussite et récapitulatif.

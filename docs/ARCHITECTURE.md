@@ -30,9 +30,12 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
 - **Micro** : `MicrophoneMeter` ne sort que des niveaux (rien d'écrit ni d'envoyé) ; le micro choisi
   (`microphoneUID`, `AudioInputDevices`) sert ensuite à `AudioCapture`, sans toucher au micro du système.
 - **Touche** : pendant l'étape, `AppModel.shortcutProbe` reçoit les appuis à la place du coordinateur
-  (`HotkeyMonitor`) : aucune dictée ne démarre.
+  (`HotkeyMonitor` → `AppModel.shortcutReceived`) : aucune dictée ne démarre. Hors de l'étape « Touche », un test
+  resté actif est rendu, et l'entrée dans l'essai l'arrête toujours.
 - **Essai** : chaque trace terminée passe par `AppModel.noteCompletion` (issue et dictée, jamais de texte) ;
-  l'essai réussit quand une dictée collée arrive dans son champ.
+  l'essai réussit quand une dictée arrive dans son champ. Dictée visant Wispad lui-même : le coordinateur écrit
+  le texte final directement dans le champ (`OnboardingController.receiveDictation`) au lieu de `TextInserter`.
+  Geste reçu sans écoute (`TrialCheck.startGrace`) ou dictée bloquée (`TrialCheck.stallLimit`) : échec expliqué.
 - **Relance** : l'étape courante est gardée dans `onboardingResume` ; `OnboardingFlow.resumeStep` la relit de façon
   tolérante.
 
