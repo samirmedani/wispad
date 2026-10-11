@@ -175,7 +175,7 @@ puce »… jusqu'à la dixième (aussi « premier point », « premièrement »)
 « à la ligne », « nouvelle ligne » (et « first bullet », « firstly », « end of list », « new paragraph »,
 « new line »).
 
-Listes sans annonce, comme Wispr Flow : dès trois éléments courts et parallèles (courses, tâches, noms, options),
+Listes sans annonce : dès trois éléments courts et parallèles (courses, tâches, noms, options),
 la correction fait une liste à puces, une majuscule par élément, sans ponctuation finale ni « et ». La phrase qui
 annonce les éléments reste au-dessus et finit par « : » (« Pour les courses, il me faut : » puis « - Des tomates »…).
 Restent des phrases : deux éléments, une énumération suivie d'autre chose dans la phrase (« J'ai vu Paul, Marc et

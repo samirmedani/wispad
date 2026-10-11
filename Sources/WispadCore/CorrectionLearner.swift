@@ -1,6 +1,6 @@
 import Foundation
 
-/// Apprend les mots que l'utilisateur corrige juste après une dictée, comme Wispr Flow :
+/// Apprend les mots que l'utilisateur corrige juste après une dictée :
 /// « Sidance » remplacé par « Seedance » → « Seedance » rejoint le dictionnaire.
 /// Seules les retouches d'un mot mal entendu sont retenues, pas les reformulations.
 public enum CorrectionLearner {

@@ -1,7 +1,7 @@
 import SwiftUI
 import WispadCore
 
-// Premier lancement guidé, à la manière de Wispr Flow : chaque étape vérifie vraiment ce qu'elle annonce
+// Premier lancement guidé : chaque étape vérifie vraiment ce qu'elle annonce
 // (autorisations, voix au micro, clé acceptée, touche reçue, dictée collée) avant de laisser continuer.
 
 extension OnboardingStep {
