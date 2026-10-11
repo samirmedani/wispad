@@ -38,17 +38,22 @@ struct SettingsView: View {
                     HStack(spacing: 10) {
                         KeyCap(label: KeyLabels.describe(keyCode: model.settings.keyCode, modifiers: model.settings.modifierFlags))
                         Button(model.isRecordingShortcut ? String(localized: "Appuie sur le raccourci…") : String(localized: "Modifier")) {
+                            model.stopRecordingPasteShortcut()
                             model.isRecordingShortcut = true
                         }
                         .hoverFeedback()
                     }
                 }
+                PasteShortcutRow()
             } header: {
                 Text("Raccourci")
             } footer: {
-                Text("Maintien : dictée. Double appui rapide : mains libres, un appui l'arrête. Appui simple au repos : rien. Échap annule l'écoute en cours sans atteindre l'app. Une nouvelle dictée peut commencer pendant que la précédente se termine.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Maintien : dictée. Double appui rapide : mains libres, un appui l'arrête. Appui simple au repos : rien. Échap annule l'écoute en cours sans atteindre l'app. Une nouvelle dictée peut commencer pendant que la précédente se termine.")
+                    Text("Coller la dernière dictée : remet au curseur la dernière dictée qui n'a pas pu être écrite (sinon la dernière dictée). Sans champ où écrire, le texte est copié et la bulle propose Copier.")
+                }
+                .font(.footnote)
+                .foregroundStyle(.secondary)
             }
             Section {
                 Picker("Langue", selection: Binding(

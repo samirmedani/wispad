@@ -91,6 +91,10 @@ struct AppDependencies {
     var insert: (String, DictationContext, @escaping @MainActor () -> Bool) async -> InsertionStatus = {
         await TextInserter.insert($0, context: $1, shouldProceed: $2)
     }
+    /// « Coller la dernière dictée » : attend que les touches du raccourci soient relâchées avant ⌘V.
+    var modifiersReleased: () async -> Void = { await TextInserter.waitForModifierRelease() }
+    /// Raccourcis déclarés par macOS (Réglages Système › Clavier › Raccourcis), pour refuser une combinaison prise.
+    var systemShortcuts: () -> [PasteShortcut] = { SystemShortcuts.enabled() }
 }
 
 enum DictationCue: Hashable {

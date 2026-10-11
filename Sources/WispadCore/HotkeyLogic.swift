@@ -27,13 +27,16 @@ public struct HotkeyConfig: Equatable, Sendable {
     /// Une dictée se termine ou un message d'erreur est affiché : Échap l'annule aussi, mais reste à l'app,
     /// où l'utilisateur a pu reprendre la main.
     public var pending: Bool
+    /// « Coller la dernière dictée » ; nil quand il est désactivé ou en cours d'enregistrement dans Réglages.
+    public var paste: PasteShortcut?
 
-    public init(keyCode: Int = ChordMatcher.functionKeyCode, modifierFlags: UInt64 = ModifierMask.function, recording: Bool = false, capturing: Bool = false, pending: Bool = false) {
+    public init(keyCode: Int = ChordMatcher.functionKeyCode, modifierFlags: UInt64 = ModifierMask.function, recording: Bool = false, capturing: Bool = false, pending: Bool = false, paste: PasteShortcut? = nil) {
         self.keyCode = keyCode
         self.modifierFlags = modifierFlags
         self.recording = recording
         self.capturing = capturing
         self.pending = pending
+        self.paste = paste
     }
 }
 
@@ -57,12 +60,14 @@ public struct HotkeyOutput: Equatable, Sendable {
     public var cancel = false
     /// Instant de l'appui sur le raccourci, pour mesurer la latence.
     public var pressedAt: Int?
+    /// « Coller la dernière dictée » demandé.
+    public var pasteLast = false
 
     public init() {}
 
     /// Rien à transmettre au fil principal.
     public var isQuiet: Bool {
-        effects.isEmpty && capturedKeyCode == nil && !cancel && pressedAt == nil
+        effects.isEmpty && capturedKeyCode == nil && !cancel && pressedAt == nil && !pasteLast
     }
 }
 
@@ -75,6 +80,8 @@ public struct HotkeyLogic: Equatable, Sendable {
     public private(set) var chordDown = false
     /// Échap avalé à l'enfoncement : sa répétition et son relâchement sont avalés aussi.
     private var escapeSwallowed = false
+    /// Touche de « Coller la dernière dictée » avalée à l'enfoncement : répétition et relâchement aussi.
+    private var pasteKeyDown: Int?
 
     public init(engine: GestureEngine = GestureEngine()) {
         self.engine = engine
@@ -82,6 +89,9 @@ public struct HotkeyLogic: Equatable, Sendable {
 
     public mutating func handle(_ event: KeyEvent, config: HotkeyConfig) -> HotkeyOutput {
         if event.keyCode == Self.escapeKeyCode, let output = escape(event, config: config) {
+            return output
+        }
+        if let output = pasteShortcut(event, config: config) {
             return output
         }
         let transition = ChordMatcher.step(
@@ -132,11 +142,43 @@ public struct HotkeyLogic: Equatable, Sendable {
     public mutating func resync(keyPhysicallyDown: Bool, at time: Int) -> HotkeyOutput {
         var output = HotkeyOutput()
         escapeSwallowed = false
+        pasteKeyDown = nil
         if chordDown, !keyPhysicallyDown {
             chordDown = false
             output.merge(engine.releaseLost(at: time))
         }
         return output
+    }
+
+    /// « Coller la dernière dictée » : touche et modificateurs exacts, une seule fois par enfoncement, jamais
+    /// pendant l'enregistrement d'un raccourci. La combinaison exige ⌃, ⌥ ou ⌘ et jamais fn : le raccourci de
+    /// dictée ne la voit pas, et fn enfoncé (dictée en maintien) l'empêche de se déclencher.
+    private mutating func pasteShortcut(_ event: KeyEvent, config: HotkeyConfig) -> HotkeyOutput? {
+        var output = HotkeyOutput()
+        switch event.phase {
+        case .down:
+            if let held = pasteKeyDown, held == event.keyCode {
+                if event.autorepeat {
+                    output.swallow = true
+                    return output
+                }
+                // Relâchement perdu : un nouvel enfoncement repart de zéro, la frappe n'est jamais avalée à tort.
+                pasteKeyDown = nil
+            }
+            guard !config.recording, !event.autorepeat, let shortcut = config.paste,
+                  shortcut.matches(keyCode: event.keyCode, flags: event.flags) else { return nil }
+            pasteKeyDown = event.keyCode
+            output.swallow = true
+            output.pasteLast = true
+            return output
+        case .up:
+            guard let held = pasteKeyDown, held == event.keyCode else { return nil }
+            pasteKeyDown = nil
+            output.swallow = true
+            return output
+        case .flags:
+            return nil
+        }
     }
 
     /// Échap annule la dictée qui écoute, sans atteindre l'app ; pendant la finalisation, il l'annule et reste à
