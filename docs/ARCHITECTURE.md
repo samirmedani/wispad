@@ -24,6 +24,8 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
 - **Décisions** : `OnboardingFlow.swift` (WispadCore, testé par `OnboardingFlowTests`) dit l'ordre des étapes,
   quand chacune est réussie (`PermissionsCheck`, `MicrophoneCheck` et `VoiceDetector`, `ProviderCheck` et
   `KeyCheck`, `ShortcutCheck`, `TrialCheck`), où « Plus tard » est permis et quelle étape règle un problème.
+- **Bulle de l'accueil** : `BubbleDemo` reprend `SpectrumBars` et le verre de la bulle ; ses niveaux viennent de
+  `SimulatedVoice` (WispadCore, fonction pure du temps, testée par `SimulatedVoiceTests`).
 - **État vivant** : `OnboardingController` lit macOS par `OnboardingSystem` (autorisations sans demande, Réglages
   Système, relance, micros, vumètre), sondé toutes les 0,5 s pendant l'affichage ; les tests le remplacent
   (`OnboardingControllerTests`). Écrans dans `OnboardingView.swift`.

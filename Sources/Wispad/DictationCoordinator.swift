@@ -910,7 +910,7 @@ final class DictationCoordinator {
     private func pushLevel(elapsed: Double) {
         let bands = capture?.audio?.bands ?? []
         guard bands.count == SpectrumAnalyzer.bandCount else { return }
-        let next = Self.smoothed(spectrum, toward: Array(bands.reversed() + bands.dropFirst()), elapsed: elapsed)
+        let next = Self.smoothed(spectrum, toward: SpectrumAnalyzer.mirrored(bands), elapsed: elapsed)
         if next != spectrum { spectrum = next }
     }
 
