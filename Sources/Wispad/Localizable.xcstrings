@@ -451,6 +451,16 @@
         }
       }
     },
+    "Schéma du clavier, touches du raccourci en couleur" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keyboard diagram, shortcut keys highlighted"
+          }
+        }
+      }
+    },
     "Seul le texte part chez le service de correction, jamais l'audio." : {
       "localizations" : {
         "en" : {

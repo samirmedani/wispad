@@ -890,39 +890,33 @@ private struct ShortcutStep: View {
         let status = controller.status(.shortcut)
         let probe = controller.probe
         let key = KeyLabels.describe(keyCode: model.settings.keyCode, modifiers: model.settings.modifierFlags)
+        let keys = ShortcutKeys.dictation(keyCode: model.settings.keyCode, modifiers: model.settings.modifierFlags)
+        let received = probe.presses > 0
         VStack(spacing: 14) {
             HStack(spacing: 12) {
-                GestureCard(keys: [key], title: String(localized: "Maintenir"),
+                GestureCard(keys: keys, twice: false, title: String(localized: "Maintenir"),
                             detail: String(localized: "Dictée tant que tu tiens la touche ; relâche pour écrire."),
                             seen: probe.sawHold)
-                GestureCard(keys: [key, key], title: String(localized: "Double appui"),
+                GestureCard(keys: keys, twice: true, title: String(localized: "Double appui"),
                             detail: String(localized: "Mains libres ; un appui de plus arrête et écrit."),
                             seen: probe.sawHandsFree)
             }
-            HStack(spacing: 14) {
-                Text(key)
-                    .font(.system(size: 22, weight: .semibold, design: .rounded))
-                    .frame(width: 64, height: 52)
-                    .background {
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(probe.presses > 0 ? Color.green.opacity(0.18) : Theme.raised)
-                            .shadow(color: .black.opacity(0.18), radius: 0, y: 2)
+            VStack(spacing: 16) {
+                MacKeyboardDiagram(highlighted: Set(keys.map(\.keyCode)), unit: 30)
+                HStack(spacing: 14) {
+                    ShortcutKeyCaps(keys: keys, size: .large, tint: received ? Color.green : nil)
+                        .scaleEffect(received && !reduceMotion ? 1.04 : 1)
+                        .animation(reduceMotion ? nil : Theme.spring, value: probe.presses)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(received ? String(localized: "Appuis reçus : \(probe.presses)") : String(localized: "Appuie une fois sur \(key)"))
+                            .font(.system(size: 13, weight: .semibold))
+                        Text("Pendant ce test, aucune dictée ne démarre : Wispad vérifie seulement qu'il reçoit la touche.")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .strokeBorder(probe.presses > 0 ? Color.green : Theme.cardBorder, lineWidth: probe.presses > 0 ? 2 : 1)
-                    }
-                    .scaleEffect(probe.presses > 0 && !reduceMotion ? 1.04 : 1)
-                    .animation(reduceMotion ? nil : Theme.spring, value: probe.presses)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(probe.presses > 0 ? String(localized: "Appuis reçus : \(probe.presses)") : String(localized: "Appuie une fois sur \(key)"))
-                        .font(.system(size: 13, weight: .semibold))
-                    Text("Pendant ce test, aucune dictée ne démarre : Wispad vérifie seulement qu'il reçoit la touche.")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
                 }
-                Spacer(minLength: 0)
             }
             .padding(18)
             .card()
@@ -958,8 +952,10 @@ private struct ShortcutStep: View {
     }
 }
 
+/// Un geste du raccourci : ses touches (deux fois pour le double appui), son nom et ce qu'il fait.
 private struct GestureCard: View {
-    var keys: [String]
+    var keys: [ShortcutKey]
+    var twice: Bool
     var title: String
     var detail: String
     var seen: Bool
@@ -967,7 +963,13 @@ private struct GestureCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 4) {
-                ForEach(Array(keys.enumerated()), id: \.offset) { _, key in KeyCap(label: key) }
+                ShortcutKeyCaps(keys: keys, size: .small)
+                if twice {
+                    Text(verbatim: "× 2")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
+                }
                 Spacer()
                 if seen {
                     Image(systemName: "checkmark.circle.fill")
@@ -1075,12 +1077,12 @@ private struct FinishStep: View {
     var controller: OnboardingController
 
     var body: some View {
-        let key = KeyLabels.describe(keyCode: model.settings.keyCode, modifiers: model.settings.modifierFlags)
+        let keys = ShortcutKeys.dictation(keyCode: model.settings.keyCode, modifiers: model.settings.modifierFlags)
         VStack(spacing: 14) {
             HStack(spacing: 12) {
-                GestureCard(keys: [key], title: String(localized: "Maintenir"),
+                GestureCard(keys: keys, twice: false, title: String(localized: "Maintenir"),
                             detail: String(localized: "Pour une phrase : parle en tenant la touche, relâche pour écrire."), seen: false)
-                GestureCard(keys: [key, key], title: String(localized: "Double appui"),
+                GestureCard(keys: keys, twice: true, title: String(localized: "Double appui"),
                             detail: String(localized: "Mains libres, pour un long texte : un appui arrête. Échap annule."), seen: false)
             }
             if !controller.skipped.isEmpty {

@@ -28,6 +28,39 @@ enum KeyboardLayout {
             return nil
         }
     }
+
+    /// Touches de caractère (lettres, chiffres, ponctuation), aux positions de macOS : leur inscription dépend de
+    /// la disposition.
+    static let characterKeyCodes: Set<Int> = Set(0...47).subtracting([36]).union([50])
+
+    /// Caractère inscrit sur chaque touche de caractère dans la disposition active (A ou Q en haut à gauche selon
+    /// AZERTY ou QWERTY), en majuscule. Vide si la disposition est illisible.
+    static func characters(for codes: Set<Int> = characterKeyCodes) -> [Int: String] {
+        let wanted = codes.intersection(characterKeyCodes)
+        guard !wanted.isEmpty, let source = TISCopyCurrentKeyboardLayoutInputSource()?.takeRetainedValue(),
+              let pointer = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData) else { return [:] }
+        let data = Unmanaged<CFData>.fromOpaque(pointer).takeUnretainedValue() as Data
+        return data.withUnsafeBytes { raw -> [Int: String] in
+            guard let layout = raw.baseAddress?.assumingMemoryBound(to: UCKeyboardLayout.self) else { return [:] }
+            var result: [Int: String] = [:]
+            for code in wanted {
+                var deadKeys: UInt32 = 0
+                var length = 0
+                var chars = [UniChar](repeating: 0, count: 4)
+                let status = UCKeyTranslate(
+                    layout, UInt16(code), UInt16(kUCKeyActionDisplay), 0, UInt32(LMGetKbdType()),
+                    OptionBits(kUCKeyTranslateNoDeadKeysBit), &deadKeys, chars.count, &length, &chars
+                )
+                guard status == noErr, length > 0 else { continue }
+                let text = String(utf16CodeUnits: chars, count: length).uppercased()
+                let printable = text.unicodeScalars.allSatisfy {
+                    !CharacterSet.controlCharacters.contains($0) && !CharacterSet.whitespaces.contains($0)
+                }
+                if printable { result[code] = text }
+            }
+            return result
+        }
+    }
 }
 
 enum KeyLabels {
@@ -44,7 +77,9 @@ enum KeyLabels {
         return parts.joined(separator: " ")
     }
 
+    /// Nom d'une touche : celui de la disposition active pour une touche de caractère, sinon un nom fixe.
     static func name(for keyCode: Int) -> String {
+        if let printed = KeyboardLayout.characters(for: [keyCode])[keyCode] { return printed }
         let names: [Int: String] = [
             0: "A", 1: "S", 2: "D", 3: "F", 4: "H", 5: "G", 6: "Z", 7: "X", 8: "C", 9: "V",
             11: "B", 12: "Q", 13: "W", 14: "E", 15: "R", 16: "Y", 17: "T",
