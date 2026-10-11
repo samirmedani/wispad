@@ -73,8 +73,12 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 - Verre noir (Liquid Glass sur macOS 26+) au-dessus du Dock, sur le bureau comme au-dessus d'une app en plein
   écran, avec le spectre de la voix (graves au centre) à la cadence de l'écran (120 Hz en ProMotion).
 - Elle laisse passer les clics, sauf sur ses boutons : ✕ / ■ en mains libres, Copier et Coller d'un texte non
-  écrit, Oui / Non d'un mot appris.
-- Messages (erreur, mot appris) sur une ligne, avec une barre qui se vide avant leur départ.
+  écrit, Oui / Non d'un mot appris, ✕ d'un message.
+- Messages (erreur, « Collé », mot appris, relais, texte prêt à copier) sur une ligne, avec une barre qui se vide
+  de droite à gauche avant leur départ. Pointeur sur la bulle, sans clic préalable : une petite ✕ paraît en fondu à
+  droite et le décompte (barre comprise) s'arrête ; il reprend où il en était à la sortie. Un message qui paraît
+  sous le pointeur attend aussi. La ✕ ferme le message tout de suite, sans prendre le focus ni le premier plan à
+  l'app active. La bulle d'enregistrement (spectre, finalisation) n'a ni ✕ ni décompte.
 - Deux notes montantes signalent le premier audio réellement reçu, une seule fois ; d'autres sons marquent la fin
   et l'annulation. Tous se coupent dans Réglages.
 - Une app passée en plein écran après la première bulle reçoit une bulle neuve : macOS ne rattache une fenêtre de
@@ -286,7 +290,7 @@ gardé tel quel).
   une clé TypeSafe, Jev le note d'abord et tranche les cas nets ; le modèle de correction décide des autres (et
   de tous sans clé TypeSafe). Sans réponse du modèle de correction, la note de Jev suffit.
 - Le mot retenu est ajouté, puis la bulle demande « Le garder ? » (Oui / Non, 8 s, sans prendre le focus). Non
-  le retire et ne le propose plus jamais.
+  le retire et ne le propose plus jamais ; sans réponse ou avec ✕, le mot reste.
 - Seuls la phrase dictée et le mot corrigé sont envoyés (à Jev et au modèle de correction) ; le journal ne contient ni mot ni texte.
 
 ## Relais en cas de panne
@@ -305,10 +309,10 @@ gardé tel quel).
   ou le bureau et les fenêtres du Finder, avant comme après ⌘V), « Collage impossible : le texte est prêt »
   (accessibilité refusée, app cible fermée ou qui n'a pas repris le premier plan, presse-papiers non modifiable,
   ⌘V non envoyé), « Champ sécurisé : le texte est prêt ». Le texte est déjà copié, sauf pour un champ sécurisé.
-  12 s, avec une barre qui se vide ; ✕ au survol ou Échap la ferment. Elle ne prend jamais le focus : **Copier**
-  remet le texte au presse-papiers et confirme « Copié » (1,5 s), **Coller** le colle dans le champ de l'app
-  active (même collage que « Coller la dernière dictée »). Le collage garde tous les formats du presse-papiers
-  précédent et refuse les champs sécurisés.
+  12 s, avec une barre qui se vide (en pause au survol) ; ✕ au survol ou Échap la ferment. Elle ne prend jamais
+  le focus : **Copier** remet le texte au presse-papiers et confirme « Copié » (1,5 s), **Coller** le colle dans
+  le champ de l'app active (même collage que « Coller la dernière dictée »). Le collage garde tous les formats du
+  presse-papiers précédent et refuse les champs sécurisés.
 - Sans confirmation d'accessibilité, le statut reste « Collage envoyé », sans fausse alerte : un champ illisible
   ou un conteneur (groupe, zone web, fenêtre, tableau) ne prouve pas l'échec, beaucoup d'éditeurs (Electron,
   terminaux, éditeurs dessinés) collent sans exposer leur texte. « Coller la dernière dictée » rattrape un tel

@@ -982,7 +982,7 @@ struct AppRegressionTests {
         #expect(coordinator.learningOffer == "Seedance")
         #expect(OverlayMode.resolve(phase: coordinator.phase, notice: coordinator.notice, confirmsLearning: true) == .learning(message))
         #expect(OverlayMode.learning("x").isInteractive)
-        #expect(!OverlayMode.notice("x").isInteractive)
+        #expect(OverlayMode.notice("x").isInteractive)
         // Une dictée qui commence remplace le message, sans le perdre.
         await coordinator.begin(.pushToTalk)
         #expect(coordinator.notice == nil)
@@ -1062,6 +1062,46 @@ struct AppRegressionTests {
         // Même geste que la minuterie de 8 s : le mot reste, le message part, rien n'est refusé.
         f.model.coordinator.dismissCurrentNotice()
         #expect(f.model.coordinator.notice == nil)
+        #expect(f.model.dictionary.map(\.term) == ["Seedance"])
+        #expect(try !f.model.store.hasRefused("Seedance"))
+    }
+
+    @Test func hoveringHoldsAMessageAndTheCrossClosesIt() async throws {
+        let f = try Fixture()
+        defer { f.dispose() }
+        f.model.overlay.displaysPanel = false
+        let coordinator = f.model.coordinator
+        // Messages seulement : la bulle d'enregistrement n'a ni décompte ni ✕.
+        #expect(OverlayMode.notice("x").isMessage && OverlayMode.failure("x").isMessage && OverlayMode.learning("x").isMessage)
+        #expect(!OverlayMode.listening.isMessage && !OverlayMode.handsFree.isMessage && !OverlayMode.finishing.isMessage)
+
+        coordinator.announce("Collé", relay: false, seconds: 0.2)
+        coordinator.holdMessages(true)
+        #expect(coordinator.noticeTimer.countdown?.isPaused == true)
+        try await Task.sleep(nanoseconds: 400_000_000)
+        #expect(coordinator.notice == "Collé")
+        // Le pointeur sort : le décompte reprend où il s'était arrêté, puis le message part.
+        coordinator.holdMessages(false)
+        #expect(coordinator.noticeTimer.countdown?.isPaused == false)
+        let deadline = Date().addingTimeInterval(2)
+        while coordinator.notice != nil, Date() < deadline { try await Task.sleep(nanoseconds: 20_000_000) }
+        #expect(coordinator.notice == nil)
+        #expect(coordinator.noticeTimer.countdown == nil)
+
+        // Un message qui paraît sous le pointeur attend aussi ; ✕ le ferme tout de suite.
+        coordinator.holdMessages(true)
+        coordinator.announce("Collé", relay: false)
+        #expect(coordinator.noticeTimer.countdown?.isPaused == true)
+        coordinator.closeMessage()
+        #expect(coordinator.notice == nil)
+        #expect(coordinator.noticeTimer.countdown == nil)
+        coordinator.holdMessages(false)
+
+        // ✕ sur une proposition de mot : le mot reste, comme à la fin du décompte.
+        f.model.learn(["Seedance"])
+        #expect(coordinator.notice == DictationCoordinator.learningMessage("Seedance"))
+        coordinator.closeMessage()
+        #expect(coordinator.notice == nil)
         #expect(f.model.dictionary.map(\.term) == ["Seedance"])
         #expect(try !f.model.store.hasRefused("Seedance"))
     }
@@ -1155,7 +1195,7 @@ struct AppRegressionTests {
         #expect(OverlayMode.handsFree.isInteractive)
         #expect(OverlayMode.failure("x").isInteractive)
         #expect(OverlayMode.learning("x").isInteractive)
-        #expect(!OverlayMode.notice("x").isInteractive)
+        #expect(OverlayMode.notice("x").isInteractive)
     }
 
     @Test func overlaySitsJustAboveTheDockOrNearTheScreenEdge() {
@@ -1995,10 +2035,10 @@ private final class SilentProvider: NSObject, NSPasteboardItemDataProvider {
 struct InsertionFailureTests {
     @Test func copyButtonKeepsItsActionWithATrailingClosure() {
         // Le 5 octobre, la fermeture finale se rattachait au bouton secondaire : « Copier » disparaissait.
-        let line = MessageLine(symbol: "exclamationmark.circle.fill", tint: .red, message: "Échec.", duration: 10, actionTitle: "Copier") {}
+        let line = MessageLine(symbol: "exclamationmark.circle.fill", tint: .red, message: "Échec.", actionTitle: "Copier") {}
         #expect(line.action != nil)
         #expect(line.secondaryAction == nil)
-        let labeled = MessageLine(symbol: "checkmark.circle.fill", tint: .green, message: "Garder ?", duration: 8,
+        let labeled = MessageLine(symbol: "checkmark.circle.fill", tint: .green, message: "Garder ?",
                                   actionTitle: "Oui", action: {}, secondaryTitle: "Non", secondaryAction: {})
         #expect(labeled.action != nil && labeled.secondaryAction != nil)
     }
@@ -2088,6 +2128,26 @@ struct InsertionFailureTests {
         coordinator.cancel()
         #expect(coordinator.phase == .idle)
         #expect(coordinator.failureText == nil)
+        #expect(f.model.history.first?.finalText == "Phrase de test.")
+    }
+
+    @Test func hoveringHoldsTheReadyTextAndTheCrossClosesIt() async throws {
+        let f = try Fixture { $0.insert = { _, _, _ in .noTarget } }
+        defer { f.dispose() }
+        f.model.overlay.displaysPanel = false
+        let coordinator = f.model.coordinator
+        await coordinator.begin(.pushToTalk)
+        await coordinator.end()
+        #expect(coordinator.phase == .failure(DictationCoordinator.readyMessage(for: .noTarget)))
+        #expect(coordinator.failureTimer.countdown?.isPaused == false)
+        coordinator.holdMessages(true)
+        #expect(coordinator.failureTimer.countdown?.isPaused == true)
+        coordinator.holdMessages(false)
+        #expect(coordinator.failureTimer.countdown?.isPaused == false)
+        coordinator.closeMessage()
+        #expect(coordinator.phase == .idle)
+        #expect(coordinator.failureText == nil)
+        #expect(coordinator.failureTimer.countdown == nil)
         #expect(f.model.history.first?.finalText == "Phrase de test.")
     }
 

@@ -73,7 +73,10 @@ final class DictationCoordinator {
     /// Erreur à montrer dans la bulle, dès que le micro est libre.
     @ObservationIgnored private var shownFailure: ShownFailure?
     @ObservationIgnored private var dismissing: UUID?
-    @ObservationIgnored private var failureDismissal: Task<Void, Never>?
+    /// Départ automatique du message d'erreur, en pause au survol.
+    let failureTimer = MessageTimer()
+    /// Le pointeur survole un message de la bulle : son décompte attend.
+    @ObservationIgnored private(set) var messagesHeld = false
     /// Nouvelle transcription demandée depuis l'historique.
     @ObservationIgnored private var retrying = false
     @ObservationIgnored private var meter: FrameTicker?
@@ -320,8 +323,7 @@ final class DictationCoordinator {
     func dismissFailure() {
         guard shownFailure != nil || phase.isFailure else { return }
         shownFailure = nil
-        failureDismissal?.cancel()
-        failureDismissal = nil
+        failureTimer.cancel()
         refreshPhase()
         changed()
     }
@@ -801,12 +803,27 @@ final class DictationCoordinator {
     private func scheduleFailureDismissal() {
         guard phase.isFailure, let failure = shownFailure, dismissing != failure.id else { return }
         dismissing = failure.id
-        failureDismissal?.cancel()
         let seconds = failure.copied ? Self.copiedSeconds : Self.failureSeconds
-        failureDismissal = Task { @MainActor [weak self] in
-            try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
-            guard !Task.isCancelled, let self, self.shownFailure?.id == failure.id else { return }
+        failureTimer.start(seconds: seconds, paused: messagesHeld) { [weak self] in
+            guard let self, self.shownFailure?.id == failure.id else { return }
             self.dismissFailure()
+        }
+    }
+
+    /// Survol d'un message par le pointeur : les décomptes s'arrêtent, puis reprennent à la sortie.
+    func holdMessages(_ held: Bool) {
+        guard messagesHeld != held else { return }
+        messagesHeld = held
+        failureTimer.setPaused(held)
+        noticeTimer.setPaused(held)
+    }
+
+    /// ✕ de la bulle : le message affiché part tout de suite, comme à la fin de son décompte.
+    func closeMessage() {
+        if phase.isFailure {
+            dismissFailure()
+        } else if phase == .idle {
+            dismissCurrentNotice()
         }
     }
 
@@ -1044,7 +1061,8 @@ final class DictationCoordinator {
 
     /// Message bref montré dans la bulle quand aucune dictée n'est en cours.
     var notice: String?
-    @ObservationIgnored private var noticeDismissal: Task<Void, Never>?
+    /// Départ automatique du message bref, en pause au survol.
+    let noticeTimer = MessageTimer()
 
     /// Coupe le son du Mac juste après le son de début, pour qu'il reste audible.
     private func muteOutputAfterCue(_ current: Capture) {
@@ -1139,15 +1157,13 @@ extension DictationCoordinator {
         notice = message
         model.overlay.show()
         let duration = seconds ?? (confirmsLearning ? Self.learningSeconds : Self.noticeSeconds)
-        noticeDismissal?.cancel()
-        noticeDismissal = Task { @MainActor [weak self] in
-            try? await Task.sleep(nanoseconds: UInt64(duration * 1_000_000_000))
-            guard !Task.isCancelled, let self, self.notice == message else { return }
+        noticeTimer.start(seconds: duration, paused: messagesHeld) { [weak self] in
+            guard let self, self.notice == message else { return }
             self.dismissCurrentNotice()
         }
     }
 
-    /// Délai écoulé sans Oui ni Non : un mot proposé reste dans le dictionnaire.
+    /// Délai écoulé ou ✕, sans Oui ni Non : un mot proposé reste dans le dictionnaire.
     func dismissCurrentNotice() {
         guard notice != nil else { return }
         if noticeConfirmsLearning {
@@ -1179,8 +1195,7 @@ extension DictationCoordinator {
     }
 
     private func clearNotice() {
-        noticeDismissal?.cancel()
-        noticeDismissal = nil
+        noticeTimer.cancel()
         if phase != .idle, let term = learningOffer {
             learningQueue.insert(term, at: 0)
             learningOffer = nil
