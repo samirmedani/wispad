@@ -18,7 +18,9 @@ public enum FidelityGuard {
         let written = locatedWords(in: corrected).map(\.text)
         guard !heard.isEmpty, !written.isEmpty else { return corrected.isEmpty ? transcript : corrected }
         // Une correction enlève des hésitations et ajoute de la ponctuation : elle n'allonge pas le texte.
-        if written.count > heard.count + max(4, heard.count / 4) { return transcript }
+        // Seuls les mots comptent : les guillemets d'une citation ou un deux-points isolé n'en sont pas.
+        let spoken = heard.filter(isWord).count
+        if written.filter(isWord).count > spoken + max(4, spoken / 4) { return transcript }
         if copiesContext(written: written, heard: heard, context: context, additional: previousDictations) { return transcript }
         let repaired = restoreTranslatedWords(
             heard: heard,
@@ -30,7 +32,6 @@ public enum FidelityGuard {
             alsoHeard: alsoHeard
         )
         let restored = restoreUnspokenReferences(heard: heard, corrected: repaired, alsoHeard: alsoHeard)
-        let spoken = heard.filter { !CorrectionLearner.key($0).isEmpty }.count
         if spoken <= shortDictationWords, changesShortDictation(heard: heard, corrected: restored, alsoHeard: alsoHeard) {
             return transcript
         }
@@ -41,12 +42,13 @@ public enum FidelityGuard {
     static let shortDictationWords = 3
 
     /// Sur une dictée courte, seules restent la ponctuation, les majuscules, les hésitations retirées, un « ne »
-    /// rétabli et les corrections d'écoute qui sonnent comme le mot entendu (« cloud » → « Claude »).
+    /// rétabli et les corrections d'écoute qui sonnent comme le mot entendu : écrites presque pareil (« cloud » →
+    /// « Claude ») ou prononcées pareil (« sot » → « seau », « aime E elle » → « M-E-L »).
     /// Un mot qui ne lui ressemble pas (« Était sérieux » → « Sois sérieux ») ou un mot ajouté fait garder la transcription.
     static func changesShortDictation(heard: [String], corrected: String, alsoHeard: [String] = []) -> Bool {
-        func keys(_ words: [String]) -> [String] { words.map { CorrectionLearner.key(strip($0)) }.filter { !$0.isEmpty } }
-        let otherKeys = Set(keys(alsoHeard))
-        for hunk in CorrectionLearner.replacements(keys(locatedWords(in: corrected).map(\.text)), keys(heard), oneSided: true) {
+        let written = spokenWords(locatedWords(in: corrected).map(\.text)), said = spokenWords(heard)
+        let otherKeys = Set(spokenWords(alsoHeard).map(\.key))
+        for hunk in CorrectionLearner.replacements(written.map(\.key), said.map(\.key), oneSided: true) {
             // Mots retirés (hésitations) : rien d'inventé.
             if hunk.oldWords.isEmpty { continue }
             if hunk.oldWords.allSatisfy(otherKeys.contains) { continue }
@@ -56,9 +58,28 @@ public enum FidelityGuard {
                 if hunk.oldWords.allSatisfy(restoredNegation.contains) { continue }
                 return true
             }
-            if soundsAlike(hunk.oldWords.joined(), hunk.newWords.joined()) < 0.45 { return true }
+            if soundsAlike(hunk.oldWords.joined(), hunk.newWords.joined()) >= 0.45 { continue }
+            // Écrits autrement, les mots peuvent encore se dire pareil : l'oreille juge sur leur écriture d'origine.
+            let writtenHere = written[hunk.oldStart..<hunk.oldEnd].map(\.text)
+            let saidHere = said[hunk.newStart..<(hunk.newStart + hunk.newWords.count)].map(\.text)
+            if !PhoneticKey.soundsAlike(writtenHere, saidHere) { return true }
         }
         return false
+    }
+
+    /// Un mot dit : tel qu'écrit (accents, capitales, tirets), pour l'oreille, et sa clé, pour le diff.
+    private struct SpokenWord {
+        var text: String
+        var key: String
+    }
+
+    private static func spokenWords(_ words: [String]) -> [SpokenWord] {
+        words.map { SpokenWord(text: strip($0), key: CorrectionLearner.key(strip($0))) }.filter { !$0.key.isEmpty }
+    }
+
+    /// Un mot porte au moins une lettre ou un chiffre ; un guillemet ou un tiret isolé n'en est pas un.
+    private static func isWord(_ word: String) -> Bool {
+        !CorrectionLearner.key(word).isEmpty
     }
 
     /// Le « ne » de la négation, que l'oral omet et que l'écrit rétablit (« je sais pas » → « je ne sais pas »).
@@ -153,9 +174,10 @@ public enum FidelityGuard {
 
     private static func copiesOneContext(written: [String], heard: [String], context: String) -> Bool {
         guard !context.isEmpty else { return false }
-        let around = locatedWords(in: context).map { CorrectionLearner.key($0.text) }
+        // Des guillemets ou un deux-points ajoutés ne cachent pas une copie : seuls les mots se comparent.
+        let around = locatedWords(in: context).map { CorrectionLearner.key($0.text) }.filter { !$0.isEmpty }
         let said = Set(heard.map(CorrectionLearner.key))
-        let keys = written.map(CorrectionLearner.key)
+        let keys = written.map(CorrectionLearner.key).filter { !$0.isEmpty }
         let span = 8
         guard keys.count >= span, around.count >= span else { return false }
         let windows = Set((0...(around.count - span)).map { around[$0..<($0 + span)].joined(separator: " ") })
@@ -180,13 +202,17 @@ public enum FidelityGuard {
         previousDictations: [String] = [],
         alsoHeard: [String] = []
     ) -> String {
+        let words = locatedWords(in: corrected)
+        guard words.count == written.count else { return corrected }
         // La ponctuation ajoutée à un mot voisin ne doit pas le faire entrer dans le
         // bloc d'une traduction (« outil. Ensuite, » contre « tool. Ensuite »).
         // Le diff conserve les mots, leur casse et leurs accents ; seul l'habillage est ignoré.
-        let hunks = CorrectionLearner.replacements(written.map(strip), heard.map(strip))
+        // Un signe isolé (guillemets d'une citation, tiret) n'est pas un mot : il reste en place, hors des blocs,
+        // et ne fait pas sortir un bloc des tailles contrôlées (une marque inventée mise entre guillemets).
+        let kept = written.indices.filter { !strip(written[$0]).isEmpty }
+        let spokenWritten = kept.map { written[$0] }
+        let hunks = CorrectionLearner.replacements(spokenWritten.map(strip), heard.map(strip).filter { !$0.isEmpty })
         guard !hunks.isEmpty else { return corrected }
-        let words = locatedWords(in: corrected)
-        guard words.count == written.count else { return corrected }
         let known = groundingKeys(transcript: heard.joined(separator: " "), dictionary: dictionary, context: context, previous: previousDictations)
         let otherKeys = Set(alsoHeard.map { CorrectionLearner.key(strip($0)) }).subtracting([""])
         let output = NSMutableString(string: corrected)
@@ -197,19 +223,22 @@ public enum FidelityGuard {
             let fromSpeech = hunk.newWords.map(strip).joined(separator: " ")
             let similarity = soundsAlike(fromModel, fromSpeech)
             let spoken = isSpokenReference(corrected: fromModel, heard: hunk.newWords)
+            // Des lettres épelées regroupées (« aime E elle » → « M-E-L ») ne sont ni une traduction ni une invention.
+            let spelled = PhoneticKey.spells(hunk.oldWords, hunk.newWords)
             let vocabularyTranslation = (1...3).contains(hunk.oldWords.count)
                 && (1...3).contains(hunk.newWords.count)
                 && (isVocabulary(fromModel) || isVocabulary(fromSpeech))
                 && similarity < 0.45
                 && !spoken
-            let coined = !spoken && similarity < 0.45 && hasUngroundedCoinage(hunk, written: written, known: known)
+                && !spelled
+            let coined = !spoken && !spelled && similarity < 0.45 && hasUngroundedCoinage(hunk, written: spokenWritten, known: known)
             guard vocabularyTranslation || coined else { continue }
             let restored = hunk.newWords.map(strip)
             if hunk.oldWords.count == restored.count {
                 // Les plages restent celles du texte d'origine : ni indentation, ni retours,
                 // ni marqueurs de liste ne sont reconstruits à partir des mots du diff.
                 for index in hunk.oldWords.indices.reversed() {
-                    let word = words[hunk.oldStart + index]
+                    let word = words[kept[hunk.oldStart + index]]
                     // La réparation d'une traduction n'est pas une réparation des chiffres :
                     // notamment, strip ne doit jamais retirer le signe d'une valeur négative.
                     guard !word.text.contains(where: \.isNumber), !hunk.newWords[index].contains(where: \.isNumber) else { continue }
@@ -218,8 +247,8 @@ public enum FidelityGuard {
             } else {
                 guard !hunk.oldWords.contains(where: { $0.contains(where: \.isNumber) }),
                       !hunk.newWords.contains(where: { $0.contains(where: \.isNumber) }) else { continue }
-                let first = words[hunk.oldStart]
-                let last = words[hunk.oldEnd - 1]
+                let first = words[kept[hunk.oldStart]]
+                let last = words[kept[hunk.oldEnd - 1]]
                 let range = NSRange(location: first.range.location, length: NSMaxRange(last.range) - first.range.location)
                 let block = (corrected as NSString).substring(with: range)
                 // Un bloc de tailles différentes qui franchit une ligne peut joindre deux items.

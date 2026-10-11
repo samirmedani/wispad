@@ -4,16 +4,25 @@ import XCTest
 
 /// Banc franglais : rejoue des audios dans la même chaîne que l'app (flux xAI en direct, puis correction)
 /// et vérifie, phrase par phrase, les termes attendus et interdits, avant et après correction.
+/// Un cas avec `transcript` saute l'audio : cette transcription brute part directement à la correction
+/// (mots mal entendus, tics, citations, lettres épelées).
 /// Réseau et payant (quelques centimes) : ne tourne qu'avec WISPAD_LIVE_TESTS=1, via scripts/franglais-bench.sh.
 ///
 /// Variables : BENCH_LABEL (nom du rapport), BENCH_KEYTERMS=none (sans vocabulaire), BENCH_LANGUAGE=auto
-/// (sans indice de langue), BENCH_CLEANUP=off (sans correction), BENCH_ONLY=préfixe d'identifiant,
-/// BENCH_REAL_DIR (dossier d'enregistrements réels avec cases.json, hors Git).
+/// (sans indice de langue), BENCH_CLEANUP=off (sans correction), BENCH_ONLY=préfixes d'identifiant séparés par
+/// des virgules (h,r,g,l,e : les cas de correction seule), BENCH_REAL_DIR (dossier d'enregistrements réels avec
+/// cases.json, hors Git).
 final class FranglaisBenchmarkTests: XCTestCase {
     struct Case: Decodable {
         var id: String
         var text: String?
         var audio: String?
+        /// Transcription brute donnée telle quelle à la correction, sans audio ni reconnaissance.
+        var transcript: String?
+        /// Dictées précédentes de la même app, envoyées comme contexte à la correction.
+        var previous: [String]?
+        /// Langue de ce cas (fr, en) ; sinon celle du banc pour la reconnaissance, le français pour la correction.
+        var language: DictationLanguage?
         var required: [String]
         var forbidden: [String]
         var control: Bool?
@@ -50,7 +59,7 @@ final class FranglaisBenchmarkTests: XCTestCase {
         let useHints = env["BENCH_KEYTERMS"] != "none"
         let language: DictationLanguage = env["BENCH_LANGUAGE"] == "auto" ? .auto : .french
         let cleanup = env["BENCH_CLEANUP"] != "off"
-        let only = env["BENCH_ONLY"]
+        let only = (env["BENCH_ONLY"] ?? "").split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
 
         // DeepSeek muet : on part directement au relais, comme l'app après deux échecs.
         var deepSeekDown = false
@@ -70,15 +79,13 @@ final class FranglaisBenchmarkTests: XCTestCase {
 
         var outcomes: [Outcome] = []
         for (directory, cases) in sets {
-            for item in cases where only == nil || item.id.hasPrefix(only!) {
-                let audio = directory.appendingPathComponent(item.audio ?? "\(item.id).wav")
-                let pcm = try Self.pcm(fromWAV: Data(contentsOf: audio))
+            for item in cases where only.isEmpty || only.contains(where: { item.id.hasPrefix($0) }) {
                 let speech = SpeechRequest(
                     provider: .xai,
                     liveModel: "grok-voice-transcribe-2.0",
                     fileModel: "grok-voice-transcribe-2.0",
                     apiKey: xaiKey,
-                    language: language,
+                    language: item.language ?? language,
                     keyterms: useHints ? Self.recognitionHints() : [],
                     prompt: CorrectionPrompt.recognitionPrompt(appName: nil, nearby: nil),
                     cleanupKey: deepSeekKey,
@@ -86,11 +93,18 @@ final class FranglaisBenchmarkTests: XCTestCase {
                     cleanupPrimaryDown: deepSeekDown
                 )
                 var raw = ""
-                do { raw = try await stream(pcm, speech: speech) } catch { raw = "<échec : \(error.localizedDescription)>" }
+                if let transcript = item.transcript {
+                    raw = transcript
+                } else {
+                    let audio = directory.appendingPathComponent(item.audio ?? "\(item.id).wav")
+                    let pcm = try Self.pcm(fromWAV: Data(contentsOf: audio))
+                    do { raw = try await stream(pcm, speech: speech) } catch { raw = "<échec : \(error.localizedDescription)>" }
+                }
                 let prepared = Self.prepare(raw)
                 var final = prepared
                 if cleanup {
-                    let request = CorrectionRequest(transcript: prepared, dictionary: [])
+                    let request = CorrectionRequest(transcript: prepared, dictionary: [], previousDictations: item.previous ?? [],
+                                                    language: item.language ?? .french)
                     final = Self.finish(await TextCleaner.clean(transcript: prepared, request: request, speech: speech, enabled: true).text)
                 }
                 let outcome = Outcome(
