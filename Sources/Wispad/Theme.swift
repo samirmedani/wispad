@@ -557,27 +557,70 @@ struct FlowLayout: Layout {
     }
 }
 
-/// Icônes des applications cibles, mises en cache.
+/// Icônes des applications cibles, mises en cache en mémoire, une par taille affichée.
+/// Une app introuvable est retenue aussi : sans cela, chaque passage d'une ligne de l'historique
+/// relancerait une recherche Launch Services pendant le défilement.
 @MainActor
 enum AppIcons {
-    private static var cache: [String: NSImage] = [:]
+    private struct Key: Hashable {
+        var bundleID: String
+        var size: CGFloat
+        var dark: Bool
+    }
+
+    private static var originals: [String: NSImage?] = [:]
+    private static var sized: [Key: NSImage] = [:]
 
     static func icon(bundleID: String?) -> NSImage? {
         guard let bundleID, !bundleID.isEmpty else { return nil }
-        if let cached = cache[bundleID] { return cached }
-        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else { return nil }
-        let image = NSWorkspace.shared.icon(forFile: url.path)
-        cache[bundleID] = image
+        if let cached = originals[bundleID] { return cached }
+        let image = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID)
+            .map { NSWorkspace.shared.icon(forFile: $0.path) }
+        originals[bundleID] = .some(image)
         return image
+    }
+
+    /// L'icône déjà réduite à sa taille d'affichage (rendue en 2x), dans l'apparence claire ou sombre de la vue :
+    /// l'image système compte de nombreuses représentations jusqu'au 1024 px, coûteuses à rééchantillonner
+    /// à chaque image.
+    static func icon(bundleID: String?, size: CGFloat, dark: Bool) -> NSImage? {
+        guard let bundleID, let original = icon(bundleID: bundleID) else { return nil }
+        let key = Key(bundleID: bundleID, size: size, dark: dark)
+        if let cached = sized[key] { return cached }
+        var image: NSImage?
+        NSAppearance(named: dark ? .darkAqua : .aqua)?.performAsCurrentDrawingAppearance {
+            image = thumbnail(of: original, side: size)
+        }
+        let result = image ?? original
+        sized[key] = result
+        return result
+    }
+
+    private static func thumbnail(of image: NSImage, side: CGFloat) -> NSImage? {
+        let scale: CGFloat = 2
+        let pixels = Int((side * scale).rounded(.up))
+        guard pixels > 0, let space = CGColorSpace(name: CGColorSpace.sRGB), let bitmap = CGContext(
+            data: nil, width: pixels, height: pixels, bitsPerComponent: 8, bytesPerRow: 0, space: space,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return nil }
+        bitmap.interpolationQuality = .high
+        bitmap.scaleBy(x: scale, y: scale)
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(cgContext: bitmap, flipped: false)
+        image.draw(in: NSRect(x: 0, y: 0, width: side, height: side))
+        NSGraphicsContext.restoreGraphicsState()
+        guard let rendered = bitmap.makeImage() else { return nil }
+        return NSImage(cgImage: rendered, size: NSSize(width: side, height: side))
     }
 }
 
 struct AppIconView: View {
+    @Environment(\.colorScheme) private var colorScheme
     var bundleID: String?
     var size: CGFloat = 18
 
     var body: some View {
-        if let image = AppIcons.icon(bundleID: bundleID) {
+        if let image = AppIcons.icon(bundleID: bundleID, size: size, dark: colorScheme == .dark) {
             Image(nsImage: image)
                 .resizable()
                 .interpolation(.high)

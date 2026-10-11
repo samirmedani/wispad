@@ -12,7 +12,8 @@ import SwiftUI
 /// `--show-window` permet un aperçu visible uniquement sur demande explicite de l'utilisateur.
 /// `--offscreen` force toujours le rendu hors écran, même si `--show-window` est présent.
 /// `--history-count N` ajoute N longues dictées fictives le même jour ; `--performance-probe`
-/// mesure deux ouvertures de l'historique, séparées par un retour à l'accueil, puis quitte.
+/// mesure deux ouvertures de l'historique, séparées par un retour à l'accueil, puis un défilement simulé
+/// (`--scroll-steps N`, 240 par défaut) vers le bas puis vers le haut, et quitte.
 /// `--audio-preview` ouvre le lecteur avec un WAV silencieux de 30 secondes, entièrement fictif.
 /// `--fallback-preview` ajoute des bascules fictives et ouvre Consommation.
 /// `--blur-recent` masque les extraits fictifs de la carte d'accueil.
@@ -140,7 +141,13 @@ enum DesignPreview {
         print("WINDOW \(window.windowNumber)")
         fflush(stdout)
         if performanceProbe {
-            runPerformanceProbe(model: model, window: window, directory: directory, renderedRows: renderedRows)
+            var scrollSteps = 240
+            if let index = arguments.firstIndex(of: "--scroll-steps"),
+               arguments.indices.contains(index + 1), let steps = Int(arguments[index + 1]) {
+                scrollSteps = min(max(steps, 0), 5_000)
+            }
+            runPerformanceProbe(model: model, window: window, directory: directory, renderedRows: renderedRows,
+                                scrollSteps: scrollSteps)
         } else if let index = arguments.firstIndex(of: "--snapshot"), arguments.indices.contains(index + 1) {
             let path = arguments[index + 1]
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
@@ -196,12 +203,20 @@ enum DesignPreview {
     /// Le délai entre visites laisse les animations précédentes finir, mais n'entre pas dans les temps.
     /// Le résultat inclut la prochaine mise à jour SwiftUI et le layout/display forcé ; il ne mesure pas
     /// le moment où le compositeur présente la dernière image d'une animation.
-    private static func runPerformanceProbe(model: AppModel, window: NSWindow, directory: URL, renderedRows: HistoryProbeRenderCount) {
+    private static func runPerformanceProbe(model: AppModel, window: NSWindow, directory: URL,
+                                            renderedRows: HistoryProbeRenderCount, scrollSteps: Int) {
         let sections: [AppSection] = [.history, .home, .history]
         func measure(_ index: Int) {
-            guard index < sections.count, let view = window.contentView else {
+            guard let view = window.contentView else {
                 try? FileManager.default.removeItem(at: directory)
                 exit(0)
+            }
+            guard index < sections.count else {
+                runScrollProbe(model: model, view: view, renderedRows: renderedRows, steps: scrollSteps) {
+                    try? FileManager.default.removeItem(at: directory)
+                    exit(0)
+                }
+                return
             }
             let section = sections[index]
             renderedRows.reset()
@@ -218,6 +233,88 @@ enum DesignPreview {
             }
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) { measure(0) }
+    }
+
+    /// Défilement simulé de l'historique, sans souris ni écran : la vue de défilement avance de 60 points par étape,
+    /// une étape par tour de boucle, vers le bas puis vers le haut (lignes déjà vues). Chaque étape mesure la mise à jour
+    /// SwiftUI, le layout et l'affichage forcés ; une étape de plus de 16,7 ms aurait manqué une image à 60 Hz.
+    /// `row_evaluations` compte les passages dans le corps des lignes, `row_count` les lignes distinctes.
+    private static func runScrollProbe(model: AppModel, view: NSView, renderedRows: HistoryProbeRenderCount,
+                                       steps: Int, completion: @escaping @MainActor @Sendable () -> Void) {
+        guard steps > 0, let scrollView = largestScrollView(in: view), let document = scrollView.documentView else {
+            print("PERFORMANCE scroll=unavailable")
+            fflush(stdout)
+            completion()
+            return
+        }
+        let clip = scrollView.contentView
+        let stepHeight: CGFloat = 60
+        // La hauteur estimée du document change pendant que les lignes paresseuses se construisent.
+        func maxOffset() -> CGFloat { max(document.frame.height - clip.bounds.height, 0) }
+        // Le haut du document est à y = 0 dans une vue retournée (cas de SwiftUI), à y = max sinon.
+        func origin(forOffset offset: CGFloat) -> CGFloat { document.isFlipped ? offset : maxOffset() - offset }
+        let directions: [(name: String, sign: CGFloat)] = [("down", 1), ("up", -1)]
+        let state = ScrollProbeState()
+
+        func run(direction: Int, step: Int) {
+            guard direction < directions.count else {
+                completion()
+                return
+            }
+            if step == 0 {
+                renderedRows.reset()
+                state.durations.removeAll(keepingCapacity: true)
+            }
+            guard step < steps else {
+                let durations = state.durations
+                let sorted = durations.sorted()
+                let total = durations.reduce(0, +)
+                let p95 = sorted.isEmpty ? 0 : sorted[min(sorted.count - 1, Int(Double(sorted.count) * 0.95))]
+                let mean = durations.isEmpty ? 0 : total / Double(durations.count)
+                let fields: [String] = [
+                    "records=\(model.history.count)",
+                    "scroll=\(directions[direction].name)",
+                    "steps=\(durations.count)",
+                    "offset=\(Int(state.offset))",
+                    "total_ms=\(String(format: "%.2f", total))",
+                    "mean_ms=\(String(format: "%.2f", mean))",
+                    "p95_ms=\(String(format: "%.2f", p95))",
+                    "max_ms=\(String(format: "%.2f", sorted.last ?? 0))",
+                    "over_16ms=\(durations.filter { $0 > 1_000 / 60 }.count)",
+                    "row_evaluations=\(renderedRows.evaluations)",
+                    "row_count=\(renderedRows.count)",
+                ]
+                print("PERFORMANCE " + fields.joined(separator: " "))
+                fflush(stdout)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { run(direction: direction + 1, step: 0) }
+                return
+            }
+            state.offset = min(max(state.offset + directions[direction].sign * stepHeight, 0), maxOffset())
+            let start = ContinuousClock.now
+            clip.scroll(to: NSPoint(x: clip.bounds.origin.x, y: origin(forOffset: state.offset)))
+            scrollView.reflectScrolledClipView(clip)
+            DispatchQueue.main.async {
+                view.layoutSubtreeIfNeeded()
+                view.displayIfNeeded()
+                let duration = start.duration(to: .now).components
+                state.durations.append(Double(duration.seconds) * 1_000 + Double(duration.attoseconds) / 1e15)
+                run(direction: direction, step: step + 1)
+            }
+        }
+        run(direction: 0, step: 0)
+    }
+
+    private static func largestScrollView(in view: NSView) -> NSScrollView? {
+        var best: NSScrollView?
+        func visit(_ view: NSView) {
+            if let scroll = view as? NSScrollView,
+               (scroll.documentView?.frame.height ?? 0) > (best?.documentView?.frame.height ?? 0) {
+                best = scroll
+            }
+            view.subviews.forEach(visit)
+        }
+        visit(view)
+        return best
     }
 
     private static func nativeViewCount(_ view: NSView) -> Int {
@@ -373,12 +470,26 @@ enum DesignPreview {
 }
 
 @MainActor
+private final class ScrollProbeState {
+    var durations: [Double] = []
+    var offset: CGFloat = 0
+}
+
+@MainActor
 private final class HistoryProbeRenderCount {
     private var ids: Set<String> = []
+    private(set) var evaluations = 0
     var count: Int { ids.count }
 
-    func record(_ id: String) { ids.insert(id) }
-    func reset() { ids.removeAll(keepingCapacity: true) }
+    func record(_ id: String) {
+        ids.insert(id)
+        evaluations += 1
+    }
+
+    func reset() {
+        ids.removeAll(keepingCapacity: true)
+        evaluations = 0
+    }
 }
 
 private struct SeededGenerator: RandomNumberGenerator {

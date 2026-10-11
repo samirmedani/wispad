@@ -64,6 +64,24 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
 Toutes les frontières du système (micro, réseau, clés, collage, son) passent par
 `AppDependencies` : les tests les remplacent et n'ouvrent jamais le vrai micro ni le vrai réseau.
 
+## Écran Historique
+
+`HistoryView` (`HistoryViews.swift`) affiche `AppModel.history` dans une pile paresseuse (`LazyVStack`), une section
+par jour (`DayGroup`, titre calculé au regroupement) et une ligne par dictée, identifiée par son `id`. Rien de ce que
+le défilement fait passer à l'écran ne doit être recalculé :
+
+- **Modèle de ligne** : `HistoryRowItem` (`HistoryRowModel.swift`) précalcule heure, libellé « app · N mots ·
+  fournisseur », statut et présence d'audio ; `HistoryRowCache.shared` le garde par dictée tant qu'elle ne change pas.
+- **Troncature** : un texte long ou sur plusieurs lignes est mesuré une fois (copie cachée sans limite de lignes,
+  lue dans la même passe que le texte affiché) ; le résultat est gardé par dictée, texte et largeur, et la copie
+  cachée disparaît. Une ligne qui revient à l'écran ne remesure rien.
+- **Icônes** : `AppIcons` garde chaque icône d'app, y compris l'absence d'app, déjà réduite à sa taille d'affichage.
+- **Survol** : état local de la ligne ; pas de masque par ligne, le fond de carte et le fond de survol ont sa forme.
+- **Recherche** : appliquée 150 ms après la dernière frappe (`appliedQuery`), tout de suite quand on l'efface.
+
+Ces caches sont en mémoire seulement, bornés, et vidés avec l'app. `HistoryRenderingObserver` permet aux tests et à
+la sonde de compter les lignes évaluées.
+
 ## Ajouter…
 
 **Un fournisseur de correction** : une route dans `TextCleaner.routes`, un cas `UsageAPI`, son tarif dans
@@ -128,6 +146,10 @@ fournisseur retiré : `APIKeys.LocalFile` garde les comptes qu'il ne connaît pa
   avec le build Debug ; options d'état : `--onboarding-step <étape>` (welcome, permissions, microphone, provider,
   shortcut, trial, finish) avec `--onboarding-state done|failed|progress` (états fictifs, aucune autorisation
   demandée ni micro ouvert), `--customer-preview`, `-AppleLanguages "(en)"`.
+- Fluidité de l'historique, hors écran : `Wispad --design-preview --offscreen --history-count 1000
+  --performance-probe [--scroll-steps 240]` avec le build Debug. Lignes `PERFORMANCE` : deux ouvertures de l'écran
+  (temps, vues natives, lignes rendues), puis un défilement simulé vers le bas et vers le haut (temps par étape :
+  moyenne, p95, max, étapes de plus de 16 ms ; évaluations de lignes et lignes distinctes).
 - Tests réseau à la demande, clés de test seulement : `scripts/live-test.sh SelfCorrectionLiveTests`.
 - Erreurs signalées depuis l'historique (`ErrorReportArchive`) : `scripts/report-bench.sh <nom>` les rejoue et compte
   les mots faux avant et après un changement de consigne, de garde-fou ou de fournisseur.

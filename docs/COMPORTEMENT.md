@@ -29,6 +29,16 @@ Raccourci par défaut : fn seule. Wispad intercepte la touche fn pour que macOS 
 - Chaque dictée ajoute une ligne à `~/Library/Application Support/Wispad/latence.log` (date, mode ; appui →
   bulle, micro, premier audio, flux ; fin → collé ; statut), sans aucun texte, 500 lignes au plus.
 
+## Historique
+
+- Une dictée par ligne, groupées par jour (Aujourd'hui, Hier, puis la date), de la plus récente à la plus ancienne.
+- Un texte coupé à quatre lignes montre « Afficher tout » ; le bouton n'apparaît que si la coupure est réelle à la
+  largeur de la fenêtre.
+- Au survol : détails, copier, retranscrire et écouter (si l'audio est gardé), supprimer.
+- La recherche filtre dès que l'on cesse de taper (150 ms) ; l'effacer réaffiche tout aussitôt.
+- Le défilement reste fluide avec des milliers de dictées : seules les lignes visibles sont construites, et une
+  ligne déjà vue n'est ni reformatée ni remesurée.
+
 ## Bulle
 
 - Verre noir (Liquid Glass sur macOS 26+) au-dessus du Dock, sur le bureau comme au-dessus d'une app en plein

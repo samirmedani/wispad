@@ -8,6 +8,8 @@ struct HistoryView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.interactionReduceMotion) private var reduceMotion
     @State private var query = ""
+    /// Recherche appliquée : suit la saisie après une courte pause, pour ne pas refiltrer à chaque touche.
+    @State private var appliedQuery = ""
     @State private var pendingDeleteAll = false
     @State private var detailRecord: DictationRecord?
 
@@ -33,9 +35,9 @@ struct HistoryView: View {
             .frame(maxWidth: .infinity)
             if groups.isEmpty {
                 EmptyState(
-                    symbol: query.isEmpty ? "text.quote" : "magnifyingglass",
-                    title: query.isEmpty ? String(localized: "Aucune dictée") : String(localized: "Aucun résultat"),
-                    message: query.isEmpty ? String(localized: "Les transcriptions restent ici, même si l'insertion échoue.") : String(localized: "Aucune dictée ne contient « \(query) ».")
+                    symbol: appliedQuery.isEmpty ? "text.quote" : "magnifyingglass",
+                    title: appliedQuery.isEmpty ? String(localized: "Aucune dictée") : String(localized: "Aucun résultat"),
+                    message: appliedQuery.isEmpty ? String(localized: "Les transcriptions restent ici, même si l'insertion échoue.") : String(localized: "Aucune dictée ne contient « \(appliedQuery) ».")
                 )
                 Spacer()
             } else {
@@ -46,11 +48,10 @@ struct HistoryView: View {
                                 // Chaque ligne est un enfant de la pile paresseuse : une journée
                                 // chargée ne doit pas faire construire toutes ses dictées d'un coup.
                                 ForEach(group.records) { record in
-                                    HistoryRow(record: record, onDetails: { detailRecord = record })
-                                        .modifier(HistoryCardRow(
-                                            first: record.id == group.records.first?.id,
-                                            last: record.id == group.records.last?.id
-                                        ))
+                                    let first = record.id == group.records.first?.id
+                                    let last = record.id == group.records.last?.id
+                                    HistoryRow(record: record, first: first, last: last, onDetails: { detailRecord = record })
+                                        .modifier(HistoryCardRow(first: first, last: last))
                                 }
                             } header: {
                                 Text(group.title)
@@ -71,6 +72,14 @@ struct HistoryView: View {
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) { HistoryAudioDock() }
+        .task(id: query) {
+            // Effacer la recherche s'applique tout de suite ; une saisie attend la fin de la frappe.
+            if !query.isEmpty {
+                try? await Task.sleep(for: .milliseconds(Self.searchDelayMilliseconds))
+                guard !Task.isCancelled else { return }
+            }
+            appliedQuery = query
+        }
         .sheet(item: $detailRecord) { record in
             DictationDetailView(record: record)
         }
@@ -80,6 +89,8 @@ struct HistoryView: View {
             }
         }
     }
+
+    static let searchDelayMilliseconds = 150
 
     private var subtitle: String {
         let count = model.history.count
@@ -91,18 +102,15 @@ struct HistoryView: View {
     }
 
     private var filtered: [DictationRecord] {
-        let needle = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        let needle = appliedQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !needle.isEmpty else { return model.history }
         return model.history.filter { $0.finalText.localizedCaseInsensitiveContains(needle) }
     }
 }
 
-/// Une carte journalière continue, sans conteneur qui force le rendu des lignes hors écran.
-private struct HistoryCardRow: ViewModifier {
-    var first: Bool
-    var last: Bool
-
-    private var shape: UnevenRoundedRectangle {
+/// Forme d'une ligne dans sa carte journalière : seuls les coins de la première et de la dernière sont arrondis.
+enum HistoryCardShape {
+    static func make(first: Bool, last: Bool) -> UnevenRoundedRectangle {
         UnevenRoundedRectangle(
             topLeadingRadius: first ? Theme.radius : 0,
             bottomLeadingRadius: last ? Theme.radius : 0,
@@ -111,12 +119,21 @@ private struct HistoryCardRow: ViewModifier {
             style: .continuous
         )
     }
+}
+
+/// Une carte journalière continue, sans conteneur qui force le rendu des lignes hors écran.
+/// Pas de masque sur la ligne entière : le fond de carte et le fond de survol portent déjà sa forme,
+/// et un masque par ligne obligerait à recomposer chaque ligne à chaque image du défilement.
+private struct HistoryCardRow: ViewModifier {
+    var first: Bool
+    var last: Bool
+
+    private var shape: UnevenRoundedRectangle { HistoryCardShape.make(first: first, last: last) }
 
     func body(content: Content) -> some View {
         content
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(shape.fill(Theme.card))
-            .clipShape(shape)
             .overlay {
                 // Seuls les bords externes de la journée sont visibles.
                 shape.strokeBorder(Theme.cardBorder, lineWidth: 1)
@@ -135,9 +152,17 @@ private struct HistoryCardRow: ViewModifier {
 struct DayGroup: Identifiable {
     var day: Date
     var records: [DictationRecord]
+    /// Calculé une fois au regroupement, pas à chaque passage de l'en-tête épinglé.
+    var title: String
     var id: Date { day }
 
-    var title: String {
+    init(day: Date, records: [DictationRecord]) {
+        self.day = day
+        self.records = records
+        title = Self.title(for: day)
+    }
+
+    static func title(for day: Date) -> String {
         let calendar = Calendar.current
         if calendar.isDateInToday(day) { return String(localized: "Aujourd'hui") }
         if calendar.isDateInYesterday(day) { return String(localized: "Hier") }
@@ -181,31 +206,37 @@ struct HistoryRow: View {
     @Environment(\.interactionPreviewHover) private var previewHover
     @Environment(\.isEnabled) private var isEnabled
     var record: DictationRecord
+    /// Place dans la carte du jour : le fond de survol suit ses coins arrondis.
+    var first = true
+    var last = true
     var onDetails: (() -> Void)? = nil
     @State private var hovering = false
     @State private var expanded = false
-    @State private var shownHeight: CGFloat = 0
-    @State private var fullHeight: CGFloat = 0
+    @State private var textWidth: CGFloat = 0
+    /// Dernière mesure de cette ligne : la changer redessine la ligne, qui relit alors le cache.
+    @State private var lastMeasure: HistoryRowCache.Overflow?
 
     private static let collapsedLines = 4
 
     private var hovered: Bool { isEnabled && (hovering || previewHover) }
 
-    /// Un texte court sur une seule ligne logique ne dépasse jamais quatre lignes : pas de mesure à faire.
-    private var mayOverflow: Bool {
-        record.finalText.count > 160 || record.finalText.contains("\n")
-    }
-
-    /// Le bouton n'apparaît que si la limite coupe vraiment le texte à la largeur actuelle.
-    private var canExpand: Bool {
-        expanded || (mayOverflow && fullHeight > shownHeight + 1)
-    }
-
     var body: some View {
         let _ = didRender?(record.id)
+        let cache = HistoryRowCache.shared
+        let item = cache.item(for: record)
         let selected = model.historyPlayer.recordID == record.id
+        // Un texte court sur une seule ligne logique ne dépasse jamais quatre lignes : pas de mesure à faire.
+        // Sinon, la troncature mesurée une fois à cette largeur est réutilisée ; la mesure cachée n'existe
+        // que tant qu'aucun résultat n'est connu.
+        let overflows = item.mayOverflow
+            ? cache.overflows(id: item.id, text: item.text, width: textWidth)
+                ?? lastMeasure?.overflows(text: item.text, width: textWidth)
+            : false
+        let measuring = item.mayOverflow && !expanded && overflows == nil
+        // Le bouton n'apparaît que si la limite coupe vraiment le texte à la largeur actuelle.
+        let canExpand = expanded || overflows == true
         HStack(alignment: .top, spacing: 14) {
-            Text(record.createdAt, format: .dateTime.hour().minute())
+            Text(item.time)
                 .font(.system(size: 12, weight: .medium))
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
@@ -215,28 +246,42 @@ struct HistoryRow: View {
                 .frame(minWidth: Self.timeColumnWidth, alignment: .leading)
                 .padding(.top, 1)
             VStack(alignment: .leading, spacing: 7) {
-                if record.finalText.isEmpty {
+                if item.text.isEmpty {
                     Text("Audio à retranscrire")
                         .font(.system(size: 13))
                         .italic()
                         .foregroundStyle(.secondary)
                 } else {
-                    Text(record.finalText)
+                    Text(item.text)
                         .font(.system(size: 13))
                         .lineLimit(expanded ? nil : Self.collapsedLines)
                         .textSelection(.enabled)
-                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { shownHeight = $0 }
+                        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { textWidth = $0 }
                         .background(alignment: .topLeading) {
-                            if mayOverflow && !expanded {
+                            if measuring {
                                 // Même texte sans limite, à la même largeur, jamais affiché.
-                                Text(record.finalText)
+                                Text(item.text)
                                     .font(.system(size: 13))
                                     .fixedSize(horizontal: false, vertical: true)
                                     .hidden()
                                     .accessibilityHidden(true)
-                                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { fullHeight = $0 }
+                                    .onGeometryChange(for: HistoryTextMeasure.self) { proxy in
+                                        HistoryTextMeasure(
+                                            full: proxy.size,
+                                            shown: proxy.bounds(of: .named(historyRowTextSpace))?.size ?? .zero
+                                        )
+                                    } action: { measure in
+                                        guard measure.shown.width > 0 else { return }
+                                        let result = HistoryRowCache.Overflow(
+                                            text: item.text, width: measure.shown.width, overflows: measure.overflows
+                                        )
+                                        cache.store(result, id: item.id)
+                                        // La ligne relit le résultat et retire la mesure cachée.
+                                        lastMeasure = result
+                                    }
                             }
                         }
+                        .coordinateSpace(.named(historyRowTextSpace))
                     if canExpand {
                         Button(expanded ? String(localized: "Réduire") : String(localized: "Afficher tout")) {
                             withAnimation(reduceMotion ? nil : Theme.spring) { expanded.toggle() }
@@ -248,14 +293,13 @@ struct HistoryRow: View {
                     }
                 }
                 HStack(spacing: 8) {
-                    AppIconView(bundleID: record.targetBundle, size: 14)
-                    Text("\(record.targetApp ?? "—") · \(record.wordCount) mots · \(record.providerLabel)")
+                    AppIconView(bundleID: item.targetBundle, size: 14)
+                    Text(item.meta)
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
-                        .help("\(record.providerLabel) · \(record.model)")
-                    let status = HistoryStatus(record.insertionStatus)
-                    StatusChip(text: status.text, tint: status.tint)
+                        .help(Text(item.metaHelp))
+                    StatusChip(text: item.status.text, tint: item.status.tint)
                 }
             }
             Spacer(minLength: 8)
@@ -266,10 +310,10 @@ struct HistoryRow: View {
                         .accessibilityIdentifier("dictation-details-\(record.id)")
                 }
                 HStack(spacing: 2) {
-                    if !record.finalText.isEmpty {
+                    if !item.text.isEmpty {
                         HoverIconButton(symbol: "doc.on.doc", help: String(localized: "Copier")) { model.copy(record.finalText) }
                     }
-                    if record.audioPath != nil {
+                    if item.hasAudio {
                         HoverIconButton(symbol: "arrow.clockwise", help: String(localized: "Retranscrire")) {
                             Task { await model.coordinator.retranscribe(record) }
                         }
@@ -289,14 +333,26 @@ struct HistoryRow: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(hovered ? Theme.subtleFill.opacity(0.5) : Color.clear)
+        .background(HistoryCardShape.make(first: first, last: last).fill(hovered ? Theme.subtleFill.opacity(0.5) : Color.clear))
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .animation(reduceMotion ? nil : Theme.hover, value: hovered)
     }
 }
 
-struct HistoryStatus {
+/// Espace de coordonnées du texte affiché : la mesure cachée y lit sa taille dans la même passe.
+private let historyRowTextSpace = "history-row-text"
+
+/// Une mesure de texte : taille sans limite de lignes et taille affichée, lues dans la même passe.
+struct HistoryTextMeasure: Equatable {
+    var full: CGSize
+    var shown: CGSize
+
+    /// Une marge d'un point évite un faux « Afficher tout » dû aux arrondis.
+    var overflows: Bool { full.height > shown.height + 1 }
+}
+
+struct HistoryStatus: Equatable {
     var text: String
     var tint: Color
 
