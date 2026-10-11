@@ -315,10 +315,11 @@ private struct StarBannerButton: View {
                     .font(.system(size: 11, weight: .semibold))
                     .contentTransition(.symbolEffect(.replace))
                 Group {
-                    if thanking { Text("Merci !") } else { Text("Mettre une étoile sur GitHub") }
+                    if thanking { Text("Merci !") } else { Text("Une étoile sur GitHub") }
                 }
                 .font(.system(size: 11.5, weight: .medium))
                 .lineLimit(1)
+                .minimumScaleFactor(0.85)
                 .contentTransition(.opacity)
             }
             .foregroundStyle(Self.ink)

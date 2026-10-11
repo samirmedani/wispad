@@ -57,7 +57,7 @@ struct AppSettings: Codable, Equatable {
     /// Couper le son du Mac pendant qu'on parle, et quand.
     var muteWhileDictating = true
     var muteMode: OutputMuteMode = .speakersOnly
-    /// Bandeau « Mettre une étoile sur GitHub » cliqué une fois : il ne revient plus (l'étoile est invérifiable).
+    /// Bandeau « Une étoile sur GitHub » cliqué une fois : il ne revient plus (l'étoile est invérifiable).
     var githubStarClicked = false
 
     init() {}
