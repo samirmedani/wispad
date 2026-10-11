@@ -5972,6 +5972,56 @@
           }
         }
       }
+    },
+    "La dictée n'a pas démarré" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dictation didn't start"
+          }
+        }
+      }
+    },
+    "Wispad a bien reçu la touche, mais l'écoute ne s'est pas ouverte. Vérifie qu'aucune autre app n'occupe le micro, puis réessaie." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wispad received the key, but listening didn't start. Check that no other app is using the microphone, then try again."
+          }
+        }
+      }
+    },
+    "Pas de réponse à temps" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No response in time"
+          }
+        }
+      }
+    },
+    "La dictée ne s'est pas terminée en 45 secondes. Vérifie le réseau et ta clé, puis réessaie." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The dictation didn't finish within 45 seconds. Check your network and your key, then try again."
+          }
+        }
+      }
+    },
+    "Ouverture du micro…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opening the microphone…"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

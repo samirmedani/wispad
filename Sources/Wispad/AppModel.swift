@@ -353,6 +353,24 @@ final class AppModel {
     /// Pendant l'étape « Touche » : les appuis sur le raccourci sont comptés ici et aucune dictée ne démarre.
     var shortcutProbe: ShortcutProbe?
 
+    /// Effets du raccourci, avant la dictée. Vrai : pris par le test de l'étape « Touche », aucune dictée ne
+    /// démarre. Un test resté actif hors de son étape est rendu au lieu de bloquer la dictée pour toujours.
+    func shortcutReceived(_ output: HotkeyOutput) -> Bool {
+        if shortcutProbe != nil {
+            guard onboarding?.step == .shortcut else {
+                shortcutProbe = nil
+                return shortcutReceived(output)
+            }
+            if output.pressedAt != nil { shortcutProbe?.notePress() }
+            for effect in output.effects { shortcutProbe?.note(effect) }
+            return true
+        }
+        if output.effects.contains(where: { $0 == .startPushToTalk || $0 == .startToggle }) {
+            onboarding?.noteTrialPress()
+        }
+        return false
+    }
+
     /// Issue de la dernière dictée terminée (maintien ou mains libres), sans aucun texte : l'essai du premier
     /// lancement y lit la réussite ou la cause d'un échec.
     struct DictationCompletion: Equatable {

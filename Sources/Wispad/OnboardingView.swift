@@ -170,6 +170,12 @@ enum OnboardingCopy {
         case .storage:
             return (String(localized: "Enregistrement local impossible"),
                     String(localized: "La dictée n'a pas pu être gardée sur ce Mac. Réessaie."))
+        case .notStarted:
+            return (String(localized: "La dictée n'a pas démarré"),
+                    String(localized: "Wispad a bien reçu la touche, mais l'écoute ne s'est pas ouverte. Vérifie qu'aucune autre app n'occupe le micro, puis réessaie."))
+        case .timeout:
+            return (String(localized: "Pas de réponse à temps"),
+                    String(localized: "La dictée ne s'est pas terminée en 45 secondes. Vérifie le réseau et ta clé, puis réessaie."))
         }
     }
 }
@@ -1027,15 +1033,26 @@ private struct TrialStep: View {
                     FixStepButton(controller: controller, issue: issue)
                 }
             case .inProgress:
-                StepBanner(tone: .working, title: model.coordinator.isListening
-                           ? String(localized: "Je t'écoute…")
-                           : String(localized: "Transcription et correction…"))
+                StepBanner(tone: .working, title: progressTitle)
             case .todo:
                 StepBanner(tone: .waiting, title: String(localized: "Prêt : maintiens \(key) et parle"),
                            detail: String(localized: "Ou appuie deux fois pour dicter mains libres, puis une fois pour arrêter."))
             }
         }
         .onAppear { focused = true }
+    }
+
+    private var progressTitle: String {
+        switch model.coordinator.phase {
+        case .listening: return String(localized: "Je t'écoute…")
+        case .finishing: return String(localized: "Transcription et correction…")
+        case .starting: return String(localized: "Ouverture du micro…")
+        case .idle, .failure:
+            // Geste reçu, écoute pas encore ouverte ; ou dictée finie dont le texte arrive dans le champ.
+            return controller.trialCompletion == nil
+                ? String(localized: "Ouverture du micro…")
+                : String(localized: "Transcription et correction…")
+        }
     }
 
     private var summary: String? {

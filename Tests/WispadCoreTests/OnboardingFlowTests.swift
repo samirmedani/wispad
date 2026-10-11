@@ -214,4 +214,22 @@ struct OnboardingFlowTests {
         #expect(TrialCheck.status(dictating: false, outcome: .pasteSent, online: true, textArrived: false, waited: TrialCheck.pasteGrace) == .failed(.trial(.paste)))
         #expect(TrialCheck.status(dictating: false, outcome: .transcriptionFailed, online: false, textArrived: false, waited: 0) == .failed(.trial(.network)))
     }
+
+    /// Régression : un geste reçu sans qu'aucune écoute ne s'ouvre laissait « Prêt » affiché sans fin.
+    @Test func trialNeverWaitsForever() {
+        #expect(TrialCheck.status(dictating: false, outcome: nil, online: true, textArrived: false, waited: 0, sincePress: 1) == .inProgress)
+        #expect(TrialCheck.status(dictating: false, outcome: nil, online: true, textArrived: false, waited: 0,
+                                  sincePress: TrialCheck.startGrace) == .failed(.trial(.notStarted)))
+        // Une issue arrivée entre-temps l'emporte sur l'attente du geste.
+        #expect(TrialCheck.status(dictating: false, outcome: .keyUnavailable, online: true, textArrived: false, waited: 0,
+                                  sincePress: TrialCheck.startGrace) == .failed(.trial(.key)))
+        // L'écoute elle-même n'a pas de limite ; l'ouverture du micro et la fin de la dictée en ont une.
+        #expect(TrialCheck.status(dictating: true, outcome: nil, online: true, textArrived: false, waited: 0, stalled: 0) == .inProgress)
+        #expect(TrialCheck.status(dictating: true, outcome: nil, online: true, textArrived: false, waited: 0,
+                                  stalled: TrialCheck.stallLimit) == .failed(.trial(.timeout)))
+        #expect(TrialCheck.status(dictating: true, outcome: nil, online: false, textArrived: false, waited: 0,
+                                  stalled: TrialCheck.stallLimit) == .failed(.trial(.network)))
+        #expect(TrialCheck.stepToFix(.notStarted) == nil)
+        #expect(TrialCheck.stepToFix(.timeout) == nil)
+    }
 }

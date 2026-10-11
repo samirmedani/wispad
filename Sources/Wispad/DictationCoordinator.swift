@@ -573,9 +573,18 @@ final class DictationCoordinator {
         }
         current.run.trace.dictationID = record.id
         let insertionBegan = KeyboardTap.now()
-        let status = await model.dependencies.insert(finalText, context, { [weak job] in
-            job.map { !$0.cancelled } ?? false
-        })
+        let status: InsertionStatus
+        // Essai du premier lancement, dicté dans la fenêtre de Wispad : écrit directement dans le champ d'essai.
+        // Un Cmd+V envoyé à soi-même et la lecture d'accessibilité de sa propre fenêtre ne sont pas fiables.
+        let trial = model.onboarding.flatMap { $0.acceptsDictation(targetPID: context.pid) ? $0 : nil }
+        if let trial {
+            trial.receiveDictation(finalText)
+            status = .inserted
+        } else {
+            status = await model.dependencies.insert(finalText, context, { [weak job] in
+                job.map { !$0.cancelled } ?? false
+            })
+        }
         current.marks.pasted = KeyboardTap.now()
         current.run.trace.timings.insertionMs = max(0, KeyboardTap.now() - insertionBegan)
         current.run.trace.outcome = DictationOutcome(status)
@@ -594,7 +603,7 @@ final class DictationCoordinator {
         )
         if status == .inserted || status == .pasteSent {
             // Une sélection réécrite n'apprend rien : le texte collé n'a pas été dicté mot pour mot.
-            if model.settings.learnCorrections, commandSelection == nil, let pid = context.pid {
+            if model.settings.learnCorrections, commandSelection == nil, trial == nil, let pid = context.pid {
                 let traceID = current.run.trace.id
                 model.dependencies.watchCorrections(finalText, pid, model.dictionary.map(\.term)) { [weak model] candidates in
                     model?.considerLearning(candidates, dictated: finalText, speech: speech, traceID: traceID)

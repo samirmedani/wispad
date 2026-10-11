@@ -92,11 +92,7 @@ final class HotkeyMonitor {
             model.saveSettings()
         }
         // Étape « Touche » du premier lancement : l'appui est seulement constaté, aucune dictée ne démarre.
-        if model.shortcutProbe != nil {
-            if output.pressedAt != nil { model.shortcutProbe?.notePress() }
-            for effect in output.effects { model.shortcutProbe?.note(effect) }
-            return
-        }
+        if model.shortcutReceived(output) { return }
         let coordinator = model.coordinator
         if output.cancel { coordinator.cancel() }
         let pressed = lastPressAt

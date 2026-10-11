@@ -338,11 +338,20 @@ public enum TrialFailure: String, Equatable, Sendable {
     case paste
     case cancelled
     case storage
+    /// Le raccourci a été reçu, mais aucune écoute ne s'est ouverte.
+    case notStarted
+    /// L'écoute ne s'ouvre pas, ou la dictée ne se termine pas, dans le délai maximal.
+    case timeout
 }
 
 public enum TrialCheck {
     /// Après une dictée collée, le texte doit apparaître dans le champ d'essai dans ce délai.
     public static let pasteGrace = 2.0
+    /// Après un geste de dictée reçu pendant l'essai, l'écoute doit commencer dans ce délai.
+    public static let startGrace = 4.0
+    /// Ouverture du micro ou fin de la dictée (transcription, correction, collage) : au-delà, l'essai est raté.
+    /// L'écoute elle-même n'a pas de limite : on peut parler aussi longtemps qu'on veut.
+    public static let stallLimit = 45.0
 
     public static func failure(for outcome: DictationOutcome, online: Bool) -> TrialFailure? {
         switch outcome {
@@ -358,11 +367,19 @@ public enum TrialCheck {
     }
 
     /// `outcome` : issue de la dernière dictée commencée pendant l'essai ; `textArrived` : le champ d'essai a reçu
-    /// du texte depuis ; `waited` : secondes depuis cette issue.
-    public static func status(dictating: Bool, outcome: DictationOutcome?, online: Bool, textArrived: Bool, waited: Double) -> OnboardingStatus {
-        if dictating { return .inProgress }
+    /// du texte depuis ; `waited` : secondes depuis cette issue. `stalled` : secondes passées à ouvrir le micro ou à
+    /// terminer la dictée (0 pendant l'écoute) ; `sincePress` : secondes depuis un geste de dictée reçu pendant
+    /// l'essai et resté sans écoute ni issue. Aucune attente n'est infinie : chacune a son délai maximal.
+    public static func status(dictating: Bool, outcome: DictationOutcome?, online: Bool, textArrived: Bool, waited: Double,
+                              stalled: Double = 0, sincePress: Double? = nil) -> OnboardingStatus {
+        if dictating {
+            return stalled >= stallLimit ? .failed(.trial(online ? .timeout : .network)) : .inProgress
+        }
         // Du texte tapé à la main ne prouve rien : seule une dictée terminée compte.
-        guard let outcome else { return .todo }
+        guard let outcome else {
+            guard let sincePress else { return .todo }
+            return sincePress >= startGrace ? .failed(.trial(.notStarted)) : .inProgress
+        }
         if let failure = failure(for: outcome, online: online) { return .failed(.trial(failure)) }
         if textArrived { return .succeeded }
         return waited >= pasteGrace ? .failed(.trial(.paste)) : .inProgress
@@ -373,7 +390,7 @@ public enum TrialCheck {
         case .microphone: return .microphone
         case .key, .provider: return .provider
         case .paste: return .permissions
-        case .network, .noSpeech, .cancelled, .storage: return nil
+        case .network, .noSpeech, .cancelled, .storage, .notStarted, .timeout: return nil
         }
     }
 }
