@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/hero.jpg" alt="La bulle de dictée de Wispad au-dessus d'un clavier de Mac, une onde corail qui devient du texte" width="100%">
+  <img src="docs/images/hero.jpg" alt="Wispad sur macOS : l'écran Accueil au premier plan, l'Historique et la Consommation derrière" width="100%">
 </p>
 
 <p align="center">
