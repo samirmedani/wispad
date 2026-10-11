@@ -4,7 +4,7 @@
 
 | Module | Rôle | Dépend de |
 | --- | --- | --- |
-| `WispadCore` | Logique pure et testable : requêtes de transcription et de correction, consigne, garde-fou, comparaison flux/fichier, historique SQLite, coûts, retard de la version sur `main` (`BuildFreshness`). Aucun texte d'interface. | — |
+| `WispadCore` | Logique pure et testable : requêtes de transcription et de correction, consigne, garde-fou, comparaison flux/fichier, historique SQLite, coûts, retard de la version sur `main` (`BuildFreshness`), progression du premier lancement guidé (`OnboardingFlow`). Aucun texte d'interface. | — |
 | `Wispad` (app) | Coordinateur de dictée, raccourci, bulle, écrans SwiftUI, clés, traductions. | `WispadCore` |
 
 Le projet Xcode (hors Git) est généré par xcodegen depuis `project.yml`. `Package.swift` décrit les mêmes
@@ -15,6 +15,26 @@ Une phase de compilation (`scripts/build-commit.sh`) grave le commit court du d�
 (clé `WispadBuildCommit`, absente si git ne répond pas). `BuildStatus` l'affiche avec la version dans la barre
 latérale et compare ce commit à `main` sur l'API publique de GitHub, en arrière-plan ; la lecture de la réponse est
 la fonction pure `BuildFreshnessCheck.freshness` (WispadCore, testée).
+
+## Premier lancement guidé
+
+`AppModel.onboarding` (un `OnboardingController`) remplace la fenêtre principale tant que `onboardingCompleted`
+est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`replayOnboarding`, sans rien effacer).
+
+- **Décisions** : `OnboardingFlow.swift` (WispadCore, testé par `OnboardingFlowTests`) dit l'ordre des étapes,
+  quand chacune est réussie (`PermissionsCheck`, `MicrophoneCheck` et `VoiceDetector`, `ProviderCheck` et
+  `KeyCheck`, `ShortcutCheck`, `TrialCheck`), où « Plus tard » est permis et quelle étape règle un problème.
+- **État vivant** : `OnboardingController` lit macOS par `OnboardingSystem` (autorisations sans demande, Réglages
+  Système, relance, micros, vumètre), sondé toutes les 0,5 s pendant l'affichage ; les tests le remplacent
+  (`OnboardingControllerTests`). Écrans dans `OnboardingView.swift`.
+- **Micro** : `MicrophoneMeter` ne sort que des niveaux (rien d'écrit ni d'envoyé) ; le micro choisi
+  (`microphoneUID`, `AudioInputDevices`) sert ensuite à `AudioCapture`, sans toucher au micro du système.
+- **Touche** : pendant l'étape, `AppModel.shortcutProbe` reçoit les appuis à la place du coordinateur
+  (`HotkeyMonitor`) : aucune dictée ne démarre.
+- **Essai** : chaque trace terminée passe par `AppModel.noteCompletion` (issue et dictée, jamais de texte) ;
+  l'essai réussit quand une dictée collée arrive dans son champ.
+- **Relance** : l'étape courante est gardée dans `onboardingResume` ; `OnboardingFlow.resumeStep` la relit de façon
+  tolérante.
 
 ## Parcours d'une dictée
 
@@ -105,8 +125,9 @@ fournisseur retiré : `APIKeys.LocalFile` garde les comptes qu'il ne connaît pa
 - `scripts/check.sh` : tests, traductions, compilation Release.
 - Rendu de l'interface hors écran, sans rien afficher :
   `Wispad --design-preview --offscreen --snapshot fichier.png [--section providers] [--dark] [--size 900x700]`
-  avec le build Debug ; options d'état : `--onboarding <étape>`, `--customer-preview`,
-  `-AppleLanguages "(en)"`.
+  avec le build Debug ; options d'état : `--onboarding-step <étape>` (welcome, permissions, microphone, provider,
+  shortcut, trial, finish) avec `--onboarding-state done|failed|progress` (états fictifs, aucune autorisation
+  demandée ni micro ouvert), `--customer-preview`, `-AppleLanguages "(en)"`.
 - Tests réseau à la demande, clés de test seulement : `scripts/live-test.sh SelfCorrectionLiveTests`.
 - Erreurs signalées depuis l'historique (`ErrorReportArchive`) : `scripts/report-bench.sh <nom>` les rejoue et compte
   les mots faux avant et après un changement de consigne, de garde-fou ou de fournisseur.

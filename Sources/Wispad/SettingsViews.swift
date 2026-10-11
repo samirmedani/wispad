@@ -143,6 +143,11 @@ struct SettingsView: View {
                     get: { model.settings.launchAtLogin },
                     set: { model.setLaunchAtLogin($0) }
                 ))
+                MicrophonePicker()
+                LabeledContent("Configuration guidée") {
+                    Button("Revoir la configuration") { model.replayOnboarding() }
+                        .hoverFeedback()
+                }
             }
             Section {
                 PermissionRow(symbol: "mic.fill", title: String(localized: "Microphone"), detail: microphoneLabel,
@@ -336,6 +341,32 @@ struct DiagnosticsSection: View {
                 }
                 exporting = false
             }
+        }
+    }
+}
+
+/// Micro des dictées : celui du système, ou un micro choisi tant qu'il est branché.
+struct MicrophonePicker: View {
+    @Environment(AppModel.self) private var model
+    @State private var devices: [AudioInputDevice] = []
+    @State private var systemName: String?
+
+    var body: some View {
+        Picker("Micro", selection: Binding(
+            get: {
+                let saved = model.settings.microphoneUID
+                return InputDeviceChoice.effectiveUID(saved: saved.isEmpty ? nil : saved, available: devices.map(\.uid)) ?? ""
+            },
+            set: { model.settings.microphoneUID = $0; model.saveSettings() }
+        )) {
+            Text(systemName.map { String(localized: "Micro du système (\($0))") } ?? String(localized: "Micro du système")).tag("")
+            ForEach(devices) { device in
+                Text(device.name).tag(device.uid)
+            }
+        }
+        .onAppear {
+            devices = AudioInputDevices.all()
+            systemName = AudioInputDevices.systemDefault()?.name
         }
     }
 }

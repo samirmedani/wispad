@@ -82,6 +82,9 @@ final class AppModel {
         reload()
         purgeAudio()
         if persistsSettings { refreshPermissions() }
+        if !settings.onboardingCompleted {
+            onboarding = OnboardingController(model: self, step: OnboardingFlow.resumeStep(saved: settings.onboardingResume))
+        }
     }
 
     static let storageLog = Logger.wispad("stockage")
@@ -325,13 +328,44 @@ final class AppModel {
         ProviderID.allCases.contains { hasKey($0) }
     }
 
-    /// Étape affichée à l'ouverture du premier lancement guidé (aperçus hors écran).
-    var onboardingStartStep: OnboardingStep = .welcome
+    // MARK: - Premier lancement guidé
 
-    func completeOnboarding() {
+    /// Configuration guidée affichée à la place de la fenêtre principale : au premier lancement, ou rejouée
+    /// depuis Réglages. Nil une fois terminée.
+    var onboarding: OnboardingController?
+
+    /// « Revoir la configuration » (Réglages) : le parcours complet, sans rien effacer ; on peut le quitter.
+    func replayOnboarding() {
+        onboarding?.suspend()
+        onboarding = OnboardingController(model: self, step: .welcome, replay: true)
+    }
+
+    /// Fin (ou abandon d'une configuration rejouée) : la fenêtre principale revient.
+    func completeOnboarding(openSettings: Bool = false) {
+        onboarding?.suspend()
+        onboarding = nil
         settings.onboardingCompleted = true
+        settings.onboardingResume = ""
         saveSettings()
-        selectedSection = .home
+        selectedSection = openSettings ? .settings : .home
+    }
+
+    /// Pendant l'étape « Touche » : les appuis sur le raccourci sont comptés ici et aucune dictée ne démarre.
+    var shortcutProbe: ShortcutProbe?
+
+    /// Issue de la dernière dictée terminée (maintien ou mains libres), sans aucun texte : l'essai du premier
+    /// lancement y lit la réussite ou la cause d'un échec.
+    struct DictationCompletion: Equatable {
+        var serial: Int
+        var outcome: DictationOutcome
+        var dictationID: String?
+    }
+
+    private(set) var lastCompletion: DictationCompletion?
+
+    func noteCompletion(_ trace: DictationTrace) {
+        guard trace.origin != .retry else { return }
+        lastCompletion = DictationCompletion(serial: (lastCompletion?.serial ?? 0) + 1, outcome: trace.outcome, dictationID: trace.dictationID)
     }
 
     /// Ce qui manque pour dicter (clé d'un fournisseur), à afficher au repos ; nil si tout est prêt.
@@ -361,6 +395,23 @@ final class AppModel {
         }
     }
 
+    /// Dernière vérification de chaque clé chez son fournisseur, par compte (jamais la clé elle-même).
+    var keyChecks: [String: KeyCheck] = [:]
+
+    /// Demande gratuite qui dit si le fournisseur accepte cette clé. Un compte sans adresse de vérification
+    /// est accepté tel quel.
+    private func check(_ key: String, account: String) async -> KeyCheck {
+        guard let url = Self.validationURL(for: account) else { return .valid }
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+        request.timeoutInterval = 15
+        do {
+            return KeyCheck.from(httpStatus: try await dependencies.validateKey(request))
+        } catch {
+            return .offline
+        }
+    }
+
     /// Vérifie la clé saisie auprès du fournisseur, puis l'enregistre sous ce compte. Une clé refusée, non
     /// vérifiée ou modifiée pendant la vérification n'est jamais enregistrée.
     func verifyAndStoreKey(_ account: String) async {
@@ -369,39 +420,59 @@ final class AppModel {
         verifyingKeys.insert(account)
         defer { verifyingKeys.remove(account) }
         keyMessages[account] = nil
+        keyChecks[account] = .verifying
         func unchanged() -> Bool { (keyDrafts[account] ?? "").trimmingCharacters(in: .whitespacesAndNewlines) == draft }
-        if let url = Self.validationURL(for: account) {
-            var request = URLRequest(url: url)
-            request.setValue("Bearer \(draft)", forHTTPHeaderField: "Authorization")
-            request.timeoutInterval = 15
-            do {
-                let status = try await dependencies.validateKey(request)
-                guard unchanged() else { return }
-                if status == 401 || status == 403 {
-                    keyMessages[account] = String(localized: "Clé refusée (HTTP \(status)).")
-                    return
-                }
-                guard status == 200 else {
-                    keyMessages[account] = String(localized: "Vérification impossible (HTTP \(status)) : clé non enregistrée.")
-                    return
-                }
-            } catch {
-                guard unchanged() else { return }
-                keyMessages[account] = String(localized: "Réseau indisponible : clé non vérifiée, non enregistrée.")
-                return
-            }
+        let result = await check(draft, account: account)
+        guard unchanged() else {
+            keyChecks[account] = nil
+            return
+        }
+        switch result {
+        case .rejected(let status):
+            keyChecks[account] = result
+            keyMessages[account] = String(localized: "Clé refusée (HTTP \(status)).")
+            return
+        case .unverified(let status):
+            keyChecks[account] = result
+            keyMessages[account] = String(localized: "Vérification impossible (HTTP \(status)) : clé non enregistrée.")
+            return
+        case .offline:
+            keyChecks[account] = result
+            keyMessages[account] = String(localized: "Réseau indisponible : clé non vérifiée, non enregistrée.")
+            return
+        case .valid, .missing, .verifying, .notSaved:
+            break
         }
         guard await dependencies.saveKey(account, draft) else {
+            keyChecks[account] = .notSaved
             keyMessages[account] = String(localized: "Impossible d'enregistrer la clé \(dependencies.keyStore.place).")
             return
         }
         keysLoadedAt = Date()
+        keyChecks[account] = .valid
         if unchanged() { keyDrafts[account] = nil }
         keyMessages[account] = String(localized: "Clé enregistrée \(dependencies.keyStore.place).")
     }
 
+    /// Revérifie chez le fournisseur une clé déjà enregistrée (premier lancement guidé), sans la réécrire.
+    func recheckStoredKey(_ account: String) async {
+        guard let key = dependencies.loadKey(account), !key.isEmpty, !verifyingKeys.contains(account) else { return }
+        verifyingKeys.insert(account)
+        defer { verifyingKeys.remove(account) }
+        keyChecks[account] = .verifying
+        let result = await check(key, account: account)
+        // Clé remplacée ou retirée pendant la vérification : ce résultat ne la concerne plus.
+        guard dependencies.loadKey(account) == key else {
+            keyChecks[account] = nil
+            return
+        }
+        keyChecks[account] = result
+    }
+
     func removeKey(_ account: String) async {
-        keyMessages[account] = await deleteKey(account) ? String(localized: "Clé supprimée de ce Mac.") : String(localized: "Impossible de retirer la clé.")
+        let removed = await deleteKey(account)
+        if removed { keyChecks[account] = nil }
+        keyMessages[account] = removed ? String(localized: "Clé supprimée de ce Mac.") : String(localized: "Impossible de retirer la clé.")
     }
 
     /// Textes finaux déjà livrés dans cette application. Relu dans l'historique, sans copie supplémentaire.

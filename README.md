@@ -160,8 +160,10 @@ brew install xcodegen
 scripts/install.sh    # compile la version Release et l'installe dans /Applications/Wispad.app
 ```
 
-Au premier lancement, Wispad guide la configuration : fournisseur de transcription, clés API, autorisations macOS
-(micro, accessibilité, surveillance des entrées). Une mise à jour garde réglages, clés, historique et dictionnaire.
+Au premier lancement, Wispad guide la configuration et vérifie chaque étape : autorisations macOS (micro,
+accessibilité, surveillance des entrées), voix au micro, clé API acceptée par le fournisseur, touche fn reçue, puis
+une vraie dictée. Rejouable depuis Réglages › Revoir la configuration. Une mise à jour garde réglages, clés,
+historique et dictionnaire.
 
 <details>
 <summary><b>Signature de l'app</b></summary>

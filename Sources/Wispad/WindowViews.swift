@@ -36,13 +36,12 @@ struct RootView: View {
     @Environment(\.interactionReduceMotion) private var reduceMotion
 
     var body: some View {
-        if model.settings.onboardingCompleted {
-            main
-        } else {
-            OnboardingView(step: model.onboardingStartStep)
+        if let onboarding = model.onboarding {
+            OnboardingView(controller: onboarding)
                 .frame(minWidth: 820, minHeight: 540)
                 .tint(Theme.brand)
-                .onAppear { model.refreshPermissions() }
+        } else {
+            main
         }
     }
 

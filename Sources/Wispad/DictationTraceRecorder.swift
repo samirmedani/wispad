@@ -43,6 +43,7 @@ final class DictationTraceRecorder {
             }
         }
         if model.persist("détail d'une dictée", { try model.store.saveTrace(trace) }) { model.traceRevision += 1 }
+        model.noteCompletion(trace)
     }
 
     private func elapsed(to instant: Int?) -> Int? {
