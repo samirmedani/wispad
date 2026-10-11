@@ -48,6 +48,13 @@ final class AppModel {
     var isRecordingShortcut = false {
         didSet { hotkeys?.refreshConfig() }
     }
+    /// Enregistrement de « Coller la dernière dictée » dans Réglages : le raccourci actuel est suspendu.
+    var isRecordingPasteShortcut = false {
+        didSet { hotkeys?.refreshConfig() }
+    }
+    /// Pourquoi la dernière combinaison proposée pour « Coller la dernière dictée » a été refusée.
+    var pasteShortcutProblem: String?
+    @ObservationIgnored private var pasteShortcutMonitor: Any?
     var microphoneStatus: AVAuthorizationStatus = .notDetermined
     var accessibilityTrusted = false
     var inputMonitoringTrusted = false
@@ -115,6 +122,76 @@ final class AppModel {
     func setDisplayChoice<Value: Equatable>(_ keyPath: WritableKeyPath<AppSettings, Value>, _ value: Value) {
         guard settings[keyPath: keyPath] != value else { return }
         settings[keyPath: keyPath] = value
+        saveSettings()
+    }
+
+    // MARK: - Raccourci « Coller la dernière dictée »
+
+    /// Clic sur « Modifier » : la prochaine combinaison tapée dans la fenêtre devient le raccourci. Le raccourci
+    /// actuel est suspendu pendant ce temps, pour pouvoir le retaper.
+    func startRecordingPasteShortcut() {
+        guard !isRecordingPasteShortcut else { return }
+        isRecordingShortcut = false
+        pasteShortcutProblem = nil
+        isRecordingPasteShortcut = true
+        pasteShortcutMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            let keyCode = Int(event.keyCode)
+            let flags = UInt64(event.modifierFlags.intersection(.deviceIndependentFlagsMask).rawValue)
+            MainActor.assumeIsolated { _ = self?.recordPasteShortcut(keyCode: keyCode, flags: flags) }
+            // Avalée : la combinaison essayée ne déclenche rien dans la fenêtre.
+            return nil
+        }
+    }
+
+    func stopRecordingPasteShortcut() {
+        if let monitor = pasteShortcutMonitor { NSEvent.removeMonitor(monitor) }
+        pasteShortcutMonitor = nil
+        if isRecordingPasteShortcut { isRecordingPasteShortcut = false }
+    }
+
+    /// Combinaison tapée pendant l'enregistrement. Échap seul annule ; une combinaison refusée laisse
+    /// l'enregistrement ouvert avec la raison. Vrai si le raccourci a été enregistré.
+    @discardableResult
+    func recordPasteShortcut(keyCode: Int, flags: UInt64) -> Bool {
+        let modifiers = flags & PasteShortcut.modifierMask
+        if keyCode == HotkeyLogic.escapeKeyCode, modifiers == 0 {
+            pasteShortcutProblem = nil
+            stopRecordingPasteShortcut()
+            return false
+        }
+        let candidate = PasteShortcut(keyCode: keyCode, modifiers: modifiers)
+        let problem: PasteShortcutProblem?
+        if flags & ModifierMask.function != 0, !PasteShortcutRules.carriesFunctionFlag(keyCode) {
+            problem = .functionKey
+        } else {
+            problem = PasteShortcutRules.problem(
+                candidate,
+                system: dependencies.systemShortcuts(),
+                dictation: (settings.keyCode, settings.modifierFlags)
+            )
+        }
+        if let problem {
+            pasteShortcutProblem = PasteShortcutText.message(for: problem, shortcut: KeyLabels.describe(candidate))
+            return false
+        }
+        pasteShortcutProblem = nil
+        settings.pasteLastShortcut = candidate
+        saveSettings()
+        stopRecordingPasteShortcut()
+        return true
+    }
+
+    func resetPasteShortcut() {
+        stopRecordingPasteShortcut()
+        pasteShortcutProblem = nil
+        settings.pasteLastShortcut = .standard
+        saveSettings()
+    }
+
+    func setPasteShortcutEnabled(_ enabled: Bool) {
+        stopRecordingPasteShortcut()
+        pasteShortcutProblem = nil
+        settings.pasteLastShortcut.enabled = enabled
         saveSettings()
     }
 

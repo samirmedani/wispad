@@ -58,13 +58,29 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
    consigne sur la sélection passe par `TextCleaner.transform`, sans garde-fou. Les raccourcis vocaux
    (`VoiceSnippets`) s'appliquent ensuite.
 7. La dictée est enregistrée (`HistoryStore`), collée dans l'ordre (`TextInserter`, raccord `SmartJoin`), puis
-   surveillée pour l'apprentissage (`CorrectionWatcher`, tri par `JevJudge` et `TermJudge`).
+   surveillée pour l'apprentissage (`CorrectionWatcher`, tri par `JevJudge` et `TermJudge`). Le statut du collage
+   vient de `FocusedField` (WispadCore) : confirmé, aucun champ (`FocusedFieldKind.notText` avant comme après ⌘V)
+   ou envoyé. Tout statut non livré passe par `DictationCoordinator.offerReadyText` : texte copié, bulle avec
+   Copier et Coller (`readyMessage`).
 8. Chaque appel facturable devient un `UsageEvent` ; la trace sans texte (`DictationTraceRecorder`) alimente le
    détail et le diagnostic.
    L'écran Consommation compte tous les appels enregistrés, filtrés par la seule période
    (`UsagePresentation.events`) ; les bascules vers un fournisseur de secours sont lues dans ces appels
    (`FallbackSummary`, textes de la carte dans `FallbackPresentation`).
    Une clé devenue inutile dans `app_metadata` est supprimée à l'ouverture de `HistoryStore`, jamais les appels.
+
+## Coller la dernière dictée
+
+- **Clavier** : `HotkeyConfig.paste` (nil si désactivé ou en cours d'enregistrement) ; `HotkeyLogic` reconnaît la
+  combinaison avant le raccourci de dictée (`PasteShortcut.matches` : modificateurs exacts, jamais avec fn), l'avale
+  et rend `HotkeyOutput.pasteLast`. `HotkeyMonitor` appelle `DictationCoordinator.pasteLastDictation`.
+- **Choix et statut** : `PasteLastChoice` (WispadCore) choisit la dictée et dit si un nouveau collage améliore son
+  statut ; le collage passe par `AppDependencies.insert` (`TextInserter`), après `modifiersReleased`.
+- **Réglage** : `AppSettings.pasteLastShortcut` (`PasteShortcut`, lecture tolérante champ par champ, combinaison
+  invalide → ⌃⌥V via `PasteShortcut.restored`). `PasteShortcutRules.problem` refuse une combinaison (raisons sans
+  texte, écrites par `PasteShortcutText`) ; les raccourcis de macOS viennent de `SystemShortcuts`
+  (`CopySymbolicHotKeys`, via `AppDependencies.systemShortcuts`). L'enregistreur (`AppModel.recordPasteShortcut`,
+  vue `PasteShortcutRow`) écoute les frappes de la fenêtre avec un moniteur local, le temps d'un enregistrement.
 
 Toutes les frontières du système (micro, réseau, clés, collage, son) passent par
 `AppDependencies` : les tests les remplacent et n'ouvrent jamais le vrai micro ni le vrai réseau.

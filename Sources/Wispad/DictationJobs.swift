@@ -146,4 +146,8 @@ struct ShownFailure {
     let id = UUID()
     var message: String
     var text: String?
+    /// Dictée de l'historique dont le texte est proposé : son statut suit un nouveau collage réussi.
+    var recordID: String?
+    /// Confirmation « Copié » après un clic sur Copier.
+    var copied = false
 }

@@ -45,6 +45,10 @@ final class DictationCoordinator {
     }
     @ObservationIgnored private var outputMuted = false
     var failureText: String?
+    /// Copier vient d'être cliqué : la bulle confirme « Copié » avant de partir.
+    var failureCopied = false
+    /// Un collage de « Coller la dernière dictée » (ou du bouton Coller) est en cours.
+    @ObservationIgnored private var pastingAgain = false
     /// Barres du spectre affiché : graves au centre, aigus sur les bords.
     var spectrum = Array(repeating: Float(0), count: DictationCoordinator.barCount)
     /// Relais qui travaille sur cette dictée (« OpenAI ») : la bulle change de couleur.
@@ -55,6 +59,8 @@ final class DictationCoordinator {
     @ObservationIgnored private var pendingAnnouncement: String?
     /// Le message de la bulle annonce une bascule vers un relais (icône et couleur dédiées).
     private(set) var noticeIsRelay = false
+    /// Le message de la bulle est une simple information (rien à coller) : icône neutre.
+    private(set) var noticeIsInfo = false
     /// Le message demande de garder ou non un mot déjà ajouté au dictionnaire.
     private(set) var noticeConfirmsLearning = false
 
@@ -78,8 +84,10 @@ final class DictationCoordinator {
     /// En dessous, l'enregistrement est jeté sans appel API (appui trop bref, souffle).
     static let minimumDuration = 0.3
     /// Durées d'affichage des messages ; une fine barre se vide pendant ce temps.
-    /// Le temps de cliquer sur Copier quand le texte n'a pas pu être collé.
-    static let failureSeconds = 10.0
+    /// Le temps de lire et de cliquer sur Copier ou Coller quand le texte n'a pas pu être collé.
+    static let failureSeconds = 12.0
+    /// Confirmation « Copié », puis la bulle part.
+    static let copiedSeconds = 1.5
     static let noticeSeconds = 3.5
     /// Confirmation d'un mot appris : assez longtemps pour cliquer, puis le mot reste.
     static let learningSeconds = 8.0
@@ -614,20 +622,7 @@ final class DictationCoordinator {
             job.delivered = true
             if let note = job.announcement { pendingAnnouncement = note.message }
         } else {
-            let message: String
-            switch status {
-            case .refusedSecure: message = String(localized: "Champ sécurisé : texte gardé dans l'historique.")
-            case .noTarget:
-                model.dependencies.copyText(finalText)
-                message = String(localized: "Aucun champ actif : texte copié, colle-le avec ⌘V.")
-            default:
-                // Le texte est déjà dans le presse-papiers : un ⌘V suffit, sans chercher le bouton.
-                model.dependencies.copyText(finalText)
-                message = String(localized: "Insertion impossible : texte copié, colle-le avec ⌘V.")
-            }
-            Self.insertionLog.notice("échec du collage : \(status.rawValue, privacy: .public)")
-            model.statusBanner = message
-            showFailure(message, text: finalText)
+            offerReadyText(finalText, status: status, recordID: record.id)
         }
         // La bulle part d'abord ; le ménage des vieux audios vient après.
         settle(job)
@@ -650,10 +645,88 @@ final class DictationCoordinator {
         changed()
     }
 
-    private func showFailure(_ message: String, text: String?) {
-        shownFailure = ShownFailure(message: message, text: text)
+    private func showFailure(_ message: String, text: String?, recordID: String? = nil) {
+        shownFailure = ShownFailure(message: message, text: text, recordID: recordID)
         refreshPhase()
         changed()
+    }
+
+    // MARK: - Texte prêt, faute de champ
+
+    /// Message de la bulle quand le texte n'a pu être écrit nulle part : court, toujours suivi de Copier.
+    static func readyMessage(for status: InsertionStatus) -> String {
+        switch status {
+        case .noTarget: return String(localized: "Pas de champ où écrire : le texte est prêt")
+        case .refusedSecure: return String(localized: "Champ sécurisé : le texte est prêt")
+        default: return String(localized: "Collage impossible : le texte est prêt")
+        }
+    }
+
+    /// Aucun chemin d'échec ne finit en silence : le texte est copié (sauf vers un champ sécurisé, où il ne doit
+    /// pas traîner dans le presse-papiers) et la bulle propose Copier et Coller, sans prendre le focus.
+    private func offerReadyText(_ text: String, status: InsertionStatus, recordID: String?) {
+        guard let model else { return }
+        if status != .refusedSecure { model.dependencies.copyText(text) }
+        Self.insertionLog.notice("échec du collage : \(status.rawValue, privacy: .public)")
+        let message = Self.readyMessage(for: status)
+        model.statusBanner = message
+        showFailure(message, text: text, recordID: recordID)
+    }
+
+    /// Copier, dans la bulle : le texte part dans le presse-papiers et la bulle confirme « Copié ».
+    func copyReadyText() {
+        guard let model, let failure = shownFailure, let text = failure.text else { return }
+        model.dependencies.copyText(text)
+        model.statusBanner = String(localized: "Texte copié.")
+        shownFailure = ShownFailure(message: String(localized: "Copié"), text: nil, copied: true)
+        refreshPhase()
+        changed()
+    }
+
+    /// Coller, dans la bulle : la bulle ne prend jamais le focus, le texte va donc au champ de l'app active.
+    func pasteReadyText() {
+        guard let failure = shownFailure, let text = failure.text else { return }
+        let record = failure.recordID.flatMap { id in model?.history.first { $0.id == id } }
+        dismissFailure()
+        Task { @MainActor [weak self] in await self?.pasteAgain(text, record: record) }
+    }
+
+    /// Raccourci « Coller la dernière dictée » : la dernière dictée non insérée, sinon la dernière dictée, au
+    /// curseur actuel. Ignoré pendant une écoute : la bulle et le micro servent à cette dictée.
+    func pasteLastDictation() async {
+        guard let model, capture == nil, !pastingAgain else { return }
+        // Les dictées qui se terminent se collent d'abord, dans l'ordre.
+        while let last = jobs.last {
+            try? await last.pasted.value()
+            if jobs.last === last { break }
+        }
+        guard capture == nil, !pastingAgain else { return }
+        guard let record = PasteLastChoice.pick(model.history) else {
+            dismissFailure()
+            announce(String(localized: "Aucune dictée à coller"), relay: false, info: true)
+            return
+        }
+        await pasteAgain(record.finalText, record: record)
+    }
+
+    /// Même collage qu'une dictée (presse-papiers restauré après) ; sans champ, même message que la dictée.
+    private func pasteAgain(_ text: String, record: DictationRecord?) async {
+        guard let model, capture == nil, !pastingAgain else { return }
+        pastingAgain = true
+        defer { pastingAgain = false }
+        dismissFailure()
+        await model.dependencies.modifiersReleased()
+        guard capture == nil else { return }
+        let status = await model.dependencies.insert(text, DictationContext(), { [weak self] in self?.capture == nil })
+        if let record, let updated = PasteLastChoice.updatedStatus(previous: record.insertionStatus, outcome: status) {
+            model.persist("statut d'une dictée") { try model.store.updateStatus(id: record.id, status: updated.rawValue) }
+            model.reloadHistory()
+        }
+        switch status {
+        case .inserted, .pasteSent: model.statusBanner = nil
+        case .cancelled: break
+        default: offerReadyText(text, status: status, recordID: record?.id)
+        }
     }
 
     /// Couleur de relais : seulement si la bulle montre cette dictée, pas l'écoute d'une autre.
@@ -675,6 +748,8 @@ final class DictationCoordinator {
         }
         let text = capture == nil ? shownFailure?.text : nil
         if failureText != text { failureText = text }
+        let copied = capture == nil && shownFailure?.copied == true
+        if failureCopied != copied { failureCopied = copied }
         if phase != next { phase = next }
         scheduleFailureDismissal()
         // Relais, puis confirmation d'un mot appris, dès que la bulle est libre.
@@ -694,8 +769,9 @@ final class DictationCoordinator {
         guard phase.isFailure, let failure = shownFailure, dismissing != failure.id else { return }
         dismissing = failure.id
         failureDismissal?.cancel()
+        let seconds = failure.copied ? Self.copiedSeconds : Self.failureSeconds
         failureDismissal = Task { @MainActor [weak self] in
-            try? await Task.sleep(nanoseconds: UInt64(Self.failureSeconds * 1_000_000_000))
+            try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
             guard !Task.isCancelled, let self, self.shownFailure?.id == failure.id else { return }
             self.dismissFailure()
         }
@@ -1021,10 +1097,11 @@ extension DictationCoordinator {
     }
 
     /// Message bref dans la bulle, hors dictée.
-    func announce(_ message: String, relay: Bool, confirmsLearning: Bool = false, seconds: Double? = nil) {
+    func announce(_ message: String, relay: Bool, confirmsLearning: Bool = false, info: Bool = false, seconds: Double? = nil) {
         // Pendant une dictée, la bulle sert à la dictée : le message est ignoré.
         guard phase == .idle, let model else { return }
         noticeIsRelay = relay
+        noticeIsInfo = info
         noticeConfirmsLearning = confirmsLearning
         notice = message
         model.overlay.show()
@@ -1078,6 +1155,7 @@ extension DictationCoordinator {
         let hadNotice = notice != nil
         notice = nil
         noticeIsRelay = false
+        noticeIsInfo = false
         noticeConfirmsLearning = false
         guard phase == .idle else { return }
         if presentIdleBubble() { return }

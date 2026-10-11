@@ -57,3 +57,27 @@ enum KeyLabels {
         return names[keyCode] ?? String(localized: "touche \(keyCode)")
     }
 }
+
+extension KeyLabels {
+    /// « ⌃ ⌥ V » : même écriture que le raccourci de dictée ; « ⌃⌥V » serré pour la carte de la barre latérale.
+    static func describe(_ shortcut: PasteShortcut, compact: Bool = false) -> String {
+        (PasteShortcut.modifierSymbols(shortcut.modifiers) + [name(for: shortcut.keyCode)]).joined(separator: compact ? "" : " ")
+    }
+}
+
+/// Raccourcis déclarés par macOS dans Réglages Système › Clavier › Raccourcis (Spotlight, captures, Mission
+/// Control, sources de saisie…), seulement ceux qui sont activés. Lus à la demande, jamais enregistrés.
+enum SystemShortcuts {
+    static func enabled() -> [PasteShortcut] {
+        var unmanaged: Unmanaged<CFArray>?
+        guard CopySymbolicHotKeys(&unmanaged) == noErr,
+              let entries = unmanaged?.takeRetainedValue() as? [[String: Any]] else { return [] }
+        return entries.compactMap { entry in
+            // 65535 : raccourci lié à un caractère plutôt qu'à une touche, sans code utilisable.
+            guard (entry["kHISymbolicHotKeyEnabled"] as? Bool) == true,
+                  let code = entry["kHISymbolicHotKeyCode"] as? Int, (0..<128).contains(code),
+                  let carbon = entry["kHISymbolicHotKeyModifiers"] as? Int else { return nil }
+            return PasteShortcut(keyCode: code, modifiers: PasteShortcut.modifiers(carbon: carbon))
+        }
+    }
+}

@@ -344,6 +344,11 @@ struct ShortcutCard: View {
             row(keys: [key, key], label: String(localized: "Mains libres"))
             row(keys: [key], label: String(localized: "Parler (maintenu)"))
             row(keys: ["esc"], label: String(localized: "Annuler"))
+            let paste = model.settings.pasteLastShortcut
+            if paste.enabled {
+                row(keys: [KeyLabels.describe(paste, compact: true)], label: String(localized: "Coller la dernière"))
+                    .help(String(localized: "Coller la dernière dictée"))
+            }
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
