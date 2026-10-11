@@ -2138,7 +2138,7 @@ struct InsertionFailureTests {
         let coordinator = f.model.coordinator
         await coordinator.begin(.pushToTalk)
         await coordinator.end()
-        #expect(coordinator.phase.isFailure)
+        #expect(coordinator.phase == .failure(DictationCoordinator.readyMessage(for: .noTarget)))
         #expect(coordinator.failureTimer.countdown?.isPaused == false)
         coordinator.holdMessages(true)
         #expect(coordinator.failureTimer.countdown?.isPaused == true)
