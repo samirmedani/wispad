@@ -48,6 +48,41 @@ Raccourci par défaut : fn seule. Wispad intercepte la touche fn pour que macOS 
 - Une fois affichée, c'est une fenêtre ordinaire : passer à une autre app, cliquer sur le bureau ou changer de
   bureau la laisse à sa place et sur son bureau, simplement derrière l'app active.
 
+## Premier lancement guidé
+
+Au premier lancement (aucun réglage enregistré), la fenêtre affiche une configuration en sept étapes, avec une
+barre de progression : Bienvenue, Autorisations, Micro, Fournisseur, Touche, Essai, Fin. Chaque étape est à faire,
+en cours, réussie (✓) ou en problème (✗, avec la marche à suivre) ; « Continuer » n'est actif qu'une fois l'étape
+réussie. « Plus tard » est proposé seulement pour le micro, la touche et l'essai.
+
+- **Autorisations**, toutes sur un écran : micro, accessibilité (coller le texte), surveillance des entrées (touche
+  fn). « Autoriser » déclenche la demande de macOS ; ensuite, ou après un refus, le bouton ouvre le bon panneau de
+  Réglages Système et le chemin exact est affiché. L'état est relu toutes les 0,5 s. Surveillance des entrées
+  accordée mais écoute du clavier impossible après 3 s : macOS attend une relance, « Relancer Wispad » rouvre l'app
+  à la même étape.
+- **Micro** : choix du micro (celui du système par défaut ; le micro choisi sert ensuite aux dictées tant qu'il est
+  branché, sinon celui du système ; Réglages › Général › Micro) et vumètre réel. ✓ quand une vraie voix est
+  entendue : au moins 0,6 s au-dessus de −48 dBFS et 10 dB au-dessus du bruit de la pièce (un clic, un souffle ou
+  un ventilateur ne suffisent pas). Sans voix après 12 s, l'écran dit quoi vérifier. Seul le niveau est lu :
+  l'audio n'est ni enregistré, ni gardé, ni envoyé.
+- **Fournisseur** : xAI ou OpenAI, clé collée puis vérifiée chez le fournisseur avant d'être enregistrée (même
+  vérification que Fournisseurs) ; une clé déjà enregistrée est revérifiée sans être réécrite. ✓ seulement avec une
+  clé acceptée. Lien vers la page de création de clé de chaque fournisseur. Correction facultative (DeepSeek, relais
+  OpenAI) avec la même vérification, et les réglages « Comprendre le sujet grâce à la fenêtre active » et
+  « Apprendre de mes corrections ».
+- **Touche** : maintien et double appui expliqués ; pendant cette étape, chaque appui est seulement constaté
+  (« Touche détectée », gestes reconnus allumés) et aucune dictée ne démarre. Rien reçu en 10 s : rappel de la
+  surveillance des entrées, et du réglage macOS « Touche fn/🌐 : Ne rien faire » s'il lance autre chose.
+- **Essai** : vraie dictée avec la touche dans un champ de l'écran, phrase suggérée. ✓ quand une dictée se termine
+  et que son texte arrive dans le champ (2 s au plus après le collage), avec le nombre de mots et la durée. Un texte
+  tapé à la main ne compte pas. En cas d'échec, la cause : micro, clé, réseau, fournisseur, rien entendu, collage ou
+  annulation, avec « Réessayer » et l'étape à revoir.
+- **Fin** : rappel des deux gestes, lien vers Réglages, « Terminer ».
+
+Une installation existante (réglages sans ce champ) ne refait pas la configuration après une mise à jour.
+Réglages › Général › « Revoir la configuration » la rejoue sans rien effacer ; on peut la quitter à tout moment.
+Fenêtre fermée pendant la configuration : le test du micro s'arrête et la touche dicte de nouveau normalement.
+
 ## Transcription
 
 Toujours chez un fournisseur, au choix dans Fournisseurs : xAI `grok-voice-transcribe-2.0` (recommandé) ou OpenAI
@@ -140,7 +175,7 @@ puce »… jusqu'à la dixième (aussi « premier point », « premièrement »)
 « à la ligne », « nouvelle ligne » (et « first bullet », « firstly », « end of list », « new paragraph »,
 « new line »).
 
-Listes sans annonce, comme Wispr Flow : dès trois éléments courts et parallèles (courses, tâches, noms, options),
+Listes sans annonce : dès trois éléments courts et parallèles (courses, tâches, noms, options),
 la correction fait une liste à puces, une majuscule par élément, sans ponctuation finale ni « et ». La phrase qui
 annonce les éléments reste au-dessus et finit par « : » (« Pour les courses, il me faut : » puis « - Des tomates »…).
 Restent des phrases : deux éléments, une énumération suivie d'autre chose dans la phrase (« J'ai vu Paul, Marc et

@@ -65,7 +65,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                    CommandLine.arguments.indices.contains(index + 1),
                    let section = AppSection(rawValue: CommandLine.arguments[index + 1]) {
                     self?.show(section: section)
-                } else if !model.settings.onboardingCompleted {
+                } else if model.onboarding != nil {
                     self?.show(section: .home)
                 } else if model.setupWarning != nil {
                     self?.show(section: .providers)
@@ -97,11 +97,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         model.selectedSection = section
         NSApp.setActivationPolicy(.regular)
         let window = self.window ?? makeWindow(model: model)
+        let reopening = self.window != nil && !window.isVisible
         self.window = window
         MainWindow.bringToFront(window)
+        if reopening { model.onboarding?.resume() }
     }
 
-    func windowWillClose(_ notification: Notification) { model?.historyPlayer.close() }
+    func windowWillClose(_ notification: Notification) {
+        model?.historyPlayer.close()
+        // Fenêtre fermée pendant la configuration guidée : micro du test et écoute de la touche rendus,
+        // pour que fn dicte de nouveau normalement.
+        model?.onboarding?.suspend()
+    }
 
     /// Ouverture à la main (Dock, Spotlight, Finder) alors que Wispad tourne déjà : on montre la fenêtre.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

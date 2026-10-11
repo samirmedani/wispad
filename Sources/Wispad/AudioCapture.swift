@@ -28,6 +28,15 @@ final class AudioCapture: @unchecked Sendable {
     private var converter: AVAudioConverter?
     private var wav: WAVStream?
     private var analyzer = SpectrumAnalyzer()
+    private let inputChoice = OSAllocatedUnfairLock<String?>(initialState: nil)
+    /// Micro réellement réglé sur le moteur (file `control` seulement) ; nil : celui du système.
+    private var appliedInput: String?
+
+    /// Micro voulu pour la prochaine écoute (identifiant CoreAudio) ; nil : celui du système.
+    var inputDeviceUID: String? {
+        get { inputChoice.withLock { $0 } }
+        set { inputChoice.withLock { $0 = newValue } }
+    }
 
     var onPCM: (@Sendable (Data) -> Void)?
     var isRunning: Bool { control.sync { engine?.isRunning == true } }
@@ -48,8 +57,17 @@ final class AudioCapture: @unchecked Sendable {
     }
 
     private func startAudio(directory: URL) throws -> URL {
-        let engine = engine ?? AVAudioEngine()
+        // Micro choisi et toujours branché ; sinon celui du système. Sans choix, rien n'est lu ni changé.
+        let wanted = inputDeviceUID.flatMap { InputDeviceChoice.effectiveUID(saved: $0, available: AudioInputDevices.all().map(\.uid)) }
+        if wanted != appliedInput {
+            // Autre micro : un moteur neuf, réglé avant de lire son format.
+            self.engine = nil
+        }
+        let reused = self.engine != nil
+        let engine = self.engine ?? AVAudioEngine()
         self.engine = engine
+        if !reused, let wanted { AudioInputDevices.use(wanted, in: engine) }
+        appliedInput = wanted
         let input = engine.inputNode
         let hardware = input.outputFormat(forBus: 0)
         guard hardware.sampleRate > 0, hardware.channelCount > 0 else {

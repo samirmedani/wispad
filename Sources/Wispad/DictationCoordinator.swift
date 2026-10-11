@@ -159,6 +159,7 @@ final class DictationCoordinator {
         do {
             try FileManager.default.createDirectory(at: model.audioDirectory, withIntermediateDirectories: true)
             let audio = model.dependencies.makeCapture()
+            audio.inputDeviceUID = model.settings.microphoneUID.isEmpty ? nil : model.settings.microphoneUID
             current.audio = audio
             let pcm = current.pcm
             let firstPacket = OSAllocatedUnfairLock<Int?>(initialState: nil)

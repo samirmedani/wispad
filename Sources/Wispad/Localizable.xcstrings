@@ -145,16 +145,6 @@
         }
       }
     },
-    "%@ : reviens à l'étape concernée." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@: go back to the relevant step."
-          }
-        }
-      }
-    },
     "%@ · %@" : {
       "localizations" : {
         "en" : {
@@ -387,16 +377,6 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$@. L'audio part chez %2$@ ; s'il ne répond pas et qu'une clé de l'autre fournisseur est enregistrée, le même enregistrement part chez celui-ci."
-          }
-        }
-      }
-    },
-    "Chez le fournisseur de ton choix, avec ta clé API." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "With the provider of your choice, using your API key."
           }
         }
       }
@@ -1179,16 +1159,6 @@
         }
       }
     },
-    "Autorisations macOS" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "macOS permissions"
-          }
-        }
-      }
-    },
     "Autorisé" : {
       "localizations" : {
         "en" : {
@@ -1299,32 +1269,12 @@
         }
       }
     },
-    "Ça marche ! Tu peux dicter partout." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "It works! You can dictate anywhere."
-          }
-        }
-      }
-    },
     "Ce que tu as vraiment dit" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "What you actually said"
-          }
-        }
-      }
-    },
-    "Ce que Wispad envoie" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "What Wispad sends"
           }
         }
       }
@@ -1409,16 +1359,6 @@
         }
       }
     },
-    "Clé créée dans la console de %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Key created in the %@ console"
-          }
-        }
-      }
-    },
     "Clé enregistrée %@." : {
       "localizations" : {
         "en" : {
@@ -1459,16 +1399,6 @@
         }
       }
     },
-    "Clés de correction" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Correction keys"
-          }
-        }
-      }
-    },
     "Clés facultatives" : {
       "localizations" : {
         "en" : {
@@ -1495,16 +1425,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Keys unreadable on this Mac: %@ key unavailable."
-          }
-        }
-      }
-    },
-    "Clique dans le champ, maintiens fn et dis une phrase." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Click in the field, hold fn and say a sentence."
           }
         }
       }
@@ -1669,16 +1589,6 @@
         }
       }
     },
-    "Contexte" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Context"
-          }
-        }
-      }
-    },
     "Continuer" : {
       "localizations" : {
         "en" : {
@@ -1755,16 +1665,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Correct the text word for word. The text, what Wispad heard and the audio stay on this Mac: they are used to check that a change fixes the error without causing others."
-          }
-        }
-      }
-    },
-    "Corriger le texte avant de l'insérer" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Correct the text before inserting it"
           }
         }
       }
@@ -2005,16 +1905,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Diagnostics exported."
-          }
-        }
-      }
-    },
-    "Dicte partout sur ton Mac : maintiens fn, parle, relâche. Le texte s'écrit là où tu tapes." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dictate anywhere on your Mac: hold fn, speak, let go. The text appears where you type."
           }
         }
       }
@@ -2361,26 +2251,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Error reported"
-          }
-        }
-      }
-    },
-    "Essaie : « Bonjour, je teste Wispad, euh, non, je dicte mon premier message. »" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Try: “Hello, I'm testing Wispad, um, no, I'm dictating my first message.”"
-          }
-        }
-      }
-    },
-    "Essaie maintenant" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Try it now"
           }
         }
       }
@@ -2835,32 +2705,12 @@
         }
       }
     },
-    "L'historique et l'audio restent sur ce Mac. Aucune donnée ne passe par Wispad : tes appels vont directement aux fournisseurs que tu as choisis." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "History and audio stay on this Mac. No data goes through Wispad: your calls go straight to the providers you chose."
-          }
-        }
-      }
-    },
     "La consommation sauvegardée n'a pas pu être relue. Les montants affichés peuvent être incomplets." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Saved usage couldn't be read back. The amounts shown may be incomplete."
-          }
-        }
-      }
-    },
-    "La correction la moins chère, environ 0,0001 $ par dictée" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The cheapest correction, about $0.0001 per dictation"
           }
         }
       }
@@ -2907,16 +2757,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "An API stream's duration is its finalization after you stop. “—”: not measured. Deferred learning calls show up here once they finish."
-          }
-        }
-      }
-    },
-    "La fin de la conversation visible (2 000 caractères au plus) et tes dernières dictées dans la même app partent avec la dictée chez le service de correction : noms, nombres et sujet sont mieux écrits. Rien n'est enregistré ni journalisé." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The end of the visible conversation (2,000 characters at most) and your latest dictations in the same app go with the dictation to the correction service: names, numbers and topic come out better. Nothing is saved or logged."
           }
         }
       }
@@ -3111,16 +2951,6 @@
         }
       }
     },
-    "macOS ouvre Réglages Système pour les deux dernières : active Wispad dans la liste, puis reviens ici." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "macOS opens System Settings for the last two: turn on Wispad in the list, then come back here."
-          }
-        }
-      }
-    },
     "Mains libres" : {
       "localizations" : {
         "en" : {
@@ -3147,16 +2977,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hold: dictate. Quick double press: hands-free, one press stops it. Single press when idle: nothing. Esc cancels the current recording without reaching the app. A new dictation can start while the previous one finishes."
-          }
-        }
-      }
-    },
-    "Double appui sur fn pour dicter les mains libres, un appui l'arrête. Maintiens fn pour une dictée courte, Échap pour annuler." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Double-press fn for hands-free dictation; press once to stop. Hold fn for a quick dictation, Esc to cancel."
           }
         }
       }
@@ -3401,16 +3221,6 @@
         }
       }
     },
-    "Ouvert seulement pendant une dictée" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Only open while you dictate"
-          }
-        }
-      }
-    },
     "Ouverture à la connexion refusée." : {
       "localizations" : {
         "en" : {
@@ -3511,16 +3321,6 @@
         }
       }
     },
-    "Plus de contexte rend la correction plus juste. Tu choisis." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "More context makes the correction more accurate. Your choice."
-          }
-        }
-      }
-    },
     "Plus fiable sur la fin de phrase et les mots techniques. Une transcription de plus par dictée, environ 0,0005 $." : {
       "localizations" : {
         "en" : {
@@ -3541,16 +3341,6 @@
         }
       }
     },
-    "Ponctuation, majuscules, « euh » et reprises retirés. Facultative." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Punctuation and capitals added, “um”s and self-corrections removed. Optional."
-          }
-        }
-      }
-    },
     "Position dans l'audio" : {
       "localizations" : {
         "en" : {
@@ -3567,26 +3357,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Keys come from your secrets vault and stay in memory; nothing is written on this Mac. A new key is saved in the vault."
-          }
-        }
-      }
-    },
-    "Pour coller le texte dans l'app où tu écris" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "To paste the text into the app where you type"
-          }
-        }
-      }
-    },
-    "Pour reconnaître le raccourci fn" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "To recognize the fn shortcut"
           }
         }
       }
@@ -3847,16 +3617,6 @@
         }
       }
     },
-    "Relais de correction" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Correction fallback"
-          }
-        }
-      }
-    },
     "Remplacer" : {
       "localizations" : {
         "en" : {
@@ -3983,16 +3743,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "service paused"
-          }
-        }
-      }
-    },
-    "Si tu corriges un nom mal entendu juste après une dictée, Wispad propose de l'ajouter à ton dictionnaire. Seuls le mot corrigé et la phrase dictée sont envoyés." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "If you fix a misheard name right after a dictation, Wispad offers to add it to your dictionary. Only the corrected word and the dictated sentence are sent."
           }
         }
       }
@@ -4383,16 +4133,6 @@
         }
       }
     },
-    "Transcription de ta voix" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Voice transcription"
-          }
-        }
-      }
-    },
     "Transcription échouée" : {
       "localizations" : {
         "en" : {
@@ -4469,26 +4209,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Transcribing…"
-          }
-        }
-      }
-    },
-    "Trois autorisations pour écouter le raccourci, ouvrir le micro et coller le texte." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Three permissions to listen for the shortcut, open the microphone and paste the text."
-          }
-        }
-      }
-    },
-    "Tu te reprends ? « mardi, ah non, mercredi » devient « mercredi »." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Correct yourself mid-sentence? “Tuesday, oh no, Wednesday” becomes “Wednesday”."
           }
         }
       }
@@ -4859,6 +4579,1396 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "main provider set aside"
+          }
+        }
+      }
+    },
+    "%@ : en cours" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: in progress"
+          }
+        }
+      }
+    },
+    "%@ : plus tard" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: later"
+          }
+        }
+      }
+    },
+    "%@ : problème" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: problem"
+          }
+        }
+      }
+    },
+    "%@ : réussi" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: done"
+          }
+        }
+      }
+    },
+    "%@ : à faire" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: to do"
+          }
+        }
+      }
+    },
+    "%@ · %@ s de parole. Tu peux dicter partout sur ton Mac." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · %2$@ s of speech. You can dictate anywhere on your Mac."
+          }
+        }
+      }
+    },
+    "%lld mots" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld words"
+          }
+        }
+      }
+    },
+    "1 mot" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 word"
+          }
+        }
+      }
+    },
+    "Accès refusé : %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Access denied: %@"
+          }
+        }
+      }
+    },
+    "Active Wispad dans le panneau ouvert, puis reviens ici : l'état se met à jour tout seul." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn on Wispad in the pane that opened, then come back: the status updates by itself."
+          }
+        }
+      }
+    },
+    "Ajoute ou vérifie ta clé à l'étape Fournisseur." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add or check your key in the Provider step."
+          }
+        }
+      }
+    },
+    "Appuie une fois sur %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Press %@ once"
+          }
+        }
+      }
+    },
+    "Appuis reçus : %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Presses received: %lld"
+          }
+        }
+      }
+    },
+    "Aucun micro trouvé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No microphone found"
+          }
+        }
+      }
+    },
+    "Aucune voix entendue" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No voice heard"
+          }
+        }
+      }
+    },
+    "Autorisation manquante : %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Missing permission: %@"
+          }
+        }
+      }
+    },
+    "Bienvenue" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Welcome"
+          }
+        }
+      }
+    },
+    "Branche un micro ou un casque, puis réessaie." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plug in a microphone or a headset, then try again."
+          }
+        }
+      }
+    },
+    "Bravo, tout marche !" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Well done, everything works!"
+          }
+        }
+      }
+    },
+    "Ce micro servira à chaque dictée. Tu peux en changer dans Réglages." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This microphone will be used for every dictation. You can change it in Settings."
+          }
+        }
+      }
+    },
+    "Champ d'essai" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Test field"
+          }
+        }
+      }
+    },
+    "Choisis ton micro et dis quelques mots. Rien n'est enregistré ni envoyé." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pick your microphone and say a few words. Nothing is recorded or sent."
+          }
+        }
+      }
+    },
+    "Choisis un autre micro ou réessaie : une autre app l'utilise peut-être." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pick another microphone or try again: another app may be using it."
+          }
+        }
+      }
+    },
+    "Clique dans le champ avant de dicter et garde Wispad au premier plan. Vérifie aussi l'autorisation Accessibilité." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Click in the field before dictating and keep Wispad in front. Also check the Accessibility permission."
+          }
+        }
+      }
+    },
+    "Clique dans le champ, maintiens %@, dis la phrase, puis relâche." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Click in the field, hold %@, say the sentence, then release."
+          }
+        }
+      }
+    },
+    "Clique sur Autoriser pour chacune" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Click Allow for each one"
+          }
+        }
+      }
+    },
+    "Clé %@ valide" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Valid %@ key"
+          }
+        }
+      }
+    },
+    "Clé DeepSeek · la moins chère" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DeepSeek key · the cheapest"
+          }
+        }
+      }
+    },
+    "Clé du fournisseur indisponible" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Provider key unavailable"
+          }
+        }
+      }
+    },
+    "Clé OpenAI · relais" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OpenAI key · fallback"
+          }
+        }
+      }
+    },
+    "Clé refusée par %@ (HTTP %lld)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Key rejected by %1$@ (HTTP %2$lld)"
+          }
+        }
+      }
+    },
+    "Clé valide, mais non enregistrée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Valid key, but not saved"
+          }
+        }
+      }
+    },
+    "Colle ta clé %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paste your %@ key"
+          }
+        }
+      }
+    },
+    "Commencer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Get started"
+          }
+        }
+      }
+    },
+    "Configuration guidée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guided setup"
+          }
+        }
+      }
+    },
+    "Conseil : dans Réglages Système › Clavier, règle « Touche fn/🌐 » sur « Ne rien faire »." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tip: in System Settings › Keyboard, set “Press 🌐 key to” to “Do Nothing”."
+          }
+        }
+      }
+    },
+    "Copie à nouveau la clé depuis la console du fournisseur, en entier et sans espace." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy the key again from the provider's console, in full and without spaces."
+          }
+        }
+      }
+    },
+    "Corriger le texte" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Correct the text"
+          }
+        }
+      }
+    },
+    "Créer une clé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create a key"
+          }
+        }
+      }
+    },
+    "Dans Réglages Système › Clavier, règle aussi « Touche fn/🌐 » sur « Ne rien faire »." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In System Settings › Keyboard, also set “Press 🌐 key to” to “Do Nothing”."
+          }
+        }
+      }
+    },
+    "Deux gestes pour dicter. Appuie une fois sur la touche pour vérifier que Wispad la reçoit." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Two gestures to dictate. Press the key once to check that Wispad receives it."
+          }
+        }
+      }
+    },
+    "Dicte pour de vrai dans le champ ci-dessous : le texte transcrit et corrigé s'y écrit." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dictate for real into the field below: the transcribed and corrected text appears there."
+          }
+        }
+      }
+    },
+    "Dicter encore" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dictate again"
+          }
+        }
+      }
+    },
+    "Dictée annulée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dictation cancelled"
+          }
+        }
+      }
+    },
+    "Dictée tant que tu tiens la touche ; relâche pour écrire." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dictate while you hold the key; release to write."
+          }
+        }
+      }
+    },
+    "Dis quelques mots…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Say a few words…"
+          }
+        }
+      }
+    },
+    "Double appui" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Double press"
+          }
+        }
+      }
+    },
+    "En attente" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting"
+          }
+        }
+      }
+    },
+    "En attente de la touche…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting for the key…"
+          }
+        }
+      }
+    },
+    "En attente de Réglages Système" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting for System Settings"
+          }
+        }
+      }
+    },
+    "Enregistrement local impossible" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't save locally"
+          }
+        }
+      }
+    },
+    "Essai" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try it"
+          }
+        }
+      }
+    },
+    "Essaie aussi de la maintenir ou de l'appuyer deux fois : chaque geste reconnu s'allume ci-dessus." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Also try holding it or pressing it twice: each recognized gesture lights up above."
+          }
+        }
+      }
+    },
+    "Facultative" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Optional"
+          }
+        }
+      }
+    },
+    "Fin" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        }
+      }
+    },
+    "Il a refusé ou n'a pas répondu : vérifie ta clé et le crédit de ton compte, puis réessaie." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "It refused or didn't respond: check your key and your account credit, then try again."
+          }
+        }
+      }
+    },
+    "Impossible d'enregistrer la clé %@. Réessaie." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't save the key %@. Try again."
+          }
+        }
+      }
+    },
+    "Je t'écoute…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Listening…"
+          }
+        }
+      }
+    },
+    "La clé n'a pas pu être vérifiée. Vérifie le réseau, puis réessaie." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The key couldn't be verified. Check your network, then try again."
+          }
+        }
+      }
+    },
+    "La dictée n'a pas pu partir chez le fournisseur. Vérifie le réseau, puis réessaie." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The dictation couldn't reach the provider. Check your network, then try again."
+          }
+        }
+      }
+    },
+    "La dictée n'a pas pu être gardée sur ce Mac. Réessaie." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The dictation couldn't be kept on this Mac. Try again."
+          }
+        }
+      }
+    },
+    "La fin de la conversation visible (2 000 caractères au plus) et tes dernières dictées dans la même app partent avec la dictée chez le service de correction. Rien n'est enregistré ni journalisé." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The end of the visible conversation (2,000 characters at most) and your latest dictations in the same app go with the dictation to the correction service. Nothing is saved or logged."
+          }
+        }
+      }
+    },
+    "La touche fn" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The fn key"
+          }
+        }
+      }
+    },
+    "Le fournisseur n'a pas confirmé la clé. Réessaie dans un instant." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The provider didn't confirm the key. Try again in a moment."
+          }
+        }
+      }
+    },
+    "Le fournisseur n'a pas transcrit" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The provider didn't transcribe"
+          }
+        }
+      }
+    },
+    "Le micro n'a pas pu s'ouvrir" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The microphone couldn't open"
+          }
+        }
+      }
+    },
+    "Le micro ne s'est pas ouvert" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The microphone didn't open"
+          }
+        }
+      }
+    },
+    "Le test reste sur ce Mac : seul le niveau du son est lu, rien n'est enregistré ni envoyé." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The test stays on this Mac: only the sound level is read, nothing is recorded or sent."
+          }
+        }
+      }
+    },
+    "Le texte n'est pas arrivé dans le champ" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The text didn't reach the field"
+          }
+        }
+      }
+    },
+    "macOS affiche sa demande ou ouvre le bon panneau de Réglages Système." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS shows its prompt or opens the right System Settings pane."
+          }
+        }
+      }
+    },
+    "macOS n'applique cette autorisation qu'au prochain lancement de Wispad. La configuration reprendra ici." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS only applies this permission the next time Wispad launches. Setup will resume here."
+          }
+        }
+      }
+    },
+    "Mains libres ; un appui de plus arrête et écrit." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hands-free; one more press stops and writes."
+          }
+        }
+      }
+    },
+    "Mains libres, pour un long texte : un appui arrête. Échap annule." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hands-free, for longer text: one press stops. Esc cancels."
+          }
+        }
+      }
+    },
+    "Maintenir" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hold"
+          }
+        }
+      }
+    },
+    "Maintiens fn pendant toute la phrase et parle normalement, puis relâche." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hold fn for the whole sentence and speak normally, then release."
+          }
+        }
+      }
+    },
+    "Micro" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Microphone"
+          }
+        }
+      }
+    },
+    "Micro du système" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "System microphone"
+          }
+        }
+      }
+    },
+    "Micro du système (%@)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "System microphone (%@)"
+          }
+        }
+      }
+    },
+    "Niveau du micro" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Microphone level"
+          }
+        }
+      }
+    },
+    "Non enregistrée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not saved"
+          }
+        }
+      }
+    },
+    "Non vérifiée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not verified"
+          }
+        }
+      }
+    },
+    "Ou appuie deux fois pour dicter mains libres, puis une fois pour arrêter." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Or press twice to dictate hands-free, then once to stop."
+          }
+        }
+      }
+    },
+    "Ouvrir les Réglages" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Settings"
+          }
+        }
+      }
+    },
+    "Ouvrir Réglages Clavier" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Keyboard Settings"
+          }
+        }
+      }
+    },
+    "Ouvrir Réglages Système" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open System Settings"
+          }
+        }
+      }
+    },
+    "Par exemple : « Bonjour Wispad, je teste mon micro. »" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "For example: “Hello Wispad, I'm testing my microphone.”"
+          }
+        }
+      }
+    },
+    "Pas de connexion" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No connection"
+          }
+        }
+      }
+    },
+    "Pas encore de clé ? Crée-la dans la console du fournisseur avec le lien ci-dessus." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No key yet? Create one in the provider's console with the link above."
+          }
+        }
+      }
+    },
+    "Pendant ce test, aucune dictée ne démarre : Wispad vérifie seulement qu'il reçoit la touche." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "During this test, no dictation starts: Wispad only checks that it receives the key."
+          }
+        }
+      }
+    },
+    "Ponctuation, majuscules, « euh » et reprises retirés. Sans clé de correction, le fournisseur de voix s'en charge." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Punctuation, capitals, “um”s and restarts removed. Without a correction key, the voice provider handles it."
+          }
+        }
+      }
+    },
+    "Pour coller le texte dans l'app où tu écris." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To paste the text into the app you're writing in."
+          }
+        }
+      }
+    },
+    "Pour entendre ta voix, seulement pendant une dictée." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To hear your voice, only while you dictate."
+          }
+        }
+      }
+    },
+    "Pour reconnaître la touche fn partout sur le Mac." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To recognize the fn key anywhere on your Mac."
+          }
+        }
+      }
+    },
+    "Pour une phrase : parle en tenant la touche, relâche pour écrire." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "For a sentence: speak while holding the key, release to write."
+          }
+        }
+      }
+    },
+    "Prêt : maintiens %@ et parle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ready: hold %@ and speak"
+          }
+        }
+      }
+    },
+    "Quelques minutes pour tout vérifier : autorisations, micro, clé, touche, puis une vraie dictée." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A few minutes to check everything: permissions, microphone, key, shortcut, then a real dictation."
+          }
+        }
+      }
+    },
+    "Quitter la configuration" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leave setup"
+          }
+        }
+      }
+    },
+    "Reconnu" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recognized"
+          }
+        }
+      }
+    },
+    "Refusée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rejected"
+          }
+        }
+      }
+    },
+    "Relance nécessaire" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relaunch needed"
+          }
+        }
+      }
+    },
+    "Relance nécessaire : %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relaunch needed: %@"
+          }
+        }
+      }
+    },
+    "Relancer Wispad" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relaunch Wispad"
+          }
+        }
+      }
+    },
+    "Remplacer la clé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Replace the key"
+          }
+        }
+      }
+    },
+    "Revoir l'étape « %@ »" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Go back to “%@”"
+          }
+        }
+      }
+    },
+    "Revoir la configuration" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Review setup"
+          }
+        }
+      }
+    },
+    "Rien entendu" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing heard"
+          }
+        }
+      }
+    },
+    "Réglages Système › Confidentialité et sécurité › Accessibilité : active Wispad. Absent de la liste ? Ajoute-le avec +." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "System Settings › Privacy & Security › Accessibility: turn on Wispad. Not in the list? Add it with +."
+          }
+        }
+      }
+    },
+    "Réglages Système › Confidentialité et sécurité › Microphone : active Wispad." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "System Settings › Privacy & Security › Microphone: turn on Wispad."
+          }
+        }
+      }
+    },
+    "Réglages Système › Confidentialité et sécurité › Surveillance de l'entrée : active Wispad. Absent de la liste ? Ajoute-le avec +." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "System Settings › Privacy & Security › Input Monitoring: turn on Wispad. Not in the list? Add it with +."
+          }
+        }
+      }
+    },
+    "Ta voix est bien captée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your voice comes through clearly"
+          }
+        }
+      }
+    },
+    "Ta voix part directement chez ce fournisseur, avec ta clé API. Elle est vérifiée avant d'être enregistrée." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your voice goes straight to this provider, with your API key. The key is verified before it's saved."
+          }
+        }
+      }
+    },
+    "Teste ton micro" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Test your microphone"
+          }
+        }
+      }
+    },
+    "Ton fournisseur de transcription" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your transcription provider"
+          }
+        }
+      }
+    },
+    "Touche" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Key"
+          }
+        }
+      }
+    },
+    "Touche détectée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Key detected"
+          }
+        }
+      }
+    },
+    "Tout est prêt" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You're all set"
+          }
+        }
+      }
+    },
+    "Toutes dès maintenant : Wispad vérifie chacune en direct." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All of them now: Wispad checks each one live."
+          }
+        }
+      }
+    },
+    "Toutes les autorisations sont accordées" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All permissions are granted"
+          }
+        }
+      }
+    },
+    "Transcription et correction…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transcribing and correcting…"
+          }
+        }
+      }
+    },
+    "Trois autorisations macOS" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Three macOS permissions"
+          }
+        }
+      }
+    },
+    "Tu parles, Wispad écrit le texte là où se trouve ton curseur, dans n'importe quelle app." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You speak, Wispad writes the text wherever your cursor is, in any app."
+          }
+        }
+      }
+    },
+    "Tu pourras les refaire avec Réglages › Revoir la configuration." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can do them again from Settings › Review setup."
+          }
+        }
+      }
+    },
+    "Un vrai essai" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A real try"
+          }
+        }
+      }
+    },
+    "Valide" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Valid"
+          }
+        }
+      }
+    },
+    "Voix détectée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voice detected"
+          }
+        }
+      }
+    },
+    "Voix à détecter" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting for a voice"
+          }
+        }
+      }
+    },
+    "Vérification auprès de %@…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checking with %@…"
+          }
+        }
+      }
+    },
+    "Vérification impossible (HTTP %lld)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't verify (HTTP %lld)"
+          }
+        }
+      }
+    },
+    "Vérifie l'autorisation du micro et le micro choisi, puis réessaie." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check the microphone permission and the chosen microphone, then try again."
+          }
+        }
+      }
+    },
+    "Vérifie que c'est le bon micro, qu'il n'est pas coupé, et que le volume d'entrée (Réglages Système › Son › Entrée) n'est pas au minimum." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check that it's the right microphone, that it isn't muted, and that the input volume (System Settings › Sound › Input) isn't at its lowest."
+          }
+        }
+      }
+    },
+    "Vérifie que Wispad est activé dans Réglages Système › Confidentialité et sécurité › Surveillance de l'entrée. Si tu viens de l'activer, relance Wispad." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check that Wispad is turned on in System Settings › Privacy & Security › Input Monitoring. If you just turned it on, relaunch Wispad."
+          }
+        }
+      }
+    },
+    "Vérifier" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verify"
+          }
+        }
+      }
+    },
+    "Vérifiée auprès de %@, et enregistrée %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verified with %1$@, and saved %2$@."
+          }
+        }
+      }
+    },
+    "Wispad ne reçoit pas la touche" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wispad isn't receiving the key"
+          }
+        }
+      }
+    },
+    "Wispad tourne dans la barre des menus. Dicte où tu veux." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wispad runs in the menu bar. Dictate wherever you like."
+          }
+        }
+      }
+    },
+    "« Salut, je teste Wispad, euh non, je dicte mon premier message. »" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“Hi, I'm testing Wispad, um no, I'm dictating my first message.”"
+          }
+        }
+      }
+    },
+    "À autoriser" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not allowed yet"
+          }
+        }
+      }
+    },
+    "Échap annule l'écoute. Recommence quand tu veux." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esc cancels listening. Start again whenever you like."
+          }
+        }
+      }
+    },
+    "Étapes laissées pour plus tard : %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Steps left for later: %@"
           }
         }
       }

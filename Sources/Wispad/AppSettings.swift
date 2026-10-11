@@ -43,6 +43,11 @@ struct AppSettings: Codable, Equatable {
     var useWindowContext = false
     /// Premier lancement guidé terminé. Les réglages antérieurs (installation existante) le passent.
     var onboardingCompleted = false
+    /// Étape du premier lancement guidé à reprendre après une relance de l'app (autorisation qui l'exige).
+    /// Vide : depuis le début. Une valeur inconnue repart aussi du début (`OnboardingFlow.resumeStep`).
+    var onboardingResume = ""
+    /// Micro choisi (identifiant CoreAudio). Vide, ou micro débranché : celui du système.
+    var microphoneUID = ""
     var retention: RetentionMode = .temporary
     var temporaryHours = 24
     var maxStorageMB = 250
@@ -92,6 +97,8 @@ struct AppSettings: Codable, Equatable {
         structureDictation = value(.structureDictation, defaults.structureDictation)
         useWindowContext = value(.useWindowContext, true)
         onboardingCompleted = value(.onboardingCompleted, true)
+        onboardingResume = value(.onboardingResume, defaults.onboardingResume)
+        microphoneUID = value(.microphoneUID, defaults.microphoneUID)
         retention = value(.retention, defaults.retention)
         temporaryHours = number(.temporaryHours, defaults.temporaryHours, in: Self.temporaryHoursRange)
         maxStorageMB = number(.maxStorageMB, defaults.maxStorageMB, in: Self.maxStorageMBRange)

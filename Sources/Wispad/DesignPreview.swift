@@ -22,6 +22,8 @@ import SwiftUI
 /// `--privacy-text-preview` rend aussi le composant de texte visible/masqué, sans limite du cache AppKit.
 /// `--customer-preview` : clés enregistrées dans le fichier local, une clé xAI fictive.
 /// `--report-preview` : rend aussi le détail de la première dictée, saisie « Signaler une erreur » ouverte.
+/// `--onboarding-step <étape> [--onboarding-state done|failed|progress]` : une étape du premier lancement guidé
+/// avec un état fictif (réussi, problème, en cours), sans aucune demande d'autorisation.
 @MainActor
 enum DesignPreview {
     static func run(arguments: [String]) {
@@ -82,12 +84,21 @@ enum DesignPreview {
         }
         if arguments.contains("--fallback-preview") || arguments.contains("--usage-accuracy-preview") { model.selectedSection = .usage }
         if arguments.contains("--blur-recent") { model.settings.blurRecentDictations = true }
-        // `--onboarding welcome|voice|correction|privacy|permissions|tryIt` : premier lancement à cette étape.
-        if let index = arguments.firstIndex(of: "--onboarding"), arguments.indices.contains(index + 1) {
+        // `--onboarding-step welcome|permissions|microphone|provider|shortcut|trial|finish`
+        // `[--onboarding-state done|failed|progress]` : premier lancement à cette étape, avec un état fictif.
+        // Aucune autorisation n'est demandée ni lue, aucun micro ouvert, aucune touche écoutée.
+        if let index = arguments.firstIndex(where: { $0 == "--onboarding-step" || $0 == "--onboarding" }),
+           arguments.indices.contains(index + 1) {
+            let step = OnboardingStep(rawValue: arguments[index + 1]) ?? .welcome
+            var state = OnboardingController.PreviewState.done
+            if let stateIndex = arguments.firstIndex(of: "--onboarding-state"), arguments.indices.contains(stateIndex + 1) {
+                state = OnboardingController.PreviewState(rawValue: arguments[stateIndex + 1]) ?? .done
+            }
             model.settings.onboardingCompleted = false
-            model.onboardingStartStep = OnboardingStep.allCases.first { "\($0)" == arguments[index + 1] } ?? .welcome
+            model.onboarding = OnboardingController.preview(model: model, step: step, state: state)
         } else {
             model.settings.onboardingCompleted = true
+            model.onboarding = nil
         }
         // `--relay` : DeepSeek mis de côté, pour voir l'état des services et la ligne de relais.
         if arguments.contains("--relay") {

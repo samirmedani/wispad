@@ -6,8 +6,18 @@ protocol AudioRecording: AnyObject, Sendable {
     var onPCM: (@Sendable (Data) -> Void)? { get set }
     /// Niveaux par bande de fréquence (grave → aigu), pour l'overlay.
     var bands: [Float] { get }
+    /// Micro choisi (identifiant CoreAudio) pour la prochaine écoute ; nil : celui du système.
+    var inputDeviceUID: String? { get set }
     func start(directory: URL) async throws -> URL
     func stop() -> (url: URL?, duration: Double)
+}
+
+extension AudioRecording {
+    /// Un enregistreur qui ne choisit pas son micro (tests) : toujours celui du système.
+    var inputDeviceUID: String? {
+        get { nil }
+        set {}
+    }
 }
 
 protocol SpeechStreaming: AnyObject, Sendable {
