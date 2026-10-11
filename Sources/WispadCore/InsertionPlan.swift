@@ -10,6 +10,12 @@ public enum InsertionStatus: String, Sendable, Codable {
     /// Collage parti dans le vide : aucun champ de texte n'avait le focus.
     case noTarget = "no_target"
     case cancelled
+
+    /// Le texte est parti dans un champ : inséré et confirmé, ou ⌘V envoyé sans confirmation possible.
+    /// Une dictée comme « Coller la dernière dictée » se termine alors de la même façon.
+    public var delivered: Bool {
+        self == .inserted || self == .pasteSent
+    }
 }
 
 public enum InsertionRoute: Equatable, Sendable {

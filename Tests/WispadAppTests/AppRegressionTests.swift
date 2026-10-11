@@ -184,6 +184,13 @@ private final class Fixture {
         deps.refreshKeys = { true }
         deps.requestMicrophone = { [weak self] in self?.microphoneRequests += 1; return true }
         deps.captureContext = { let context = DictationContext(); context.pid = 4242; return (context, Task { nil }) }
+        deps.frontmostApp = {
+            let context = DictationContext()
+            context.pid = 5151
+            context.appName = "Éditeur de test"
+            context.bundleID = "test.editeur"
+            return context
+        }
         deps.makeCapture = { [audio] in audio }
         deps.makeSession = { [stream] _ in stream }
         deps.transcribe = { [weak self] _, _ in self?.transcriptions += 1; return "Phrase de test." }
@@ -2127,11 +2134,54 @@ struct PasteLastDictationTests {
         next = .inserted
         await coordinator.pasteLastDictation()
         #expect(pasted == ["Phrase de test.", "Phrase de test."])
-        #expect(targets == [4242, nil])
+        #expect(targets == [4242, 5151])
         #expect(coordinator.phase == .idle)
         #expect(coordinator.failureText == nil)
         #expect(f.model.history.first?.insertionStatus == InsertionStatus.inserted.rawValue)
+        #expect(f.model.history.first?.targetApp == "Éditeur de test")
+        #expect(f.model.history.first?.targetBundle == "test.editeur")
         #expect(box.texts == ["Phrase de test."])
+    }
+
+    @Test func aSuccessfulPasteEndsLikeADictation() async throws {
+        var next: InsertionStatus = .noTarget
+        let f = try Fixture {
+            $0.insert = { _, _, _ in next }
+        }
+        defer { f.dispose() }
+        f.model.overlay.displaysPanel = false
+        let coordinator = f.model.coordinator
+        await coordinator.begin(.pushToTalk)
+        await coordinator.end()
+        #expect(f.watches.isEmpty)
+        next = .inserted
+        await coordinator.pasteLastDictation()
+        // Même fin qu'une dictée insérée : bref « Collé » qui part seul, champ surveillé pour l'apprentissage.
+        #expect(coordinator.notice == "Collé")
+        #expect(!coordinator.noticeIsInfo && !coordinator.noticeIsRelay)
+        #expect(coordinator.phase == .idle)
+        let watch = try #require(f.watches.first)
+        #expect(f.watches.count == 1)
+        #expect(watch.0 == "Phrase de test.")
+        #expect(watch.1 == 5151)
+    }
+
+    @Test func aPasteLearnsNothingWhenLearningIsOff() async throws {
+        var next: InsertionStatus = .noTarget
+        let f = try Fixture {
+            $0.insert = { _, _, _ in next }
+        }
+        defer { f.dispose() }
+        f.model.overlay.displaysPanel = false
+        f.model.settings.learnCorrections = false
+        let coordinator = f.model.coordinator
+        await coordinator.begin(.pushToTalk)
+        await coordinator.end()
+        next = .pasteSent
+        await coordinator.pasteLastDictation()
+        #expect(coordinator.notice == "Collé")
+        #expect(f.watches.isEmpty)
+        #expect(f.model.history.first?.insertionStatus == InsertionStatus.pasteSent.rawValue)
     }
 
     @Test func withoutAFieldTheShortcutCopiesAndShowsTheSameMessage() async throws {
@@ -2149,8 +2199,11 @@ struct PasteLastDictationTests {
         await coordinator.pasteLastDictation()
         #expect(coordinator.phase == .failure("Pas de champ où écrire : le texte est prêt"))
         #expect(coordinator.failureText == "Phrase de test.")
+        #expect(coordinator.notice == nil)
+        #expect(f.watches.isEmpty)
         #expect(box.texts == ["Phrase de test.", "Phrase de test."])
         #expect(f.model.history.first?.insertionStatus == InsertionStatus.noTarget.rawValue)
+        #expect(f.model.history.first?.targetApp == nil)
     }
 
     @Test func aDeliveredDictationIsPastedAgainWithoutLosingItsStatus() async throws {

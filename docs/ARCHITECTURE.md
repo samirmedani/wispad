@@ -75,7 +75,11 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
   combinaison avant le raccourci de dictée (`PasteShortcut.matches` : modificateurs exacts, jamais avec fn), l'avale
   et rend `HotkeyOutput.pasteLast`. `HotkeyMonitor` appelle `DictationCoordinator.pasteLastDictation`.
 - **Choix et statut** : `PasteLastChoice` (WispadCore) choisit la dictée et dit si un nouveau collage améliore son
-  statut ; le collage passe par `AppDependencies.insert` (`TextInserter`), après `modifiersReleased`.
+  statut ; le collage passe par `AppDependencies.insert` (`TextInserter`), après `modifiersReleased`, vers
+  `AppDependencies.frontmostApp`.
+- **Fin** : collé (`InsertionStatus.delivered`), il finit comme une dictée : `HistoryStore.updateDelivery` (statut
+  et app cible), surveillance par le même `DictationCoordinator.watchCorrections` (règle
+  `CorrectionWatch.shouldStart`, consigne lue dans la trace de la dictée) et « Collé » par `announce`.
 - **Réglage** : `AppSettings.pasteLastShortcut` (`PasteShortcut`, lecture tolérante champ par champ, combinaison
   invalide → ⌃⌥V via `PasteShortcut.restored`). `PasteShortcutRules.problem` refuse une combinaison (raisons sans
   texte, écrites par `PasteShortcutText`) ; les raccourcis de macOS viennent de `SystemShortcuts`

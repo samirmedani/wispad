@@ -65,7 +65,8 @@ enum ContextProbe {
         return context
     }
 
-    @MainActor private static func frontmost() -> DictationContext {
+    /// App au premier plan, sans lire son champ.
+    @MainActor static func frontmost() -> DictationContext {
         let context = DictationContext()
         if let app = NSWorkspace.shared.frontmostApplication {
             context.appName = app.localizedName

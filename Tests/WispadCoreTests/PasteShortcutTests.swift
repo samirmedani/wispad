@@ -79,6 +79,48 @@ struct PasteShortcutTests {
         #expect(PasteLastChoice.updatedStatus(previous: InsertionStatus.noTarget.rawValue, outcome: .noTarget) == nil)
     }
 
+    // MARK: - Fin du collage, comme une dictée
+
+    @Test func onlyAPasteThatReachedAFieldCountsAsDelivered() {
+        #expect(InsertionStatus.inserted.delivered)
+        #expect(InsertionStatus.pasteSent.delivered)
+        for status in [InsertionStatus.pending, .noTarget, .failed, .refusedSecure, .cancelled, .transcriptionFailed] {
+            #expect(!status.delivered, "statut \(status.rawValue)")
+        }
+    }
+
+    @Test func aDeliveredPasteIsWatchedWithTheRulesOfADictation() {
+        #expect(CorrectionWatch.shouldStart(status: .inserted, learnCorrections: true, selectionCommand: false, writtenByWispad: false))
+        #expect(CorrectionWatch.shouldStart(status: .pasteSent, learnCorrections: true, selectionCommand: false, writtenByWispad: false))
+        // Apprentissage coupé, sélection réécrite, essai écrit par Wispad, ou rien de livré : aucune surveillance.
+        #expect(!CorrectionWatch.shouldStart(status: .inserted, learnCorrections: false, selectionCommand: false, writtenByWispad: false))
+        #expect(!CorrectionWatch.shouldStart(status: .inserted, learnCorrections: true, selectionCommand: true, writtenByWispad: false))
+        #expect(!CorrectionWatch.shouldStart(status: .inserted, learnCorrections: true, selectionCommand: false, writtenByWispad: true))
+        for status in [InsertionStatus.noTarget, .failed, .refusedSecure, .cancelled] {
+            #expect(!CorrectionWatch.shouldStart(status: status, learnCorrections: true, selectionCommand: false, writtenByWispad: false))
+        }
+    }
+
+    @Test func aLaterDeliveryRecordsTheStatusAndTheTargetApp() throws {
+        let path = FileManager.default.temporaryDirectory.appendingPathComponent("wispad-paste-\(UUID().uuidString).sqlite").path
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        let store = try HistoryStore(path: path)
+        try store.insert(record("sans champ", age: 10, status: .noTarget, id: "ratée"))
+        try store.updateDelivery(id: "ratée", status: InsertionStatus.inserted.rawValue,
+                                 targetApp: "Éditeur de test", targetBundle: "test.editeur", usageCategory: UsageKind.other.rawValue)
+        var saved = try #require(try store.dictations().first)
+        #expect(saved.insertionStatus == InsertionStatus.inserted.rawValue)
+        #expect(saved.targetApp == "Éditeur de test")
+        #expect(saved.targetBundle == "test.editeur")
+        #expect(saved.usageCategory == UsageKind.other.rawValue)
+        // App inconnue : celle déjà enregistrée reste.
+        try store.updateDelivery(id: "ratée", status: InsertionStatus.inserted.rawValue,
+                                 targetApp: nil, targetBundle: nil, usageCategory: nil)
+        saved = try #require(try store.dictations().first)
+        #expect(saved.targetApp == "Éditeur de test")
+        #expect(saved.usageCategory == UsageKind.other.rawValue)
+    }
+
     // MARK: - Format
 
     @Test func modifiersAreWrittenInTheMacOSOrder() {

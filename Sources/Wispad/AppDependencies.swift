@@ -58,6 +58,8 @@ struct AppDependencies {
     var requestMicrophone: () async -> Bool = { await PermissionCenter.requestMicrophone() }
     /// App au premier plan tout de suite, champ actif lu en parallèle : le micro n'attend pas une app lente.
     var captureContext: () -> (DictationContext, Task<FieldSnapshot?, Never>) = { ContextProbe.begin() }
+    /// App au premier plan, sans lire son champ : cible de « Coller la dernière dictée ».
+    var frontmostApp: () -> DictationContext = { ContextProbe.frontmost() }
     /// Conversation visible dans la fenêtre de l'app où l'on dicte, lue hors du fil principal (300 ms au plus).
     /// Elle reste en mémoire le temps de la correction : jamais journalisée ni enregistrée.
     var readWindow: (pid_t) async -> String? = { pid in
