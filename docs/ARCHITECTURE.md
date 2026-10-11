@@ -112,7 +112,9 @@ la sonde de compter les lignes évaluées.
 `LiveSpeechSession`, le fichier dans `BatchTranscriber`, les coûts dans `UsageAPI` et `ProviderCatalog`.
 
 **Un réglage** : une propriété dans `AppSettings` (`AppSettings.swift`) avec sa lecture tolérante dans
-`init(from:)`, puis son contrôle dans l'écran. Voir « Réglages et mises à jour » ci-dessous.
+`init(from:)`, puis son contrôle dans l'écran : une rangée `SettingRow` ou `SettingToggle` (`SettingsRows.swift`)
+dont les textes (libellé, résumé d'une ligne, détails du popover ⓘ) sont dans `SettingsPresentation`, testés par
+`SettingsPresentationTests`. Pas de texte sous la section. Voir « Réglages et mises à jour » ci-dessous.
 
 **Un texte d'interface** : en français, comme littéral SwiftUI (`Text("…")`, `Button("…")`) ou avec
 `String(localized: "…")` pour un texte construit. Puis `scripts/localize.sh export`, traduire `en.xliff`,
