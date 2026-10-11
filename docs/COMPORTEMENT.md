@@ -105,6 +105,11 @@ explication d'une ligne sous son libellé, en langage simple (ni montant, ni chi
 (fournisseurs et modèles réellement utilisés, coût, délais, ce qui est envoyé ou gardé) s'ouvrent dans un popover
 avec le bouton ⓘ de la rangée ; ceux de la correction suivent les clés enregistrées.
 
+- **Raccourci** : chaque raccourci (dictée, « Coller la dernière dictée ») est dessiné en touches de clavier Mac,
+  une touche arrondie par touche à enfoncer, symbole et nom (« ⌃ control », « ⌥ option », « V », « fn »). Son
+  popover ⓘ ajoute un schéma du clavier de MacBook où ces touches sont en couleur, à leur place ; il suit le
+  raccourci choisi. Lettres et chiffres portent l'inscription de la disposition active (A en haut à gauche en
+  AZERTY, Q en QWERTY), ici comme dans les messages.
 - **Confidentialité** : « Ce qui est envoyé » (audio et, si disponibles, app active, sélection et court extrait
   autour du curseur ; historique et audio restent sur ce Mac), « Comprendre le sujet grâce à la fenêtre active »
   (inactif sans la correction), conservation, durée et plafond de l'audio.
@@ -138,7 +143,8 @@ réussie. « Plus tard » est proposé seulement pour le micro, la touche et l'e
   clé acceptée. Lien vers la page de création de clé de chaque fournisseur. Correction facultative (DeepSeek, relais
   OpenAI) avec la même vérification, et les réglages « Comprendre le sujet grâce à la fenêtre active » et
   « Apprendre de mes corrections ».
-- **Touche** : maintien et double appui expliqués ; pendant cette étape, chaque appui est seulement constaté
+- **Touche** : maintien et double appui expliqués, avec les touches du raccourci dessinées et le schéma du clavier
+  de MacBook où elles sont en couleur (elles passent au vert dès qu'un appui est reçu) ; pendant cette étape, chaque appui est seulement constaté
   (« Touche détectée », gestes reconnus allumés) et aucune dictée ne démarre. Rien reçu en 10 s : rappel de la
   surveillance des entrées, et du réglage macOS « Touche fn/🌐 : Ne rien faire » s'il lance autre chose.
 - **Essai** : vraie dictée avec la touche dans un champ de l'écran, phrase suggérée. Le test de la touche est
