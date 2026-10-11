@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 330" width="880" height="330" role="img" aria-labelledby="t">
+<title id="t">Démonstration : double appui sur fn, la bulle de Wispad écoute, puis le texte corrigé s&#x27;écrit.</title>
+<style>
+text{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Helvetica,Arial,sans-serif}
+@keyframes c0{0%,49.500%{fill-opacity:0;fill:#e5483f}49.700%{fill-opacity:1;fill:#e5483f}55.000%{fill:#f2f2f7}93.500%{fill-opacity:1}96.500%,100%{fill-opacity:0}}.c0{animation:c0 10.0s linear infinite}
+@keyframes c1{0%,50.250%{fill-opacity:0;fill:#e5483f}50.450%{fill-opacity:1;fill:#e5483f}55.750%{fill:#f2f2f7}93.500%{fill-opacity:1}96.500%,100%{fill-opacity:0}}.c1{animation:c1 10.0s linear infinite}
+@keyframes c2{0%,51.000%{fill-opacity:0;fill:#e5483f}51.200%{fill-opacity:1;fill:#e5483f}56.500%{fill:#f2f2f7}93.500%{fill-opacity:1}96.500%,100%{fill-opacity:0}}.c2{animation:c2 10.0s linear infinite}
+@keyframes c3{0%,51.750%{fill-opacity:0;fill:#e5483f}51.950%{fill-opacity:1;fill:#e5483f}57.250%{fill:#f2f2f7}93.500%{fill-opacity:1}96.500%,100%{fill-opacity:0}}.c3{animation:c3 10.0s linear infinite}
+@keyframes c4{0%,52.500%{fill-opacity:0;fill:#e5483f}52.700%{fill-opacity:1;fill:#e5483f}58.000%{fill:#f2f2f7}93.500%{fill-opacity:1}96.500%,100%{fill-opacity:0}}.c4{animation:c4 10.0s linear infinite}
+@keyframes c5{0%,53.250%{fill-opacity:0;fill:#e5483f}53.450%{fill-opacity:1;fill:#e5483f}58.750%{fill:#f2f2f7}93.500%{fill-opacity:1}96.500%,100%{fill-opacity:0}}.c5{animation:c5 10.0s linear infinite}
+@keyframes c6{0%,54.000%{fill-opacity:0;fill:#e5483f}54.200%{fill-opacity:1;fill:#e5483f}59.500%{fill:#f2f2f7}93.500%{fill-opacity:1}96.500%,100%{fill-opacity:0}}.c6{animation:c6 10.0s linear infinite}
+@keyframes c7{0%,54.750%{fill-opacity:0;fill:#e5483f}54.950%{fill-opacity:1;fill:#e5483f}60.250%{fill:#f2f2f7}93.500%{fill-opacity:1}96.500%,100%{fill-opacity:0}}.c7{animation:c7 10.0s linear infinite}
+@keyframes c8{0%,55.500%{fill-opacity:0;fill:#e5483f}55.700%{fill-opacity:1;fill:#e5483f}61.000%{fill:#f2f2f7}93.500%{fill-opacity:1}96.500%,100%{fill-opacity:0}}.c8{animation:c8 10.0s linear infinite}
+@keyframes c9{0%,56.250%{fill-opacity:0;fill:#e5483f}56.450%{fill-opacity:1;fill:#e5483f}61.750%{fill:#f2f2f7}93.500%{fill-opacity:1}96.500%,100%{fill-opacity:0}}.c9{animation:c9 10.0s linear infinite}
+@keyframes c10{0%,57.000%{fill-opacity:0;fill:#e5483f}57.200%{fill-opacity:1;fill:#e5483f}62.500%{fill:#f2f2f7}93.500%{fill-opacity:1}96.500%,100%{fill-opacity:0}}.c10{animation:c10 10.0s linear infinite}
+@keyframes c11{0%,57.750%{fill-opacity:0;fill:#e5483f}57.950%{fill-opacity:1;fill:#e5483f}63.250%{fill:#f2f2f7}93.500%{fill-opacity:1}96.500%,100%{fill-opacity:0}}.c11{animation:c11 10.0s linear infinite}
+@keyframes c12{0%,58.500%{fill-opacity:0;fill:#e5483f}58.700%{fill-opacity:1;fill:#e5483f}64.000%{fill:#f2f2f7}93.500%{fill-opacity:1}96.500%,100%{fill-opacity:0}}.c12{animation:c12 10.0s linear infinite}
+@keyframes c13{0%,59.250%{fill-opacity:0;fill:#e5483f}59.450%{fill-opacity:1;fill:#e5483f}64.750%{fill:#f2f2f7}93.500%{fill-opacity:1}96.500%,100%{fill-opacity:0}}.c13{animation:c13 10.0s linear infinite}
+@keyframes c14{0%,60.000%{fill-opacity:0;fill:#e5483f}60.200%{fill-opacity:1;fill:#e5483f}65.500%{fill:#f2f2f7}93.500%{fill-opacity:1}96.500%,100%{fill-opacity:0}}.c14{animation:c14 10.0s linear infinite}
+@keyframes c15{0%,60.750%{fill-opacity:0;fill:#e5483f}60.950%{fill-opacity:1;fill:#e5483f}66.250%{fill:#f2f2f7}93.500%{fill-opacity:1}96.500%,100%{fill-opacity:0}}.c15{animation:c15 10.0s linear infinite}
+@keyframes c16{0%,61.500%{fill-opacity:0;fill:#e5483f}61.700%{fill-opacity:1;fill:#e5483f}67.000%{fill:#f2f2f7}93.500%{fill-opacity:1}96.500%,100%{fill-opacity:0}}.c16{animation:c16 10.0s linear infinite}
+@keyframes c17{0%,62.250%{fill-opacity:0;fill:#e5483f}62.450%{fill-opacity:1;fill:#e5483f}67.750%{fill:#f2f2f7}93.500%{fill-opacity:1}96.500%,100%{fill-opacity:0}}.c17{animation:c17 10.0s linear infinite}
+@keyframes c18{0%,63.000%{fill-opacity:0;fill:#e5483f}63.200%{fill-opacity:1;fill:#e5483f}68.500%{fill:#f2f2f7}93.500%{fill-opacity:1}96.500%,100%{fill-opacity:0}}.c18{animation:c18 10.0s linear infinite}
+@keyframes c19{0%,63.750%{fill-opacity:0;fill:#e5483f}63.950%{fill-opacity:1;fill:#e5483f}69.250%{fill:#f2f2f7}93.500%{fill-opacity:1}96.500%,100%{fill-opacity:0}}.c19{animation:c19 10.0s linear infinite}
+@keyframes c20{0%,64.500%{fill-opacity:0;fill:#e5483f}64.700%{fill-opacity:1;fill:#e5483f}70.000%{fill:#f2f2f7}93.500%{fill-opacity:1}96.500%,100%{fill-opacity:0}}.c20{animation:c20 10.0s linear infinite}
+@keyframes c21{0%,65.250%{fill-opacity:0;fill:#e5483f}65.450%{fill-opacity:1;fill:#e5483f}70.750%{fill:#f2f2f7}93.500%{fill-opacity:1}96.500%,100%{fill-opacity:0}}.c21{animation:c21 10.0s linear infinite}
+@keyframes c22{0%,66.000%{fill-opacity:0;fill:#e5483f}66.200%{fill-opacity:1;fill:#e5483f}71.500%{fill:#f2f2f7}93.500%{fill-opacity:1}96.500%,100%{fill-opacity:0}}.c22{animation:c22 10.0s linear infinite}
+@keyframes c23{0%,66.750%{fill-opacity:0;fill:#e5483f}66.950%{fill-opacity:1;fill:#e5483f}72.250%{fill:#f2f2f7}93.500%{fill-opacity:1}96.500%,100%{fill-opacity:0}}.c23{animation:c23 10.0s linear infinite}
+@keyframes c24{0%,67.500%{fill-opacity:0;fill:#e5483f}67.700%{fill-opacity:1;fill:#e5483f}73.000%{fill:#f2f2f7}93.500%{fill-opacity:1}96.500%,100%{fill-opacity:0}}.c24{animation:c24 10.0s linear infinite}
+@keyframes c25{0%,68.250%{fill-opacity:0;fill:#e5483f}68.450%{fill-opacity:1;fill:#e5483f}73.750%{fill:#f2f2f7}93.500%{fill-opacity:1}96.500%,100%{fill-opacity:0}}.c25{animation:c25 10.0s linear infinite}
+@keyframes c26{0%,69.000%{fill-opacity:0;fill:#e5483f}69.200%{fill-opacity:1;fill:#e5483f}74.500%{fill:#f2f2f7}93.500%{fill-opacity:1}96.500%,100%{fill-opacity:0}}.c26{animation:c26 10.0s linear infinite}
+@keyframes caretA{0%,47.000%{opacity:1}47.500%,100%{opacity:0}}
+@keyframes caretB{0%,69.750%{opacity:0}70.250%,93.500%{opacity:1}94.000%,100%{opacity:0}}
+@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+.caretA{opacity:0;animation:caretA 10.0s linear infinite}.caretB{animation:caretB 10.0s linear infinite}
+.blink{animation:blink 1s steps(1) infinite}
+@keyframes w0{0%,10.500%{fill-opacity:0}12.300%,43.500%{fill-opacity:1}47.500%,100%{fill-opacity:0}}.w0{animation:w0 10.0s linear infinite}
+@keyframes w1{0%,12.583%{fill-opacity:0}14.383%,43.500%{fill-opacity:1}47.500%,100%{fill-opacity:0}}.w1{animation:w1 10.0s linear infinite}
+@keyframes w2{0%,14.667%{fill-opacity:0}16.467%,43.500%{fill-opacity:1}47.500%,100%{fill-opacity:0}}.w2{animation:w2 10.0s linear infinite}
+@keyframes w3{0%,16.750%{fill-opacity:0}18.550%,43.500%{fill-opacity:1}47.500%,100%{fill-opacity:0}}.w3{animation:w3 10.0s linear infinite}
+@keyframes w4{0%,18.833%{fill-opacity:0}20.633%,43.500%{fill-opacity:1}47.500%,100%{fill-opacity:0}}.w4{animation:w4 10.0s linear infinite}
+@keyframes w5{0%,20.917%{fill-opacity:0}22.717%,43.500%{fill-opacity:1}47.500%,100%{fill-opacity:0}}.w5{animation:w5 10.0s linear infinite}
+@keyframes w6{0%,23.000%{fill-opacity:0}24.800%,43.500%{fill-opacity:1}47.500%,100%{fill-opacity:0}}.w6{animation:w6 10.0s linear infinite}
+@keyframes w7{0%,25.083%{fill-opacity:0}26.883%,43.500%{fill-opacity:1}47.500%,100%{fill-opacity:0}}.w7{animation:w7 10.0s linear infinite}
+@keyframes w8{0%,27.167%{fill-opacity:0}28.967%,43.500%{fill-opacity:1}47.500%,100%{fill-opacity:0}}.w8{animation:w8 10.0s linear infinite}
+@keyframes w9{0%,29.250%{fill-opacity:0}31.050%,43.500%{fill-opacity:1}47.500%,100%{fill-opacity:0}}.w9{animation:w9 10.0s linear infinite}
+@keyframes w10{0%,31.333%{fill-opacity:0}33.133%,43.500%{fill-opacity:1}47.500%,100%{fill-opacity:0}}.w10{animation:w10 10.0s linear infinite}
+@keyframes w11{0%,33.417%{fill-opacity:0}35.217%,43.500%{fill-opacity:1}47.500%,100%{fill-opacity:0}}.w11{animation:w11 10.0s linear infinite}
+.db{fill:#e5483f;transform-box:fill-box;transform-origin:center;animation:dv .6s ease-in-out infinite alternate}
+@keyframes dv{0%{transform:scaleY(.22)}55%{transform:scaleY(.8)}100%{transform:scaleY(1)}}
+@keyframes bub{0%,6.800%{opacity:0;transform:scale(.82)}9.200%,46.000%{opacity:1;transform:scale(1)}48.800%,100%{opacity:0;transform:scale(.9)}}
+@keyframes calm{0%,40.800%{transform:scaleY(1)}43.000%,100%{transform:scaleY(.12)}}
+.bub{transform-box:fill-box;transform-origin:center;animation:bub 10.0s cubic-bezier(.2,.8,.2,1) infinite}
+.calm{transform-box:fill-box;transform-origin:center;animation:calm 10.0s ease-out infinite}
+@keyframes key{0%{fill:#2c2c2e;transform:translateY(0)}2.900%{fill:#2c2c2e;transform:translateY(0)}3.000%{fill:#e5483f;transform:translateY(2px)}4.400%{fill:#e5483f;transform:translateY(2px)}4.600%{fill:#2c2c2e;transform:translateY(0)}6.100%{fill:#2c2c2e;transform:translateY(0)}6.200%{fill:#e5483f;transform:translateY(2px)}7.600%{fill:#e5483f;transform:translateY(2px)}7.800%{fill:#2c2c2e;transform:translateY(0)}39.900%{fill:#2c2c2e;transform:translateY(0)}40.000%{fill:#e5483f;transform:translateY(2px)}41.400%{fill:#e5483f;transform:translateY(2px)}41.600%{fill:#2c2c2e;transform:translateY(0)}100%{fill:#2c2c2e;transform:translateY(0)}}.key{animation:key 10.0s linear infinite}
+@keyframes l1{0%,38.500%{opacity:1}39.500%,100%{opacity:0}}.l1{animation:l1 10.0s linear infinite}
+@keyframes l2{0%,39.500%{opacity:0}40.500%,56.000%{opacity:1}57.000%,100%{opacity:0}}.l2{opacity:0;animation:l2 10.0s linear infinite}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}.caretA,.l2{opacity:0}}
+</style>
+<rect x="1" y="1" width="878" height="328" rx="18" fill="#161618" stroke="#2f2f33" stroke-width="1.5"/>
+<circle cx="28" cy="28" r="6" fill="#ff5f57"/>
+<circle cx="48" cy="28" r="6" fill="#febc2e"/>
+<circle cx="68" cy="28" r="6" fill="#28c840"/>
+<text x="440.0" y="33" text-anchor="middle" font-size="13" fill="#8e8e93">Nouveau message</text>
+<line x1="1" y1="54" x2="879" y2="54" stroke="#2c2c2e"/>
+<text x="40" y="88" font-size="15" fill="#8e8e93">À : <tspan fill="#d1d1d6">Camille</tspan></text>
+<line x1="40" y1="104" x2="840" y2="104" stroke="#2c2c2e"/>
+<text x="40" y="158" font-size="26" fill="#f2f2f7" textLength="312.0" lengthAdjust="spacing"><tspan class="c0">O</tspan><tspan class="c1">n</tspan><tspan class="c2">&#160;</tspan><tspan class="c3">s</tspan><tspan class="c4">e</tspan><tspan class="c5">&#160;</tspan><tspan class="c6">v</tspan><tspan class="c7">o</tspan><tspan class="c8">i</tspan><tspan class="c9">t</tspan><tspan class="c10">&#160;</tspan><tspan class="c11">m</tspan><tspan class="c12">e</tspan><tspan class="c13">r</tspan><tspan class="c14">c</tspan><tspan class="c15">r</tspan><tspan class="c16">e</tspan><tspan class="c17">d</tspan><tspan class="c18">i</tspan><tspan class="c19">&#160;</tspan><tspan class="c20">à</tspan><tspan class="c21">&#160;</tspan><tspan class="c22">1</tspan><tspan class="c23">4</tspan><tspan class="c24">&#160;</tspan><tspan class="c25">h</tspan><tspan class="c26">.</tspan></text>
+<g class="caretA"><rect class="blink" x="40" y="134" width="2" height="30" rx="1" fill="#e5483f"/></g>
+<g class="caretB"><rect class="blink" x="355.0" y="134" width="2" height="30" rx="1" fill="#e5483f"/></g>
+<text x="440.0" y="212" text-anchor="middle" font-size="17" font-style="italic" fill="#a1a1a6"><tspan class="w0">«</tspan> <tspan class="w1">On</tspan> <tspan class="w2">se</tspan> <tspan class="w3">voit</tspan> <tspan class="w4">mardi…</tspan> <tspan class="w5">euh</tspan> <tspan class="w6">non,</tspan> <tspan class="w7">mercredi</tspan> <tspan class="w8">à</tspan> <tspan class="w9">quatorze</tspan> <tspan class="w10">heures</tspan> <tspan class="w11">»</tspan></text>
+<defs><filter id="glow" x="-30%" y="-80%" width="160%" height="260%"><feGaussianBlur stdDeviation="12"/></filter></defs>
+<g class="bub">
+<rect x="332.0" y="246.0" width="216" height="40" rx="20" fill="#e5483f" opacity=".28" filter="url(#glow)"/>
+<rect x="322.0" y="240.0" width="236" height="52" rx="26.0" fill="#050506" stroke="#ffffff" stroke-opacity=".16"/>
+<circle cx="348.0" cy="266" r="13" fill="#ffffff" fill-opacity=".1"/>
+<path d="M343.5 261.5l9 9m0-9l-9 9" stroke="#d1d1d6" stroke-width="1.8" stroke-linecap="round"/>
+<circle cx="532.0" cy="266" r="13" fill="#ffffff" fill-opacity=".1"/>
+<rect x="527.5" y="261.5" width="9" height="9" rx="2" fill="#d1d1d6"/>
+<g class="calm"><rect class="db" x="373.4" y="261.8" width="3.5" height="8.4" rx="1.75" style="animation-duration:0.46s;animation-delay:0.00s"/>
+<rect class="db" x="380.6" y="260.2" width="3.5" height="11.7" rx="1.75" style="animation-duration:0.74s;animation-delay:-0.10s"/>
+<rect class="db" x="387.9" y="258.6" width="3.5" height="14.8" rx="1.75" style="animation-duration:0.56s;animation-delay:-0.20s"/>
+<rect class="db" x="395.1" y="257.1" width="3.5" height="17.8" rx="1.75" style="animation-duration:0.84s;animation-delay:-0.30s"/>
+<rect class="db" x="402.2" y="255.7" width="3.5" height="20.5" rx="1.75" style="animation-duration:0.66s;animation-delay:-0.40s"/>
+<rect class="db" x="409.4" y="254.5" width="3.5" height="23.1" rx="1.75" style="animation-duration:0.48s;animation-delay:-0.50s"/>
+<rect class="db" x="416.6" y="253.3" width="3.5" height="25.4" rx="1.75" style="animation-duration:0.76s;animation-delay:-0.60s"/>
+<rect class="db" x="423.9" y="252.3" width="3.5" height="27.4" rx="1.75" style="animation-duration:0.58s;animation-delay:-0.70s"/>
+<rect class="db" x="431.1" y="251.5" width="3.5" height="29.0" rx="1.75" style="animation-duration:0.86s;animation-delay:-0.80s"/>
+<rect class="db" x="438.2" y="251.0" width="3.5" height="30.0" rx="1.75" style="animation-duration:0.68s;animation-delay:-0.05s"/>
+<rect class="db" x="445.4" y="251.5" width="3.5" height="29.0" rx="1.75" style="animation-duration:0.50s;animation-delay:-0.15s"/>
+<rect class="db" x="452.6" y="252.3" width="3.5" height="27.4" rx="1.75" style="animation-duration:0.78s;animation-delay:-0.25s"/>
+<rect class="db" x="459.9" y="253.3" width="3.5" height="25.4" rx="1.75" style="animation-duration:0.60s;animation-delay:-0.35s"/>
+<rect class="db" x="467.1" y="254.5" width="3.5" height="23.1" rx="1.75" style="animation-duration:0.88s;animation-delay:-0.45s"/>
+<rect class="db" x="474.2" y="255.7" width="3.5" height="20.5" rx="1.75" style="animation-duration:0.70s;animation-delay:-0.55s"/>
+<rect class="db" x="481.4" y="257.1" width="3.5" height="17.8" rx="1.75" style="animation-duration:0.52s;animation-delay:-0.65s"/>
+<rect class="db" x="488.6" y="258.6" width="3.5" height="14.8" rx="1.75" style="animation-duration:0.80s;animation-delay:-0.75s"/>
+<rect class="db" x="495.9" y="260.2" width="3.5" height="11.7" rx="1.75" style="animation-duration:0.62s;animation-delay:0.00s"/>
+<rect class="db" x="503.1" y="261.8" width="3.5" height="8.4" rx="1.75" style="animation-duration:0.90s;animation-delay:-0.10s"/></g>
+</g>
+<g class="key"><rect x="40" y="246" width="50" height="42" rx="9" stroke="#4a4a4f"/></g>
+<text x="65" y="273" text-anchor="middle" font-size="16" font-weight="600" fill="#f2f2f7">fn</text>
+<text class="l1" x="102" y="272" font-size="14" fill="#8e8e93">double appui</text>
+<text class="l2" x="102" y="272" font-size="14" fill="#8e8e93">un appui : fin</text>
+</svg>
