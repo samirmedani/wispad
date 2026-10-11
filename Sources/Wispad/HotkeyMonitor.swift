@@ -50,10 +50,15 @@ final class HotkeyMonitor {
         let keyCode = model.settings.keyCode
         let flags = model.settings.modifierFlags
         let recording = model.isRecordingShortcut
+        let shortcut = model.settings.pasteLastShortcut
+        // Même combinaison que la dictée (choisie après coup comme raccourci de dictée) : la dictée passe avant.
+        let clashes = keyCode == shortcut.keyCode && flags & PasteShortcut.modifierMask == shortcut.modifiers
+        let paste = shortcut.enabled && !model.isRecordingPasteShortcut && !clashes ? shortcut : nil
         tap?.update { config in
             config.keyCode = keyCode
             config.modifierFlags = flags
             config.recording = recording
+            config.paste = paste
         }
     }
 
@@ -84,6 +89,12 @@ final class HotkeyMonitor {
 
     private func receive(_ output: HotkeyOutput) {
         guard let model else { return }
+        // « Coller la dernière dictée » : rien d'autre dans cette sortie, ni geste ni raccourci enregistré.
+        if output.pasteLast {
+            let coordinator = model.coordinator
+            Task { @MainActor in await coordinator.pasteLastDictation() }
+            return
+        }
         if let pressed = output.pressedAt { lastPressAt = pressed }
         if let keyCode = output.capturedKeyCode, let flags = output.capturedFlags {
             model.settings.keyCode = keyCode

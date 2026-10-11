@@ -18,6 +18,31 @@ Raccourci par défaut : fn seule. Wispad intercepte la touche fn pour que macOS 
 - Une nouvelle dictée peut commencer pendant que la précédente se termine : les textes se collent dans l'ordre
   où ils ont été dits, séparés par une espace, sans changer de majuscule.
 
+### Coller la dernière dictée
+
+Raccourci global, ⌃⌥V par défaut : faisable d'une main (⌃⌥ sous le pouce et l'annulaire gauches, V sous l'index),
+libre dans macOS et rare dans les apps courantes, contrairement à ⌘⇧V (coller sans mise en forme) et ⌥⌘V (déplacer
+dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
+
+- Il colle au curseur actuel la dernière dictée non insérée de la dernière demi-heure (prête à copier, aucun champ,
+  collage raté, champ sécurisé), sinon la dernière dictée. Jamais une dictée annulée, vide ou sans transcription.
+  Rien à coller : la bulle le dit (« Aucune dictée à coller »).
+- Même collage qu'une dictée (⌘V, presse-papiers restauré après), envoyé une fois ⌃ et ⌥ relâchés (0,6 s au plus).
+  Collée, une dictée non insérée passe à « Inséré » ou « Collage envoyé » ; un nouvel échec ne change jamais le
+  statut d'une dictée déjà livrée. Toujours pas de champ : le texte est copié et la bulle affiche le même message
+  qu'après une dictée.
+- Avalé : la combinaison n'atteint pas l'app. Une fois par enfoncement (la répétition ne recolle pas). Ignoré
+  pendant une écoute ; les dictées qui se terminent se collent d'abord.
+- fn n'en fait jamais partie : fn enfoncé (dictée en maintien), ⌃⌥V n'est pas le raccourci, et un appui simple sur
+  fn ne déclenche toujours rien.
+- Réglages › Raccourci › « Coller la dernière dictée » : Modifier, puis la combinaison voulue (Échap annule) ;
+  « Par défaut » remet ⌃⌥V ; l'interrupteur le désactive sans oublier la combinaison. Refusées, avec la raison :
+  touche seule ou avec ⇧ seulement (elle écrirait), ⌘ avec une seule touche (menus des apps), fn, Échap, le
+  raccourci de dictée, les combinaisons connues de macOS et des apps (⌘⇧V, ⌥⌘V, ⌘Espace, captures d'écran…) et
+  celles déclarées dans Réglages Système › Clavier › Raccourcis. Le raccourci actuel est suspendu pendant
+  l'enregistrement.
+- Affiché dans la carte « Raccourcis » de la barre latérale quand il est activé.
+
 ## Réactivité
 
 - L'écoute du clavier tourne sur son propre fil : le clavier n'attend jamais l'app. Elle est vérifiée toutes les
@@ -33,8 +58,8 @@ Raccourci par défaut : fn seule. Wispad intercepte la touche fn pour que macOS 
 
 - Verre noir (Liquid Glass sur macOS 26+) au-dessus du Dock, sur le bureau comme au-dessus d'une app en plein
   écran, avec le spectre de la voix (graves au centre) à la cadence de l'écran (120 Hz en ProMotion).
-- Elle laisse passer les clics, sauf sur ses boutons : ✕ / ■ en mains libres, Copier d'un message d'erreur,
-  Oui / Non d'un mot appris.
+- Elle laisse passer les clics, sauf sur ses boutons : ✕ / ■ en mains libres, Copier et Coller d'un texte non
+  écrit, Oui / Non d'un mot appris.
 - Messages (erreur, mot appris) sur une ligne, avec une barre qui se vide avant leur départ.
 - Deux notes montantes signalent le premier audio réellement reçu, une seule fois ; d'autres sons marquent la fin
   et l'annulation. Tous se coupent dans Réglages.
@@ -234,9 +259,19 @@ gardé tel quel).
 ## Reprise après erreur
 
 - Erreur réseau, de clé ou de quota : l'audio reste dans l'historique ; **Retranscrire** puis **Copier**.
-- Collage raté : le texte est copié, la bulle propose **Copier**. Le collage garde tous les formats du
-  presse-papiers précédent et refuse les champs sécurisés.
-- Sans confirmation d'accessibilité, le statut reste « Collage envoyé », sans fausse alerte.
+- Texte qui n'a pu être écrit nulle part : jamais en silence. La bulle le dit en une ligne, avec **Copier** en
+  évidence et **Coller** : « Pas de champ où écrire : le texte est prêt » (focus sur une liste, un bouton, un menu,
+  ou le bureau et les fenêtres du Finder, avant comme après ⌘V), « Collage impossible : le texte est prêt »
+  (accessibilité refusée, app cible fermée ou qui n'a pas repris le premier plan, presse-papiers non modifiable,
+  ⌘V non envoyé), « Champ sécurisé : le texte est prêt ». Le texte est déjà copié, sauf pour un champ sécurisé.
+  12 s, avec une barre qui se vide ; ✕ au survol ou Échap la ferment. Elle ne prend jamais le focus : **Copier**
+  remet le texte au presse-papiers et confirme « Copié » (1,5 s), **Coller** le colle dans le champ de l'app
+  active (même collage que « Coller la dernière dictée »). Le collage garde tous les formats du presse-papiers
+  précédent et refuse les champs sécurisés.
+- Sans confirmation d'accessibilité, le statut reste « Collage envoyé », sans fausse alerte : un champ illisible
+  ou un conteneur (groupe, zone web, fenêtre, tableau) ne prouve pas l'échec, beaucoup d'éditeurs (Electron,
+  terminaux, éditeurs dessinés) collent sans exposer leur texte. « Coller la dernière dictée » rattrape un tel
+  collage parti dans le vide.
 - Lectures d'accessibilité bornées au collage : champ actif 0,3 s avant ⌘V, confirmation 0,7 s après. Une app qui
   construit encore son arbre (Chrome à la première dictée) ne retarde ni le texte ni la dictée suivante.
   Champ non lu avant ⌘V : il est relu pendant la confirmation. La confirmation ne compare que lettres et chiffres

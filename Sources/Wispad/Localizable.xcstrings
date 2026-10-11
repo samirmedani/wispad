@@ -953,16 +953,6 @@
         }
       }
     },
-    "Aucun champ actif : texte copié, colle-le avec ⌘V." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No active field: text copied, paste it with ⌘V."
-          }
-        }
-      }
-    },
     "Aucun microphone n'est disponible." : {
       "localizations" : {
         "en" : {
@@ -1295,16 +1285,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Secure field"
-          }
-        }
-      }
-    },
-    "Champ sécurisé : texte gardé dans l'historique." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Secure field: text kept in History."
           }
         }
       }
@@ -2615,16 +2595,6 @@
         }
       }
     },
-    "Insertion impossible : texte copié, colle-le avec ⌘V." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Couldn't insert: text copied, paste it with ⌘V."
-          }
-        }
-      }
-    },
     "Insertion refusée dans un champ sécurisé" : {
       "localizations" : {
         "en" : {
@@ -3077,6 +3047,416 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Change"
+          }
+        }
+      }
+    },
+    "Pas de champ où écrire : le texte est prêt" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No field to write in: the text is ready"
+          }
+        }
+      }
+    },
+    "Champ sécurisé : le texte est prêt" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Secure field: the text is ready"
+          }
+        }
+      }
+    },
+    "Collage impossible : le texte est prêt" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't paste: the text is ready"
+          }
+        }
+      }
+    },
+    "Copié" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copied"
+          }
+        }
+      }
+    },
+    "Aucune dictée à coller" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No dictation to paste"
+          }
+        }
+      }
+    },
+    "Ajoute une touche aux modificateurs, par exemple ⌃⌥V." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a key to the modifiers, for example ⌃⌥V."
+          }
+        }
+      }
+    },
+    "fn est réservée à la dictée : choisis une combinaison sans fn." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "fn is reserved for dictation: choose a combination without fn."
+          }
+        }
+      }
+    },
+    "Échap sert à annuler : choisis une autre touche." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esc is used to cancel: choose another key."
+          }
+        }
+      }
+    },
+    "Ajoute ⌃, ⌥ ou ⌘ : seule, cette touche écrirait un caractère." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add ⌃, ⌥ or ⌘: on its own, this key would type a character."
+          }
+        }
+      }
+    },
+    "⌘ avec une seule touche sert aux menus des apps : ajoute ⌃ ou ⌥." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "⌘ with a single key is used by app menus: add ⌃ or ⌥."
+          }
+        }
+      }
+    },
+    "%@ est déjà le raccourci de dictée." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ is already the dictation shortcut."
+          }
+        }
+      }
+    },
+    "%@ est déjà pris par macOS (Réglages Système › Clavier › Raccourcis)." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ is already used by macOS (System Settings › Keyboard › Keyboard Shortcuts)."
+          }
+        }
+      }
+    },
+    "%@ est déjà pris : %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ is already used: %@."
+          }
+        }
+      }
+    },
+    "coller" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "paste"
+          }
+        }
+      }
+    },
+    "coller sans mise en forme" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "paste without formatting"
+          }
+        }
+      }
+    },
+    "déplacer dans le Finder" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "move in the Finder"
+          }
+        }
+      }
+    },
+    "copier" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "copy"
+          }
+        }
+      }
+    },
+    "couper" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "cut"
+          }
+        }
+      }
+    },
+    "annuler" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "undo"
+          }
+        }
+      }
+    },
+    "tout sélectionner" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "select all"
+          }
+        }
+      }
+    },
+    "quitter l'app" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "quit the app"
+          }
+        }
+      }
+    },
+    "fermer la fenêtre" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "close the window"
+          }
+        }
+      }
+    },
+    "masquer l'app" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "hide the app"
+          }
+        }
+      }
+    },
+    "réduire la fenêtre" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "minimize the window"
+          }
+        }
+      }
+    },
+    "changer d'app" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "switch apps"
+          }
+        }
+      }
+    },
+    "changer de source de saisie" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "switch input source"
+          }
+        }
+      }
+    },
+    "emojis et symboles" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "emoji and symbols"
+          }
+        }
+      }
+    },
+    "capture d'écran" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "screenshot"
+          }
+        }
+      }
+    },
+    "verrouiller l'écran" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "lock the screen"
+          }
+        }
+      }
+    },
+    "plein écran" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "full screen"
+          }
+        }
+      }
+    },
+    "forcer à quitter" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "force quit"
+          }
+        }
+      }
+    },
+    "afficher ou masquer le Dock" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "show or hide the Dock"
+          }
+        }
+      }
+    },
+    "désactivé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "off"
+          }
+        }
+      }
+    },
+    "Coller la dernière dictée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paste last dictation"
+          }
+        }
+      }
+    },
+    "Tape la combinaison… (Échap annule)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Type the combination… (Esc cancels)"
+          }
+        }
+      }
+    },
+    "Par défaut" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Default"
+          }
+        }
+      }
+    },
+    "Revenir à %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back to %@"
+          }
+        }
+      }
+    },
+    "Activé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On"
+          }
+        }
+      }
+    },
+    "Activer ou désactiver ce raccourci" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn this shortcut on or off"
+          }
+        }
+      }
+    },
+    "Coller la dernière dictée : remet au curseur la dernière dictée qui n'a pas pu être écrite (sinon la dernière dictée). Sans champ où écrire, le texte est copié et la bulle propose Copier." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paste last dictation: puts the last dictation that couldn't be written (otherwise the last dictation) at the cursor. With no field to write in, the text is copied and the bubble offers Copy."
+          }
+        }
+      }
+    },
+    "Coller la dernière" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paste last"
           }
         }
       }

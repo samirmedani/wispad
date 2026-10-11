@@ -307,7 +307,13 @@ struct OverlayPill: View {
                     .transition(.opacity)
             case .notice(let message):
                 let relay = model.coordinator.noticeIsRelay
-                MessageLine(symbol: relay ? "arrow.triangle.branch" : "checkmark.circle.fill", tint: relay ? OverlayStyle.relay : OverlayStyle.green, message: message, duration: DictationCoordinator.noticeSeconds)
+                let info = model.coordinator.noticeIsInfo
+                MessageLine(
+                    symbol: relay ? "arrow.triangle.branch" : info ? "info.circle.fill" : "checkmark.circle.fill",
+                    tint: relay ? OverlayStyle.relay : info ? Color.white.opacity(0.7) : OverlayStyle.green,
+                    message: message,
+                    duration: DictationCoordinator.noticeSeconds
+                )
                     .id(message)
                     .transition(.opacity)
             case .learning(let message):
@@ -470,11 +476,22 @@ struct FailurePill: View {
 
     var body: some View {
         let coordinator = model.coordinator
-        if let failure = coordinator.failureText {
-            MessageLine(symbol: "exclamationmark.circle.fill", tint: OverlayStyle.red, message: message, duration: DictationCoordinator.failureSeconds, onDismiss: coordinator.dismissFailure, actionTitle: String(localized: "Copier"), action: {
-                model.copy(failure)
-                coordinator.dismissFailure()
-            })
+        if coordinator.failureCopied {
+            MessageLine(symbol: "checkmark.circle.fill", tint: OverlayStyle.green, message: message, duration: DictationCoordinator.copiedSeconds, onDismiss: coordinator.dismissFailure)
+        } else if coordinator.failureText != nil {
+            // Le texte n'a pu être écrit nulle part : Copier en évidence, Coller pour le champ de l'app active.
+            MessageLine(
+                symbol: "exclamationmark.circle.fill",
+                tint: OverlayStyle.red,
+                message: message,
+                duration: DictationCoordinator.failureSeconds,
+                onDismiss: coordinator.dismissFailure,
+                actionTitle: String(localized: "Copier"),
+                action: { coordinator.copyReadyText() },
+                secondaryTitle: String(localized: "Coller"),
+                secondaryAction: { coordinator.pasteReadyText() },
+                emphasizesAction: true
+            )
         } else {
             MessageLine(symbol: "exclamationmark.circle.fill", tint: OverlayStyle.red, message: message, duration: DictationCoordinator.failureSeconds, onDismiss: coordinator.dismissFailure, actionTitle: String(localized: "Historique"), action: {
                 coordinator.dismissFailure()
@@ -498,6 +515,8 @@ struct MessageLine: View {
     var action: (() -> Void)? = nil
     var secondaryTitle: String? = nil
     var secondaryAction: (() -> Void)? = nil
+    /// Premier bouton en blanc plein : l'action à ne pas manquer (Copier un texte qui n'a pas été collé).
+    var emphasizesAction = false
     @State private var remaining: CGFloat = 1
 
     var body: some View {
@@ -513,7 +532,7 @@ struct MessageLine: View {
                 .frame(maxWidth: 360)
                 .fixedSize(horizontal: true, vertical: false)
             if let actionTitle, let action {
-                messageButton(actionTitle, action: action)
+                messageButton(actionTitle, prominent: emphasizesAction, action: action)
             }
             if let secondaryTitle, let secondaryAction {
                 messageButton(secondaryTitle, action: secondaryAction)
@@ -559,14 +578,14 @@ struct MessageLine: View {
         }
     }
 
-    private func messageButton(_ title: String, action: @escaping () -> Void) -> some View {
+    private func messageButton(_ title: String, prominent: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
                 .font(.system(size: 10.5, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.92))
-                .padding(.horizontal, 7)
+                .foregroundStyle(prominent ? Color.black.opacity(0.88) : Color.white.opacity(0.92))
+                .padding(.horizontal, prominent ? 9 : 7)
                 .frame(height: 18)
-                .background(Capsule().fill(Color.white.opacity(0.14)))
+                .background(Capsule().fill(Color.white.opacity(prominent ? 0.92 : 0.14)))
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)

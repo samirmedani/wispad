@@ -82,6 +82,26 @@ struct SettingsUpgradeTests {
         #expect(AppSettings.load(from: fixture.defaults).githubStarClicked)
     }
 
+    /// « Coller la dernière dictée » : absent d'un ancien bloc, ⌃⌥V activé ; illisible ou invalide, ⌃⌥V sans toucher
+    /// aux autres réglages ; un choix (combinaison, désactivation) survit à un rechargement.
+    @Test func pasteLastShortcutIsReadLenientlyAndPersists() throws {
+        #expect(try decode(#"{"provider": "openai"}"#).pasteLastShortcut == .standard)
+        let unreadable = try decode(#"{"pasteLastShortcut": "⌃⌥V", "provider": "openai", "keyCode": 61}"#)
+        #expect(unreadable.pasteLastShortcut == .standard)
+        #expect(unreadable.provider == .openAI)
+        #expect(unreadable.keyCode == 61)
+        let invalid = try decode(#"{"pasteLastShortcut": {"keyCode": 9, "modifiers": 0, "enabled": false}}"#)
+        #expect(invalid.pasteLastShortcut == PasteShortcut(keyCode: 9, modifiers: PasteShortcut.standard.modifiers, enabled: false))
+
+        let fixture = try Defaults()
+        defer { fixture.dispose() }
+        var settings = AppSettings.load(from: fixture.defaults)
+        settings.pasteLastShortcut = PasteShortcut(keyCode: 11, modifiers: ModifierMask.control | ModifierMask.option, enabled: false)
+        settings.save(to: fixture.defaults)
+        #expect(AppSettings.load(from: fixture.defaults).pasteLastShortcut == settings.pasteLastShortcut)
+        #expect(try fixture.storedObject()["pasteLastShortcut"] != nil)
+    }
+
     /// Fournisseur ou modèle de voix retiré : le fournisseur par défaut, ou le modèle par défaut du même fournisseur.
     @Test func removedProviderOrModelFallsBackToTheClosestValidOne() throws {
         let removedProvider = try decode(#"{"provider": "fournisseur-retire", "cleanupEnabled": false}"#)

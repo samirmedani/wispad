@@ -54,6 +54,8 @@ struct AppSettings: Codable, Equatable {
     var launchAtLogin = false
     var keyCode = ChordMatcher.functionKeyCode
     var modifierFlags: UInt64 = 0x800000
+    /// Raccourci global « Coller la dernière dictée » (⌃⌥V par défaut), désactivable dans Réglages.
+    var pasteLastShortcut = PasteShortcut.standard
     var typingWPM = 40.0
     var soundsEnabled = true
     var learnCorrections = true
@@ -111,6 +113,8 @@ struct AppSettings: Codable, Equatable {
         launchAtLogin = value(.launchAtLogin, defaults.launchAtLogin)
         keyCode = value(.keyCode, defaults.keyCode)
         modifierFlags = value(.modifierFlags, defaults.modifierFlags)
+        // Absent (version précédente) ou invalide : ⌃⌥V, en gardant le choix activé ou désactivé s'il est lisible.
+        pasteLastShortcut = PasteShortcut.restored(try? container.decodeIfPresent(PasteShortcut.self, forKey: .pasteLastShortcut))
         typingWPM = number(.typingWPM, defaults.typingWPM, in: 1...1_000)
         soundsEnabled = value(.soundsEnabled, defaults.soundsEnabled)
         learnCorrections = value(.learnCorrections, defaults.learnCorrections)

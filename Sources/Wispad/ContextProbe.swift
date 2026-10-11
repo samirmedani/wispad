@@ -135,6 +135,12 @@ enum ContextProbe {
         string(kAXSubroleAttribute, element) == "AXSecureTextField"
     }
 
+    /// L'élément expose un curseur ou une sélection de texte : on peut y écrire.
+    static func hasTextCursor(_ element: AXUIElement) -> Bool {
+        var range: CFTypeRef?
+        return AXUIElementCopyAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, &range) == .success && range != nil
+    }
+
     /// Valeur courte du champ, pour constater un collage. Jamais journalisée.
     static func valueForCheck(_ element: AXUIElement?) -> String? {
         guard let element else { return nil }
