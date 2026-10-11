@@ -27,10 +27,14 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 - Il colle au curseur actuel la dernière dictée non insérée de la dernière demi-heure (prête à copier, aucun champ,
   collage raté, champ sécurisé), sinon la dernière dictée. Jamais une dictée annulée, vide ou sans transcription.
   Rien à coller : la bulle le dit (« Aucune dictée à coller »).
-- Même collage qu'une dictée (⌘V, presse-papiers restauré après), envoyé une fois ⌃ et ⌥ relâchés (0,6 s au plus).
-  Collée, une dictée non insérée passe à « Inséré » ou « Collage envoyé » ; un nouvel échec ne change jamais le
-  statut d'une dictée déjà livrée. Toujours pas de champ : le texte est copié et la bulle affiche le même message
-  qu'après une dictée.
+- Même collage qu'une dictée (⌘V, presse-papiers restauré après), dans l'app au premier plan, envoyé une fois ⌃ et
+  ⌥ relâchés (0,6 s au plus).
+- Collé (inséré ou collage envoyé), il se termine comme une dictée : la bulle affiche « Collé » (coche verte, sans
+  bouton, disparaît seule), le champ est surveillé 30 s pour apprendre les mots corrigés (mêmes règles qu'après
+  une dictée, voir « Dictionnaire et apprentissage »), et la dictée non insérée passe à « Inséré » ou « Collage
+  envoyé » avec l'app où elle a été collée. Un nouvel échec ne change jamais le statut d'une dictée déjà livrée.
+  Toujours pas de champ : le texte est copié et la bulle affiche le même message qu'après une dictée. Même fin pour
+  **Coller** dans la bulle.
 - Avalé : la combinaison n'atteint pas l'app. Une fois par enfoncement (la répétition ne recolle pas). Ignoré
   pendant une écoute ; les dictées qui se terminent se collent d'abord.
 - fn n'en fait jamais partie : fn enfoncé (dictée en maintien), ⌃⌥V n'est pas le raccourci, et un appui simple sur
@@ -255,7 +259,9 @@ gardé tel quel).
 - Les termes du dictionnaire partent à la transcription (mots attendus) et à la correction.
 - Les raccourcis vocaux (« Quand je dis… » → « Écrire… ») ont été retirés : ceux déjà enregistrés n'ont plus
   aucun effet et sont effacés des réglages au lancement.
-- Après une dictée insérée, le champ est relu toutes les 250 ms pendant 30 s, hors du fil principal. Un mot mal
+- Après une dictée insérée (ou collée par « Coller la dernière dictée »), le champ est relu toutes les 250 ms
+  pendant 30 s, hors du fil principal. Jamais avec « Apprendre de mes corrections » coupé, après une sélection
+  réécrite sur consigne, ni pour le champ d'essai du premier lancement. Un mot mal
   entendu corrigé à la main (« Sidance » → « Seedance ») est jugé : marque, nom, sigle ou jargon seulement. Avec
   une clé TypeSafe, Jev le note d'abord et tranche les cas nets ; le modèle de correction décide des autres (et
   de tous sans clé TypeSafe). Sans réponse du modèle de correction, la note de Jev suffit.

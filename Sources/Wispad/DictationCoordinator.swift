@@ -609,14 +609,11 @@ final class DictationCoordinator {
             LatencyLog.line(current.marks, mode: current.mode, status: status.rawValue),
             to: model.supportURL.appendingPathComponent(LatencyLog.fileName)
         )
-        if status == .inserted || status == .pasteSent {
-            // Une sélection réécrite n'apprend rien : le texte collé n'a pas été dicté mot pour mot.
-            if model.settings.learnCorrections, commandSelection == nil, trial == nil, let pid = context.pid {
-                let traceID = current.run.trace.id
-                model.dependencies.watchCorrections(finalText, pid, model.dictionary.map(\.term)) { [weak model] candidates in
-                    model?.considerLearning(candidates, dictated: finalText, speech: speech, traceID: traceID)
-                }
-            }
+        if status.delivered {
+            watchCorrections(
+                of: finalText, status: status, pid: context.pid, selectionCommand: commandSelection != nil,
+                writtenByWispad: trial != nil, speech: speech, traceID: current.run.trace.id
+            )
             // Collage normal : rien à signaler, la dictée reste de toute façon dans l'historique.
             model.statusBanner = nil
             job.delivered = true
@@ -627,6 +624,20 @@ final class DictationCoordinator {
         // La bulle part d'abord ; le ménage des vieux audios vient après.
         settle(job)
         model.purgeAudio()
+    }
+
+    /// Texte livré : le champ est surveillé pour apprendre les mots corrigés à la main (`CorrectionWatch.shouldStart`).
+    private func watchCorrections(
+        of text: String, status: InsertionStatus, pid: pid_t?, selectionCommand: Bool, writtenByWispad: Bool,
+        speech: SpeechRequest, traceID: String?
+    ) {
+        guard let model, let pid, CorrectionWatch.shouldStart(
+            status: status, learnCorrections: model.settings.learnCorrections,
+            selectionCommand: selectionCommand, writtenByWispad: writtenByWispad
+        ) else { return }
+        model.dependencies.watchCorrections(text, pid, model.dictionary.map(\.term)) { [weak model] candidates in
+            model?.considerLearning(candidates, dictated: text, speech: speech, traceID: traceID)
+        }
     }
 
     /// Attend que la dictée précédente soit collée (ou abandonnée).
@@ -709,7 +720,9 @@ final class DictationCoordinator {
         await pasteAgain(record.finalText, record: record)
     }
 
-    /// Même collage qu'une dictée (presse-papiers restauré après) ; sans champ, même message que la dictée.
+    /// Même collage qu'une dictée (presse-papiers restauré après), dans l'app au premier plan. Collé, il finit comme
+    /// une dictée : statut et app dans l'historique, surveillance des corrections, et « Collé » dans la bulle.
+    /// Sans champ, même message que la dictée.
     private func pasteAgain(_ text: String, record: DictationRecord?) async {
         guard let model, capture == nil, !pastingAgain else { return }
         pastingAgain = true
@@ -717,13 +730,33 @@ final class DictationCoordinator {
         dismissFailure()
         await model.dependencies.modifiersReleased()
         guard capture == nil else { return }
-        let status = await model.dependencies.insert(text, DictationContext(), { [weak self] in self?.capture == nil })
+        let target = model.dependencies.frontmostApp()
+        let status = await model.dependencies.insert(text, target, { [weak self] in self?.capture == nil })
         if let record, let updated = PasteLastChoice.updatedStatus(previous: record.insertionStatus, outcome: status) {
-            model.persist("statut d'une dictée") { try model.store.updateStatus(id: record.id, status: updated.rawValue) }
+            let category = target.appName == nil && target.bundleID == nil
+                ? nil
+                : UsageClassifier.classify(bundleIdentifier: target.bundleID, appName: target.appName).rawValue
+            model.persist("statut d'une dictée") {
+                try model.store.updateDelivery(
+                    id: record.id, status: updated.rawValue,
+                    targetApp: target.appName, targetBundle: target.bundleID, usageCategory: category
+                )
+            }
             model.reloadHistory()
         }
         switch status {
-        case .inserted, .pasteSent: model.statusBanner = nil
+        case .inserted, .pasteSent:
+            model.statusBanner = nil
+            if let record {
+                // Une trace illisible compte comme une consigne : dans le doute, rien n'est appris.
+                let traces = try? model.store.traces(dictationID: record.id)
+                watchCorrections(
+                    of: text, status: status, pid: target.pid,
+                    selectionCommand: traces.map { list in list.contains { $0.selectionCommand == true } } ?? true,
+                    writtenByWispad: false, speech: model.speechRequest(context: target), traceID: traces?.first?.id
+                )
+            }
+            announce(String(localized: "Collé"), relay: false)
         case .cancelled: break
         default: offerReadyText(text, status: status, recordID: record?.id)
         }

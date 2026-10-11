@@ -3459,6 +3459,16 @@
         }
       }
     },
+    "Collé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pasted"
+          }
+        }
+      }
+    },
     "Ajoute une touche aux modificateurs, par exemple ⌃⌥V." : {
       "localizations" : {
         "en" : {
