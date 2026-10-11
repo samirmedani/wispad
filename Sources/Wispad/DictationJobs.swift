@@ -39,6 +39,8 @@ final class Capture {
     var earlyReady: (text: String, ledger: CorrectionLedger)?
     /// La fin de dictée a choisi sa correction : plus rien ne se prépare.
     var correctionClaimed = false
+    /// Surveillance du premier paquet audio (`MicrophoneStartWatch`).
+    var audioWatch: Task<Void, Never>?
 
     init(mode: ListenMode, context: DictationContext, field: Task<FieldSnapshot?, Never>, marks: LatencyMarks, run: DictationTraceRecorder) {
         self.mode = mode
@@ -150,4 +152,6 @@ struct ShownFailure {
     var recordID: String?
     /// Confirmation « Copié » après un clic sur Copier.
     var copied = false
+    /// Le bouton Historique est proposé ; jamais pour un micro qui n'a pas démarré (rien d'enregistré).
+    var offersHistory = true
 }

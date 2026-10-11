@@ -52,6 +52,13 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 - L'écoute du clavier tourne sur son propre fil : le clavier n'attend jamais l'app. Elle est vérifiée toutes les
   3 s et rétablie si macOS l'a coupée.
 - L'audio s'initialise sur une file dédiée, la bulle s'affiche tout de suite ; le moteur arrêté est réutilisé.
+- Démarrage du micro surveillé, première dictée après un lancement comprise : si macOS reconfigure l'entrée
+  (micro Bluetooth qui change de profil, autre fréquence, micro débranché), le moteur repart aussitôt, dans le même
+  enregistrement ; au repos, il est remplacé par un neuf à la dictée suivante. Aucun audio 1,5 s après le
+  démarrage : le micro redémarre une fois sur un moteur neuf. Toujours rien 1,5 s plus tard, ou démarrage qui ne
+  rend pas la main en 4 s : la dictée est abandonnée, rien n'est envoyé, Wispad revient prêt (le raccourci
+  redémarre une dictée) et la bulle affiche « Le micro n'a pas démarré : réessaie ». Une erreur du micro (aucun
+  micro, moteur refusé) s'affiche de même dans la bulle. Jamais de bulle figée sur un spectre immobile.
 - Le micro reste fermé au repos ; un appui simple ne le prépare pas.
 - La lecture du champ actif (lente dans les apps Electron) ne retarde pas l'enregistrement : l'audio est gardé
   jusqu'à ce que la transcription en direct soit branchée (le champ est attendu 150 ms au plus pour ses mots-clés).

@@ -17,10 +17,18 @@ private final class FakeAudio: AudioRecording, @unchecked Sendable {
     var emitsPCMOnStart = true
     var startGate: AsyncResult<Void>?
     var onStarting: (@Sendable () -> Void)?
+    var startError: Error?
+    /// Démarrages qui ont rendu la main (même abandonnés par la dictée).
+    var finishedStarts = 0
+    var restarts = 0
+    var restartEmitsPCM = true
+    var abandoned = 0
     func start(directory: URL) async throws -> URL {
         starts += 1
         onStarting?()
         if let startGate { try await startGate.value() }
+        defer { finishedStarts += 1 }
+        if let startError { throw startError }
         isRunning = true
         let url = directory.appendingPathComponent(UUID().uuidString + ".wav")
         try Data(repeating: 0, count: 128).write(to: url)
@@ -32,6 +40,24 @@ private final class FakeAudio: AudioRecording, @unchecked Sendable {
         isRunning = false
         return (url, duration)
     }
+    func restart() async throws {
+        restarts += 1
+        if restartEmitsPCM { onPCM?(Data(repeating: 0, count: 1024)) }
+    }
+    func abandonStart() {
+        abandoned += 1
+    }
+}
+
+/// Attend qu'une condition devienne vraie (2 s au plus), sans bloquer le fil principal.
+@MainActor
+private func waitFor(_ condition: () -> Bool, seconds: Double = 2) async -> Bool {
+    let deadline = Date().addingTimeInterval(seconds)
+    while !condition() {
+        if Date() > deadline { return false }
+        try? await Task.sleep(nanoseconds: 10_000_000)
+    }
+    return true
 }
 
 private final class OpenedAt: @unchecked Sendable {
@@ -908,6 +934,115 @@ struct AppRegressionTests {
         #expect(f.transcriptions == 0 && f.inserted == 0)
         let audio = try #require(f.audio.url)
         #expect(!FileManager.default.fileExists(atPath: audio.path))
+    }
+
+    // MARK: Démarrage du micro (première dictée après un lancement)
+
+    @Test func audioStartThatHangsEndsWithMessageAndNextDictationWorks() async throws {
+        let gate = AsyncResult<Void>()
+        let f = try Fixture()
+        defer {
+            gate.resolve(.success(()))
+            f.dispose()
+        }
+        f.audio.startGate = gate
+        f.model.coordinator.audioStartLimit = 0.05
+        await f.model.coordinator.begin(.toggle)
+        // La bulle ne reste pas figée : elle dit pourquoi, sans bouton Historique (rien n'a été enregistré).
+        #expect(f.model.coordinator.phase == .failure(DictationCoordinator.microphoneStalledMessage))
+        #expect(!f.model.coordinator.failureOffersHistory)
+        #expect(f.model.statusBanner == DictationCoordinator.microphoneStalledMessage)
+        #expect(f.audio.abandoned == 1)
+        #expect(!f.cues.contains(.start))
+        // Le démarrage lent finit par rendre la main : la dictée abandonnée ne reprend pas.
+        f.audio.startGate = nil
+        gate.resolve(.success(()))
+        let finished = await waitFor { f.audio.finishedStarts == 1 }
+        #expect(finished)
+        #expect(f.model.coordinator.phase == .failure(DictationCoordinator.microphoneStalledMessage))
+        // Un nouvel appui relance une dictée, message encore affiché ; délai réel (en CI, les tests se partagent
+        // le fil principal : 50 ms ne suffiraient pas à un démarrage normal).
+        f.model.coordinator.audioStartLimit = MicrophoneStartWatch.startLimit
+        await f.model.coordinator.begin(.toggle)
+        #expect(f.model.coordinator.phase == .listening(.toggle))
+        let heard = await waitFor { f.cues.contains(.start) }
+        #expect(heard)
+    }
+
+    @Test func silentMicrophoneRestartsOnceThenListensNormally() async throws {
+        let f = try Fixture()
+        defer { f.dispose() }
+        f.audio.emitsPCMOnStart = false
+        f.model.coordinator.firstPacketLimit = 0.05
+        await f.model.coordinator.begin(.toggle)
+        #expect(f.model.coordinator.phase == .listening(.toggle))
+        #expect(!f.cues.contains(.start))
+        // Moteur muet au premier démarrage : relancé une fois, le son de début suit le premier vrai paquet.
+        let heard = await waitFor { f.cues.contains(.start) }
+        #expect(heard)
+        #expect(f.audio.restarts == 1)
+        #expect(f.model.coordinator.phase == .listening(.toggle))
+        try await Task.sleep(nanoseconds: 150_000_000)
+        #expect(f.audio.restarts == 1)
+        #expect(f.model.coordinator.phase == .listening(.toggle))
+        await f.model.coordinator.end()
+        #expect(f.inserted == 1)
+    }
+
+    @Test func microphoneThatStaysSilentEndsWithMessageAndNextDictationWorks() async throws {
+        let f = try Fixture()
+        defer { f.dispose() }
+        f.audio.emitsPCMOnStart = false
+        f.audio.restartEmitsPCM = false
+        f.model.coordinator.firstPacketLimit = 0.05
+        await f.model.coordinator.begin(.toggle)
+        let failed = await waitFor { f.model.coordinator.phase == .failure(DictationCoordinator.microphoneStalledMessage) }
+        #expect(failed)
+        #expect(f.audio.restarts == 1)
+        #expect(!f.audio.isRunning)
+        #expect(!f.cues.contains(.start))
+        #expect(!f.model.coordinator.failureOffersHistory)
+        #expect(f.transcriptions == 0 && f.inserted == 0)
+        let audio = try #require(f.audio.url)
+        #expect(!FileManager.default.fileExists(atPath: audio.path))
+        // Wispad est de nouveau prêt : la dictée suivante écoute et entend.
+        f.audio.emitsPCMOnStart = true
+        await f.model.coordinator.begin(.toggle)
+        #expect(f.model.coordinator.phase == .listening(.toggle))
+        let heard = await waitFor { f.cues.contains(.start) }
+        #expect(heard)
+    }
+
+    @Test func audioStartErrorIsShownInTheBubble() async throws {
+        let f = try Fixture()
+        defer { f.dispose() }
+        f.audio.startError = AudioCaptureError.noInput
+        await f.model.coordinator.begin(.pushToTalk)
+        let message = try #require(AudioCaptureError.noInput.errorDescription)
+        #expect(f.model.coordinator.phase == .failure(message))
+        #expect(f.model.statusBanner == message)
+        #expect(!f.model.coordinator.failureOffersHistory)
+        #expect(!f.cues.contains(.start))
+    }
+
+    @Test func releaseDuringSlowAudioStartStillEndsTheDictation() async throws {
+        let entered = AsyncResult<Void>()
+        let gate = AsyncResult<Void>()
+        let f = try Fixture()
+        defer { f.dispose() }
+        f.audio.startGate = gate
+        f.audio.onStarting = { entered.resolve(.success(())) }
+        let coordinator = f.model.coordinator
+        coordinator.enqueue { await coordinator.begin(.pushToTalk) }
+        // Touche relâchée pendant le démarrage à froid : la fin attend son tour, elle n'est pas perdue.
+        coordinator.enqueue { coordinator.endCapture() }
+        try await entered.value()
+        #expect(coordinator.phase == .starting)
+        gate.resolve(.success(()))
+        let pasted = await waitFor { f.inserted == 1 }
+        #expect(pasted)
+        #expect(coordinator.phase == .idle)
+        #expect(!f.audio.isRunning)
     }
 
     @Test func cancellingPlaysCancelCue() async throws {

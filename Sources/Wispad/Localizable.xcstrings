@@ -6730,6 +6730,16 @@
           }
         }
       }
+    },
+    "Le micro n'a pas démarré : réessaie" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The microphone didn't start: try again"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

@@ -507,6 +507,8 @@ struct FailurePill: View {
                 secondaryAction: { coordinator.pasteReadyText() },
                 emphasizesAction: true
             )
+        } else if !coordinator.failureOffersHistory {
+            MessageLine(symbol: "exclamationmark.circle.fill", tint: OverlayStyle.red, message: message, countdown: countdown, onDismiss: coordinator.closeMessage)
         } else {
             MessageLine(symbol: "exclamationmark.circle.fill", tint: OverlayStyle.red, message: message, countdown: countdown, onDismiss: coordinator.closeMessage, actionTitle: String(localized: "Historique"), action: {
                 coordinator.dismissFailure()
