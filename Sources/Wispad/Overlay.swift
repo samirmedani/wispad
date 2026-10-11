@@ -11,7 +11,7 @@ enum OverlayMode: Equatable {
     case handsFree
     case finishing
     case failure(String)
-    /// Information brève hors dictée : jamais cliquable.
+    /// Information brève hors dictée : seule sa ✕, au survol, est cliquable.
     case notice(String)
     /// Mot déjà ajouté : Oui le garde, Non le retire. Mêmes clics que la bulle en mains libres.
     case learning(String)
@@ -36,8 +36,16 @@ enum OverlayMode: Equatable {
     /// Seuls les états à boutons captent la souris, et seulement sur la pilule.
     var isInteractive: Bool {
         switch self {
-        case .handsFree, .failure, .learning: return true
-        case .listening, .finishing, .notice: return false
+        case .handsFree, .failure, .notice, .learning: return true
+        case .listening, .finishing: return false
+        }
+    }
+
+    /// Message à décompte : ✕ au survol, décompte en pause sous le pointeur. Jamais la bulle d'enregistrement.
+    var isMessage: Bool {
+        switch self {
+        case .failure, .notice, .learning: return true
+        case .listening, .handsFree, .finishing: return false
         }
     }
 }
@@ -312,7 +320,8 @@ struct OverlayPill: View {
                     symbol: relay ? "arrow.triangle.branch" : info ? "info.circle.fill" : "checkmark.circle.fill",
                     tint: relay ? OverlayStyle.relay : info ? Color.white.opacity(0.7) : OverlayStyle.green,
                     message: message,
-                    duration: DictationCoordinator.noticeSeconds
+                    countdown: model.coordinator.noticeTimer.countdown,
+                    onDismiss: model.coordinator.closeMessage
                 )
                     .id(message)
                     .transition(.opacity)
@@ -321,7 +330,8 @@ struct OverlayPill: View {
                     symbol: "checkmark.circle.fill",
                     tint: OverlayStyle.green,
                     message: message,
-                    duration: DictationCoordinator.learningSeconds,
+                    countdown: model.coordinator.noticeTimer.countdown,
+                    onDismiss: model.coordinator.closeMessage,
                     actionTitle: String(localized: "Oui"),
                     action: { model.coordinator.acceptLearning() },
                     secondaryTitle: String(localized: "Non"),
@@ -476,16 +486,17 @@ struct FailurePill: View {
 
     var body: some View {
         let coordinator = model.coordinator
+        let countdown = coordinator.failureTimer.countdown
         if coordinator.failureCopied {
-            MessageLine(symbol: "checkmark.circle.fill", tint: OverlayStyle.green, message: message, duration: DictationCoordinator.copiedSeconds, onDismiss: coordinator.dismissFailure)
+            MessageLine(symbol: "checkmark.circle.fill", tint: OverlayStyle.green, message: message, countdown: countdown, onDismiss: coordinator.closeMessage)
         } else if coordinator.failureText != nil {
             // Le texte n'a pu être écrit nulle part : Copier en évidence, Coller pour le champ de l'app active.
             MessageLine(
                 symbol: "exclamationmark.circle.fill",
                 tint: OverlayStyle.red,
                 message: message,
-                duration: DictationCoordinator.failureSeconds,
-                onDismiss: coordinator.dismissFailure,
+                countdown: countdown,
+                onDismiss: coordinator.closeMessage,
                 actionTitle: String(localized: "Copier"),
                 action: { coordinator.copyReadyText() },
                 secondaryTitle: String(localized: "Coller"),
@@ -493,7 +504,7 @@ struct FailurePill: View {
                 emphasizesAction: true
             )
         } else {
-            MessageLine(symbol: "exclamationmark.circle.fill", tint: OverlayStyle.red, message: message, duration: DictationCoordinator.failureSeconds, onDismiss: coordinator.dismissFailure, actionTitle: String(localized: "Historique"), action: {
+            MessageLine(symbol: "exclamationmark.circle.fill", tint: OverlayStyle.red, message: message, countdown: countdown, onDismiss: coordinator.closeMessage, actionTitle: String(localized: "Historique"), action: {
                 coordinator.dismissFailure()
                 model.open(.history)
             })
@@ -502,12 +513,15 @@ struct FailurePill: View {
 }
 
 /// Une ligne centrée, petite, avec une fine barre qui se vide de droite à gauche avant le départ du message.
+/// Au survol, une petite ✕ paraît en fondu à droite et la barre s'arrête avec le décompte.
 struct MessageLine: View {
     @Environment(AppModel.self) private var model
     var symbol: String
     var tint: Color
     var message: String
-    var duration: Double
+    /// Décompte du message, lu par la barre ; nil : barre vide (message qui s'en va).
+    var countdown: MessageCountdown? = nil
+    /// ✕ au survol : ferme le message tout de suite.
     var onDismiss: (() -> Void)? = nil
     var actionTitle: String? = nil
     /// Action du premier bouton. Déclarée avant le bouton secondaire et toujours nommée aux appels :
@@ -517,7 +531,6 @@ struct MessageLine: View {
     var secondaryAction: (() -> Void)? = nil
     /// Premier bouton en blanc plein : l'action à ne pas manquer (Copier un texte qui n'a pas été collé).
     var emphasizesAction = false
-    @State private var remaining: CGFloat = 1
 
     var body: some View {
         HStack(spacing: 6) {
@@ -538,12 +551,13 @@ struct MessageLine: View {
                 messageButton(secondaryTitle, action: secondaryAction)
             }
             if let onDismiss {
+                // Discrète : petite croix grise sur un cercle à peine visible, en fondu au survol.
                 Button(action: onDismiss) {
                     Image(systemName: "xmark")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.9))
-                        .frame(width: 20, height: 20)
-                        .background(Circle().fill(.white.opacity(0.14)))
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.6))
+                        .frame(width: 16, height: 16)
+                        .background(Circle().fill(.white.opacity(0.1)))
                         .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
@@ -560,21 +574,18 @@ struct MessageLine: View {
         .padding(.horizontal, 12)
         .frame(height: OverlayLayout.pillHeight)
         .overlay(alignment: .bottomLeading) {
-            GeometryReader { proxy in
-                Capsule()
-                    .fill(Color.white.opacity(0.4))
-                    .frame(width: max(0, proxy.size.width * remaining), height: 2)
-                    .frame(maxHeight: .infinity, alignment: .bottom)
+            // Linéaire, lue sur le décompte à chaque image : une minuterie qui s'écoule, figée en pause.
+            TimelineView(.animation(minimumInterval: nil, paused: countdown?.isPaused ?? true)) { timeline in
+                let remaining = CGFloat(countdown?.fraction(at: timeline.date) ?? 0)
+                GeometryReader { proxy in
+                    Capsule()
+                        .fill(Color.white.opacity(0.4))
+                        .frame(width: max(0, proxy.size.width * remaining), height: 2)
+                        .frame(maxHeight: .infinity, alignment: .bottom)
+                }
             }
             .padding(.horizontal, 14)
             .padding(.bottom, 3)
-        }
-        .onAppear {
-            remaining = 1
-            // Linéaire, sans ressort : une minuterie qui s'écoule, pas un objet qui bouge.
-            withAnimation(.linear(duration: duration)) {
-                remaining = 0
-            }
         }
     }
 
@@ -827,7 +838,7 @@ final class OverlayController {
     }
 
     /// Maintien et finalisation : tout le panneau laisse passer la souris.
-    /// Mains libres et erreur : seule la pilule la capte, suivie par des moniteurs de mouvement.
+    /// Mains libres et messages : seule la pilule la capte, suivie par des moniteurs de mouvement.
     private func updateInteractivity() {
         guard let panel else { return }
         if wanted && state.mode.isInteractive {
@@ -837,6 +848,7 @@ final class OverlayController {
             removeMonitors()
             state.isHovered = false
             panel.ignoresMouseEvents = true
+            model?.coordinator.holdMessages(false)
         }
     }
 
@@ -844,6 +856,8 @@ final class OverlayController {
         guard let panel, isMonitoringMouse else { return }
         let inside = OverlayLayout.pill(state.pillFrame, in: panel.frame, contains: NSEvent.mouseLocation)
         if state.isHovered != inside { state.isHovered = inside }
+        // Le décompte d'un message attend tant que le pointeur est dessus ; la bulle d'enregistrement n'en a pas.
+        model?.coordinator.holdMessages(inside && state.mode.isMessage)
         if panel.ignoresMouseEvents == inside {
             panel.ignoresMouseEvents = !inside
         }

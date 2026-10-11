@@ -59,7 +59,9 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
    surveillée pour l'apprentissage (`CorrectionWatcher`, tri par `JevJudge` et `TermJudge`). Le statut du collage
    vient de `FocusedField` (WispadCore) : confirmé, aucun champ (`FocusedFieldKind.notText` avant comme après ⌘V)
    ou envoyé. Tout statut non livré passe par `DictationCoordinator.offerReadyText` : texte copié, bulle avec
-   Copier et Coller (`readyMessage`).
+   Copier et Coller (`readyMessage`). Les messages de la bulle partent seuls (`MessageTimer`, décompte
+   `MessageCountdown` de WispadCore) ; `OverlayController` met ce décompte en pause pendant le survol
+   (`DictationCoordinator.holdMessages`) et la ✕ appelle `closeMessage`.
 8. Chaque appel facturable devient un `UsageEvent` ; la trace sans texte (`DictationTraceRecorder`) alimente le
    détail et le diagnostic.
    L'écran Consommation compte tous les appels enregistrés, filtrés par la seule période
