@@ -960,7 +960,9 @@ struct AppRegressionTests {
         let finished = await waitFor { f.audio.finishedStarts == 1 }
         #expect(finished)
         #expect(f.model.coordinator.phase == .failure(DictationCoordinator.microphoneStalledMessage))
-        // La dictée suivante démarre normalement.
+        // Un nouvel appui relance une dictée, message encore affiché ; délai réel (en CI, les tests se partagent
+        // le fil principal : 50 ms ne suffiraient pas à un démarrage normal).
+        f.model.coordinator.audioStartLimit = MicrophoneStartWatch.startLimit
         await f.model.coordinator.begin(.toggle)
         #expect(f.model.coordinator.phase == .listening(.toggle))
         let heard = await waitFor { f.cues.contains(.start) }

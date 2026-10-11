@@ -196,11 +196,17 @@ final class DictationCoordinator {
             }
         }
         let directory = model.audioDirectory
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        } catch {
+            failMicrophone(current, message: error.localizedDescription)
+            return
+        }
         // Premier démarrage à froid du moteur : il peut tarder. Au-delà du délai, la dictée est abandonnée
         // (la bulle le dit) et le démarrage se refermera seul ; jamais une bulle figée en attente.
-        let starting = Task<Result<URL, Error>, Never> {
+        // Lancé hors du fil principal, sans y repasser : le micro n'attend jamais une file principale occupée.
+        let starting = Task.detached(priority: Task.currentPriority) { () async -> Result<URL, Error> in
             do {
-                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
                 return .success(try await audio.start(directory: directory))
             } catch {
                 return .failure(error)
@@ -238,7 +244,7 @@ final class DictationCoordinator {
         changed()
         startMeter()
         signalAudioReady(current)
-        watchFirstAudio(current, audio: audio)
+        watchFirstAudio(current, audio: audio) { firstPacket.withLock { $0 != nil } }
         // Le flux en direct reçoit les mots utiles du champ actif : attendus au plus 150 ms, l'audio est gardé
         // pendant ce temps et part dès que le flux est branché.
         if case .some(let snapshot) = await Self.value(of: field, within: Self.contextWait) {
@@ -287,15 +293,16 @@ final class DictationCoordinator {
 
     /// Le premier paquet se fait attendre : le micro redémarre une fois sur un moteur neuf, puis la dictée est
     /// abandonnée (`MicrophoneStartWatch`). L'écoute ne reste jamais muette avec une bulle figée.
-    private func watchFirstAudio(_ current: Capture, audio: any AudioRecording) {
-        guard current.marks.firstAudio == nil else { return }
+    /// `packetArrived` lit l'arrivée du paquet là où le micro la note, sans attendre le fil principal.
+    private func watchFirstAudio(_ current: Capture, audio: any AudioRecording, packetArrived: @escaping @Sendable () -> Bool) {
+        guard !packetArrived() else { return }
         let limit = firstPacketLimit
         current.audioWatch = Task { @MainActor [weak self] in
             var watch = MicrophoneStartWatch()
             while true {
                 try? await Task.sleep(nanoseconds: UInt64(limit * 1_000_000_000))
                 guard !Task.isCancelled, let self, self.isCapturing(current) else { return }
-                switch watch.deadlinePassed(packetReceived: current.marks.firstAudio != nil) {
+                switch watch.deadlinePassed(packetReceived: packetArrived()) {
                 case .done:
                     return
                 case .restart:
