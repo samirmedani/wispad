@@ -38,8 +38,12 @@ final class AppModel {
     /// Le coffre (ou le fichier des clés) a répondu à la dernière lecture.
     var keysReachable = true
     var statusBanner: String?
+    /// Section affichée, retrouvée au lancement suivant (`AppSettings.lastSection`).
     var selectedSection: AppSection = .home {
-        didSet { if selectedSection != .history { historyPlayer.close() } }
+        didSet {
+            if selectedSection != .history { historyPlayer.close() }
+            setDisplayChoice(\.lastSection, selectedSection)
+        }
     }
     var isRecordingShortcut = false {
         didSet { hotkeys?.refreshConfig() }
@@ -79,6 +83,7 @@ final class AppModel {
         settings = initialSettings ?? AppSettings.load()
         coordinator = DictationCoordinator()
         coordinator.model = self
+        selectedSection = settings.lastSection
         reload()
         purgeAudio()
         if persistsSettings { refreshPermissions() }
@@ -104,6 +109,13 @@ final class AppModel {
 
     func saveSettings() {
         if persistsSettings { settings.save() }
+    }
+
+    /// Choix d'affichage (période, section, partie dépliée) : écrit seulement s'il change.
+    func setDisplayChoice<Value: Equatable>(_ keyPath: WritableKeyPath<AppSettings, Value>, _ value: Value) {
+        guard settings[keyPath: keyPath] != value else { return }
+        settings[keyPath: keyPath] = value
+        saveSettings()
     }
 
     /// Lecture complète, au lancement seulement : ensuite chaque écran ne relit que sa table, et la

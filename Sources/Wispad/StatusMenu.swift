@@ -51,7 +51,7 @@ enum StatusMenu {
         let count = dictations == 1 ? String(localized: "1 dictée") : String(localized: "\(dictations) dictées")
         _ = add("\(spent) · \(count)", "openUsage")
         items.append(.separator())
-        _ = add(String(localized: "Ouvrir Wispad"), "openHome")
+        _ = add(String(localized: "Ouvrir Wispad"), "openWindow")
         _ = add(String(localized: "Historique"), "openHistory")
         _ = add(String(localized: "Dictionnaire"), "openDictionary")
         _ = add(String(localized: "Réglages…"), "openSettings", key: ",")

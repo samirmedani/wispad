@@ -7,8 +7,9 @@ import WispadCore
 
 struct UsageView: View {
     @Environment(AppModel.self) private var model
-    @State private var period: StatsPeriod = .today
     @State private var refreshing = false
+
+    private var period: StatsPeriod { model.settings.usagePeriod }
 
     var body: some View {
         let now = Date()
@@ -17,7 +18,10 @@ struct UsageView: View {
         let incomplete = summary.hasUnpricedCalls || model.usageLoadFailed
         ScreenScroll {
             ScreenHeader(title: String(localized: "Consommation"), subtitle: String(localized: "Coûts des API et recours aux relais.")) {
-                PillPicker(selection: $period)
+                PillPicker(selection: Binding(
+                    get: { model.settings.usagePeriod },
+                    set: { model.setDisplayChoice(\.usagePeriod, $0) }
+                ))
             }
             if let warning = model.usageStorageWarning {
                 HStack(alignment: .top, spacing: 12) {

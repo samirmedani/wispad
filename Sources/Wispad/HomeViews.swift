@@ -7,7 +7,8 @@ import WispadCore
 
 struct HomeView: View {
     @Environment(AppModel.self) private var model
-    @State private var period: StatsPeriod = .days7
+
+    private var period: StatsPeriod { model.settings.homePeriod }
 
     var body: some View {
         let summary = StatsCalculator.summary(
@@ -17,7 +18,10 @@ struct HomeView: View {
         let records = model.records(in: period)
         ScreenScroll {
             ScreenHeader(title: greeting, subtitle: String(localized: "Ton activité de dictée en un coup d'œil.")) {
-                PillPicker(selection: $period)
+                PillPicker(selection: Binding(
+                    get: { model.settings.homePeriod },
+                    set: { model.setDisplayChoice(\.homePeriod, $0) }
+                ))
             }
             ActivityCard(summary: summary, records: records, period: period)
             MetricGrid {

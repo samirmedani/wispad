@@ -210,7 +210,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         model.copy(last.finalText)
     }
 
-    @objc private func openHome() { show(section: .home) }
+    /// « Ouvrir Wispad » : la dernière section ouverte, retrouvée après une relance.
+    @objc private func openWindow() { show(section: model?.selectedSection ?? .home) }
     @objc private func openUsage() { show(section: .usage) }
     @objc private func openHistory() { show(section: .history) }
     @objc private func openDictionary() { show(section: .dictionary) }

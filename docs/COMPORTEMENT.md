@@ -57,6 +57,16 @@ Raccourci par défaut : fn seule. Wispad intercepte la touche fn pour que macOS 
   l'on se trouve, même par-dessus une app en plein écran ; déjà visible sur ce bureau, elle ne bouge pas.
 - Une fois affichée, c'est une fenêtre ordinaire : passer à une autre app, cliquer sur le bureau ou changer de
   bureau la laisse à sa place et sur son bureau, simplement derrière l'app active.
+- Choix d'affichage mémorisés, retrouvés après avoir quitté et relancé Wispad, chacun enregistré dès qu'il change :
+  - période de l'Accueil (7 jours par défaut) ;
+  - période de Consommation (Aujourd'hui par défaut), indépendante de celle de l'Accueil ;
+  - dernière section ouverte dans la barre latérale (Accueil par défaut) : la fenêtre rouvre dessus depuis le
+    Dock ou « Ouvrir Wispad » ; un raccourci de section ou un menu de section ouvre toujours la sienne ;
+  - « Clés facultatives » dépliées ou non dans Fournisseurs (repliées par défaut).
+
+  Un choix illisible ou inconnu reprend sa valeur par défaut, sans toucher aux autres réglages. Restent
+  éphémères : la recherche de l'Historique, une saisie en cours (clé, terme du dictionnaire), une dictée dépliée
+  dans l'Historique, le détail ouvert.
 
 ## Premier lancement guidé
 

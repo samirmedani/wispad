@@ -129,6 +129,10 @@ Une mise à jour ne doit jamais faire perdre à l'utilisateur ses fournisseurs, 
   existante doit garder l'ancien comportement, `init(from:)` donne une autre valeur quand la clé est absente
   (`useWindowContext`, `onboardingCompleted`, `language`).
 
+Les choix d'affichage à retrouver au lancement suivant (périodes de l'Accueil et de Consommation, section ouverte,
+partie dépliée) sont des réglages comme les autres, écrits au changement par `AppModel.setDisplayChoice` (seulement
+s'ils changent). Une recherche ou une saisie en cours reste un `@State` éphémère.
+
 **Ajouter un réglage** : nouvelle clé, jamais le nom d'une clé retirée ; sa lecture avec `value(...)` (ou `table`,
 `number` avec ses bornes) ; un test qui décode un ancien bloc sans la clé.
 
