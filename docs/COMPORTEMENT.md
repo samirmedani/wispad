@@ -55,6 +55,10 @@ barre de progression : Bienvenue, Autorisations, Micro, Fournisseur, Touche, Ess
 en cours, réussie (✓) ou en problème (✗, avec la marche à suivre) ; « Continuer » n'est actif qu'une fois l'étape
 réussie. « Plus tard » est proposé seulement pour le micro, la touche et l'essai.
 
+- **Bienvenue** : la bulle d'écoute telle qu'elle apparaît pendant une dictée (pilule de verre noir, 11 barres
+  rouges, graves au centre), agrandie, animée à la cadence de l'écran par une voix simulée en boucle : syllabes
+  avec attaque et retombée, courtes pauses entre les mots, respiration en fin de phrase. Aucun micro ni réseau.
+  Avec « Réduire les animations », image fixe.
 - **Autorisations**, toutes sur un écran : micro, accessibilité (coller le texte), surveillance des entrées (touche
   fn). « Autoriser » déclenche la demande de macOS ; ensuite, ou après un refus, le bouton ouvre le bon panneau de
   Réglages Système et le chemin exact est affiché. L'état est relu toutes les 0,5 s. Surveillance des entrées

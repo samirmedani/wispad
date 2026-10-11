@@ -460,36 +460,37 @@ private struct FixStepButton: View {
     }
 }
 
-/// La bulle de dictée en miniature : verre noir et spectre de la voix. Immobile si « réduire les animations ».
+/// La bulle d'écoute, rendue comme la vraie (pilule de verre noir, spectre rouge de `SpectrumBars`, même nombre
+/// de barres) et animée à la cadence de l'écran par une voix simulée (`SimulatedVoice`) : aucun micro, aucun réseau.
+/// Image fixe si « réduire les animations ».
 private struct BubbleDemo: View {
     @Environment(\.interactionReduceMotion) private var reduceMotion
-    private static let bars = 13
+    @Namespace private var glass
+    /// Proportions de la vraie bulle, agrandies pour l'écran d'accueil.
+    private static let scale: CGFloat = 1.6
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / 30, paused: reduceMotion)) { context in
-            let time = reduceMotion ? 0.6 : context.date.timeIntervalSinceReferenceDate
-            HStack(spacing: 3) {
-                ForEach(0..<Self.bars, id: \.self) { index in
-                    Capsule()
-                        .fill(index == Self.bars / 2 ? OverlayStyle.red : Color.white.opacity(0.92))
-                        .frame(width: 3.5, height: 6 + 20 * height(index, time: time))
-                }
-            }
-            .frame(width: 168, height: 44)
-            .background(Capsule().fill(OverlayStyle.background))
-            .overlay(Capsule().strokeBorder(Color.white.opacity(0.12), lineWidth: 1))
-            .shadow(color: .black.opacity(0.25), radius: 10, y: 4)
+        TimelineView(.animation(paused: reduceMotion)) { context in
+            let levels = reduceMotion
+                ? SimulatedVoice.stillLevels
+                : SimulatedVoice.levels(at: context.date.timeIntervalSinceReferenceDate)
+            pill(levels: levels)
         }
         .accessibilityHidden(true)
     }
 
-    /// Graves au centre, comme la vraie bulle ; une respiration lente qui évoque la parole.
-    private func height(_ index: Int, time: Double) -> Double {
-        let center = Double(Self.bars - 1) / 2
-        let distance = abs(Double(index) - center) / center
-        let envelope = 1 - 0.65 * distance
-        let wave = 0.5 + 0.5 * sin(time * 5.2 + Double(index) * 0.9) * sin(time * 1.3 + Double(index) * 0.35)
-        return max(0.08, envelope * wave)
+    /// Même construction que `OverlayPill` en écoute : marges, hauteur et verre de la bulle.
+    @ViewBuilder
+    private func pill(levels: [Float]) -> some View {
+        let capsule = SpectrumBars(levels: levels, color: OverlayStyle.red, scale: Self.scale)
+            .padding(.horizontal, OverlayLayout.spectrumPadding * Self.scale)
+            .frame(height: OverlayLayout.pillHeight * Self.scale)
+            .overlayGlass(Capsule(), id: "pill", in: glass)
+        if #available(macOS 26, *) {
+            capsule
+        } else {
+            capsule.shadow(color: .black.opacity(0.3), radius: 6, y: 2)
+        }
     }
 }
 

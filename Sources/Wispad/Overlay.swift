@@ -382,6 +382,8 @@ struct LiveSpectrum: View {
 struct SpectrumBars: View {
     var levels: [Float]
     var color: Color
+    /// Agrandissement net (pas un `scaleEffect`, qui flouterait le dessin) : 1 dans la bulle.
+    var scale: CGFloat = 1
 
     static let barWidth: CGFloat = 3
     static let spacing: CGFloat = 2.5
@@ -390,16 +392,18 @@ struct SpectrumBars: View {
 
     var body: some View {
         let count = levels.count
+        let barWidth = Self.barWidth * scale
+        let minimumHeight = Self.minimumHeight * scale
         Canvas { context, size in
             var x: CGFloat = 0
             for level in self.levels {
-                let height = Self.minimumHeight + CGFloat(min(1, max(0, level))) * (size.height - Self.minimumHeight)
-                let bar = CGRect(x: x, y: (size.height - height) / 2, width: Self.barWidth, height: height)
-                context.fill(Path(roundedRect: bar, cornerRadius: Self.barWidth / 2), with: .color(self.color))
-                x += Self.barWidth + Self.spacing
+                let height = minimumHeight + CGFloat(min(1, max(0, level))) * (size.height - minimumHeight)
+                let bar = CGRect(x: x, y: (size.height - height) / 2, width: barWidth, height: height)
+                context.fill(Path(roundedRect: bar, cornerRadius: barWidth / 2), with: .color(self.color))
+                x += barWidth + Self.spacing * self.scale
             }
         }
-        .frame(width: Self.width(count: count), height: Self.height)
+        .frame(width: Self.width(count: count) * scale, height: Self.height * scale)
     }
 
     static func width(count: Int) -> CGFloat {

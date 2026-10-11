@@ -76,6 +76,11 @@ public final class SpectrumAnalyzer: @unchecked Sendable {
 }
 
 public extension SpectrumAnalyzer {
+    /// Bandes (grave → aigu) disposées en barres symétriques : graves au centre, aigus sur les bords.
+    static func mirrored(_ bands: [Float]) -> [Float] {
+        Array(bands.reversed() + bands.dropFirst())
+    }
+
     /// Une image par tranche complète de `hop` échantillons. Le reliquat attend le paquet suivant :
     /// des petits paquets micro ne créent ainsi ni image supplémentaire ni retard d'affichage.
     func frames(pcm16 data: Data, hop: Int = 256) -> [[Float]] {
