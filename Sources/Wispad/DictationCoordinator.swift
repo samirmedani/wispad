@@ -47,6 +47,8 @@ final class DictationCoordinator {
     var failureText: String?
     /// Copier vient d'être cliqué : la bulle confirme « Copié » avant de partir.
     var failureCopied = false
+    /// Le message d'erreur propose d'ouvrir l'historique (faux pour un micro qui n'a pas démarré).
+    var failureOffersHistory = true
     /// Un collage de « Coller la dernière dictée » (ou du bouton Coller) est en cours.
     @ObservationIgnored private var pastingAgain = false
     /// Barres du spectre affiché : graves au centre, aigus sur les bords.
@@ -98,6 +100,14 @@ final class DictationCoordinator {
     static let contextWait = 0.15
     /// Attente supplémentaire de la lecture de fenêtre à la fin d'une dictée très courte.
     static let windowWait = 0.25
+    static let audioLog = Logger.wispad("audio")
+    /// Message de la bulle quand le micro ne démarre pas (trop lent ou sans aucun audio).
+    static var microphoneStalledMessage: String {
+        String(localized: "Le micro n'a pas démarré : réessaie")
+    }
+    /// Délais de démarrage du micro (`MicrophoneStartWatch`) ; raccourcis par les tests.
+    @ObservationIgnored var audioStartLimit = MicrophoneStartWatch.startLimit
+    @ObservationIgnored var firstPacketLimit = MicrophoneStartWatch.firstPacketLimit
 
     var isListening: Bool {
         if case .listening = phase { return true }
@@ -164,44 +174,62 @@ final class DictationCoordinator {
             model.open(.settings)
             return
         }
-        do {
-            try FileManager.default.createDirectory(at: model.audioDirectory, withIntermediateDirectories: true)
-            let audio = model.dependencies.makeCapture()
-            audio.inputDeviceUID = model.settings.microphoneUID.isEmpty ? nil : model.settings.microphoneUID
-            current.audio = audio
-            let pcm = current.pcm
-            let firstPacket = OSAllocatedUnfairLock<Int?>(initialState: nil)
-            audio.onPCM = { [weak self, weak current] data in
-                guard !data.isEmpty else { return }
-                pcm.push(data)
-                let at = KeyboardTap.now()
-                let isFirst = firstPacket.withLock { first in
-                    guard first == nil else { return false }
-                    first = at
-                    return true
-                }
-                if isFirst {
-                    Task { @MainActor in
-                        guard let self, let current, self.capture === current, !current.cancelled else { return }
-                        current.marks.firstAudio = at
-                        self.signalAudioReady(current)
-                    }
+        let audio = model.dependencies.makeCapture()
+        audio.inputDeviceUID = model.settings.microphoneUID.isEmpty ? nil : model.settings.microphoneUID
+        let pcm = current.pcm
+        let firstPacket = OSAllocatedUnfairLock<Int?>(initialState: nil)
+        audio.onPCM = { [weak self, weak current] data in
+            guard !data.isEmpty else { return }
+            pcm.push(data)
+            let at = KeyboardTap.now()
+            let isFirst = firstPacket.withLock { first in
+                guard first == nil else { return false }
+                first = at
+                return true
+            }
+            if isFirst {
+                Task { @MainActor in
+                    guard let self, let current, self.capture === current, !current.cancelled else { return }
+                    current.marks.firstAudio = at
+                    self.signalAudioReady(current)
                 }
             }
-            let url = try await audio.start(directory: model.audioDirectory)
-            guard capture === current, !current.cancelled else {
-                // Le démarrage async peut même être enfilé après stop(). L'arrêter de nouveau avant
-                // de rendre la main à la dictée suivante (enqueue sérialise les démarrages).
+        }
+        let directory = model.audioDirectory
+        // Premier démarrage à froid du moteur : il peut tarder. Au-delà du délai, la dictée est abandonnée
+        // (la bulle le dit) et le démarrage se refermera seul ; jamais une bulle figée en attente.
+        let starting = Task<Result<URL, Error>, Never> {
+            do {
+                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+                return .success(try await audio.start(directory: directory))
+            } catch {
+                return .failure(error)
+            }
+        }
+        guard let started = await Self.value(of: starting, within: audioStartLimit) else {
+            audio.abandonStart()
+            guard capture === current, !current.cancelled else { return }
+            Self.audioLog.error("démarrage du micro trop long : dictée abandonnée")
+            failMicrophone(current, message: Self.microphoneStalledMessage)
+            return
+        }
+        guard capture === current, !current.cancelled else {
+            // Le démarrage async peut même être enfilé après stop(). L'arrêter de nouveau avant
+            // de rendre la main à la dictée suivante (enqueue sérialise les démarrages).
+            if case .success(let url) = started {
                 _ = audio.stop()
                 delete(url)
-                return
             }
+            return
+        }
+        switch started {
+        case .success(let url):
+            current.audio = audio
             current.audioURL = url
             current.marks.firstAudio = firstPacket.withLock { $0 }
-        } catch {
-            guard capture === current, !current.cancelled else { return }
-            discard(current)
-            model.statusBanner = error.localizedDescription
+        case .failure(let error):
+            Self.audioLog.error("démarrage du micro impossible")
+            failMicrophone(current, message: error.localizedDescription)
             return
         }
         current.marks.microphone = KeyboardTap.now()
@@ -210,6 +238,7 @@ final class DictationCoordinator {
         changed()
         startMeter()
         signalAudioReady(current)
+        watchFirstAudio(current, audio: audio)
         // Le flux en direct reçoit les mots utiles du champ actif : attendus au plus 150 ms, l'audio est gardé
         // pendant ce temps et part dès que le flux est branché.
         if case .some(let snapshot) = await Self.value(of: field, within: Self.contextWait) {
@@ -256,6 +285,46 @@ final class DictationCoordinator {
         muteOutputAfterCue(current)
     }
 
+    /// Le premier paquet se fait attendre : le micro redémarre une fois sur un moteur neuf, puis la dictée est
+    /// abandonnée (`MicrophoneStartWatch`). L'écoute ne reste jamais muette avec une bulle figée.
+    private func watchFirstAudio(_ current: Capture, audio: any AudioRecording) {
+        guard current.marks.firstAudio == nil else { return }
+        let limit = firstPacketLimit
+        current.audioWatch = Task { @MainActor [weak self] in
+            var watch = MicrophoneStartWatch()
+            while true {
+                try? await Task.sleep(nanoseconds: UInt64(limit * 1_000_000_000))
+                guard !Task.isCancelled, let self, self.isCapturing(current) else { return }
+                switch watch.deadlinePassed(packetReceived: current.marks.firstAudio != nil) {
+                case .done:
+                    return
+                case .restart:
+                    Self.audioLog.notice("aucun audio du micro : redémarrage sur un moteur neuf")
+                    do {
+                        try await audio.restart()
+                    } catch {
+                        guard self.isCapturing(current) else { return }
+                        _ = watch.restartFailed()
+                        Self.audioLog.error("redémarrage du micro impossible : dictée abandonnée")
+                        self.failMicrophone(current, message: Self.microphoneStalledMessage)
+                        return
+                    }
+                case .fail:
+                    Self.audioLog.error("toujours aucun audio du micro : dictée abandonnée")
+                    self.failMicrophone(current, message: Self.microphoneStalledMessage)
+                    return
+                }
+            }
+        }
+    }
+
+    /// Le micro n'a pas démarré : la dictée est abandonnée, Wispad revient prêt et la bulle dit pourquoi.
+    private func failMicrophone(_ current: Capture, message: String) {
+        shownFailure = ShownFailure(message: message, text: nil, offersHistory: false)
+        model?.statusBanner = message
+        discard(current)
+    }
+
     /// Relais pris d'emblée : voix chez l'autre fournisseur si le principal est en panne, correction par OpenAI
     /// si DeepSeek l'est.
     private func routed(_ speech: SpeechRequest, model: AppModel) -> (speech: SpeechRequest, relay: String?) {
@@ -274,6 +343,7 @@ final class DictationCoordinator {
     func endCapture() -> Task<Void, Never>? {
         guard let current = capture, current.listening else { return nil }
         capture = nil
+        current.audioWatch?.cancel()
         stopMeter()
         let stopped = current.audio?.stop()
         current.audio = nil
@@ -352,6 +422,7 @@ final class DictationCoordinator {
     private func cancelCapture(_ current: Capture) {
         current.cancelled = true
         current.correctionClaimed = true
+        current.audioWatch?.cancel()
         capture = nil
         stopMeter()
         current.startTask?.cancel()
@@ -376,6 +447,7 @@ final class DictationCoordinator {
     /// Écoute qui n'a pas pu commencer (micro refusé, capture impossible).
     private func discard(_ current: Capture, outcome: DictationOutcome = .captureFailed) {
         current.cancelled = true
+        current.audioWatch?.cancel()
         capture = nil
         current.field.cancel()
         current.pcm.close()
@@ -783,6 +855,8 @@ final class DictationCoordinator {
         if failureText != text { failureText = text }
         let copied = capture == nil && shownFailure?.copied == true
         if failureCopied != copied { failureCopied = copied }
+        let offersHistory = shownFailure?.offersHistory ?? true
+        if failureOffersHistory != offersHistory { failureOffersHistory = offersHistory }
         if phase != next { phase = next }
         scheduleFailureDismissal()
         // Relais, puis confirmation d'un mot appris, dès que la bulle est libre.

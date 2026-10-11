@@ -10,9 +10,17 @@ protocol AudioRecording: AnyObject, Sendable {
     var inputDeviceUID: String? { get set }
     func start(directory: URL) async throws -> URL
     func stop() -> (url: URL?, duration: Double)
+    /// Écoute en cours mais muette : redémarre le micro sur un moteur neuf, dans le même fichier.
+    func restart() async throws
+    /// Démarrage trop long : la dictée ne l'attend plus, il se refermera seul en rendant la main.
+    func abandonStart()
 }
 
 extension AudioRecording {
+    /// Un enregistreur sans moteur à relancer (tests) : rien à faire.
+    func restart() async throws {}
+    func abandonStart() {}
+
     /// Un enregistreur qui ne choisit pas son micro (tests) : toujours celui du système.
     var inputDeviceUID: String? {
         get { nil }

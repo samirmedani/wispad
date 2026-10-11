@@ -31,6 +31,14 @@ final class AudioCapture: @unchecked Sendable {
     private let inputChoice = OSAllocatedUnfairLock<String?>(initialState: nil)
     /// Micro réellement réglé sur le moteur (file `control` seulement) ; nil : celui du système.
     private var appliedInput: String?
+    /// Écoute des reconfigurations du moteur actuel (file `control` seulement).
+    private var configurationObserver: NSObjectProtocol?
+    /// Démarrages demandés et abandonnés (délai dépassé) : un démarrage abandonné se referme seul.
+    private let tickets = OSAllocatedUnfairLock(initialState: StartTickets())
+    /// Redémarrages sur reconfiguration pendant l'écoute en cours : bornés, pour ne jamais boucler.
+    private var reconfigurations = 0
+    private static let maxReconfigurations = 3
+    private static let log = Logger.wispad("audio")
 
     /// Micro voulu pour la prochaine écoute (identifiant CoreAudio) ; nil : celui du système.
     var inputDeviceUID: String? {
@@ -48,40 +56,115 @@ final class AudioCapture: @unchecked Sendable {
     }
 
     func start(directory: URL) async throws -> URL {
-        try await withCheckedThrowingContinuation { continuation in
+        let ticket = tickets.withLock { tickets -> Int in
+            tickets.issued += 1
+            return tickets.issued
+        }
+        return try await withCheckedThrowingContinuation { continuation in
             control.async {
-                do { continuation.resume(returning: try self.startAudio(directory: directory)) }
-                catch { continuation.resume(throwing: error) }
+                // Démarrage abandonné par la dictée avant même son tour : rien n'est ouvert.
+                guard !self.isAbandoned(ticket) else {
+                    continuation.resume(throwing: CancellationError())
+                    return
+                }
+                do {
+                    let url = try self.startAudio(directory: directory)
+                    // Abandonné pendant le démarrage (trop lent) : refermé ici, dans l'ordre de la file, pour ne
+                    // jamais arrêter le micro d'une dictée suivante.
+                    if self.isAbandoned(ticket) {
+                        _ = self.stopAudio()
+                        try? FileManager.default.removeItem(at: url)
+                        continuation.resume(throwing: CancellationError())
+                        return
+                    }
+                    continuation.resume(returning: url)
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    /// La dictée n'attend plus les démarrages en cours : chacun se referme dès qu'il rend la main.
+    func abandonStart() {
+        tickets.withLock { $0.abandoned = $0.issued }
+    }
+
+    private func isAbandoned(_ ticket: Int) -> Bool {
+        tickets.withLock { ticket <= $0.abandoned }
+    }
+
+    /// Moteur muet : un moteur neuf, même micro voulu, même fichier. Sans écoute en cours, rien n'est ouvert.
+    func restart() async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            control.async {
+                do {
+                    try self.restartEngine()
+                    continuation.resume()
+                } catch {
+                    continuation.resume(throwing: error)
+                }
             }
         }
     }
 
     private func startAudio(directory: URL) throws -> URL {
+        let url = directory.appendingPathComponent("\(UUID().uuidString).wav")
+        let writer = try WAVStream(url: url, sampleRate: 16_000)
+        wav = writer
+        reconfigurations = 0
+        analyzer = SpectrumAnalyzer()
+        state.withLock { $0 = CaptureState() }
+        do {
+            try runEngine(fresh: false)
+        } catch {
+            _ = stopAudio()
+            try? FileManager.default.removeItem(at: url)
+            throw error
+        }
+        return url
+    }
+
+    /// File `control` : redémarre l'écoute en cours sur un moteur neuf.
+    private func restartEngine() throws {
+        guard wav != nil else { return }
+        do {
+            try runEngine(fresh: true)
+        } catch {
+            _ = stopAudio()
+            throw error
+        }
+    }
+
+    /// File `control` : règle le micro, lit son format, branche la conversion et démarre le moteur.
+    private func runEngine(fresh: Bool) throws {
         // Micro choisi et toujours branché ; sinon celui du système. Sans choix, rien n'est lu ni changé.
         let wanted = inputDeviceUID.flatMap { InputDeviceChoice.effectiveUID(saved: $0, available: AudioInputDevices.all().map(\.uid)) }
-        if wanted != appliedInput {
-            // Autre micro : un moteur neuf, réglé avant de lire son format.
-            self.engine = nil
+        if fresh || wanted != appliedInput {
+            // Autre micro ou moteur muet : un moteur neuf, réglé avant de lire son format.
+            dropEngine()
         }
         let reused = self.engine != nil
         let engine = self.engine ?? AVAudioEngine()
-        self.engine = engine
-        if !reused, let wanted { AudioInputDevices.use(wanted, in: engine) }
+        if !reused {
+            self.engine = engine
+            observeConfiguration(of: engine)
+            if let wanted { AudioInputDevices.use(wanted, in: engine) }
+        }
         appliedInput = wanted
         let input = engine.inputNode
         let hardware = input.outputFormat(forBus: 0)
         guard hardware.sampleRate > 0, hardware.channelCount > 0 else {
+            dropEngine()
             throw AudioCaptureError.noInput
         }
         guard let target = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: 16_000, channels: 1, interleaved: true) else {
             throw AudioCaptureError.engine(String(localized: "Format audio 16 kHz indisponible."))
         }
-        converter = AVAudioConverter(from: hardware, to: target)
-        analyzer = SpectrumAnalyzer()
-        state.withLock { $0 = CaptureState() }
-        let url = directory.appendingPathComponent("\(UUID().uuidString).wav")
-        let writer = try WAVStream(url: url, sampleRate: 16_000)
-        wav = writer
+        let next = AVAudioConverter(from: hardware, to: target)
+        processingLock.lock()
+        converter = next
+        processingLock.unlock()
         input.removeTap(onBus: 0)
         input.installTap(onBus: 0, bufferSize: 512, format: hardware) { [weak self] buffer, _ in
             self?.consume(buffer)
@@ -90,12 +173,52 @@ final class AudioCapture: @unchecked Sendable {
         do {
             try engine.start()
         } catch {
-            _ = stopAudio()
-            self.engine = nil
-            try? FileManager.default.removeItem(at: url)
+            input.removeTap(onBus: 0)
+            dropEngine()
             throw AudioCaptureError.engine(error.localizedDescription)
         }
-        return url
+    }
+
+    /// File `control` : oublie le moteur actuel (arrêté), pour en créer un neuf au prochain démarrage.
+    private func dropEngine() {
+        if let observer = configurationObserver {
+            NotificationCenter.default.removeObserver(observer)
+            configurationObserver = nil
+        }
+        engine?.inputNode.removeTap(onBus: 0)
+        engine?.stop()
+        engine = nil
+        appliedInput = nil
+    }
+
+    /// macOS a reconfiguré l'entrée (micro Bluetooth qui change de profil, autre fréquence, micro débranché) :
+    /// AVAudioEngine s'est arrêté seul et n'enverrait plus rien. Pendant une écoute, il repart aussitôt sur un
+    /// moteur neuf, dans le même fichier ; au repos, le moteur est seulement oublié.
+    private func observeConfiguration(of engine: AVAudioEngine) {
+        let observed = ObjectIdentifier(engine)
+        configurationObserver = NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange, object: engine, queue: nil
+        ) { [weak self] _ in
+            guard let self else { return }
+            self.control.async { self.engineReconfigured(observed) }
+        }
+    }
+
+    /// File `control`.
+    private func engineReconfigured(_ observed: ObjectIdentifier) {
+        guard let engine, ObjectIdentifier(engine) == observed else { return }
+        guard wav != nil else {
+            dropEngine()
+            return
+        }
+        guard reconfigurations < Self.maxReconfigurations else { return }
+        reconfigurations += 1
+        Self.log.notice("entrée audio reconfigurée pendant l'écoute : moteur redémarré")
+        do {
+            try runEngine(fresh: true)
+        } catch {
+            Self.log.error("redémarrage du micro impossible après reconfiguration")
+        }
     }
 
     func stop() -> (url: URL?, duration: Double) {
@@ -146,6 +269,11 @@ final class AudioCapture: @unchecked Sendable {
         }
         onPCM?(data)
     }
+}
+
+private struct StartTickets {
+    var issued = 0
+    var abandoned = 0
 }
 
 private struct CaptureState {
