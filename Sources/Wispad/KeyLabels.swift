@@ -1,0 +1,59 @@
+import AppKit
+import Carbon
+import Foundation
+import WispadCore
+
+/// Touche physique qui produit un caractère dans la disposition active (AZERTY, Dvorak…),
+/// pour que Cmd+V reste Cmd+V quel que soit le clavier.
+enum KeyboardLayout {
+    static func keyCode(for character: Character) -> CGKeyCode? {
+        guard let source = TISCopyCurrentKeyboardLayoutInputSource()?.takeRetainedValue(),
+              let pointer = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData) else { return nil }
+        let data = Unmanaged<CFData>.fromOpaque(pointer).takeUnretainedValue() as Data
+        let target = String(character).lowercased()
+        return data.withUnsafeBytes { raw -> CGKeyCode? in
+            guard let layout = raw.baseAddress?.assumingMemoryBound(to: UCKeyboardLayout.self) else { return nil }
+            for code in 0..<128 {
+                var deadKeys: UInt32 = 0
+                var length = 0
+                var chars = [UniChar](repeating: 0, count: 4)
+                let status = UCKeyTranslate(
+                    layout, UInt16(code), UInt16(kUCKeyActionDown), 0, UInt32(LMGetKbdType()),
+                    OptionBits(kUCKeyTranslateNoDeadKeysBit), &deadKeys, chars.count, &length, &chars
+                )
+                if status == noErr, length > 0, String(utf16CodeUnits: chars, count: length).lowercased() == target {
+                    return CGKeyCode(code)
+                }
+            }
+            return nil
+        }
+    }
+}
+
+enum KeyLabels {
+    static func describe(keyCode: Int, modifiers: UInt64) -> String {
+        if keyCode == ChordMatcher.functionKeyCode { return "fn" }
+        var parts: [String] = []
+        let flags = CGEventFlags(rawValue: modifiers)
+        if flags.contains(.maskControl) { parts.append("⌃") }
+        if flags.contains(.maskAlternate) { parts.append("⌥") }
+        if flags.contains(.maskShift) { parts.append("⇧") }
+        if flags.contains(.maskCommand) { parts.append("⌘") }
+        if flags.contains(.maskSecondaryFn) { parts.append("fn") }
+        parts.append(name(for: keyCode))
+        return parts.joined(separator: " ")
+    }
+
+    static func name(for keyCode: Int) -> String {
+        let names: [Int: String] = [
+            0: "A", 1: "S", 2: "D", 3: "F", 4: "H", 5: "G", 6: "Z", 7: "X", 8: "C", 9: "V",
+            11: "B", 12: "Q", 13: "W", 14: "E", 15: "R", 16: "Y", 17: "T",
+            18: "1", 19: "2", 20: "3", 21: "4", 22: "6", 23: "5", 25: "9", 26: "7", 28: "8", 29: "0",
+            31: "O", 32: "U", 34: "I", 35: "P", 37: "L", 38: "J", 40: "K",
+            45: "N", 46: "M",
+            36: "retour", 48: "tab", 49: "espace", 51: "suppr", 53: "esc",
+            123: "←", 124: "→", 125: "↓", 126: "↑"
+        ]
+        return names[keyCode] ?? String(localized: "touche \(keyCode)")
+    }
+}

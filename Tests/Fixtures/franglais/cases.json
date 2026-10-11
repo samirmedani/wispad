@@ -1,0 +1,29 @@
+{
+  "_doc": "Banc de régression franglais. text : phrase prononcée (et texte attendu). required : termes qui doivent apparaître (sensible à la casse ; préfixe re: pour une expression régulière). forbidden : ce qui ne doit pas apparaître (francisation, hallucination). control : phrase en français pur, pour vérifier qu'on n'anglicise pas le français.",
+  "cases": [
+    { "id": "01-push", "text": "J'ai push la dernière version sur GitHub.", "required": ["re:\\bpush\\b", "GitHub"], "forbidden": ["pêche", "poussé"] },
+    { "id": "02-deploy", "text": "Le deploy Vercel a fail.", "required": ["deploy", "Vercel", "re:\\bfail\\b"], "forbidden": ["virtuel", "versel", "Versel"] },
+    { "id": "03-envvar", "text": "L'environment variable est missing.", "required": ["environment variable", "missing"], "forbidden": ["environnement"] },
+    { "id": "04-rollback", "text": "J'ai rollback vers le previous deployment.", "required": ["rollback", "previous deployment"], "forbidden": [] },
+    { "id": "05-fix", "text": "J'ai fix le problème dans les settings.", "required": ["re:\\bfix\\b", "settings"], "forbidden": ["fixé", "re:\\bfixe\\b"] },
+    { "id": "06-oauth2", "text": "J'utilise OAuth 2.0 avec MCP.", "required": ["OAuth 2.0", "MCP"], "forbidden": ["re:(?<![Oo])Auth\\b", "authentification"] },
+    { "id": "07-oauth", "text": "Quand OAuth s'ouvre, l'utilisateur accepte les permissions.", "required": ["OAuth", "permissions"], "forbidden": ["re:(?<![Oo])Auth\\b", "authentification"] },
+    { "id": "08-toolcall", "text": "Le tool call a échoué.", "required": ["tool call"], "forbidden": ["touche"] },
+    { "id": "09-tools", "text": "L'agent doit déterminer quels tools utiliser.", "required": ["tools"], "forbidden": ["touche", "outils"] },
+    { "id": "10-retry", "text": "Retry avec exponential backoff.", "required": ["re:(?i)\\bretry\\b", "exponential backoff"], "forbidden": [] },
+    { "id": "11-ryzen", "text": "Ryzen 9 7950X3D avec une RTX 4080.", "required": ["Ryzen 9 7950X3D", "RTX 4080"], "forbidden": ["7950X 3D", "ZenSet"] },
+    { "id": "12-inference", "text": "Je benchmark plusieurs workloads d'AI inference.", "required": ["benchmark", "workloads", "AI inference"], "forbidden": ["re:\\bIA\\b", "inférence", "day inference"] },
+    { "id": "13-metrics", "text": "Je mesure la latency, le throughput, les errors et l'observability.", "required": ["latency", "throughput", "errors", "observability"], "forbidden": ["re:(?i)\\blow\\b", "latence", "débit"] },
+    { "id": "14-otel", "text": "Le monitoring passe par OpenTelemetry.", "required": ["monitoring", "OpenTelemetry"], "forbidden": [] },
+    { "id": "15-intel", "text": "Mon serveur a un i5-13600K, 32 Go de RAM et une RTX 4090 avec 24 Go de VRAM.", "required": ["i5-13600K", "32 Go", "RTX 4090", "24 Go de VRAM"], "forbidden": [] },
+    { "id": "16-amd", "text": "Je passe sur un Ryzen 7 9800X3D ou un Ryzen 9 9900X.", "required": ["Ryzen 7 9800X3D", "Ryzen 9 9900X"], "forbidden": ["9800X 3D"] },
+    { "id": "17-agents", "text": "On a des AI agents qui font du speech-to-text et du text-to-speech.", "required": ["AI agents", "re:(?i)speech[- ]to[- ]text", "re:(?i)text[- ]to[- ]speech"], "forbidden": ["re:\\bIA\\b"] },
+    { "id": "18-health", "text": "Le health check déclenche le fallback après le rate limit.", "required": ["health check", "fallback", "rate limit"], "forbidden": [] },
+    { "id": "c1-rdv", "control": true, "text": "J'ai fixé un rendez-vous avec le notaire pour jeudi.", "required": ["fixé", "rendez-vous"], "forbidden": ["re:\\bfix\\b"] },
+    { "id": "c2-climat", "control": true, "text": "Cette région offre un environnement variable selon les saisons.", "required": ["environnement variable"], "forbidden": ["environment"] },
+    { "id": "c3-outils", "control": true, "text": "Les outils sont rangés dans le garage, à côté de la voiture.", "required": ["outils"], "forbidden": ["tools"] },
+    { "id": "c4-autorisation", "control": true, "text": "Il faut une autorisation pour entrer dans le bâtiment.", "required": ["autorisation"], "forbidden": ["OAuth", "re:\\bAuth\\b"] },
+    { "id": "c5-prix", "control": true, "text": "Le prix est fixe et le service est rapide.", "required": ["fixe"], "forbidden": ["re:\\bfix\\b"] },
+    { "id": "c6-porte", "control": true, "text": "J'ai poussé la porte et j'ai vu le facteur.", "required": ["poussé"], "forbidden": ["push"] }
+  ]
+}

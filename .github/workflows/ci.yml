@@ -1,0 +1,85 @@
+name: Vérification
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Tests et traductions
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - name: XcodeGen
+        run: brew install xcodegen
+      - name: Tests, traductions et compilation Release
+        run: scripts/check.sh
+
+  secrets:
+    name: Secrets et fichiers interdits
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Secrets dans tout l'historique (gitleaks)
+        run: docker run --rm -v "$PWD:/repo" -w /repo --entrypoint sh zricethezav/gitleaks:latest -c 'git config --global --add safe.directory /repo && gitleaks git /repo --no-banner --redact'
+      - name: Types de fichiers interdits
+        run: |
+          bad=$(git ls-files | grep -Ei '\.(wav|m4a|mp3|aiff|caf|flac|sqlite|db|p8|p12|pfx|pem|key|cer|mobileprovision|provisionprofile|dmg|pkg|zip|ipa)$|(^|/)(review|PROJECT)\.md$|Signing\.local\.xcconfig|api-keys\.json|(^|/)\.env' || true)
+          if [ -n "$bad" ]; then
+            echo "::error::Fichiers interdits dans le dépôt :"
+            echo "$bad"
+            exit 1
+          fi
+      - name: Chemins de machine
+        run: |
+          if git grep -nE '/(Users|home)/[A-Za-z0-9._-]+/' -- . ':!.github/workflows/'; then
+            echo "::error::Chemin personnel de machine dans le dépôt (voir ci-dessus)."
+            exit 1
+          fi
+
+  commits:
+    name: Signature des commits
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Signed-off-by et première ligne
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          fail=0
+          for commit in $(git rev-list --no-merges "$BASE..$HEAD"); do
+            subject=$(git log -1 --format=%s "$commit")
+            if ! git log -1 --format=%B "$commit" | grep -q '^Signed-off-by: '; then
+              echo "::error::$commit n'est pas signé : git commit -s (voir CONTRIBUTING.md)."
+              fail=1
+            fi
+            if [ "$(printf '%s' "$subject" | wc -m)" -gt 72 ]; then
+              echo "::error::$commit : première ligne de plus de 72 caractères."
+              fail=1
+            fi
+          done
+          if [ -n "$(git rev-list --merges "$BASE..$HEAD")" ]; then
+            echo "::error::Pas de commit de fusion : mets ta branche à jour avec git rebase main."
+            fail=1
+          fi
+          exit $fail

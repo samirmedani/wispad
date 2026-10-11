@@ -1,0 +1,271 @@
+import CoreGraphics
+import Foundation
+import WispadCore
+import os
+
+/// État technique uniquement : aucune touche ni horodatage de frappe n'est conservé.
+struct KeyboardDiagnosticState: Codable, Equatable, Sendable {
+    enum Listening: String, Codable, Sendable { case notStarted, unavailable, enabled, disabled }
+    var listening: Listening = .notStarted
+    var recoveries = 0
+    var capturing = false
+    var pending = false
+    var recordingShortcut = false
+}
+
+/// Écoute du clavier sur son propre fil, avec sa propre boucle d'événements : le clavier du Mac n'attend jamais
+/// le fil principal de Wispad (fenêtre en cours de rendu, app lente interrogée, collage en cours). La logique du
+/// raccourci (HotkeyLogic) tourne ici ; seuls ses effets (début, fin, annulation) partent vers le fil principal.
+final class KeyboardTap: @unchecked Sendable {
+    /// Marque les frappes que Wispad envoie lui-même (Cmd+V du collage) : l'écoute les laisse passer sans les lire,
+    /// pour qu'un collage pendant une autre dictée ne soit pas pris pour « fn + une autre touche ».
+    static let syntheticMarker: Int64 = 0x7769_7370_6164
+
+    /// Frappes et clics réels depuis le lancement (un simple compteur, jamais les touches) : un collage suivi
+    /// d'aucune frappe ni d'aucun clic laisse le curseur juste après le texte collé.
+    private static let typed = OSAllocatedUnfairLock(initialState: 0)
+    static var keystrokes: Int { typed.withLock { $0 } }
+
+    static func noteInput() {
+        typed.withLock { $0 &+= 1 }
+    }
+
+    /// Horloge des frappes : ms depuis le démarrage, hors veille, comme l'horodatage des événements clavier.
+    static func now() -> Int {
+        Int(clock_gettime_nsec_np(CLOCK_UPTIME_RAW) / 1_000_000)
+    }
+
+    private let deliver: @Sendable (HotkeyOutput) -> Void
+    private let unavailable: @Sendable () -> Void
+    private let config = OSAllocatedUnfairLock(initialState: HotkeyConfig())
+    private let diagnostics = OSAllocatedUnfairLock(initialState: KeyboardDiagnosticState())
+    private let ready = DispatchSemaphore(value: 0)
+    /// Boucle du fil de l'écoute, posée une fois au démarrage.
+    private var runLoop: CFRunLoop?
+
+    // Le reste n'est touché que sur le fil de l'écoute.
+    private var logic = HotkeyLogic()
+    private var tap: CFMachPort?
+    private var source: CFRunLoopSource?
+    private var wake: CFRunLoopTimer?
+    /// L'état matériel du clavier a vu le raccourci enfoncé lors d'un appui traité sans retard : on peut s'y fier.
+    /// Sinon (état non rapporté pour cette touche, ou jamais vérifié), on fait confiance aux seuls événements.
+    private var physicalStateReliable = false
+    /// Au-delà, l'appui est arrivé en retard : la touche a pu être relâchée entre-temps, l'état ne prouve rien.
+    private static let promptPressMilliseconds = 30
+
+    init(deliver: @escaping @Sendable (HotkeyOutput) -> Void, unavailable: @escaping @Sendable () -> Void) {
+        self.deliver = deliver
+        self.unavailable = unavailable
+    }
+
+    func start() {
+        guard runLoop == nil else { return }
+        let thread = Thread { [self] in run() }
+        thread.name = "wispad.clavier"
+        thread.qualityOfService = .userInteractive
+        thread.start()
+        ready.wait()
+    }
+
+    func update(_ change: @escaping @Sendable (inout HotkeyConfig) -> Void) {
+        config.withLock { change(&$0) }
+    }
+
+    var diagnosticState: KeyboardDiagnosticState {
+        var result = diagnostics.withLock { $0 }
+        let current = config.withLock { $0 }
+        result.capturing = current.capturing
+        result.pending = current.pending
+        result.recordingShortcut = current.recording
+        return result
+    }
+
+    /// La dictée s'est terminée autrement que par le geste (annulation, échec, ■, menu).
+    func endSession() {
+        perform { $0.logic.endSession() }
+    }
+
+    func externalToggleStarted() {
+        perform { $0.logic.externalToggleStarted() }
+    }
+
+    /// Nouvel essai après une autorisation donnée dans les Réglages.
+    func reinstall() {
+        perform { $0.install(reportFailure: true) }
+    }
+
+    private func perform(_ work: @escaping (KeyboardTap) -> Void) {
+        guard let runLoop else { return }
+        CFRunLoopPerformBlock(runLoop, CFRunLoopMode.commonModes.rawValue) { [self] in work(self) }
+        CFRunLoopWakeUp(runLoop)
+    }
+
+    private func run() {
+        runLoop = CFRunLoopGetCurrent()
+        ready.signal()
+        install(reportFailure: true)
+        // macOS peut couper l'écoute sans prévenir (veille, serveur graphique relancé) : vérifiée toutes les 3 s.
+        let watchdog = CFRunLoopTimerCreateWithHandler(kCFAllocatorDefault, CFAbsoluteTimeGetCurrent() + 3, 3, 0, 0) { [self] _ in
+            checkTap()
+        }
+        CFRunLoopAddTimer(CFRunLoopGetCurrent(), watchdog, .commonModes)
+        CFRunLoopRun()
+    }
+
+    private func install(reportFailure: Bool) {
+        if let tap {
+            if CFMachPortIsValid(tap) {
+                CGEvent.tapEnable(tap: tap, enable: true)
+                diagnostics.withLock { $0.listening = .enabled }
+                return
+            }
+            remove()
+        }
+        let mask = (1 << CGEventType.keyDown.rawValue)
+            | (1 << CGEventType.keyUp.rawValue)
+            | (1 << CGEventType.flagsChanged.rawValue)
+        guard let created = CGEvent.tapCreate(
+            tap: .cgSessionEventTap,
+            place: .headInsertEventTap,
+            options: .defaultTap,
+            eventsOfInterest: CGEventMask(mask),
+            callback: keyboardTapCallback,
+            userInfo: Unmanaged.passUnretained(self).toOpaque()
+        ) else {
+            diagnostics.withLock { $0.listening = .unavailable }
+            if reportFailure { unavailable() }
+            return
+        }
+        tap = created
+        let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, created, 0)
+        self.source = source
+        CFRunLoopAddSource(CFRunLoopGetCurrent(), source, .commonModes)
+        CGEvent.tapEnable(tap: created, enable: true)
+        diagnostics.withLock { $0.listening = .enabled }
+    }
+
+    private func remove() {
+        if let source { CFRunLoopRemoveSource(CFRunLoopGetCurrent(), source, .commonModes) }
+        if let tap { CFMachPortInvalidate(tap) }
+        tap = nil
+        source = nil
+        diagnostics.withLock { $0.listening = .notStarted }
+    }
+
+    private func checkTap() {
+        guard let tap else {
+            if CGPreflightListenEventAccess() { install(reportFailure: false) }
+            return
+        }
+        if !CFMachPortIsValid(tap) {
+            diagnostics.withLock { $0.listening = .disabled; $0.recoveries += 1 }
+            hotkeyLog.notice("Écoute du clavier invalidée : recréée")
+            remove()
+            resync()
+            install(reportFailure: false)
+        } else if !CGEvent.tapIsEnabled(tap: tap) {
+            diagnostics.withLock { $0.recoveries += 1 }
+            hotkeyLog.notice("Écoute du clavier désactivée : réactivée")
+            resync()
+            CGEvent.tapEnable(tap: tap, enable: true)
+            diagnostics.withLock { $0.listening = .enabled }
+        }
+    }
+
+    /// Des frappes ont pu se perdre pendant la coupure : l'état du raccourci est recalé sur la touche réelle.
+    private func resync() {
+        apply(logic.resync(keyPhysicallyDown: physicalStateReliable ? keyIsDown() : logic.chordDown, at: Self.now()))
+    }
+
+    fileprivate func handle(_ type: CGEventType, _ event: CGEvent) -> Unmanaged<CGEvent>? {
+        let phase: KeyPhase
+        switch type {
+        case .tapDisabledByTimeout, .tapDisabledByUserInput:
+            diagnostics.withLock { $0.listening = .disabled; $0.recoveries += 1 }
+            hotkeyLog.notice("Écoute du clavier coupée par macOS (\(type == .tapDisabledByTimeout ? "lenteur" : "saisie sécurisée", privacy: .public)) : réactivée")
+            if let tap {
+                CGEvent.tapEnable(tap: tap, enable: true)
+                diagnostics.withLock { $0.listening = .enabled }
+            }
+            resync()
+            return Unmanaged.passUnretained(event)
+        case .keyDown: phase = .down
+        case .keyUp: phase = .up
+        case .flagsChanged: phase = .flags
+        default: return Unmanaged.passUnretained(event)
+        }
+        if event.getIntegerValueField(.eventSourceUserData) == Self.syntheticMarker {
+            return Unmanaged.passUnretained(event)
+        }
+        let key = KeyEvent(
+            phase: phase,
+            keyCode: Int(event.getIntegerValueField(.keyboardEventKeycode)),
+            flags: event.flags.rawValue,
+            autorepeat: event.getIntegerValueField(.keyboardEventAutorepeat) != 0,
+            time: Self.time(of: event)
+        )
+        let output = logic.handle(key, config: config.withLock { $0 })
+        if let pressed = output.pressedAt, Self.now() - pressed < Self.promptPressMilliseconds {
+            physicalStateReliable = keyIsDown()
+        }
+        if phase == .down, !output.swallow { Self.typed.withLock { $0 &+= 1 } }
+        apply(output)
+        return output.swallow ? nil : Unmanaged.passUnretained(event)
+    }
+
+    private func apply(_ output: HotkeyOutput) {
+        if case .reschedule(let time) = output.wake { schedule(time) }
+        if !output.isQuiet { deliver(output) }
+    }
+
+    /// Réveil du geste (seuil de maintien, fin de l'intervalle du double appui), à l'heure dite.
+    private func schedule(_ time: Int?) {
+        if let wake {
+            CFRunLoopTimerInvalidate(wake)
+            self.wake = nil
+        }
+        guard let time else { return }
+        let delay = Double(max(0, time - Self.now())) / 1_000
+        let timer = CFRunLoopTimerCreateWithHandler(kCFAllocatorDefault, CFAbsoluteTimeGetCurrent() + delay, 0, 0, 0) { [self] _ in
+            wake = nil
+            apply(logic.tick(at: Self.now(), keyStillDown: !physicalStateReliable || keyIsDown()))
+        }
+        wake = timer
+        CFRunLoopAddTimer(CFRunLoopGetCurrent(), timer, .commonModes)
+    }
+
+    /// État physique du raccourci, lu au clavier lui-même (état matériel) et non dans la file des événements.
+    private func keyIsDown() -> Bool {
+        let keyCode = config.withLock { $0.keyCode }
+        if keyCode == ChordMatcher.functionKeyCode {
+            return CGEventSource.flagsState(.hidSystemState).contains(.maskSecondaryFn)
+        }
+        return CGEventSource.keyState(.hidSystemState, key: CGKeyCode(keyCode))
+    }
+
+    private static let timebase: mach_timebase_info_data_t = {
+        var info = mach_timebase_info_data_t()
+        mach_timebase_info(&info)
+        return info
+    }()
+
+    /// Instant réel de la frappe : son horodatage s'il est cohérent avec l'horloge (moins de 5 s d'écart),
+    /// sinon maintenant. Un fil principal occupé ne retarde ainsi plus le seuil de maintien.
+    static func time(of event: CGEvent) -> Int {
+        let now = now()
+        let stamp = event.timestamp
+        guard stamp > 0 else { return now }
+        let nanoseconds = Int(stamp / 1_000_000)
+        let ticks = Int(Double(stamp) * Double(timebase.numer) / Double(timebase.denom) / 1_000_000)
+        for candidate in [nanoseconds, ticks] where candidate <= now && now - candidate < 5_000 {
+            return candidate
+        }
+        return now
+    }
+}
+
+private let keyboardTapCallback: CGEventTapCallBack = { _, type, event, info in
+    guard let info else { return Unmanaged.passUnretained(event) }
+    return Unmanaged<KeyboardTap>.fromOpaque(info).takeUnretainedValue().handle(type, event)
+}

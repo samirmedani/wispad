@@ -1,0 +1,19 @@
+#!/bin/sh
+# Avant chaque push : jamais directement sur main (tout passe par une pull request vérifiée), et aucun secret
+# dans les commits envoyés. Installé par scripts/install-hooks.sh.
+remote="$1"
+zero=0000000000000000000000000000000000000000
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ "$remote_ref" = "refs/heads/main" ]; then
+    echo "Push refusé vers main : ouvre une pull request depuis une branche (voir CONTRIBUTING.md)." >&2
+    exit 1
+  fi
+  [ "$local_sha" = "$zero" ] && continue
+  if command -v gitleaks >/dev/null 2>&1; then
+    gitleaks git --no-banner --redact --log-opts="$local_sha --not --remotes=$remote" >/dev/null 2>&1 || {
+      echo "Push refusé : gitleaks signale un secret dans les commits envoyés vers $remote_ref." >&2
+      exit 1
+    }
+  fi
+done
+exit 0

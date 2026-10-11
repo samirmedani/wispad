@@ -1,0 +1,1076 @@
+import AppKit
+import QuartzCore
+import Foundation
+import WispadCore
+import os
+
+enum ListenMode: Equatable {
+    case pushToTalk
+    case toggle
+}
+
+enum DictationPhase: Equatable {
+    case idle
+    case starting
+    case listening(ListenMode)
+    case finishing
+    case failure(String)
+}
+
+/// Une dictée tient en deux temps. L'écoute (Capture) : une seule à la fois, micro ouvert dès l'appui.
+/// La fin (FinishJob) : transcription, correction et collage en arrière-plan, pour qu'une nouvelle dictée puisse
+/// commencer aussitôt ; les textes se collent toujours dans l'ordre où ils ont été dits.
+@MainActor
+@Observable
+final class DictationCoordinator {
+    weak var model: AppModel?
+    var phase: DictationPhase = .idle {
+        didSet {
+            let capturing: Bool
+            switch phase {
+            case .starting, .listening: capturing = true
+            default: capturing = false
+            }
+            // Ne jamais réenregistrer la lecture d'une ancienne dictée.
+            if capturing && !oldValue.isCapturing { model?.historyPlayer.close() }
+            // Dès que l'écoute s'arrête (fin, annulation, échec), le son coupé par Wispad revient.
+            if !capturing, outputMuted {
+                outputMuted = false
+                model?.dependencies.restoreOutput()
+            }
+            if capturing != oldValue.isCapturing || phase.isPending != oldValue.isPending {
+                model?.hotkeys?.setDictationState(capturing: capturing, pending: phase.isPending)
+            }
+        }
+    }
+    @ObservationIgnored private var outputMuted = false
+    var failureText: String?
+    /// Barres du spectre affiché : graves au centre, aigus sur les bords.
+    var spectrum = Array(repeating: Float(0), count: DictationCoordinator.barCount)
+    /// Relais qui travaille sur cette dictée (« OpenAI ») : la bulle change de couleur.
+    private(set) var relay: String?
+    @ObservationIgnored var onChange: (() -> Void)?
+    /// Bascules déjà annoncées : un seul message par panne, jusqu'au retour du service principal.
+    @ObservationIgnored private var announcedRelays: Set<String> = []
+    @ObservationIgnored private var pendingAnnouncement: String?
+    /// Le message de la bulle annonce une bascule vers un relais (icône et couleur dédiées).
+    private(set) var noticeIsRelay = false
+    /// Le message demande de garder ou non un mot déjà ajouté au dictionnaire.
+    private(set) var noticeConfirmsLearning = false
+
+    @ObservationIgnored private var generation = 0
+    @ObservationIgnored private var operation: Task<Void, Never>?
+    /// Dictée en cours d'écoute.
+    @ObservationIgnored private var capture: Capture?
+    /// Dictées qui se terminent, dans l'ordre où elles ont été dites.
+    @ObservationIgnored private var jobs: [FinishJob] = []
+    /// Erreur à montrer dans la bulle, dès que le micro est libre.
+    @ObservationIgnored private var shownFailure: ShownFailure?
+    @ObservationIgnored private var dismissing: UUID?
+    @ObservationIgnored private var failureDismissal: Task<Void, Never>?
+    /// Nouvelle transcription demandée depuis l'historique.
+    @ObservationIgnored private var retrying = false
+    @ObservationIgnored private var meter: FrameTicker?
+
+    static let barCount = SpectrumAnalyzer.bandCount * 2 - 1
+    /// Fréquence d'affichage du spectre.
+    static let meterInterval = 1.0 / 60.0
+    /// En dessous, l'enregistrement est jeté sans appel API (appui trop bref, souffle).
+    static let minimumDuration = 0.3
+    /// Durées d'affichage des messages ; une fine barre se vide pendant ce temps.
+    /// Le temps de cliquer sur Copier quand le texte n'a pas pu être collé.
+    static let failureSeconds = 10.0
+    static let noticeSeconds = 3.5
+    /// Confirmation d'un mot appris : assez longtemps pour cliquer, puis le mot reste.
+    static let learningSeconds = 8.0
+    private static let learningLog = Logger.wispad("apprentissage")
+    static let transcriptionLog = Logger.wispad("transcription")
+    private static let insertionLog = Logger.wispad("insertion")
+    /// Attente maximale du champ actif avant d'ouvrir le flux en direct (l'audio est gardé pendant ce temps).
+    static let contextWait = 0.15
+    /// Attente supplémentaire de la lecture de fenêtre à la fin d'une dictée très courte.
+    static let windowWait = 0.25
+
+    var isListening: Bool {
+        if case .listening = phase { return true }
+        return false
+    }
+
+    /// Dictées en cours de transcription, de correction ou de collage.
+    var finishingCount: Int { jobs.count }
+
+    func enqueue(_ work: @escaping @MainActor () async -> Void) {
+        let previous = operation
+        let token = generation
+        operation = Task { @MainActor in
+            await previous?.value
+            guard self.generation == token, !Task.isCancelled else { return }
+            await work()
+        }
+    }
+
+    func begin(_ mode: ListenMode, pressedAt: Int? = nil) async {
+        guard capture == nil, let model else { return }
+        guard !retrying else {
+            model.hotkeys?.sessionEnded()
+            return
+        }
+        let latencyMarks = LatencyMarks(pressed: pressedAt)
+        let run = DictationTraceRecorder(origin: mode == .toggle ? .toggle : .hold, pressedAt: pressedAt, marks: latencyMarks)
+        let problem = await model.voiceProblem()
+        guard capture == nil, !retrying else { return }
+        if let problem {
+            run.complete(problem.outcome, model: model)
+            model.statusBanner = problem.message
+            model.open(.providers)
+            model.hotkeys?.sessionEnded()
+            return
+        }
+        // La bulle d'abord, puis le micro. L'app au premier plan est lue tout de suite ; son champ actif (lent
+        // dans les apps Electron) est lu en parallèle et ne retarde plus l'enregistrement.
+        let (context, field) = model.dependencies.captureContext()
+        let current = Capture(mode: mode, context: context, field: field, marks: latencyMarks, run: run)
+        capture = current
+        // La conversation visible (Claude, Codex, Chrome…) est lue pendant qu'on parle : ni le micro
+        // ni la bulle ne l'attendent, et seule la correction s'en sert.
+        if model.settings.cleanupEnabled, model.settings.useWindowContext, let pid = context.pid {
+            let read = model.dependencies.readWindow
+            current.window = Task { await read(pid) }
+        }
+        relay = nil
+        spectrum = Array(repeating: 0, count: Self.barCount)
+        refreshPhase()
+        // La capture possède déjà la bulle : retirer l'ancien message ne lance pas de disparition
+        // SwiftUI suivie d'une réapparition dans la même boucle du fil principal.
+        clearNotice()
+        dismissFailure()
+        changed()
+        current.marks.bubble = KeyboardTap.now()
+        // Couleur de relais dès la première image de la bulle (elle ne dépend pas du champ actif).
+        relay = routed(model.speechRequest(context: nil), model: model).relay
+        let microphone = await model.dependencies.requestMicrophone()
+        guard capture === current, !current.cancelled else { return }
+        guard microphone else {
+            discard(current, outcome: .microphoneDenied)
+            model.statusBanner = String(localized: "Le microphone n'est pas autorisé.")
+            model.open(.settings)
+            return
+        }
+        do {
+            try FileManager.default.createDirectory(at: model.audioDirectory, withIntermediateDirectories: true)
+            let audio = model.dependencies.makeCapture()
+            current.audio = audio
+            let pcm = current.pcm
+            let firstPacket = OSAllocatedUnfairLock<Int?>(initialState: nil)
+            audio.onPCM = { [weak self, weak current] data in
+                guard !data.isEmpty else { return }
+                pcm.push(data)
+                let at = KeyboardTap.now()
+                let isFirst = firstPacket.withLock { first in
+                    guard first == nil else { return false }
+                    first = at
+                    return true
+                }
+                if isFirst {
+                    Task { @MainActor in
+                        guard let self, let current, self.capture === current, !current.cancelled else { return }
+                        current.marks.firstAudio = at
+                        self.signalAudioReady(current)
+                    }
+                }
+            }
+            let url = try await audio.start(directory: model.audioDirectory)
+            guard capture === current, !current.cancelled else {
+                // Le démarrage async peut même être enfilé après stop(). L'arrêter de nouveau avant
+                // de rendre la main à la dictée suivante (enqueue sérialise les démarrages).
+                _ = audio.stop()
+                delete(url)
+                return
+            }
+            current.audioURL = url
+            current.marks.firstAudio = firstPacket.withLock { $0 }
+        } catch {
+            guard capture === current, !current.cancelled else { return }
+            discard(current)
+            model.statusBanner = error.localizedDescription
+            return
+        }
+        current.marks.microphone = KeyboardTap.now()
+        current.listening = true
+        refreshPhase()
+        changed()
+        startMeter()
+        signalAudioReady(current)
+        // Le flux en direct reçoit les mots utiles du champ actif : attendus au plus 150 ms, l'audio est gardé
+        // pendant ce temps et part dès que le flux est branché.
+        if case .some(let snapshot) = await Self.value(of: field, within: Self.contextWait) {
+            context.apply(snapshot)
+        }
+        guard capture === current, !current.cancelled else { return }
+        let requestedSpeech = model.speechRequest(context: context, includeRecentDictations: true)
+        let (speech, relayName) = routed(requestedSpeech, model: model)
+        relay = relayName
+        current.speech = speech
+        if speech.provider != requestedSpeech.provider {
+            current.voiceFallback = APIFallback(
+                fromAPI: .transcription(requestedSpeech.provider, streaming: true),
+                stage: .transcription, reason: .servicePaused
+            )
+        }
+        let live = model.dependencies.makeSession(speech)
+        current.session = live
+        wireEarlyCorrection(live, for: current)
+        current.pcm.attach { [weak live] data in live?.send(data) }
+        let marks = current.marks
+        current.startTask = Task { [weak current] in
+            guard !Task.isCancelled, current?.cancelled == false else { return false }
+            current?.streamAttemptedAt = Date()
+            do {
+                try await live.start()
+                marks.stream = KeyboardTap.now()
+                current?.streamStarted = true
+                return true
+            } catch {
+                current?.streamStarted = false
+                return false
+            }
+        }
+    }
+
+    /// Le son confirme l'arrivée réelle du micro, une seule fois, jamais une préparation ou une annulation.
+    private func signalAudioReady(_ current: Capture) {
+        guard capture === current, current.listening, !current.cancelled,
+              current.marks.firstAudio != nil, !current.didSignalReady else { return }
+        current.didSignalReady = true
+        pushLevel(elapsed: Self.meterInterval)
+        cue(.start)
+        muteOutputAfterCue(current)
+    }
+
+    /// Relais pris d'emblée : voix chez l'autre fournisseur si le principal est en panne, correction par OpenAI
+    /// si DeepSeek l'est.
+    private func routed(_ speech: SpeechRequest, model: AppModel) -> (speech: SpeechRequest, relay: String?) {
+        if model.health.isDown(ServiceHealth.voice(speech.provider)), let fallback = model.voiceFallback(for: speech) {
+            return (fallback, fallback.provider.displayName)
+        }
+        if speech.cleanupPrimaryDown, model.settings.cleanupEnabled, !(speech.fallbackKey ?? "").isEmpty {
+            return (speech, ProviderID.openAI.displayName)
+        }
+        return (speech, nil)
+    }
+
+    /// Fin de l'écoute : le micro se ferme tout de suite, la dictée se termine en arrière-plan et le raccourci
+    /// est aussitôt libre pour la suivante. Rend la tâche de fin (attendue par les tests).
+    @discardableResult
+    func endCapture() -> Task<Void, Never>? {
+        guard let current = capture, current.listening else { return nil }
+        capture = nil
+        stopMeter()
+        let stopped = current.audio?.stop()
+        current.audio = nil
+        current.pcm.close()
+        current.marks.released = KeyboardTap.now()
+        let url = stopped?.url ?? current.audioURL
+        let duration = max(0, stopped?.duration ?? 0)
+        guard duration >= Self.minimumDuration else {
+            current.correctionClaimed = true
+            if let model { accountEarlyCorrections(current, model: model, cancel: true) }
+            current.startTask?.cancel()
+            recordStreaming(current, seconds: duration, succeeded: false)
+            current.session?.cancel()
+            delete(url)
+            if let model { current.run.complete(.noSpeech, model: model) }
+            refreshPhase()
+            changed()
+            return nil
+        }
+        let job = FinishJob(capture: current, url: url, duration: duration, previous: jobs.last?.pasted)
+        jobs.append(job)
+        // L'écoute est finie : le son du Mac revient avant le son de fin, pour qu'on l'entende.
+        refreshPhase()
+        cue(.stop)
+        changed()
+        let task = Task { [weak self] in
+            guard let self else { return }
+            await self.finish(job)
+        }
+        job.task = task
+        return task
+    }
+
+    /// Cette écoute est toujours en cours (ni arrêtée, ni annulée).
+    func isCapturing(_ current: Capture) -> Bool {
+        capture === current && current.listening && !current.cancelled
+    }
+
+    /// Termine l'écoute et attend que la dictée soit collée.
+    func end() async {
+        await endCapture()?.value
+    }
+
+    func dismissFailure() {
+        guard shownFailure != nil || phase.isFailure else { return }
+        shownFailure = nil
+        failureDismissal?.cancel()
+        failureDismissal = nil
+        refreshPhase()
+        changed()
+    }
+
+    /// Échap, ✕ ou menu. Pendant l'écoute, seule cette dictée est abandonnée : celles qui se terminent continuent.
+    /// Sinon, ce qui se termine est annulé et rien n'est collé.
+    func cancel() {
+        if let current = capture {
+            cancelCapture(current)
+            return
+        }
+        if phase.isFailure || shownFailure != nil {
+            dismissFailure()
+            return
+        }
+        guard !jobs.isEmpty || retrying else { return }
+        generation += 1
+        for job in jobs {
+            job.cancelled = true
+            job.task?.cancel()
+            job.cancelSideWork()
+        }
+        retrying = false
+        refreshPhase()
+        changed()
+    }
+
+    private func cancelCapture(_ current: Capture) {
+        current.cancelled = true
+        current.correctionClaimed = true
+        capture = nil
+        stopMeter()
+        current.startTask?.cancel()
+        current.field.cancel()
+        let stopped = current.audio?.stop()
+        current.audio = nil
+        current.pcm.close()
+        // L'audio a pu partir, mais une annulation ne confirme ni son traitement ni sa facturation.
+        recordStreaming(current, seconds: stopped?.duration ?? 0, succeeded: false)
+        current.session?.cancel()
+        delete(stopped?.url ?? current.audioURL)
+        if let model {
+            accountEarlyCorrections(current, model: model, cancel: true)
+            current.run.complete(.cancelled, model: model)
+        }
+        model?.hotkeys?.sessionEnded()
+        refreshPhase()
+        cue(.cancel)
+        changed()
+    }
+
+    /// Écoute qui n'a pas pu commencer (micro refusé, capture impossible).
+    private func discard(_ current: Capture, outcome: DictationOutcome = .captureFailed) {
+        current.cancelled = true
+        capture = nil
+        current.field.cancel()
+        current.pcm.close()
+        let stopped = current.audio?.stop()
+        current.audio = nil
+        delete(stopped?.url ?? current.audioURL)
+        if let model { current.run.complete(outcome, model: model) }
+        model?.hotkeys?.sessionEnded()
+        refreshPhase()
+        changed()
+    }
+
+    private func finish(_ job: FinishJob) async {
+        guard let model else { return }
+        let current = job.capture
+        defer {
+            // Corrections préparées pendant l'écoute et restées sans usage : comptées, jamais collées.
+            current.correctionClaimed = true
+            accountEarlyCorrections(current, model: model, cancel: job.cancelled)
+            current.run.complete(job.cancelled ? .cancelled : current.run.trace.outcome, model: model)
+            settle(job)
+        }
+        let transcriptionBegan = KeyboardTap.now()
+        let context = current.context
+        let url = job.url
+        var speech = current.speech ?? model.speechRequest(context: context, includeRecentDictations: true)
+        let finishStarted = Date()
+        // Le fichier part en même temps que la fin du flux : s'ils concordent, la correction du flux est déjà lancée.
+        let fileLedger: FileLedger? = model.settings.verifyWithFile && current.session != nil && url != nil && !job.cancelled
+            ? launchFile(url: url!, speech: speech, seconds: job.duration, run: current.run, model: model) : nil
+        if let fileLedger {
+            job.cancelSideWork = { fileLedger.task.cancel() }
+        }
+        let started = await current.startTask?.value ?? false
+        var raw = ""
+        var liveBroke = current.session != nil && !started
+        var streamFinish: StreamFinish?
+        let streamClock = Date()
+        if let session = current.session, started, !job.cancelled {
+            do {
+                let finish = try await session.finish()
+                streamFinish = finish
+                raw = finish.text
+            } catch { liveBroke = true }
+        }
+        let streamMs = Self.milliseconds(since: streamClock)
+        recordStreaming(current, seconds: job.duration, latencyMs: streamMs, succeeded: !liveBroke)
+        current.session?.cancel()
+        if job.cancelled {
+            fileLedger?.task.cancel()
+            await fileLedger?.account()
+            delete(url)
+            return
+        }
+        let streamed = !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        if current.session != nil, liveBroke || streamed {
+            model.health.record(ServiceHealth.voice(speech.provider), succeeded: !liveBroke)
+            if !liveBroke { announcedRelays.remove(ServiceHealth.voice(speech.provider)) }
+        }
+        var correctionLedger: CorrectionLedger?
+        var usePrepared = false
+        var alternative: String?
+        if let fileLedger {
+            let decision = await verifyAgainstFile(
+                raw: raw, streamed: streamed, liveBroke: liveBroke, streamMs: streamMs,
+                finishStarted: finishStarted, speech: speech, ledger: fileLedger, job: job,
+                model: model, context: context, transcriptionBegan: transcriptionBegan
+            )
+            if decision.stop { return }
+            raw = decision.raw
+            alternative = decision.alternative
+            speech = decision.speech
+            correctionLedger = decision.ledger
+            usePrepared = decision.usePrepared
+        } else if let legacy = await legacyTranscript(
+            raw: raw, streamed: streamed, streamFinish: streamFinish, streamMs: streamMs,
+            speech: &speech, job: job, model: model, context: context, transcriptionBegan: transcriptionBegan
+        ) {
+            raw = legacy
+        } else {
+            return
+        }
+        // Retouches franglaises prudentes (références matérielles, OAuth…) avant la correction, puis après.
+        let transcript = FranglaisNormalizer.normalize(raw.trimmingCharacters(in: .whitespacesAndNewlines))
+        current.run.trace.timings.transcriptionMs = max(0, KeyboardTap.now() - transcriptionBegan)
+        guard !transcript.isEmpty else {
+            current.run.trace.outcome = .noSpeech
+            delete(url)
+            model.statusBanner = String(localized: "Aucune parole détectée.")
+            return
+        }
+        let cleaned: CleanupOutcome
+        if !context.fieldRead { context.apply(await current.field.value) }
+        let commandSelection = model.commandSelection(for: transcript, context: context)
+        if let commandSelection {
+            // Consigne sur la sélection : aucune correction préparée ne sert ; elles restent comptées.
+            if let correctionLedger {
+                Task { @MainActor in _ = await correctionLedger.account(model: model, run: current.run) }
+            }
+            current.correctionClaimed = true
+            current.run.trace.selectionCommand = true
+            var request = await makeCorrectionRequest(
+                transcript: transcript, context: context, field: current.field, window: current.window, model: model
+            )
+            request.commandSelection = commandSelection
+            let began = KeyboardTap.now()
+            cleaned = await model.dependencies.clean(transcript, request, speech, model.correctionReachable)
+            current.run.trace.timings.correctionMs = max(0, KeyboardTap.now() - began)
+            for usage in cleaned.failedUsages { current.run.record(usage) }
+            if let usage = cleaned.usage { current.run.record(usage) }
+            model.recordCleanup(cleaned)
+        } else if usePrepared, let correctionLedger {
+            let prepared = await correctionLedger.account(model: model, run: current.run)
+            cleaned = prepared.outcome
+            if model.settings.cleanupEnabled {
+                current.run.trace.timings.correctionMs = prepared.milliseconds
+            }
+            if current.earlyReady?.ledger === correctionLedger { current.run.trace.earlyCorrectionUsed = true }
+        } else if alternative == nil, model.settings.cleanupEnabled,
+                  let early = claimEarlyCorrection(for: transcript, current: current, model: model) {
+            // Rien n'a été ajouté depuis la dernière pause : la correction préparée pendant l'écoute sert telle quelle.
+            let prepared = await early.account(model: model, run: current.run)
+            cleaned = prepared.outcome
+            current.run.trace.timings.correctionMs = prepared.milliseconds
+            current.run.trace.earlyCorrectionUsed = true
+        } else if let alternative, let correctionLedger, model.settings.cleanupEnabled,
+                  let patched = await patchPreparedCorrection(
+                      correctionLedger, stream: FranglaisNormalizer.normalize(alternative), file: transcript, current: current, model: model
+                  ) {
+            // Fichier différent d'un ou deux mots : ils passent dans la correction du flux, sans second appel.
+            cleaned = patched.outcome
+            current.run.trace.timings.correctionMs = patched.milliseconds
+            current.run.trace.correctionPatched = true
+            if current.earlyReady?.ledger === correctionLedger { current.run.trace.earlyCorrectionUsed = true }
+        } else {
+            // Fichier différent : la correction du flux est déjà payée, on en lance une autre sur le texte retenu
+            // sans l'attendre (mesuré le 5 octobre : 1,1 s puis 1,0 s en série). Elle est comptée dès qu'elle finit,
+            // même après le collage : la trace l'ajoute alors à la dictée.
+            if let correctionLedger {
+                Task { @MainActor in _ = await correctionLedger.account(model: model, run: current.run) }
+            }
+            var correction = await makeCorrectionRequest(
+                transcript: transcript, context: context, field: current.field, window: current.window, model: model
+            )
+            correction.alternativeTranscript = alternative.map { FranglaisNormalizer.normalize($0) }
+            let correctionBegan = KeyboardTap.now()
+            cleaned = await model.dependencies.clean(transcript, correction, speech, model.correctionReachable)
+            if model.settings.cleanupEnabled {
+                current.run.trace.timings.correctionMs = max(0, KeyboardTap.now() - correctionBegan)
+            }
+            for usage in cleaned.failedUsages { current.run.record(usage) }
+            if let usage = cleaned.usage { current.run.record(usage) }
+            model.recordCleanup(cleaned)
+        }
+        if let fallback = cleaned.fallback {
+            showRelay(fallback)
+            let primary = cleaned.failedUsages.first?.api.provider ?? ServiceHealth.deepSeek
+            announceRelay("cleanup", String(localized: "\(primary) ne répond pas : correction via \(fallback)."), job: job)
+        } else if cleaned.usage?.succeeded == true {
+            announcedRelays.remove("cleanup")
+        }
+        // Une consigne sans réponse ne colle rien : la sélection reste intacte.
+        if commandSelection != nil, cleaned.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            current.run.trace.outcome = .commandFailed
+            await waitForTurn(job)
+            delete(url)
+            guard !job.cancelled else { return }
+            let message = String(localized: "Consigne non appliquée : la sélection est inchangée.")
+            model.statusBanner = message
+            showFailure(message, text: nil)
+            return
+        }
+        let finalText = commandSelection != nil
+            ? cleaned.text
+            : FranglaisNormalizer.normalize(cleaned.text)
+        // Les dictées se collent dans l'ordre où elles ont été dites.
+        await waitForTurn(job)
+        guard !job.cancelled else {
+            delete(url)
+            return
+        }
+        let record = DictationRecord(
+            finalText: finalText,
+            rawText: transcript,
+            durationSeconds: job.duration,
+            wordCount: WordCount.count(finalText),
+            provider: speech.provider.rawValue,
+            model: speech.liveModel,
+            targetApp: context.appName,
+            targetBundle: context.bundleID,
+            usageCategory: UsageClassifier.classify(bundleIdentifier: context.bundleID, appName: context.appName).rawValue,
+            insertionStatus: InsertionStatus.pending.rawValue,
+            audioPath: url?.path,
+            alternativeText: alternative
+        )
+        do {
+            try model.store.insert(record)
+        } catch {
+            current.run.trace.outcome = .historyFailed
+            model.statusBanner = String(localized: "L'enregistrement local a échoué.")
+            showFailure(String(localized: "Historique indisponible. Copie le texte avant de fermer."), text: finalText)
+            return
+        }
+        current.run.trace.dictationID = record.id
+        let insertionBegan = KeyboardTap.now()
+        let status = await model.dependencies.insert(finalText, context, { [weak job] in
+            job.map { !$0.cancelled } ?? false
+        })
+        current.marks.pasted = KeyboardTap.now()
+        current.run.trace.timings.insertionMs = max(0, KeyboardTap.now() - insertionBegan)
+        current.run.trace.outcome = DictationOutcome(status)
+        guard !job.cancelled else {
+            model.persist("statut d'une dictée") { try model.store.updateStatus(id: record.id, status: InsertionStatus.cancelled.rawValue) }
+            applyRetention(recordID: record.id, url: url, status: .cancelled, model: model)
+            model.reloadHistory()
+            return
+        }
+        model.persist("statut d'une dictée") { try model.store.updateStatus(id: record.id, status: status.rawValue) }
+        applyRetention(recordID: record.id, url: url, status: status, model: model)
+        model.reloadHistory()
+        LatencyLog.append(
+            LatencyLog.line(current.marks, mode: current.mode, status: status.rawValue),
+            to: model.supportURL.appendingPathComponent(LatencyLog.fileName)
+        )
+        if status == .inserted || status == .pasteSent {
+            // Une sélection réécrite n'apprend rien : le texte collé n'a pas été dicté mot pour mot.
+            if model.settings.learnCorrections, commandSelection == nil, let pid = context.pid {
+                let traceID = current.run.trace.id
+                model.dependencies.watchCorrections(finalText, pid, model.dictionary.map(\.term)) { [weak model] candidates in
+                    model?.considerLearning(candidates, dictated: finalText, speech: speech, traceID: traceID)
+                }
+            }
+            // Collage normal : rien à signaler, la dictée reste de toute façon dans l'historique.
+            model.statusBanner = nil
+            job.delivered = true
+            if let note = job.announcement { pendingAnnouncement = note.message }
+        } else {
+            let message: String
+            switch status {
+            case .refusedSecure: message = String(localized: "Champ sécurisé : texte gardé dans l'historique.")
+            case .noTarget:
+                model.dependencies.copyText(finalText)
+                message = String(localized: "Aucun champ actif : texte copié, colle-le avec ⌘V.")
+            default:
+                // Le texte est déjà dans le presse-papiers : un ⌘V suffit, sans chercher le bouton.
+                model.dependencies.copyText(finalText)
+                message = String(localized: "Insertion impossible : texte copié, colle-le avec ⌘V.")
+            }
+            Self.insertionLog.notice("échec du collage : \(status.rawValue, privacy: .public)")
+            model.statusBanner = message
+            showFailure(message, text: finalText)
+        }
+        // La bulle part d'abord ; le ménage des vieux audios vient après.
+        settle(job)
+        model.purgeAudio()
+    }
+
+    /// Attend que la dictée précédente soit collée (ou abandonnée).
+    func waitForTurn(_ job: FinishJob) async {
+        try? await job.previous?.value()
+    }
+
+    /// La dictée est terminée : la suivante peut coller, la bulle suit.
+    private func settle(_ job: FinishJob) {
+        job.pasted.resolve(.success(()))
+        guard let index = jobs.firstIndex(where: { $0 === job }) else { return }
+        jobs.remove(at: index)
+        // Bascule non annoncée (dictée annulée ou non collée) : la prochaine dictée relayée la dira.
+        if !job.delivered, let note = job.announcement { announcedRelays.remove(note.service) }
+        refreshPhase()
+        changed()
+    }
+
+    private func showFailure(_ message: String, text: String?) {
+        shownFailure = ShownFailure(message: message, text: text)
+        refreshPhase()
+        changed()
+    }
+
+    /// Couleur de relais : seulement si la bulle montre cette dictée, pas l'écoute d'une autre.
+    func showRelay(_ name: String) {
+        if capture == nil { relay = name }
+    }
+
+    /// Phase montrée par la bulle et le menu : l'écoute d'abord, puis un message d'erreur, puis ce qui se termine.
+    private func refreshPhase() {
+        let next: DictationPhase
+        if let capture {
+            next = capture.listening ? .listening(capture.mode) : .starting
+        } else if let shownFailure {
+            next = .failure(shownFailure.message)
+        } else if !jobs.isEmpty || retrying {
+            next = .finishing
+        } else {
+            next = .idle
+        }
+        let text = capture == nil ? shownFailure?.text : nil
+        if failureText != text { failureText = text }
+        if phase != next { phase = next }
+        scheduleFailureDismissal()
+        // Relais, puis confirmation d'un mot appris, dès que la bulle est libre.
+        if phase == .idle, notice == nil {
+            presentIdleBubble()
+        }
+        guard let model else { return }
+        if phase != .idle {
+            model.overlay.show()
+        } else if notice == nil {
+            model.overlay.hide()
+        }
+    }
+
+    /// L'enregistrement reste dans l'historique : la bulle d'erreur se retire seule.
+    private func scheduleFailureDismissal() {
+        guard phase.isFailure, let failure = shownFailure, dismissing != failure.id else { return }
+        dismissing = failure.id
+        failureDismissal?.cancel()
+        failureDismissal = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(Self.failureSeconds * 1_000_000_000))
+            guard !Task.isCancelled, let self, self.shownFailure?.id == failure.id else { return }
+            self.dismissFailure()
+        }
+    }
+
+    func retranscribe(_ record: DictationRecord) async {
+        dismissFailure()
+        guard let model, !retrying else { return }
+        guard capture == nil else {
+            model.statusBanner = String(localized: "Une dictée est en cours : réessaie quand elle sera finie.")
+            return
+        }
+        // Les dictées qui se terminent passent d'abord, puis la nouvelle transcription.
+        while let last = jobs.last {
+            try? await last.pasted.value()
+            if jobs.last === last { break }
+        }
+        guard capture == nil, jobs.isEmpty, !retrying else { return }
+        guard let path = record.audioPath, FileManager.default.fileExists(atPath: path) else {
+            model.statusBanner = String(localized: "L'audio d'origine n'est plus disponible.")
+            return
+        }
+        let run = DictationTraceRecorder(origin: .retry)
+        run.trace.dictationID = record.id
+        let problem = await model.voiceProblem()
+        guard capture == nil, jobs.isEmpty, !retrying else { return }
+        if let problem {
+            run.complete(problem.outcome, model: model)
+            model.statusBanner = problem.message
+            model.open(.providers)
+            return
+        }
+        let token = generation
+        retrying = true
+        model.statusBanner = String(localized: "Nouvelle transcription…")
+        refreshPhase()
+        changed()
+        // A retry from History updates History; it must not paste into its own search field.
+        let retryContext = DictationContext()
+        retryContext.appName = record.targetApp
+        retryContext.bundleID = record.targetBundle
+        // Retranscription d'un ancien audio : pas de dictées récentes, le sujet peut avoir changé.
+        let speech = model.speechRequest(context: retryContext)
+        run.trace.outcome = .transcriptionFailed
+        defer {
+            run.complete(generation == token && !Task.isCancelled ? run.trace.outcome : .cancelled, model: model)
+            if generation == token {
+                retrying = false
+                refreshPhase()
+                changed()
+            }
+        }
+        let transcriptionBegan = KeyboardTap.now()
+        do {
+            let raw = FranglaisNormalizer.normalize(try await transcribeFile(URL(fileURLWithPath: path), speech: speech, seconds: record.durationSeconds, run: run))
+            run.trace.timings.transcriptionMs = max(0, KeyboardTap.now() - transcriptionBegan)
+            guard generation == token, !Task.isCancelled else { return }
+            let correctionBegan = KeyboardTap.now()
+            var request = CorrectionRequest(transcript: raw, dictionary: model.dictionary.map(\.term), appName: record.targetApp,
+                                            structureDictation: model.settings.structureDictation, language: model.settings.language)
+            request.tone = model.tone(bundleID: record.targetBundle, appName: record.targetApp)
+            let cleaned = await model.dependencies.clean(
+                raw,
+                request,
+                speech,
+                model.correctionReachable
+            )
+            if model.settings.cleanupEnabled {
+                run.trace.timings.correctionMs = max(0, KeyboardTap.now() - correctionBegan)
+            }
+            for usage in cleaned.failedUsages { run.record(usage) }
+            if let usage = cleaned.usage { run.record(usage) }
+            model.recordCleanup(cleaned)
+            let finalText = FranglaisNormalizer.normalize(cleaned.text)
+            guard generation == token, !Task.isCancelled else { return }
+            guard !finalText.isEmpty else {
+                run.trace.outcome = .noSpeech
+                model.statusBanner = String(localized: "La nouvelle transcription est vide. L'audio est conservé.")
+                return
+            }
+            run.trace.outcome = .historyFailed
+            try model.store.updateTranscript(id: record.id, finalText: finalText, rawText: raw, wordCount: WordCount.count(finalText))
+            try model.store.updateStatus(id: record.id, status: InsertionStatus.pending.rawValue)
+            run.trace.outcome = .pending
+            model.statusBanner = String(localized: "Transcription mise à jour. Utilise Copier pour l'insérer où tu veux.")
+            model.reloadHistory()
+        } catch {
+            if run.trace.timings.transcriptionMs == nil {
+                run.trace.timings.transcriptionMs = max(0, KeyboardTap.now() - transcriptionBegan)
+            }
+            guard generation == token, !Task.isCancelled else { return }
+            model.statusBanner = String(localized: "Transcription impossible. Vérifie la clé, le réseau et le quota du fournisseur. L'audio est conservé.")
+        }
+    }
+
+    func preserveFailedAudio(_ url: URL, duration: Double, speech: SpeechRequest, context: DictationContext, model: AppModel, run: DictationTraceRecorder) {
+        let record = DictationRecord(
+            finalText: "", rawText: "", durationSeconds: duration, wordCount: 0,
+            provider: speech.provider.rawValue, model: speech.liveModel,
+            targetApp: context.appName, targetBundle: context.bundleID,
+            insertionStatus: InsertionStatus.transcriptionFailed.rawValue,
+            audioPath: url.path
+        )
+        do {
+            try model.store.insert(record)
+            run.trace.dictationID = record.id
+            applyRetention(recordID: record.id, url: url, status: .transcriptionFailed, model: model)
+            model.reloadHistory()
+            model.purgeAudio()
+            model.statusBanner = String(localized: "Transcription impossible. Vérifie la clé, le réseau et le quota, puis réessaie depuis l'historique.")
+        } catch {
+            model.statusBanner = String(localized: "Transcription et historique indisponibles. L'audio est conservé dans le dossier Audio de Wispad.")
+        }
+        showFailure(String(localized: "Transcription impossible. L'audio est gardé dans l'historique."), text: nil)
+    }
+
+    private func applyRetention(recordID: String, url: URL?, status: InsertionStatus, model: AppModel) {
+        let succeeded = status == .inserted
+        if RetentionPolicy.shouldDeleteImmediately(mode: model.settings.retention, insertionSucceeded: succeeded) {
+            delete(url)
+            model.persist("conservation de l'audio") { try model.store.updateAudio(id: recordID, path: nil, expiresAt: nil) }
+            return
+        }
+        let expiry = RetentionPolicy.expiry(
+            mode: model.settings.retention,
+            temporaryHours: model.settings.temporaryHours,
+            now: Date(),
+            insertionSucceeded: succeeded
+        )
+        model.persist("conservation de l'audio") { try model.store.updateAudio(id: recordID, path: url?.path, expiresAt: expiry) }
+    }
+
+    /// Compte le flux en direct d'une dictée, une seule fois (fin, annulation ou dictée trop courte).
+    private func recordStreaming(_ capture: Capture, seconds: Double, latencyMs: Int = 0, succeeded: Bool? = nil) {
+        guard !capture.streamUsageRecorded, let started = capture.streamAttemptedAt,
+              capture.session != nil, let speech = capture.speech, let model else { return }
+        capture.streamUsageRecorded = true
+        let event = UsageEvent.transcription(
+            provider: speech.provider,
+            streaming: true,
+            model: speech.liveModel,
+            audioSeconds: seconds,
+            latencyMs: latencyMs,
+            succeeded: succeeded ?? (capture.streamStarted == true),
+            at: started,
+            fallback: capture.voiceFallback
+        )
+        capture.run.record(event)
+        model.recordUsage(event)
+    }
+
+    func transcribeFile(_ url: URL, speech: SpeechRequest, seconds: Double, run: DictationTraceRecorder, fallback: APIFallback? = nil) async throws -> String {
+        try Task.checkCancellation()
+        let started = Date()
+        do {
+            let text = try await model?.dependencies.transcribe(url, speech) ?? ""
+            let event = UsageEvent.transcription(
+                provider: speech.provider, streaming: false, model: speech.liveModel, billedModel: speech.fileModel,
+                audioSeconds: seconds, latencyMs: Self.milliseconds(since: started), at: started, fallback: fallback
+            )
+            run.record(event)
+            model?.recordUsage(event)
+            return text
+        } catch {
+            let event = UsageEvent.transcription(
+                provider: speech.provider, streaming: false, model: speech.liveModel, billedModel: speech.fileModel,
+                audioSeconds: seconds, latencyMs: Self.milliseconds(since: started), succeeded: false, at: started, fallback: fallback
+            )
+            run.record(event)
+            model?.recordUsage(event)
+            throw error
+        }
+    }
+
+    static func milliseconds(since date: Date) -> Int {
+        Int(Date().timeIntervalSince(date) * 1_000)
+    }
+
+    /// Résultat d'une tâche s'il arrive dans le délai ; sinon nil, et la tâche continue.
+    /// Échéance murale, hors du fil principal : une file déjà occupée ne doit pas
+    /// repousser l'ouverture du flux au-delà des 150 ms (le micro est déjà ouvert).
+    static func value<Value: Sendable>(of task: Task<Value, Never>, within seconds: Double) async -> Value? {
+        let result = AsyncResult<Value?>()
+        let priority = Task.currentPriority
+        Task.detached(priority: priority) { result.resolve(.success(await task.value)) }
+        Task.detached(priority: priority) {
+            try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+            result.resolve(.success(nil))
+        }
+        return (try? await result.value()) ?? nil
+    }
+
+    func delete(_ url: URL?) {
+        guard let url else { return }
+        try? FileManager.default.removeItem(at: url)
+    }
+
+    private func startMeter() {
+        meter?.stop()
+        let ticker = FrameTicker { [weak self] elapsed in
+            self?.pushLevel(elapsed: elapsed)
+        }
+        ticker.start(on: NSScreen.screens.first { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) } ?? NSScreen.main)
+        meter = ticker
+    }
+
+    private func stopMeter() {
+        meter?.stop()
+        meter = nil
+    }
+
+    private func pushLevel(elapsed: Double) {
+        let bands = capture?.audio?.bands ?? []
+        guard bands.count == SpectrumAnalyzer.bandCount else { return }
+        let next = Self.smoothed(spectrum, toward: Array(bands.reversed() + bands.dropFirst()), elapsed: elapsed)
+        if next != spectrum { spectrum = next }
+    }
+
+    /// Montée rapide (~50 ms), retombée douce (~150 ms), quelle que soit la cadence de l'écran :
+    /// les coefficients sont donnés pour une image à 60 Hz et ramenés au temps réellement écoulé.
+    static func smoothed(_ previous: [Float], toward target: [Float], elapsed: Double = meterInterval) -> [Float] {
+        let frames = Float(max(0, min(elapsed, 0.1)) * 60)
+        let rise = 1 - pow(1 - Float(0.5), frames)
+        let fall = 1 - pow(1 - Float(0.11), frames)
+        return zip(previous, target).map { previous, target in
+            let next = previous + (target - previous) * (target > previous ? rise : fall)
+            return next < 0.002 ? 0 : next
+        }
+    }
+
+    /// Mots ajoutés au dictionnaire, à confirmer discrètement.
+    private(set) var learnedNotice: [String] = []
+    /// Propositions en attente, une par mot. La bulle n'en montre qu'une à la fois.
+    @ObservationIgnored private var learningQueue: [String] = []
+    /// Mot dont la bulle demande confirmation, s'il y en a un à l'écran.
+    @ObservationIgnored private(set) var learningOffer: String?
+
+    /// Message bref montré dans la bulle quand aucune dictée n'est en cours.
+    var notice: String?
+    @ObservationIgnored private var noticeDismissal: Task<Void, Never>?
+
+    /// Coupe le son du Mac juste après le son de début, pour qu'il reste audible.
+    private func muteOutputAfterCue(_ current: Capture) {
+        guard let model, model.settings.muteWhileDictating else { return }
+        Task { @MainActor [weak self] in
+            if model.settings.soundsEnabled { try? await Task.sleep(nanoseconds: 250_000_000) }
+            guard let self, self.capture === current, current.listening, !self.outputMuted else { return }
+            self.outputMuted = true
+            model.dependencies.muteOutput(model.settings.muteWhileDictating, model.settings.muteMode)
+        }
+    }
+
+    private func cue(_ sound: DictationCue) {
+        guard model?.settings.soundsEnabled == true else { return }
+        model?.dependencies.playCue(sound)
+    }
+
+    private func changed() {
+        onChange?()
+    }
+}
+
+private extension DictationPhase {
+    var isCapturing: Bool {
+        switch self {
+        case .starting, .listening: return true
+        case .idle, .finishing, .failure: return false
+        }
+    }
+
+    var isFailure: Bool {
+        if case .failure = self { return true }
+        return false
+    }
+
+    /// Une dictée se termine ou un message d'erreur est affiché.
+    var isPending: Bool {
+        switch self {
+        case .finishing, .failure: return true
+        case .idle, .starting, .listening: return false
+        }
+    }
+}
+
+// MARK: - Messages de la bulle
+
+/// Messages de la bulle hors dictée : relais annoncé, mot appris à confirmer.
+extension DictationCoordinator {
+    static func learningMessage(_ term: String) -> String {
+        String(localized: "« \(term) » ajouté au dictionnaire. Le garder ?")
+    }
+
+    func notifyLearned(_ terms: [String]) {
+        let incoming = terms.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        learnedNotice = incoming
+        learningQueue.append(contentsOf: incoming)
+        if phase == .idle, notice == nil {
+            presentNextLearningOffer()
+        }
+    }
+
+    /// Oui : le mot reste, le message se ferme.
+    func acceptLearning() {
+        guard learningOffer != nil else { return }
+        learningOffer = nil
+        Self.learningLog.notice("Gardés 1, refusés 0")
+        clearNotice()
+    }
+
+    /// Non : le mot sort du dictionnaire et ne sera plus proposé.
+    func declineLearning() {
+        guard let term = learningOffer else { return }
+        learningOffer = nil
+        model?.refuseLearnedTerm(term)
+        Self.learningLog.notice("Gardés 0, refusés 1")
+        clearNotice()
+    }
+
+    /// Première bascule vers un relais pendant une panne : annoncée une fois, après le collage de cette dictée.
+    func announceRelay(_ service: String, _ message: String, job: FinishJob) {
+        guard announcedRelays.insert(service).inserted else { return }
+        job.announcement = (service, message)
+    }
+
+    /// Message bref dans la bulle, hors dictée.
+    func announce(_ message: String, relay: Bool, confirmsLearning: Bool = false, seconds: Double? = nil) {
+        // Pendant une dictée, la bulle sert à la dictée : le message est ignoré.
+        guard phase == .idle, let model else { return }
+        noticeIsRelay = relay
+        noticeConfirmsLearning = confirmsLearning
+        notice = message
+        model.overlay.show()
+        let duration = seconds ?? (confirmsLearning ? Self.learningSeconds : Self.noticeSeconds)
+        noticeDismissal?.cancel()
+        noticeDismissal = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(duration * 1_000_000_000))
+            guard !Task.isCancelled, let self, self.notice == message else { return }
+            self.dismissCurrentNotice()
+        }
+    }
+
+    /// Délai écoulé sans Oui ni Non : un mot proposé reste dans le dictionnaire.
+    func dismissCurrentNotice() {
+        guard notice != nil else { return }
+        if noticeConfirmsLearning {
+            learningOffer = nil
+            Self.learningLog.notice("Gardés 1, refusés 0")
+        }
+        clearNotice()
+    }
+
+    /// Relais d'abord, puis la prochaine confirmation de mot, quand la bulle ne sert plus à dicter.
+    @discardableResult
+    private func presentIdleBubble() -> Bool {
+        guard phase == .idle, notice == nil else { return false }
+        if let message = pendingAnnouncement {
+            pendingAnnouncement = nil
+            announce(message, relay: true)
+            return true
+        }
+        return presentNextLearningOffer()
+    }
+
+    @discardableResult
+    private func presentNextLearningOffer() -> Bool {
+        guard phase == .idle, notice == nil, learningOffer == nil, !learningQueue.isEmpty else { return false }
+        let term = learningQueue.removeFirst()
+        learningOffer = term
+        announce(Self.learningMessage(term), relay: false, confirmsLearning: true, seconds: Self.learningSeconds)
+        return true
+    }
+
+    private func clearNotice() {
+        noticeDismissal?.cancel()
+        noticeDismissal = nil
+        if phase != .idle, let term = learningOffer {
+            learningQueue.insert(term, at: 0)
+            learningOffer = nil
+        }
+        let hadNotice = notice != nil
+        notice = nil
+        noticeIsRelay = false
+        noticeConfirmsLearning = false
+        guard phase == .idle else { return }
+        if presentIdleBubble() { return }
+        if hadNotice { model?.overlay.hide() }
+    }
+}

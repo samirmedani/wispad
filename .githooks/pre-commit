@@ -1,0 +1,17 @@
+#!/bin/sh
+# Avant chaque commit : aucun secret ni fichier interdit dans ce qui est indexé.
+# Installé par scripts/install-hooks.sh. Contournement exceptionnel : git commit --no-verify.
+bad=$(git diff --cached --name-only --diff-filter=ACR | grep -Ei '\.(wav|m4a|mp3|aiff|caf|flac|sqlite|db|p8|p12|pfx|pem|key|cer|mobileprovision|provisionprofile|dmg|pkg|zip|ipa)$|(^|/)(review|PROJECT)\.md$|Signing\.local\.xcconfig|api-keys\.json|(^|/)\.env' || true)
+if [ -n "$bad" ]; then
+  echo "Commit refusé : fichiers interdits (voir CONTRIBUTING.md) :" >&2
+  echo "$bad" >&2
+  exit 1
+fi
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks git --pre-commit --staged --no-banner --redact >/dev/null 2>&1 || {
+    echo "Commit refusé : gitleaks signale un secret. Détail : gitleaks git --pre-commit --staged --redact" >&2
+    exit 1
+  }
+else
+  echo "Astuce : brew install gitleaks pour vérifier les secrets avant chaque commit." >&2
+fi

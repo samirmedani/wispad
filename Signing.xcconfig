@@ -1,0 +1,8 @@
+// Signature de l'app. Par défaut, signature locale (ad hoc) : aucun compte Apple Developer requis.
+// Avec un compte, crée Signing.local.xcconfig (ignoré par Git) à côté de ce fichier :
+//   DEVELOPMENT_TEAM = ABCDE12345
+//   CODE_SIGN_IDENTITY = Apple Development
+// Garder la même signature d'une version à l'autre évite de redonner les autorisations macOS (micro, accessibilité).
+CODE_SIGN_IDENTITY = -
+DEVELOPMENT_TEAM =
+#include? "Signing.local.xcconfig"

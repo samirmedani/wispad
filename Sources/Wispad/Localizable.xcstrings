@@ -1,0 +1,4868 @@
+{
+  "sourceLanguage" : "fr",
+  "strings" : {
+    " · fichier %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : " · file %@"
+          }
+        }
+      }
+    },
+    " Ajoute une clé DeepSeek pour une correction moins chère." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : " Add a DeepSeek key for cheaper correction."
+          }
+        }
+      }
+    },
+    "%lld commits de retard" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld commits behind"
+          }
+        }
+      }
+    },
+    "1 commit de retard" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 commit behind"
+          }
+        }
+      }
+    },
+    "Merci !" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thanks!"
+          }
+        }
+      }
+    },
+    "Mettre une étoile sur GitHub" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Star on GitHub"
+          }
+        }
+      }
+    },
+    "Voir les nouveaux commits sur GitHub" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "See new commits on GitHub"
+          }
+        }
+      }
+    },
+    "« %@ » ajouté au dictionnaire. Le garder ?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” added to the dictionary. Keep it?"
+          }
+        }
+      }
+    },
+    "%@ : %@ / %@ par million de jetons" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@: %2$@ / %3$@ per million tokens"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ : %2$@ / %3$@ par million de jetons"
+          }
+        }
+      }
+    },
+    "%@ : %@ / %@ par million de jetons, moitié prix hors heures pleines" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@: %2$@ / %3$@ per million tokens, half price off-peak"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ : %2$@ / %3$@ par million de jetons, moitié prix hors heures pleines"
+          }
+        }
+      }
+    },
+    "%@ : %@ par million de jetons (sortie gratuite)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@: %2$@ per million tokens (free output)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ : %2$@ par million de jetons (sortie gratuite)"
+          }
+        }
+      }
+    },
+    "%@ : fichier %@/h" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@: file %2$@/h"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ : fichier %2$@/h"
+          }
+        }
+      }
+    },
+    "%@ : reviens à l'étape concernée." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: go back to the relevant step."
+          }
+        }
+      }
+    },
+    "%@ · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · %2$@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "%@ · %lld mots · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · %2$lld words · %3$@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$lld mots · %3$@"
+          }
+        }
+      }
+    },
+    "%@ · recommandé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · recommended"
+          }
+        }
+      }
+    },
+    "%@ (⌘%lld)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ (⌘%2$lld)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ (⌘%2$lld)"
+          }
+        }
+      }
+    },
+    "%@ / %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ / %2$@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ / %2$@"
+          }
+        }
+      }
+    },
+    "%@ → %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ → %2$@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ → %2$@"
+          }
+        }
+      }
+    },
+    "%@ en pause" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ paused"
+          }
+        }
+      }
+    },
+    "%@ en pause : voix via %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ paused: voice via %2$@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ en pause : voix via %2$@"
+          }
+        }
+      }
+    },
+    "%@ en sortie" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ output"
+          }
+        }
+      }
+    },
+    "%@ jetons en entrée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ input tokens"
+          }
+        }
+      }
+    },
+    "%@ min d'audio" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ min of audio"
+          }
+        }
+      }
+    },
+    "%@ ne répond pas : correction via %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ isn't responding: correction via %2$@."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ ne répond pas : correction via %2$@."
+          }
+        }
+      }
+    },
+    "%@ ne répond pas : voix via %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ isn't responding: voice via %2$@."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ ne répond pas : voix via %2$@."
+          }
+        }
+      }
+    },
+    "%@ s d'audio" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ s of audio"
+          }
+        }
+      }
+    },
+    "%@ sur %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ of %2$@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ sur %2$@"
+          }
+        }
+      }
+    },
+    "%@. Au-delà d'environ %@ s (un peu plus pour une longue dictée), %@.%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@. After about %2$@ s (a little more for a long dictation), %3$@.%4$@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@. Au-delà d'environ %2$@ s (un peu plus pour une longue dictée), %3$@.%4$@"
+          }
+        }
+      }
+    },
+    "%@. L'audio part chez %@ ; s'il ne répond pas et qu'une clé de l'autre fournisseur est enregistrée, le même enregistrement part chez celui-ci." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@. Audio goes to %2$@; if it doesn't respond and a key for the other provider is saved, the same recording goes there instead."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@. L'audio part chez %2$@ ; s'il ne répond pas et qu'une clé de l'autre fournisseur est enregistrée, le même enregistrement part chez celui-ci."
+          }
+        }
+      }
+    },
+    "Chez le fournisseur de ton choix, avec ta clé API." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "With the provider of your choice, using your API key."
+          }
+        }
+      }
+    },
+    "Gratuit et open source. Tu paies tes fournisseurs directement." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Free and open source. You pay your providers directly."
+          }
+        }
+      }
+    },
+    "%lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld"
+          }
+        }
+      }
+    },
+    "%lld → %lld jetons" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld → %2$lld tokens"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld → %2$lld jetons"
+          }
+        }
+      }
+    },
+    "%lld appels" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld calls"
+          }
+        }
+      }
+    },
+    "%lld appels au coût inconnu non inclus dans le graphique." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld calls with an unknown cost aren't included in the chart."
+          }
+        }
+      }
+    },
+    "%lld appels comptés à l'écran mais non sauvegardés. Ces données seront perdues si l'app quitte avant leur sauvegarde." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld calls counted on screen but not saved. This data will be lost if the app quits before they're saved."
+          }
+        }
+      }
+    },
+    "%lld dictées" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld dictations"
+          }
+        }
+      }
+    },
+    "%lld dictées conservées sur ce Mac." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld dictations kept on this Mac."
+          }
+        }
+      }
+    },
+    "%lld dictées en cours de transcription" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld dictations being transcribed"
+          }
+        }
+      }
+    },
+    "%lld échecs" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld failures"
+          }
+        }
+      }
+    },
+    "%lld mots · %@ s d’audio" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld words · %2$@ s of audio"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld mots · %2$@ s d’audio"
+          }
+        }
+      }
+    },
+    "%lld ms" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld ms"
+          }
+        }
+      }
+    },
+    "%lld termes" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld terms"
+          }
+        }
+      }
+    },
+    "1 appel" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 call"
+          }
+        }
+      }
+    },
+    "1 appel au coût inconnu non inclus dans le graphique." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 call with an unknown cost isn't included in the chart."
+          }
+        }
+      }
+    },
+    "1 appel compté à l'écran mais non sauvegardé. Ces données seront perdues si l'app quitte avant leur sauvegarde." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 call counted on screen but not saved. This data will be lost if the app quits before it's saved."
+          }
+        }
+      }
+    },
+    "1 dictée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 dictation"
+          }
+        }
+      }
+    },
+    "1 dictée conservée sur ce Mac." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 dictation kept on this Mac."
+          }
+        }
+      }
+    },
+    "1 échec" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 failure"
+          }
+        }
+      }
+    },
+    "1 terme" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 term"
+          }
+        }
+      }
+    },
+    "7 jours" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "7 days"
+          }
+        }
+      }
+    },
+    "30 jours" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "30 days"
+          }
+        }
+      }
+    },
+    "À jour" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Up to date"
+          }
+        }
+      }
+    },
+    "À l'écoute" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Listening"
+          }
+        }
+      }
+    },
+    "À propos de Wispad" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "About Wispad"
+          }
+        }
+      }
+    },
+    "À retranscrire" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To transcribe again"
+          }
+        }
+      }
+    },
+    "Absente" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Missing"
+          }
+        }
+      }
+    },
+    "Accessibilité" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accessibility"
+          }
+        }
+      }
+    },
+    "Accueil" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Home"
+          }
+        }
+      }
+    },
+    "Actif" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Active"
+          }
+        }
+      }
+    },
+    "Actualiser" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Refresh"
+          }
+        }
+      }
+    },
+    "Affiche le solde prépayé xAI" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shows the prepaid xAI balance"
+          }
+        }
+      }
+    },
+    "Afficher le texte" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show the text"
+          }
+        }
+      }
+    },
+    "Afficher les dernières dictées" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show recent dictations"
+          }
+        }
+      }
+    },
+    "Afficher tout" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show all"
+          }
+        }
+      }
+    },
+    "Ajoute OpenAI, SwiftUI, RevenueCat ou tes propres noms." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add OpenAI, SwiftUI, RevenueCat or your own names."
+          }
+        }
+      }
+    },
+    "Ajoute ta clé %@ dans Fournisseurs." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add your %@ key in Providers."
+          }
+        }
+      }
+    },
+    "Ajouter" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add"
+          }
+        }
+      }
+    },
+    "Ajouter un mot, un nom, un acronyme…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a word, a name, an acronym…"
+          }
+        }
+      }
+    },
+    "Ajoutés ces 7 derniers jours" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Added in the last 7 days"
+          }
+        }
+      }
+    },
+    "Annulé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancelled"
+          }
+        }
+      }
+    },
+    "Annuler" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel"
+          }
+        }
+      }
+    },
+    "Annuler (Échap)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel (Esc)"
+          }
+        }
+      }
+    },
+    "Annuler la dictée (Échap)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel dictation (Esc)"
+          }
+        }
+      }
+    },
+    "Annuler la transcription en cours (Échap)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel the transcription in progress (Esc)"
+          }
+        }
+      }
+    },
+    "Appels API" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API calls"
+          }
+        }
+      }
+    },
+    "Application inconnue" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unknown app"
+          }
+        }
+      }
+    },
+    "Applications" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apps"
+          }
+        }
+      }
+    },
+    "Apprendre de mes corrections" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Learn from my corrections"
+          }
+        }
+      }
+    },
+    "Appuie sur le raccourci…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Press the shortcut…"
+          }
+        }
+      }
+    },
+    "Après deux échecs de suite, un service est mis de côté et ses dictées passent par le relais. Il est réessayé chaque minute, et repris au plus tard après 30 minutes." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "After two failures in a row, a service is set aside and its dictations go through the fallback. It's retried every minute and brought back after 30 minutes at most."
+          }
+        }
+      }
+    },
+    "Arrêter et revenir au début" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop and go back to the start"
+          }
+        }
+      }
+    },
+    "Au repos" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Idle"
+          }
+        }
+      }
+    },
+    "Aucun appel API" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No API calls"
+          }
+        }
+      }
+    },
+    "Aucun appel enregistré sur cette période." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No calls recorded for this period."
+          }
+        }
+      }
+    },
+    "Aucun champ actif" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No active field"
+          }
+        }
+      }
+    },
+    "Aucun champ actif : texte copié, colle-le avec ⌘V." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No active field: text copied, paste it with ⌘V."
+          }
+        }
+      }
+    },
+    "Aucun microphone n'est disponible." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No microphone is available."
+          }
+        }
+      }
+    },
+    "Aucun résultat" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No results"
+          }
+        }
+      }
+    },
+    "Aucune clé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No key"
+          }
+        }
+      }
+    },
+    "Aucune clé %@ dans le coffre (%@)." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No %1$@ key in the vault (%2$@)."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Aucune clé %1$@ dans le coffre (%2$@)."
+          }
+        }
+      }
+    },
+    "Aucune clé de correction : %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No correction key: %@."
+          }
+        }
+      }
+    },
+    "Aucune dictée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No dictations"
+          }
+        }
+      }
+    },
+    "Aucune dictée ne contient « %@ »." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No dictation contains “%@”."
+          }
+        }
+      }
+    },
+    "Aucune dictée sur cette période." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No dictations for this period."
+          }
+        }
+      }
+    },
+    "Aucune parole détectée ou enregistrement trop bref" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No speech detected or recording too short"
+          }
+        }
+      }
+    },
+    "Aucune parole détectée." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No speech detected."
+          }
+        }
+      }
+    },
+    "Audio à retranscrire" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audio to transcribe again"
+          }
+        }
+      }
+    },
+    "Audio de la dictée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dictation audio"
+          }
+        }
+      }
+    },
+    "Audio local" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Local audio"
+          }
+        }
+      }
+    },
+    "Aujourd'hui" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today"
+          }
+        }
+      }
+    },
+    "Aujourd'hui : %@ (minimum)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today: %@ (minimum)"
+          }
+        }
+      }
+    },
+    "Aujourd'hui : %@ estimés" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today: %@ estimated"
+          }
+        }
+      }
+    },
+    "Automatique" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatic"
+          }
+        }
+      }
+    },
+    "Automatique, selon tes clés" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatic, based on your keys"
+          }
+        }
+      }
+    },
+    "Autorisations" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permissions"
+          }
+        }
+      }
+    },
+    "Autorisations macOS" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS permissions"
+          }
+        }
+      }
+    },
+    "Autorisé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allowed"
+          }
+        }
+      }
+    },
+    "Autorise la surveillance des entrées pour le raccourci global." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow Input Monitoring for the global shortcut."
+          }
+        }
+      }
+    },
+    "Autorisée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allowed"
+          }
+        }
+      }
+    },
+    "Autoriser" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow"
+          }
+        }
+      }
+    },
+    "Autres apps" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Other apps"
+          }
+        }
+      }
+    },
+    "Avancer de 10 secondes" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forward 10 seconds"
+          }
+        }
+      }
+    },
+    "Avec du texte sélectionné, commence la dictée par une consigne : « reformule plus poliment », « traduis en anglais », « rends-le plus court ». La sélection est réécrite ; si le service ne répond pas, elle reste intacte." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "With text selected, start the dictation with an instruction: “rewrite it more politely”, “translate to French”, “make it shorter”. The selection is rewritten; if the service does not respond, it stays untouched."
+          }
+        }
+      }
+    },
+    "Bienvenue dans Wispad" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Welcome to Wispad"
+          }
+        }
+      }
+    },
+    "Bloqué : crédit épuisé ou plafond atteint" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Blocked: credit used up or limit reached"
+          }
+        }
+      }
+    },
+    "Bonjour" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hello"
+          }
+        }
+      }
+    },
+    "Bonsoir" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Good evening"
+          }
+        }
+      }
+    },
+    "Ça marche ! Tu peux dicter partout." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "It works! You can dictate anywhere."
+          }
+        }
+      }
+    },
+    "Ce que tu as vraiment dit" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What you actually said"
+          }
+        }
+      }
+    },
+    "Ce que Wispad envoie" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What Wispad sends"
+          }
+        }
+      }
+    },
+    "Ces termes sont envoyés comme indices au fournisseur choisi, puis relus par la correction." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "These terms are sent as hints to the provider you chose, then checked by the correction."
+          }
+        }
+      }
+    },
+    "Champ sécurisé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Secure field"
+          }
+        }
+      }
+    },
+    "Champ sécurisé : texte gardé dans l'historique." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Secure field: text kept in History."
+          }
+        }
+      }
+    },
+    "Chaque clé est vérifiée auprès du fournisseur, puis enregistrée sur ce Mac, lisible par ton seul compte. Elle ne sert qu'aux appels de Wispad, payés directement à ce fournisseur." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Each key is checked with its provider, then saved on this Mac, readable only by your account. It's only used for Wispad's calls, paid directly to that provider."
+          }
+        }
+      }
+    },
+    "Clé %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ key"
+          }
+        }
+      }
+    },
+    "Clé API" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API key"
+          }
+        }
+      }
+    },
+    "Clé API indisponible" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API key unavailable"
+          }
+        }
+      }
+    },
+    "Clé API manquante" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API key missing"
+          }
+        }
+      }
+    },
+    "Clé créée dans la console de %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Key created in the %@ console"
+          }
+        }
+      }
+    },
+    "Clé enregistrée %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Key saved %@."
+          }
+        }
+      }
+    },
+    "Clé refusée (HTTP %lld)." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Key rejected (HTTP %lld)."
+          }
+        }
+      }
+    },
+    "Clé supprimée de ce Mac." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Key deleted from this Mac."
+          }
+        }
+      }
+    },
+    "Clés API" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API keys"
+          }
+        }
+      }
+    },
+    "Clés de correction" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Correction keys"
+          }
+        }
+      }
+    },
+    "Clés facultatives" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Optional keys"
+          }
+        }
+      }
+    },
+    "Clés illisibles" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keys unreadable"
+          }
+        }
+      }
+    },
+    "Clés illisibles sur ce Mac : clé %@ indisponible." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keys unreadable on this Mac: %@ key unavailable."
+          }
+        }
+      }
+    },
+    "Clique dans le champ, maintiens fn et dis une phrase." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Click in the field, hold fn and say a sentence."
+          }
+        }
+      }
+    },
+    "Code et terminal" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Code and terminal"
+          }
+        }
+      }
+    },
+    "Coffre injoignable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vault unreachable"
+          }
+        }
+      }
+    },
+    "Coffre de secrets injoignable : clé %@ indisponible." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Secrets vault unreachable: key %@ unavailable."
+          }
+        }
+      }
+    },
+    "Collage envoyé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paste sent"
+          }
+        }
+      }
+    },
+    "Collage envoyé, confirmation indisponible" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paste sent, no confirmation available"
+          }
+        }
+      }
+    },
+    "Colle la clé ici" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paste the key here"
+          }
+        }
+      }
+    },
+    "Coller" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paste"
+          }
+        }
+      }
+    },
+    "Comme dicté" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "As dictated"
+          }
+        }
+      }
+    },
+    "Comprendre le sujet grâce à la fenêtre active" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Understand the topic from the active window"
+          }
+        }
+      }
+    },
+    "Compteurs indisponibles" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Counters unavailable"
+          }
+        }
+      }
+    },
+    "Conservation de l'audio" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audio retention"
+          }
+        }
+      }
+    },
+    "Conserver avec l'historique" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep with history"
+          }
+        }
+      }
+    },
+    "Conserver temporairement" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep temporarily"
+          }
+        }
+      }
+    },
+    "Consigne non appliquée : la sélection est inchangée." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Instruction not applied: the selection is unchanged."
+          }
+        }
+      }
+    },
+    "Consigne sur la sélection non appliquée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Instruction on the selection not applied"
+          }
+        }
+      }
+    },
+    "Consommation" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usage"
+          }
+        }
+      }
+    },
+    "Contexte" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Context"
+          }
+        }
+      }
+    },
+    "Continuer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continue"
+          }
+        }
+      }
+    },
+    "Copier" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy"
+          }
+        }
+      }
+    },
+    "Copier la dernière dictée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy the last dictation"
+          }
+        }
+      }
+    },
+    "Correction" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Correction"
+          }
+        }
+      }
+    },
+    "Correction désactivée : %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Correction off: %@."
+          }
+        }
+      }
+    },
+    "Correction du texte" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text correction"
+          }
+        }
+      }
+    },
+    "Correction la moins chère" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cheapest correction"
+          }
+        }
+      }
+    },
+    "Corrige le texte mot pour mot. Le texte, ce que Wispad a entendu et l'audio restent sur ce Mac : ils servent à vérifier qu'un réglage corrige l'erreur sans en créer d'autres." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Correct the text word for word. The text, what Wispad heard and the audio stay on this Mac: they are used to check that a change fixes the error without causing others."
+          }
+        }
+      }
+    },
+    "Corriger le texte avant de l'insérer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Correct the text before inserting it"
+          }
+        }
+      }
+    },
+    "Corriger le texte avant insertion" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Correct the text before inserting"
+          }
+        }
+      }
+    },
+    "Couper" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cut"
+          }
+        }
+      }
+    },
+    "Couper le son du Mac pendant la dictée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mute the Mac while dictating"
+          }
+        }
+      }
+    },
+    "Coût" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cost"
+          }
+        }
+      }
+    },
+    "coût inconnu" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "unknown cost"
+          }
+        }
+      }
+    },
+    "Coûts des API et recours aux relais." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API costs and use of fallbacks."
+          }
+        }
+      }
+    },
+    "Coûts estimés d'après les tarifs publiés de chaque modèle (au survol d'une ligne « Par API »). La facture du fournisseur fait foi." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Costs estimated from each model's published prices (hover a line in “By API”). The provider's invoice is what counts."
+          }
+        }
+      }
+    },
+    "dans ton coffre de secrets" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "in your secrets vault"
+          }
+        }
+      }
+    },
+    "DeepSeek · correction" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DeepSeek · correction"
+          }
+        }
+      }
+    },
+    "DeepSeek d'abord s'il a une clé, puis OpenAI, puis le modèle du fournisseur de voix. Seul le texte part, jamais l'audio." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DeepSeek first if it has a key, then OpenAI, then the voice provider's model. Only the text is sent, never the audio."
+          }
+        }
+      }
+    },
+    "DeepSeek en pause : correction via %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DeepSeek paused: correction via %@"
+          }
+        }
+      }
+    },
+    "DeepSeek en pause : texte inséré sans correction" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DeepSeek paused: text inserted without correction"
+          }
+        }
+      }
+    },
+    "Démarrage audio échoué" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audio start failed"
+          }
+        }
+      }
+    },
+    "Démarrage du micro" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Microphone start"
+          }
+        }
+      }
+    },
+    "Démarrage mesuré depuis la demande. La transcription en direct travaille pendant l’écoute ; la ligne ci-dessus mesure ce qui reste après l’arrêt. « — » : étape non mesurée ou non exécutée." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start measured from the request. Live transcription works while you speak; the line above measures what's left after you stop. “—”: step not measured or not run."
+          }
+        }
+      }
+    },
+    "Démarrage…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starting…"
+          }
+        }
+      }
+    },
+    "Dépense connue (minimum)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Known spending (minimum)"
+          }
+        }
+      }
+    },
+    "Dépense estimée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estimated spending"
+          }
+        }
+      }
+    },
+    "Dernières dictées" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Latest dictations"
+          }
+        }
+      }
+    },
+    "Derniers appels" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Latest calls"
+          }
+        }
+      }
+    },
+    "Détails de la dictée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dictation details"
+          }
+        }
+      }
+    },
+    "Détendu" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Casual"
+          }
+        }
+      }
+    },
+    "Diagnostic" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diagnostics"
+          }
+        }
+      }
+    },
+    "Diagnostic exporté." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diagnostics exported."
+          }
+        }
+      }
+    },
+    "Dicte partout sur ton Mac : maintiens fn, parle, relâche. Le texte s'écrit là où tu tapes." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dictate anywhere on your Mac: hold fn, speak, let go. The text appears where you type."
+          }
+        }
+      }
+    },
+    "Dictée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dictation"
+          }
+        }
+      }
+    },
+    "Dictée du %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dictation from %@"
+          }
+        }
+      }
+    },
+    "Dictée en maintien" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hold-to-talk dictation"
+          }
+        }
+      }
+    },
+    "Dictée mains libres" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hands-free dictation"
+          }
+        }
+      }
+    },
+    "Dictées" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dictations"
+          }
+        }
+      }
+    },
+    "Dicter (mains libres)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dictate (hands-free)"
+          }
+        }
+      }
+    },
+    "Dictionnaire" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dictionary"
+          }
+        }
+      }
+    },
+    "Dictionnaire vide" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Empty dictionary"
+          }
+        }
+      }
+    },
+    "Documents" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Documents"
+          }
+        }
+      }
+    },
+    "Dont les mots appris de tes corrections. Un mot ajouté à tort se retire ici d'un clic." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Including words learned from your corrections. A word added by mistake can be removed here in one click."
+          }
+        }
+      }
+    },
+    "Durée : %lld h" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Duration: %lld h"
+          }
+        }
+      }
+    },
+    "E-mails" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Email"
+          }
+        }
+      }
+    },
+    "Échec" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed"
+          }
+        }
+      }
+    },
+    "échec de la requête" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "request failed"
+          }
+        }
+      }
+    },
+    "Écoute en continu" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Listening continuously"
+          }
+        }
+      }
+    },
+    "Écoute en cours" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Listening"
+          }
+        }
+      }
+    },
+    "Écouter" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Listen"
+          }
+        }
+      }
+    },
+    "Écouter l'audio" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Listen to the audio"
+          }
+        }
+      }
+    },
+    "Écrire ce que tu as vraiment dit" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Write what you actually said"
+          }
+        }
+      }
+    },
+    "Édition" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit"
+          }
+        }
+      }
+    },
+    "Effacer la recherche" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear search"
+          }
+        }
+      }
+    },
+    "en %lld dictées" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "in %lld dictations"
+          }
+        }
+      }
+    },
+    "en 1 dictée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "in 1 dictation"
+          }
+        }
+      }
+    },
+    "En direct %@/h · fichier %@/h" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Live %1$@/h · file %2$@/h"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "En direct %1$@/h · fichier %2$@/h"
+          }
+        }
+      }
+    },
+    "Enregistrée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saved"
+          }
+        }
+      }
+    },
+    "enregistrement" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "recording"
+          }
+        }
+      }
+    },
+    "enregistrement indisponible" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "recording unavailable"
+          }
+        }
+      }
+    },
+    "Enregistrement local échoué" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Local save failed"
+          }
+        }
+      }
+    },
+    "enregistrement trop lent" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "recording too slow"
+          }
+        }
+      }
+    },
+    "Enregistrer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save"
+          }
+        }
+      }
+    },
+    "Enregistrer les informations techniques sur ce Mac." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save the technical information on this Mac."
+          }
+        }
+      }
+    },
+    "Erreur" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Error"
+          }
+        }
+      }
+    },
+    "Erreur notée sur ce Mac. Elle servira à vérifier les prochains réglages." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Error saved on this Mac. It will be used to check future changes."
+          }
+        }
+      }
+    },
+    "Erreur signalée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Error reported"
+          }
+        }
+      }
+    },
+    "Essaie : « Bonjour, je teste Wispad, euh, non, je dicte mon premier message. »" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try: “Hello, I'm testing Wispad, um, no, I'm dictating my first message.”"
+          }
+        }
+      }
+    },
+    "Essaie maintenant" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try it now"
+          }
+        }
+      }
+    },
+    "État de la dictée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dictation status"
+          }
+        }
+      }
+    },
+    "État des services" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Service status"
+          }
+        }
+      }
+    },
+    "Export en cours…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exporting…"
+          }
+        }
+      }
+    },
+    "Export impossible. Choisis un dossier accessible puis réessaie." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export failed. Choose a folder you can write to and try again."
+          }
+        }
+      }
+    },
+    "Exporter le diagnostic" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export diagnostics"
+          }
+        }
+      }
+    },
+    "Exporter le diagnostic…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export diagnostics…"
+          }
+        }
+      }
+    },
+    "Facturation" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Billing"
+          }
+        }
+      }
+    },
+    "Fenêtre" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Window"
+          }
+        }
+      }
+    },
+    "Fermer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close"
+          }
+        }
+      }
+    },
+    "Fermer le lecteur" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close the player"
+          }
+        }
+      }
+    },
+    "Fermer le message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close the message"
+          }
+        }
+      }
+    },
+    "Fermer les détails" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close the details"
+          }
+        }
+      }
+    },
+    "Fin → résultat" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "End → result"
+          }
+        }
+      }
+    },
+    "Finalisation" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finishing"
+          }
+        }
+      }
+    },
+    "Flouter le texte" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Blur the text"
+          }
+        }
+      }
+    },
+    "Flouter les dernières dictées" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Blur recent dictations"
+          }
+        }
+      }
+    },
+    "flux" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "stream"
+          }
+        }
+      }
+    },
+    "Flux API prêt" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API stream ready"
+          }
+        }
+      }
+    },
+    "flux vide" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "empty stream"
+          }
+        }
+      }
+    },
+    "Format audio 16 kHz indisponible." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "16 kHz audio format unavailable."
+          }
+        }
+      }
+    },
+    "Fournisseur" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Provider"
+          }
+        }
+      }
+    },
+    "Fournisseurs" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Providers"
+          }
+        }
+      }
+    },
+    "Général" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "General"
+          }
+        }
+      }
+    },
+    "Gestion xAI" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "xAI management"
+          }
+        }
+      }
+    },
+    "Haut-parleurs seulement" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Speakers only"
+          }
+        }
+      }
+    },
+    "Hier" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yesterday"
+          }
+        }
+      }
+    },
+    "Historique" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "History"
+          }
+        }
+      }
+    },
+    "Historique indisponible. Copie le texte avant de fermer." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "History unavailable. Copy the text before closing."
+          }
+        }
+      }
+    },
+    "Impossible d'enregistrer la clé %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't save the key %@."
+          }
+        }
+      }
+    },
+    "Impossible de lire cet audio." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can't play this audio."
+          }
+        }
+      }
+    },
+    "Impossible de retirer la clé." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't remove the key."
+          }
+        }
+      }
+    },
+    "Inconnu" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unknown"
+          }
+        }
+      }
+    },
+    "Indisponible" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unavailable"
+          }
+        }
+      }
+    },
+    "Inséré" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inserted"
+          }
+        }
+      }
+    },
+    "Insertion" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Insertion"
+          }
+        }
+      }
+    },
+    "Insertion échouée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Insertion failed"
+          }
+        }
+      }
+    },
+    "Insertion impossible : texte copié, colle-le avec ⌘V." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't insert: text copied, paste it with ⌘V."
+          }
+        }
+      }
+    },
+    "Insertion refusée dans un champ sécurisé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Insertion refused in a secure field"
+          }
+        }
+      }
+    },
+    "Jev (TypeSafe) le note d'abord ; en cas de doute, le modèle de correction tranche" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jev (TypeSafe) scores it first; when in doubt, the correction model decides"
+          }
+        }
+      }
+    },
+    "Jev, premier avis sur les mots à apprendre" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jev, first opinion on words to learn"
+          }
+        }
+      }
+    },
+    "L’audio conservé est réutilisé ; le microphone ne s’ouvre pas." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The saved audio is reused; the microphone doesn't open."
+          }
+        }
+      }
+    },
+    "L'audio d'origine n'est plus disponible." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The original audio is no longer available."
+          }
+        }
+      }
+    },
+    "L'audio n'est plus disponible." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The audio is no longer available."
+          }
+        }
+      }
+    },
+    "l'enregistrement diffère" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "the recording differs"
+          }
+        }
+      }
+    },
+    "L'enregistrement local a échoué." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saving locally failed."
+          }
+        }
+      }
+    },
+    "L'historique et l'audio restent sur ce Mac. Aucune donnée ne passe par Wispad : tes appels vont directement aux fournisseurs que tu as choisis." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "History and audio stay on this Mac. No data goes through Wispad: your calls go straight to the providers you chose."
+          }
+        }
+      }
+    },
+    "La consommation sauvegardée n'a pas pu être relue. Les montants affichés peuvent être incomplets." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saved usage couldn't be read back. The amounts shown may be incomplete."
+          }
+        }
+      }
+    },
+    "La correction la moins chère, environ 0,0001 $ par dictée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The cheapest correction, about $0.0001 per dictation"
+          }
+        }
+      }
+    },
+    "La correction lit aussi la fin de la conversation visible dans la fenêtre où tu dictes (2 000 caractères au plus) et tes dernières dictées dans cette app, pour comprendre le sujet, les noms et les nombres. Ce texte part avec la dictée chez le fournisseur de correction ; il n'est ni enregistré ni journalisé, et n'ajoute jamais un mot que tu n'as pas dit." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The correction also reads the end of the conversation visible in the window where you dictate (2,000 characters at most) and your latest dictations in this app, to understand the topic, names and numbers. This text goes with the dictation to the correction provider; it's never saved or logged, and never adds a word you didn't say."
+          }
+        }
+      }
+    },
+    "La correction passe par %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Correction goes through %@"
+          }
+        }
+      }
+    },
+    "La correction passe par %@, puis %@ s'il ne répond pas" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Correction goes through %1$@, then %2$@ if it doesn't respond"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "La correction passe par %1$@, puis %2$@ s'il ne répond pas"
+          }
+        }
+      }
+    },
+    "La durée d’un flux API correspond à sa finalisation après l’arrêt. « — » : durée non mesurée. Les appels d’apprentissage différés apparaissent ici lorsqu’ils sont terminés." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An API stream's duration is its finalization after you stop. “—”: not measured. Deferred learning calls show up here once they finish."
+          }
+        }
+      }
+    },
+    "La fin de la conversation visible (2 000 caractères au plus) et tes dernières dictées dans la même app partent avec la dictée chez le service de correction : noms, nombres et sujet sont mieux écrits. Rien n'est enregistré ni journalisé." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The end of the visible conversation (2,000 characters at most) and your latest dictations in the same app go with the dictation to the correction service: names, numbers and topic come out better. Nothing is saved or logged."
+          }
+        }
+      }
+    },
+    "La nouvelle transcription est vide. L'audio est conservé." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The new transcription is empty. The audio is kept."
+          }
+        }
+      }
+    },
+    "Langue" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Language"
+          }
+        }
+      }
+    },
+    "Le détail technique n’a pas pu être lu." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The technical details couldn't be read."
+          }
+        }
+      }
+    },
+    "Le microphone n'est pas autorisé." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The microphone isn't allowed."
+          }
+        }
+      }
+    },
+    "le modèle de correction juge s'il mérite le dictionnaire" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "the correction model decides whether it belongs in the dictionary"
+          }
+        }
+      }
+    },
+    "Le son revient dès que tu arrêtes de parler. « Haut-parleurs seulement » : rien n'est coupé si le son sort par un casque ou des AirPods." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sound comes back as soon as you stop talking. “Speakers only”: nothing is muted if sound plays through headphones or AirPods."
+          }
+        }
+      }
+    },
+    "Le suivi commence avec cette mise à jour. Les anciennes durées ne peuvent pas être reconstituées." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tracking starts with this update. Earlier durations can't be rebuilt."
+          }
+        }
+      }
+    },
+    "Le temps économisé compare la dictée à une frappe à %lld mots par minute." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Time saved compares dictation with typing at %lld words per minute."
+          }
+        }
+      }
+    },
+    "le texte transcrit est inséré tel quel" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "the transcribed text is inserted as is"
+          }
+        }
+      }
+    },
+    "le texte transcrit est utilisé avec les seules commandes explicites de mise en page" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "the transcribed text is used with only the explicit layout commands"
+          }
+        }
+      }
+    },
+    "Le ton ne change que le registre (tournures familières, ponctuation), jamais les mots ni le sens." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The tone only changes the register (casual forms, punctuation), never the words or the meaning."
+          }
+        }
+      }
+    },
+    "Lecture impossible." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't play."
+          }
+        }
+      }
+    },
+    "Les commandes explicites « première puce », « deuxième puce » et « nouveau paragraphe » fonctionnent localement. Pour structurer une dictée naturelle, active la correction avec un fournisseur configuré." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The explicit commands “first bullet”, “second bullet” and “new paragraph” work locally. To structure natural dictation, turn on correction with a configured provider."
+          }
+        }
+      }
+    },
+    "Les énumérations et les changements d'idée sont mis en forme automatiquement. Tu peux aussi dire « première puce », « deuxième puce » ou « nouveau paragraphe »." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lists and changes of idea are formatted automatically. You can also say “first bullet”, “second bullet” or “new paragraph”."
+          }
+        }
+      }
+    },
+    "Les montants précédés de ≥ sont des minimums : le coût de certains appels est inconnu." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Amounts marked ≥ are minimums: some calls have an unknown cost."
+          }
+        }
+      }
+    },
+    "Les noms, marques et acronymes que Wispad doit reconnaître." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The names, brands and acronyms Wispad should recognize."
+          }
+        }
+      }
+    },
+    "Les transcriptions restent ici, même si l'insertion échoue." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transcriptions stay here, even if insertion fails."
+          }
+        }
+      }
+    },
+    "Raccourci, correction, audio et autorisations." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shortcut, correction, audio and permissions."
+          }
+        }
+      }
+    },
+    "Lire l'audio" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Play the audio"
+          }
+        }
+      }
+    },
+    "macOS ouvre Réglages Système pour les deux dernières : active Wispad dans la liste, puis reviens ici." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS opens System Settings for the last two: turn on Wispad in the list, then come back here."
+          }
+        }
+      }
+    },
+    "Mains libres" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hands-free"
+          }
+        }
+      }
+    },
+    "Maintien" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hold"
+          }
+        }
+      }
+    },
+    "Maintien : dictée. Double appui rapide : mains libres, un appui l'arrête. Appui simple au repos : rien. Échap annule l'écoute en cours sans atteindre l'app. Une nouvelle dictée peut commencer pendant que la précédente se termine." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hold: dictate. Quick double press: hands-free, one press stops it. Single press when idle: nothing. Esc cancels the current recording without reaching the app. A new dictation can start while the previous one finishes."
+          }
+        }
+      }
+    },
+    "Double appui sur fn pour dicter les mains libres, un appui l'arrête. Maintiens fn pour une dictée courte, Échap pour annuler." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Double-press fn for hands-free dictation; press once to stop. Hold fn for a quick dictation, Esc to cancel."
+          }
+        }
+      }
+    },
+    "Maintiens la touche du raccourci et parle : ta première dictée apparaîtra ici." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hold the shortcut key and speak: your first dictation will show up here."
+          }
+        }
+      }
+    },
+    "Masquer Wispad" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide Wispad"
+          }
+        }
+      }
+    },
+    "même sens que l'enregistrement" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "same meaning as the recording"
+          }
+        }
+      }
+    },
+    "Messageries" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Messaging"
+          }
+        }
+      }
+    },
+    "Mesures indisponibles" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Measurements unavailable"
+          }
+        }
+      }
+    },
+    "Mettre en pause" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pause"
+          }
+        }
+      }
+    },
+    "Microphone" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Microphone"
+          }
+        }
+      }
+    },
+    "Microphone non autorisé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Microphone not allowed"
+          }
+        }
+      }
+    },
+    "Modèle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Model"
+          }
+        }
+      }
+    },
+    "Modifier" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change"
+          }
+        }
+      }
+    },
+    "Mots" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Words"
+          }
+        }
+      }
+    },
+    "Mots / minute" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Words / minute"
+          }
+        }
+      }
+    },
+    "Mots dictés" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Words dictated"
+          }
+        }
+      }
+    },
+    "Navigateur" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Browser"
+          }
+        }
+      }
+    },
+    "Non" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No"
+          }
+        }
+      }
+    },
+    "Notes" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notes"
+          }
+        }
+      }
+    },
+    "Nouvelle transcription…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New transcription…"
+          }
+        }
+      }
+    },
+    "OpenAI · correction" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OpenAI · correction"
+          }
+        }
+      }
+    },
+    "OpenAI · transcription de fichier" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OpenAI · file transcription"
+          }
+        }
+      }
+    },
+    "OpenAI · transcription en direct" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OpenAI · live transcription"
+          }
+        }
+      }
+    },
+    "OpenAI et Jev" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OpenAI and Jev"
+          }
+        }
+      }
+    },
+    "Opération annulée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Operation cancelled"
+          }
+        }
+      }
+    },
+    "Où ta voix est transcrite, et ce qui corrige le texte." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Where your voice is transcribed, and what corrects the text."
+          }
+        }
+      }
+    },
+    "Oui" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yes"
+          }
+        }
+      }
+    },
+    "Ouvert seulement pendant une dictée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only open while you dictate"
+          }
+        }
+      }
+    },
+    "Ouverture à la connexion refusée." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open at login was refused."
+          }
+        }
+      }
+    },
+    "Ouvrir à la connexion" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open at login"
+          }
+        }
+      }
+    },
+    "Ouvrir Wispad" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Wispad"
+          }
+        }
+      }
+    },
+    "Par API" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "By API"
+          }
+        }
+      }
+    },
+    "Parler (maintenu)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Talk (hold)"
+          }
+        }
+      }
+    },
+    "Pas de mesures pour cette dictée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No measurements for this dictation"
+          }
+        }
+      }
+    },
+    "Pas encore demandé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not asked yet"
+          }
+        }
+      }
+    },
+    "Pendant 30 s après une dictée, si tu corriges un mot mal entendu (« Sidance » → « Seedance »), %@ : marques, noms et jargon oui, mots courants et fautes de frappe non. Le mot est ajouté, puis la bulle te demande si tu le gardes. Seuls l'extrait dicté et le mot corrigé sont envoyés ; le reste du champ n'est ni enregistré ni envoyé." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "For 30 s after a dictation, if you fix a misheard word (“Sidance” → “Seedance”), %@: brands, names and jargon yes, common words and typos no. The word is added, then the bubble asks whether to keep it. Only the dictated excerpt and the corrected word are sent; the rest of the field is never saved or sent."
+          }
+        }
+      }
+    },
+    "Période" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Period"
+          }
+        }
+      }
+    },
+    "Plafond audio : %lld Mo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audio limit: %lld MB"
+          }
+        }
+      }
+    },
+    "Plus de contexte rend la correction plus juste. Tu choisis." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "More context makes the correction more accurate. Your choice."
+          }
+        }
+      }
+    },
+    "Plus fiable sur la fin de phrase et les mots techniques. Une transcription de plus par dictée, environ 0,0005 $." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "More reliable at the end of sentences and on technical words. One more transcription per dictation, about $0.0005."
+          }
+        }
+      }
+    },
+    "Plus tard" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Later"
+          }
+        }
+      }
+    },
+    "Ponctuation, majuscules, « euh » et reprises retirés. Facultative." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Punctuation and capitals added, “um”s and self-corrections removed. Optional."
+          }
+        }
+      }
+    },
+    "Position dans l'audio" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Position in the audio"
+          }
+        }
+      }
+    },
+    "Les clés viennent de ton coffre de secrets et restent en mémoire, rien n'est écrit sur ce Mac. Une nouvelle clé est enregistrée dans le coffre." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keys come from your secrets vault and stay in memory; nothing is written on this Mac. A new key is saved in the vault."
+          }
+        }
+      }
+    },
+    "Pour coller le texte dans l'app où tu écris" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To paste the text into the app where you type"
+          }
+        }
+      }
+    },
+    "Pour reconnaître le raccourci fn" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To recognize the fn shortcut"
+          }
+        }
+      }
+    },
+    "Premier audio reçu" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "First audio received"
+          }
+        }
+      }
+    },
+    "Préparation de l'écoute…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Getting ready to listen…"
+          }
+        }
+      }
+    },
+    "Présentation" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View"
+          }
+        }
+      }
+    },
+    "Prêt" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ready"
+          }
+        }
+      }
+    },
+    "Prêt · double appui sur %@ : mains libres, maintenu : dictée courte" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ready · double-press %@: hands-free, hold: quick dictation"
+          }
+        }
+      }
+    },
+    "Prêt · relais actif" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ready · fallback active"
+          }
+        }
+      }
+    },
+    "Prêt à copier" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ready to copy"
+          }
+        }
+      }
+    },
+    "Quand couper" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When to mute"
+          }
+        }
+      }
+    },
+    "Quitter Wispad" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quit Wispad"
+          }
+        }
+      }
+    },
+    "Raccourci" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shortcut"
+          }
+        }
+      }
+    },
+    "Raccourci de dictée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dictation shortcut"
+          }
+        }
+      }
+    },
+    "Raccourcis" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shortcuts"
+          }
+        }
+      }
+    },
+    "Rapport JSON local : autorisations, état du raccourci et de la bulle, durées, API utilisées et résultats des 50 dernières tentatives. Aucun texte dicté, audio, contexte d'application ni clé. Rien n'est envoyé automatiquement." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Local JSON report: permissions, shortcut and bubble status, durations, APIs used and results of the last 50 attempts. No dictated text, audio, app context or key. Nothing is sent automatically."
+          }
+        }
+      }
+    },
+    "Recharger depuis le coffre" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reload from the vault"
+          }
+        }
+      }
+    },
+    "Rechercher dans les dictées" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search dictations"
+          }
+        }
+      }
+    },
+    "Reculer de 10 secondes" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back 10 seconds"
+          }
+        }
+      }
+    },
+    "Réduire" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Collapse"
+          }
+        }
+      }
+    },
+    "Réécrire la sélection sur consigne" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rewrite the selection on instruction"
+          }
+        }
+      }
+    },
+    "Réessayer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retry"
+          }
+        }
+      }
+    },
+    "Réessayer les services maintenant" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retry services now"
+          }
+        }
+      }
+    },
+    "Réessayer maintenant" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retry now"
+          }
+        }
+      }
+    },
+    "Refusé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Denied"
+          }
+        }
+      }
+    },
+    "Réglages" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settings"
+          }
+        }
+      }
+    },
+    "Réglages…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settings…"
+          }
+        }
+      }
+    },
+    "Relais %@ → %@ · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fallback %1$@ → %2$@ · %3$@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Relais %1$@ → %2$@ · %3$@"
+          }
+        }
+      }
+    },
+    "Relais de correction" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Correction fallback"
+          }
+        }
+      }
+    },
+    "Remplacer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Replace"
+          }
+        }
+      }
+    },
+    "Requise pour insérer le texte" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Required to insert text"
+          }
+        }
+      }
+    },
+    "Requise pour le raccourci" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Required for the shortcut"
+          }
+        }
+      }
+    },
+    "Réseau indisponible : clé non vérifiée, non enregistrée." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Network unavailable: key not checked, not saved."
+          }
+        }
+      }
+    },
+    "Restreint" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restricted"
+          }
+        }
+      }
+    },
+    "Rétablir" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redo"
+          }
+        }
+      }
+    },
+    "Retirer « %@ » du dictionnaire" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove “%@” from the dictionary"
+          }
+        }
+      }
+    },
+    "Retour" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back"
+          }
+        }
+      }
+    },
+    "Retranscription" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Re-transcription"
+          }
+        }
+      }
+    },
+    "Retranscrire" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transcribe again"
+          }
+        }
+      }
+    },
+    "Réussi" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Succeeded"
+          }
+        }
+      }
+    },
+    "Service de correction" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Correction service"
+          }
+        }
+      }
+    },
+    "service en pause" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "service paused"
+          }
+        }
+      }
+    },
+    "Si tu corriges un nom mal entendu juste après une dictée, Wispad propose de l'ajouter à ton dictionnaire. Seuls le mot corrigé et la phrase dictée sont envoyés." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "If you fix a misheard name right after a dictation, Wispad offers to add it to your dictionary. Only the corrected word and the dictated sentence are sent."
+          }
+        }
+      }
+    },
+    "Signaler une erreur" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report an error"
+          }
+        }
+      }
+    },
+    "Soigné" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Polished"
+          }
+        }
+      }
+    },
+    "Soldes chez les fournisseurs" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Provider balances"
+          }
+        }
+      }
+    },
+    "Sons de début et de fin" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start and end sounds"
+          }
+        }
+      }
+    },
+    "Structurer les listes et paragraphes" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Format lists and paragraphs"
+          }
+        }
+      }
+    },
+    "Supprimer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete"
+          }
+        }
+      }
+    },
+    "Supprimer « %@ »" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete “%@”"
+          }
+        }
+      }
+    },
+    "Supprimer après une insertion réussie" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete after a successful insertion"
+          }
+        }
+      }
+    },
+    "Supprimer tout l'historique ?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete all history?"
+          }
+        }
+      }
+    },
+    "sur ce Mac" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "on this Mac"
+          }
+        }
+      }
+    },
+    "Surveillance des entrées" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Input Monitoring"
+          }
+        }
+      }
+    },
+    "Ta voix part directement chez le fournisseur de ton choix, sans passer par un serveur de Wispad." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your voice goes straight to the provider of your choice, never through a Wispad server."
+          }
+        }
+      }
+    },
+    "Temps de dictée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dictation time"
+          }
+        }
+      }
+    },
+    "Temps économisé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Time saved"
+          }
+        }
+      }
+    },
+    "Termine la dictée avant d'écouter un audio." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finish the dictation before playing audio."
+          }
+        }
+      }
+    },
+    "Terminer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finish"
+          }
+        }
+      }
+    },
+    "Terminer la dictée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finish dictation"
+          }
+        }
+      }
+    },
+    "Tes dictées restent sur ce Mac." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your dictations stay on this Mac."
+          }
+        }
+      }
+    },
+    "Texte" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text"
+          }
+        }
+      }
+    },
+    "Texte copié." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text copied."
+          }
+        }
+      }
+    },
+    "Texte inséré" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text inserted"
+          }
+        }
+      }
+    },
+    "Texte masqué" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text hidden"
+          }
+        }
+      }
+    },
+    "Texte prêt à copier" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text ready to copy"
+          }
+        }
+      }
+    },
+    "Texte retenu : %@ (%@)%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text kept: %1$@ (%2$@)%3$@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Texte retenu : %1$@ (%2$@)%3$@"
+          }
+        }
+      }
+    },
+    "Texte visible" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text visible"
+          }
+        }
+      }
+    },
+    "Ton activité de dictée en un coup d'œil." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your dictation activity at a glance."
+          }
+        }
+      }
+    },
+    "Ton et consignes" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tone and instructions"
+          }
+        }
+      }
+    },
+    "Total (minimum)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Total (minimum)"
+          }
+        }
+      }
+    },
+    "Total estimé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estimated total"
+          }
+        }
+      }
+    },
+    "touche %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "key %lld"
+          }
+        }
+      }
+    },
+    "Toujours, casque compris" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Always, headphones included"
+          }
+        }
+      }
+    },
+    "Tous les services répondent" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All services are responding"
+          }
+        }
+      }
+    },
+    "Tout" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All"
+          }
+        }
+      }
+    },
+    "Tout sélectionner" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select All"
+          }
+        }
+      }
+    },
+    "Tout supprimer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete all"
+          }
+        }
+      }
+    },
+    "Tout voir" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show all"
+          }
+        }
+      }
+    },
+    "Transcription" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transcription"
+          }
+        }
+      }
+    },
+    "Transcription après arrêt" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transcription after stop"
+          }
+        }
+      }
+    },
+    "Transcription de ta voix" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voice transcription"
+          }
+        }
+      }
+    },
+    "Transcription échouée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transcription failed"
+          }
+        }
+      }
+    },
+    "Transcription en cours" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transcribing"
+          }
+        }
+      }
+    },
+    "Transcription et historique indisponibles. L'audio est conservé dans le dossier Audio de Wispad." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transcription and history unavailable. The audio is kept in Wispad's Audio folder."
+          }
+        }
+      }
+    },
+    "Transcription impossible. L'audio est gardé dans l'historique." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transcription failed. The audio is kept in History."
+          }
+        }
+      }
+    },
+    "Transcription impossible. Vérifie la clé, le réseau et le quota du fournisseur. L'audio est conservé." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transcription failed. Check the key, the network and the provider's quota. The audio is kept."
+          }
+        }
+      }
+    },
+    "Transcription impossible. Vérifie la clé, le réseau et le quota, puis réessaie depuis l'historique." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transcription failed. Check the key, the network and the quota, then retry from History."
+          }
+        }
+      }
+    },
+    "Transcription mise à jour. Utilise Copier pour l'insérer où tu veux." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transcription updated. Use Copy to insert it wherever you want."
+          }
+        }
+      }
+    },
+    "Transcription…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transcribing…"
+          }
+        }
+      }
+    },
+    "Trois autorisations pour écouter le raccourci, ouvrir le micro et coller le texte." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Three permissions to listen for the shortcut, open the microphone and paste the text."
+          }
+        }
+      }
+    },
+    "Tu te reprends ? « mardi, ah non, mercredi » devient « mercredi »." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Correct yourself mid-sentence? “Tuesday, oh no, Wednesday” becomes “Wednesday”."
+          }
+        }
+      }
+    },
+    "TypeSafe · Jev (dictionnaire)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "TypeSafe · Jev (dictionary)"
+          }
+        }
+      }
+    },
+    "Une autorisation manque" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A permission is missing"
+          }
+        }
+      }
+    },
+    "Une dictée est en cours : réessaie quand elle sera finie." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A dictation is in progress: try again when it's done."
+          }
+        }
+      }
+    },
+    "vérification coupée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "check turned off"
+          }
+        }
+      }
+    },
+    "Vérification impossible (HTTP %lld) : clé non enregistrée." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't check (HTTP %lld): key not saved."
+          }
+        }
+      }
+    },
+    "Vérification…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checking…"
+          }
+        }
+      }
+    },
+    "Vérifier chaque dictée sur l'enregistrement complet" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check each dictation against the full recording"
+          }
+        }
+      }
+    },
+    "Voix recommandée, correction Grok" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recommended voice, Grok correction"
+          }
+        }
+      }
+    },
+    "Voix, relais et correction" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voice, fallback and correction"
+          }
+        }
+      }
+    },
+    "Wispad" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wispad"
+          }
+        }
+      }
+    },
+    "Wispad envoie l'audio et, si disponible, l'application active, la sélection et un court extrait autour du curseur. L'historique et l'audio restent sur ce Mac." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wispad sends the audio and, when available, the active app, the selection and a short excerpt around the cursor. History and audio stay on this Mac."
+          }
+        }
+      }
+    },
+    "Wispad ne peut pas démarrer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wispad can't start"
+          }
+        }
+      }
+    },
+    "Wispad, dictée en cours" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wispad, dictating"
+          }
+        }
+      }
+    },
+    "xAI · correction" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "xAI · correction"
+          }
+        }
+      }
+    },
+    "xAI · transcription de fichier" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "xAI · file transcription"
+          }
+        }
+      }
+    },
+    "xAI · transcription en direct" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "xAI · live transcription"
+          }
+        }
+      }
+    },
+    "xAI ne donne son solde qu'à une clé de gestion. Crée-la dans la console xAI (Settings → Management Keys) et ajoute-la dans Fournisseurs, parmi les clés facultatives." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "xAI only shares its balance with a management key. Create one in the xAI console (Settings → Management Keys) and add it in Providers, under optional keys."
+          }
+        }
+      }
+    },
+    "Bascules vers un fournisseur de secours" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Switches to a backup provider"
+          }
+        }
+      }
+    },
+    "1 bascule" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 switch"
+          }
+        }
+      }
+    },
+    "%lld bascules" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld switches"
+          }
+        }
+      }
+    },
+    "Quand ton fournisseur principal échoue, ne répond pas à temps ou a été mis de côté après des échecs, Wispad envoie la même demande à un autre fournisseur pour que ta dictée aboutisse." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When your main provider fails, doesn't answer in time or was set aside after repeated failures, Wispad sends the same request to another provider so your dictation goes through."
+          }
+        }
+      }
+    },
+    "Dernières bascules" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Latest switches"
+          }
+        }
+      }
+    },
+    "Bascules enregistrées depuis le %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Switches recorded since %@."
+          }
+        }
+      }
+    },
+    "secours réussi" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "backup succeeded"
+          }
+        }
+      }
+    },
+    "secours en échec" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "backup failed"
+          }
+        }
+      }
+    },
+    "Aucune bascule : tes fournisseurs principaux ont toujours répondu." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No switches: your main providers always answered."
+          }
+        }
+      }
+    },
+    "Le fournisseur de secours a lui aussi échoué 1 fois. Vérifie ta connexion et tes clés dans Fournisseurs." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The backup provider also failed once. Check your connection and your keys in Providers."
+          }
+        }
+      }
+    },
+    "Le fournisseur de secours a lui aussi échoué %lld fois. Vérifie ta connexion et tes clés dans Fournisseurs." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The backup provider also failed %lld times. Check your connection and your keys in Providers."
+          }
+        }
+      }
+    },
+    "Le secours a toujours pris le relais, mais un fournisseur principal a échoué plusieurs fois de suite et a été mis de côté un moment. Si cela revient souvent, vérifie sa clé ou son état." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The backup always took over, but a main provider failed several times in a row and was set aside for a while. If this happens often, check its key or its status."
+          }
+        }
+      }
+    },
+    "Le secours a pris le relais à chaque fois. Une bascule de temps en temps est normale ; des bascules fréquentes sur une même étape signalent un fournisseur en difficulté." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The backup took over every time. An occasional switch is normal; frequent switches at the same step point to a provider having trouble."
+          }
+        }
+      }
+    },
+    "1 fois" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "once"
+          }
+        }
+      }
+    },
+    "%lld fois" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld times"
+          }
+        }
+      }
+    },
+    "Ta voix a été transcrite par l'autre fournisseur." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your voice was transcribed by the other provider."
+          }
+        }
+      }
+    },
+    "Ton texte a été corrigé par un autre service." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your text was corrected by another service."
+          }
+        }
+      }
+    },
+    "Un mot corrigé à la main a été vérifié par un autre service avant d'entrer dans le dictionnaire." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A word you corrected by hand was checked by another service before going into the dictionary."
+          }
+        }
+      }
+    },
+    "échec ou délai dépassé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "failure or timeout"
+          }
+        }
+      }
+    },
+    "principal mis de côté" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "main provider set aside"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

@@ -1,0 +1,111 @@
+# Wispad — fichiers jamais versionnés.
+# Règle : rien de personnel dans le dépôt (voir AGENTS.md). Dans le doute, ajouter un motif ici plutôt que commiter.
+
+# --- Secrets et identifiants ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p8
+*.p12
+*.pfx
+*.cer
+*.certSigningRequest
+*.mobileprovision
+*.provisionprofile
+AuthKey_*.p8
+.netrc
+api-keys.json
+*secret*
+!**/*Secret*.swift
+# Signature propre à chaque développeur (équipe Apple)
+/Signing.local.xcconfig
+*.local.xcconfig
+
+# --- Données personnelles : historique, voix, journaux, exports ---
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.db
+*.wav
+*.m4a
+*.mp3
+*.aiff
+*.caf
+*.flac
+*.log
+*.trace
+*.memgraph
+*.ips
+*.crash
+benchmarks/
+signalements*/
+exports/
+# Audios du banc franglais : régénérés par scripts/franglais-fixtures.sh
+/Tests/Fixtures/franglais/audio/
+
+# --- Notes de travail locales (jamais dans le dépôt public) ---
+review.md
+PROJECT.md
+NOTES*.md
+TODO.local.md
+*.local.md
+AGENTS.override.md
+/notes/
+/private/
+/.scratch/
+
+# --- Agents et éditeurs ---
+.claude/
+.cursor/
+.codex/
+.aider*
+.continue/
+.windsurf/
+.vscode/
+.idea/
+*.swp
+*~
+
+# --- Build, Xcode et Swift Package Manager ---
+build/
+DerivedData/
+.build/
+.swiftpm/
+# Généré par xcodegen depuis project.yml
+/Wispad.xcodeproj/
+*.xcworkspace
+xcuserdata/
+*.xcuserstate
+*.xcarchive
+*.dSYM/
+*.dSYM.zip
+*.ipa
+
+# --- Distribution (versions binaires, hors Git) ---
+*.app
+*.dmg
+*.pkg
+*.zip
+appcast.xml
+/release/
+/dist/
+
+# --- macOS ---
+.DS_Store
+._*
+.AppleDouble
+.LSOverride
+.Spotlight-V100
+.Trashes
+.fseventsd
+Icon?
+
+# --- Outils divers ---
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+coverage/
