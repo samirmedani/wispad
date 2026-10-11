@@ -71,6 +71,13 @@ Les textes d'interface s'écrivent en français dans le code, puis se traduisent
 Toute modification passe par une pull request relue par le mainteneur : voir [CONTRIBUTING.md](CONTRIBUTING.md).
 Pour signaler une faille : [SECURITY.md](SECURITY.md).
 
+## Contributeurs
+
+- [@samirmedani](https://github.com/samirmedani) : mainteneur.
+- Claude (Anthropic) : assistant de développement.
+
+Pour contribuer à ton tour : voir [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Licence
 
 Code sous licence [MIT](LICENSE).
