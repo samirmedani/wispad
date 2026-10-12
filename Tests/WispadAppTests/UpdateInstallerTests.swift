@@ -170,6 +170,18 @@ struct UpdateInstallerTests {
         #expect(journal.steps.last == "swap .Wispad.nouveau.app Wispad.app")
     }
 
+    /// Wispad quitté entre la copie et le remplacement : la copie cachée part au lancement suivant, jamais l'app.
+    @Test func leftoverCopyIsRemovedAtLaunch() {
+        let journal = Journal()
+        let installer = makeInstaller(journal)
+        installer.system.exists = { $0 == Self.staged }
+        installer.removeLeftovers()
+        #expect(journal.removed == [Self.staged])
+        installer.system.exists = { _ in false }
+        installer.removeLeftovers()
+        #expect(journal.removed == [Self.staged])
+    }
+
     @Test func cancellingBeforeTheSwapReplacesNothing() async throws {
         let journal = Journal()
         journal.idle = false

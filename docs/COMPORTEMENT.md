@@ -490,7 +490,8 @@ gardé tel quel).
      rouvre la fenêtre si elle était affichée ; la bulle confirme « Wispad 0.1.2 est installé ».
 
   Réglages, clés API, historique, audios et dictionnaire vivent hors de l'app (préférences de `com.yatofix.wispad`,
-  `Application Support/Wispad`, coffre de secrets) : la mise à jour n'y touche pas.
+  `Application Support/Wispad`, coffre de secrets) : la mise à jour n'y touche pas. Une copie cachée laissée par une
+  installation interrompue (Wispad quitté avant le remplacement) est effacée au lancement suivant.
 - **Page de la release à la place** : app dans un dossier non modifiable (par exemple /Applications pour un compte
   sans droits d'administration), lancée depuis le disque d'installation ou déplacée par macOS, app sans signature
   Developer ID, ou release sans `Wispad.dmg` : « Mettre à jour » ouvre la page de la release dans le navigateur, et la

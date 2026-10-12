@@ -50,6 +50,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             BuildStatus.shared.onAvailable = { [weak model] release in model?.noteAvailableRelease(release) }
             BuildStatus.shared.start()
             model.isWindowVisible = { [weak self] in self?.window?.isVisible == true }
+            model.updater.removeLeftovers()
             // Relancé par une mise à jour en un clic : la bulle le confirme, sans prendre le focus.
             if CommandLine.arguments.contains("--updated") { model.announceUpdated() }
             retentionTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak model] _ in

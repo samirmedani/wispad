@@ -39,6 +39,7 @@ struct UpdateSystem {
     /// Team ID de la signature de l'app qui tourne ; nil pour une signature locale.
     var teamID: () -> String? = { CodeSignature.currentTeamID() }
     var isWritable: (URL) -> Bool = { FileManager.default.isWritableFile(atPath: $0.path) }
+    var exists: (URL) -> Bool = { FileManager.default.fileExists(atPath: $0.path) }
     /// Dossier de travail temporaire (disque téléchargé, point de montage), effacé à la fin.
     var makeWorkspace: () throws -> URL = { try UpdateTools.makeWorkspace() }
     var download: (DiskImageAsset, URL, @escaping @Sendable (Double?) -> Void) async throws -> Void = {
@@ -152,6 +153,13 @@ final class UpdateInstaller {
     /// Fenêtre de mise à jour fermée après un échec : la barre latérale repropose « Mettre à jour ».
     func dismissFailure() {
         if case .failed = phase { phase = .idle }
+    }
+
+    /// Copie cachée laissée par une installation interrompue (Wispad quitté entre la copie et le remplacement) :
+    /// effacée au lancement suivant. Jamais l'app elle-même.
+    func removeLeftovers() {
+        let staged = UpdateInstallRules.stagingURL(for: system.appURL())
+        if system.exists(staged) { system.remove(staged) }
     }
 
     private func run(attempt current: Int, asset: DiskImageAsset, teamID: String, app: URL, installed: String,
