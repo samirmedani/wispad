@@ -3,6 +3,3 @@ contact_links:
   - name: Poser une question
     url: https://github.com/samirmedani/wispad/discussions/categories/q-a
     about: "Installation, réglages, fournisseurs : pose ta question dans les Discussions."
-  - name: Signaler une faille de sécurité
-    url: https://github.com/samirmedani/wispad/security/advisories/new
-    about: "En privé, jamais dans un ticket public (voir SECURITY.md)."
