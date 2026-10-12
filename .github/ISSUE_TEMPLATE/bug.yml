@@ -1,0 +1,68 @@
+name: Signaler un bug
+description: Quelque chose ne marche pas comme prévu dans Wispad.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Merci de prendre le temps de signaler ce problème. N'écris ici ni clé API, ni dictée privée : ce ticket est public.
+        *English is welcome too.*
+  - type: textarea
+    id: description
+    attributes:
+      label: Ce qui se passe
+      description: Décris le problème. Une capture d'écran aide beaucoup.
+      placeholder: "Ex. : après un double appui sur fn, la bulle reste affichée et rien ne s'écrit."
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Pour le reproduire
+      placeholder: |
+        1. Ouvrir Notes
+        2. Double appui sur fn
+        3. Dicter une phrase
+    validations:
+      required: false
+  - type: textarea
+    id: expected
+    attributes:
+      label: Ce que tu attendais
+    validations:
+      required: false
+  - type: input
+    id: version
+    attributes:
+      label: Version de Wispad
+      description: Visible en bas de la barre latérale de l'app.
+      placeholder: "0.1.0 · f0b2d89"
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: Version de macOS
+      placeholder: "macOS 26.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Fournisseur de transcription
+      options:
+        - xAI
+        - OpenAI
+        - Je ne sais pas
+    validations:
+      required: false
+  - type: dropdown
+    id: mac
+    attributes:
+      label: Type de Mac
+      options:
+        - Apple Silicon (M1 ou plus récent)
+        - Intel
+        - Je ne sais pas
+    validations:
+      required: false

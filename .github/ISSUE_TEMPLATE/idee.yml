@@ -1,0 +1,29 @@
+name: Proposer une idée
+description: Une fonctionnalité ou une amélioration pour Wispad.
+labels: ["idée"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Pour une idée encore floue ou pour en discuter d'abord, passe plutôt par les [Discussions](https://github.com/samirmedani/wispad/discussions/categories/ideas), où chacun peut voter.
+  - type: textarea
+    id: probleme
+    attributes:
+      label: Le besoin
+      description: Qu'est-ce qui te manque ou te gêne aujourd'hui ?
+      placeholder: "Ex. : je dicte souvent des adresses e-mail et Wispad les écrit en toutes lettres."
+    validations:
+      required: true
+  - type: textarea
+    id: idee
+    attributes:
+      label: Ce que tu proposes
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version de Wispad
+      placeholder: "0.1.0 · f0b2d89"
+    validations:
+      required: false
