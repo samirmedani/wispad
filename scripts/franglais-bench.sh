@@ -3,6 +3,8 @@
 # xAI + correction, puis compare au rapport précédent.
 #   scripts/franglais-bench.sh <nom> [rapport-de-référence]
 # Variables utiles : BENCH_KEYTERMS=none, BENCH_LANGUAGE=auto, BENCH_CLEANUP=off, BENCH_ONLY=11-
+# Cas de correction seule (transcription brute, sans audio ni flux xAI) : BENCH_ONLY=h,r,g,l,e
+# (mots mal entendus, tics, citations, lettres épelées, anglais).
 # Coût : quelques centimes (xAI 0,20 $/h d'audio, correction).
 # Clés (scripts/test-keys.sh) : WISPAD_TEST_XAI_API_KEY requis ; WISPAD_TEST_DEEPSEEK_API_KEY et
 # WISPAD_TEST_OPENAI_API_KEY optionnels pour la correction. Aucun repli sur les clés de l'app.

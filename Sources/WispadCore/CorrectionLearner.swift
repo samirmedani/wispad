@@ -79,6 +79,8 @@ public enum CorrectionLearner {
         var oldEnd: Int
         var oldWords: [String]
         var newWords: [String]
+        /// Position de `newWords` dans le nouveau texte.
+        var newStart = 0
     }
 
     static func words(in text: String) -> [String] {
@@ -108,11 +110,11 @@ public enum CorrectionLearner {
                 flush()
                 i += 1; j += 1
             } else if j < m, i == n || table[i][j + 1] >= table[i + 1][j] {
-                if current == nil { current = Hunk(oldStart: i, oldEnd: i, oldWords: [], newWords: []) }
+                if current == nil { current = Hunk(oldStart: i, oldEnd: i, oldWords: [], newWords: [], newStart: j) }
                 current?.newWords.append(new[j])
                 j += 1
             } else {
-                if current == nil { current = Hunk(oldStart: i, oldEnd: i, oldWords: [], newWords: []) }
+                if current == nil { current = Hunk(oldStart: i, oldEnd: i, oldWords: [], newWords: [], newStart: j) }
                 current?.oldWords.append(old[i])
                 current?.oldEnd = i + 1
                 i += 1

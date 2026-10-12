@@ -58,7 +58,8 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
    (`TranscriptEquivalence`, mots du fichier reportés par `CorrectionPatch`) ou relais ; le fichier part chez le
    fournisseur (`BatchTranscriber`). Sans réponse, l'audio reste dans l'historique pour Retranscrire. Le texte passe par `FranglaisNormalizer` avant et après la correction.
 6. `TextCleaner` corrige (consigne `CorrectionPrompt`, puis `FidelityGuard`, puis `DictationStructure`) ; une
-   consigne sur la sélection passe par `TextCleaner.transform`, sans garde-fou. Les raccourcis vocaux
+   consigne sur la sélection passe par `TextCleaner.transform`, sans garde-fou. `FidelityGuard` juge la
+   ressemblance à l'oreille (homophones, lettres épelées) avec `PhoneticKey`. Les raccourcis vocaux
    (`VoiceSnippets`) s'appliquent ensuite.
 7. La dictée est enregistrée (`HistoryStore`), collée dans l'ordre (`TextInserter`, raccord `SmartJoin`), puis
    surveillée pour l'apprentissage (`CorrectionWatcher`, tri par `JevJudge` et `TermJudge`). Le statut du collage
@@ -199,5 +200,8 @@ fournisseur retiré : `APIKeys.LocalFile` garde les comptes qu'il ne connaît pa
   (temps, vues natives, lignes rendues), puis un défilement simulé vers le bas et vers le haut (temps par étape :
   moyenne, p95, max, étapes de plus de 16 ms ; évaluations de lignes et lignes distinctes).
 - Tests réseau à la demande, clés de test seulement : `scripts/live-test.sh SelfCorrectionLiveTests`.
+- Banc franglais (audios de `Tests/Fixtures/franglais`, clés de test) : `scripts/franglais-bench.sh <nom> [référence]` ;
+  `BENCH_ONLY=h,r,g,l,e` ne rejoue que les cas de correction seule (champ `transcript` : transcription brute
+  inventée, passée directement à la correction, sans audio ni flux xAI).
 - Erreurs signalées depuis l'historique (`ErrorReportArchive`) : `scripts/report-bench.sh <nom>` les rejoue et compte
   les mots faux avant et après un changement de consigne, de garde-fou ou de fournisseur.

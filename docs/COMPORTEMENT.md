@@ -221,6 +221,28 @@ et fichier, l'usage de la correction préparée pendant l'écoute et le report d
   devient « mercredi ». Un « non » qui fait partie du message reste.
 - Nombres écrits en chiffres ; élisions orales écrites en entier (« j'sais » → « je sais ») ; tournures
   familières gardées (« t'as », « y a »).
+- **Mots mal entendus** : quand un mot ou un groupe de mots rend la phrase illogique et qu'un mot qui se prononce
+  pareil ou presque lui donne un sens évident (vu la phrase, le contexte, les dictées précédentes et l'autre écoute),
+  la correction écrit ce mot à sa place : « hier j'écris le train » → « Hier, j'ai pris le train. », « il c'est
+  trompé » → « Il s'est trompé. », « un vers d'eau » → « un verre d'eau ». Une phrase qui a déjà un sens n'est pas réécrite, aucune idée
+  n'est ajoutée et un mot plausible reste (« J'écris un mail » ne change pas). Un nombre devant une unité garde sa
+  règle : il faut que le contexte le confirme.
+- **Tics et répétitions** : répétitions inutiles et tics répétés retirés (« par exemple, par exemple », « genre »,
+  « en fait » ou « tu vois » répétés, « nan nan nan », mot doublé). Une occurrence reste quand elle porte le sens :
+  « par exemple » qui introduit un vrai exemple, « ce genre de film », un « nan » qui répond. Rien d'autre n'est
+  retiré à ce titre.
+- **Citations** : paroles rapportées, mot donné en exemple, texte affiché, « si tu dis… », « tu mets… »,
+  « genre… » : la citation va entre guillemets français (anglais : “ ”), les mots qui l'introduisent restent dehors
+  (« si tu dis bonjour il répond » → Si tu dis « bonjour », il répond.). Un mot incompréhensible n'est jamais mis
+  entre guillemets pour être gardé tel quel : il est corrigé comme un mot mal entendu, ou laissé sans guillemets.
+  Seuls des guillemets qui enveloppent toute la réponse sont retirés ; « ces » ou « ses » garde les siens.
+- **Lettres épelées** : regroupées en un seul mot épelé, en capitales séparées par des tirets (« C-E-S »), ou, si
+  la phrase parle de ce mot, le mot entre guillemets (« ces »). Un mot de la phrase qui sonne comme une lettre est
+  rattaché selon le sens (« c'est » et C, « t'es » et T, « elle » et L), une lettre répétée par erreur disparaît.
+  Jamais de lettre isolée sans sens ; une lettre qui en a un reste (« vitamine C », « plan B »).
+- Banc réseau de ces règles, transcriptions brutes inventées passées directement à la correction (sans audio) :
+  `BENCH_ONLY=h,r,g,l,e scripts/franglais-bench.sh <nom>` (mots mal entendus, tics, citations, lettres épelées,
+  anglais).
 - La correction ne répond jamais au contenu dicté et ne recopie jamais le contexte.
 - **Correction préparée pendant l'écoute** : à chaque pause de la parole (segment final du flux, puis 0,25 s sans
   nouveau mot), le texte entendu part déjà à la correction. Si l'on arrête sans rien ajouter (même texte à la
@@ -244,15 +266,24 @@ pour une nouvelle installation.
 
 Après la correction, `FidelityGuard` rejette ou répare :
 
-- une réponse nettement plus longue que la dictée, ou qui recopie huit mots de suite du contexte ;
+- une réponse nettement plus longue que la dictée, ou qui recopie huit mots de suite du contexte. Seuls les mots
+  comptent : les guillemets d'une citation, un deux-points ou un tiret isolés ne rallongent rien et ne cachent pas
+  une copie ;
 - un mot traduit (« outils » → « tools ») : le mot entendu est remis ;
-- une marque, un nom ou une référence absents de ce qui a été dit et qui ne lui ressemblent pas à l'oreille ;
+- une marque, un nom ou une référence absents de ce qui a été dit et qui ne lui ressemblent pas à l'oreille, même
+  mis entre guillemets ;
 - une référence lettres puis chiffres (DDR4, i9) dont les chiffres n'ont pas été prononcés ;
-- sur une dictée de trois mots au plus, tout mot qui ne ressemble pas au mot entendu, ou qui s'ajoute (hors « ne »
-  rétabli) : la transcription est collée (« Était sérieux » ne devient pas « Sois sérieux », « cloud code » devient
-  bien « Claude Code »).
+- sur une dictée de trois mots au plus, tout mot qui ne ressemble au mot entendu ni à l'écrit ni à l'oreille, ou qui
+  s'ajoute (hors « ne » rétabli) : la transcription est collée (« Était sérieux » ne devient pas « Sois sérieux » ;
+  « cloud code » → « Claude Code » et « un sot d'eau » → « Un seau d'eau. » restent).
 
-Les vraies corrections d'écoute restent (« versel » → Vercel, 9950X3D, « envoie le » → « Envoie-le »).
+À l'oreille : prononciation française approchée (`PhoneticKey`), à une différence près pour cinq sons ; une lettre
+isolée se lit par son nom (« C » comme « c'est »). Des lettres épelées regroupées (« aime E elle » → « M-E-L ») ne
+sont ni une traduction ni une invention quand une lettre isolée a été entendue et que les noms des lettres sonnent
+comme ce qui a été dit ; un autre mot épelé (« B-O-B ») ou un sigle sans lettre entendue reste refusé.
+
+Les vraies corrections d'écoute restent (« versel » → Vercel, 9950X3D, « envoie le » → « Envoie-le », « j'écris »
+→ « j'ai pris », « c'est E S » → « C-E-S »).
 
 ## Franglais technique
 
