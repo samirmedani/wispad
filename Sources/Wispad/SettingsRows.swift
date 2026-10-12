@@ -170,6 +170,11 @@ enum SettingsPresentation {
             String(localized: "Aucun texte dicté, audio, contexte d'application ni clé. Rien n'est envoyé automatiquement.")
         ]
     )
+
+    // MARK: Aide et retours
+
+    static let helpTitle = String(localized: "Aide et retours")
+    static let helpSummary = String(localized: "Sur GitHub : seules les versions de Wispad et de macOS sont préremplies.")
 }
 
 /// Rangée de réglage au style macOS : libellé et explication courte à gauche, bouton « i » puis contrôle à droite.

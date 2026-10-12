@@ -2001,6 +2001,9 @@ struct AppRegressionTests {
         #expect(titles().first?.hasPrefix("● Prêt · double appui sur fn : mains libres") == true)
         #expect(titles().contains("Dicter (mains libres)"))
         #expect(titles().contains("Réglages…"))
+        // Aide et retours juste avant Quitter : pages GitHub dans le navigateur.
+        let bottom = StatusMenu.items(model: f.model, target: nil).suffix(5).map { $0.isSeparatorItem ? "—" : $0.title }
+        #expect(bottom == ["—", "Signaler un problème", "Proposer une idée", "—", "Quitter Wispad"])
         #expect(!titles().contains { $0.hasPrefix("⇄") })
         // Pendant l'écoute : terminer ou annuler.
         await f.model.coordinator.begin(.toggle)

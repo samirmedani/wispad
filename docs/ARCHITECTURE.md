@@ -4,7 +4,7 @@
 
 | Module | Rôle | Dépend de |
 | --- | --- | --- |
-| `WispadCore` | Logique pure et testable : requêtes de transcription et de correction, consigne, garde-fou, comparaison flux/fichier, historique SQLite, coûts, retard de la version sur `main` (`BuildFreshness`), progression du premier lancement guidé (`OnboardingFlow`). Aucun texte d'interface. | — |
+| `WispadCore` | Logique pure et testable : requêtes de transcription et de correction, consigne, garde-fou, comparaison flux/fichier, historique SQLite, coûts, retard de la version sur `main` (`BuildFreshness`), adresses d'aide et de retour (`FeedbackLinks`), progression du premier lancement guidé (`OnboardingFlow`). Aucun texte d'interface. | — |
 | `Wispad` (app) | Coordinateur de dictée, raccourci, bulle, écrans SwiftUI, clés, traductions. | `WispadCore` |
 
 Le projet Xcode (hors Git) est généré par xcodegen depuis `project.yml`. `Package.swift` décrit les mêmes
@@ -15,6 +15,12 @@ Une phase de compilation (`scripts/build-commit.sh`) grave le commit court du d�
 (clé `WispadBuildCommit`, absente si git ne répond pas). `BuildStatus` l'affiche avec la version dans la barre
 latérale et compare ce commit à `main` sur l'API publique de GitHub, en arrière-plan ; la lecture de la réponse est
 la fonction pure `BuildFreshnessCheck.freshness` (WispadCore, testée).
+
+« Aide et retours » : `HelpPage` (`HelpPages.swift`) donne les trois liens de Réglages (`HelpSection`), dont les
+deux premiers servent aussi au menu de la barre (`StatusMenu`) et au menu Aide (`MainMenu.helpMenu`, actions du
+délégué de l'app) ; chaque page s'ouvre avec `NSWorkspace.shared.open`. L'adresse du ticket de bug prérempli est
+la fonction pure `FeedbackLinks.bugReportURL` (WispadCore, testée) : version et commit de `BuildStatus`, version de
+macOS, rien d'autre, encodés pour l'adresse.
 
 ## Premier lancement guidé
 

@@ -112,10 +112,10 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 ## Réglages
 
 Sections, dans l'ordre : Raccourci, Transcription, Correction, Ton selon l'app, Confidentialité, Apprentissage,
-Général, Autorisations, Diagnostic. Aucun bloc de texte sous une liste : chaque réglage porte, dans sa rangée, une
-explication d'une ligne sous son libellé, en langage simple (ni montant, ni chiffre, ni nom de modèle). Les détails
-(fournisseurs et modèles réellement utilisés, coût, délais, ce qui est envoyé ou gardé) s'ouvrent dans un popover
-avec le bouton ⓘ de la rangée ; ceux de la correction suivent les clés enregistrées.
+Général, Autorisations, Diagnostic, Aide et retours. Aucun bloc de texte sous une liste : chaque réglage porte, dans
+sa rangée, une explication d'une ligne sous son libellé, en langage simple (ni montant, ni chiffre, ni nom de
+modèle). Les détails (fournisseurs et modèles réellement utilisés, coût, délais, ce qui est envoyé ou gardé)
+s'ouvrent dans un popover avec le bouton ⓘ de la rangée ; ceux de la correction suivent les clés enregistrées.
 
 - **Raccourci** : chaque raccourci (dictée, « Coller la dernière dictée ») est dessiné en touches de clavier Mac
   compactes, toutes de la même hauteur, une par touche à enfoncer, symbole et nom sur une ligne, séparées par un
@@ -444,6 +444,21 @@ gardé tel quel).
 - GitHub injoignable, dépôt privé (404), commit inconnu (compilation locale non publiée), réponse illisible ou
   commit non gravé (git absent à la compilation) : seule la version s'affiche, sans erreur. Ni le démarrage ni la
   dictée n'attendent cette requête.
+
+## Aide et retours
+
+Réglages › Aide et retours, en bas de l'écran : une ligne d'explication (« Sur GitHub : seules les versions de
+Wispad et de macOS sont préremplies. ») et trois liens. « Signaler un problème » et « Proposer une idée » sont
+aussi dans le menu de la barre des menus, juste avant Quitter, et dans le menu Aide. Chaque lien ouvre sa page dans
+le navigateur ; depuis un menu, la fenêtre de Wispad ne s'ouvre pas.
+
+- **Signaler un problème** : nouveau ticket sur le formulaire de bug du dépôt (`bug.yml`), prérempli par l'adresse.
+  Champ `version` : la version et le commit de la barre latérale, sans le nom de l'app (« 0.1.0 · abc1234 ») ; le
+  commit seul si la version manque, la version seule sans commit gravé, rien si les deux manquent. Champ `macos` :
+  « macOS 15.3.1 », toujours trois nombres. Valeurs encodées pour l'adresse (espace, « · », « + », « & », « # »…).
+- **Proposer une idée** : Discussions du dépôt, catégorie Ideas. **Poser une question** : catégorie Q&A.
+- Rien d'autre dans l'adresse : ni dictée, ni réglage, ni donnée personnelle. Wispad n'envoie rien lui-même : un
+  ticket n'existe que si on le publie sur GitHub.
 
 ## Diagnostic
 

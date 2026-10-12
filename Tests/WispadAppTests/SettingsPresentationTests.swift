@@ -38,6 +38,9 @@ struct SettingsPresentationTests {
             #expect(!row.details.contains(summary), "\(summary)")
         }
         #expect(SettingsPresentation.toneSummary.count <= 90)
+        // Aide et retours : une seule ligne d'explication, sous le titre de la section.
+        #expect(SettingsPresentation.helpSummary.count <= 90)
+        #expect(SettingsPresentation.helpSummary.rangeOfCharacter(from: .decimalDigits) == nil)
     }
 
     /// Aucune phrase n'est répétée d'un réglage à l'autre.

@@ -160,6 +160,7 @@ struct SettingsView: View {
                 }
             }
             DiagnosticsSection()
+            HelpSection()
         }
         .onAppear { model.refreshPermissions() }
     }
@@ -319,6 +320,25 @@ struct DiagnosticsSection: View {
                 }
                 exporting = false
             }
+        }
+    }
+}
+
+/// Aide et retours : trois liens vers GitHub, ouverts dans le navigateur, sous une seule ligne d'explication.
+struct HelpSection: View {
+    var body: some View {
+        Section {
+            ForEach(HelpPage.allCases, id: \.self) { page in
+                Button {
+                    page.open()
+                } label: {
+                    Label(page.title, systemImage: page.symbol)
+                }
+                .buttonStyle(.link)
+                .hoverFeedback()
+            }
+        } header: {
+            SectionTitle(title: SettingsPresentation.helpTitle, summary: SettingsPresentation.helpSummary)
         }
     }
 }

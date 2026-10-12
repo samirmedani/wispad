@@ -12,19 +12,25 @@ final class BuildStatus {
     /// Clé Info.plist renseignée à la compilation (`scripts/build-commit.sh`).
     static let commitInfoKey = "WispadBuildCommit"
 
-    let version: String
+    /// Version de l'Info.plist ; nil si elle manque (« — » dans la barre latérale).
+    let version: String?
     let commit: String?
     private(set) var freshness: BuildFreshness = .unknown
     @ObservationIgnored private var task: Task<Void, Never>?
 
     init(info: [String: Any]? = Bundle.main.infoDictionary) {
-        version = info?["CFBundleShortVersionString"] as? String ?? "—"
+        version = info?["CFBundleShortVersionString"] as? String
         commit = BuildFreshnessCheck.shortCommit(info?[Self.commitInfoKey] as? String)
     }
 
     /// « Wispad 0.1.0 · abc1234 », sans commit si la compilation n'a pas pu le lire.
     var versionLine: String {
-        [AppIdentity.displayName + " " + version, commit].compactMap { $0 }.joined(separator: " · ")
+        [AppIdentity.displayName + " " + (version ?? "—"), commit].compactMap { $0 }.joined(separator: " · ")
+    }
+
+    /// Ticket de bug prérempli avec la version et le commit affichés ici, et la version de macOS ; rien d'autre.
+    func bugReportURL(system: OperatingSystemVersion = ProcessInfo.processInfo.operatingSystemVersion) -> URL {
+        FeedbackLinks.bugReportURL(version: version, commit: commit, system: system)
     }
 
     /// Lance la vérification périodique. Sans commit gravé, rien n'est demandé.

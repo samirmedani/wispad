@@ -223,5 +223,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         show(section: AppSection.allCases[sender.tag])
     }
 
+    /// Menu de la barre et menu Aide : la page GitHub s'ouvre dans le navigateur, sans ouvrir la fenêtre de Wispad.
+    @objc func reportProblem() { HelpPage.reportProblem.open() }
+    @objc func proposeIdea() { HelpPage.proposeIdea.open() }
+
     @objc private func quit() { NSApp.terminate(nil) }
 }
