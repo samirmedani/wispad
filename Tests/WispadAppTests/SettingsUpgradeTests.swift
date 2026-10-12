@@ -219,6 +219,20 @@ struct SettingsUpgradeTests {
         #expect(stored["provider"] as? String == "openai")
     }
 
+    /// Rappel de mise à jour : absent ou illisible, aucune version n'a été rappelée ; une fois noté, il le reste.
+    @Test func updateReminderIsReadLenientlyAndPersists() throws {
+        #expect(try decode(#"{"provider": "openai"}"#).updateRemindedVersion == "")
+        #expect(try decode(#"{"updateRemindedVersion": 12, "provider": "openai"}"#).updateRemindedVersion == "")
+        #expect(try decode(#"{"updateRemindedVersion": 12, "provider": "openai"}"#).provider == .openAI)
+        let fixture = try Defaults()
+        defer { fixture.dispose() }
+        var settings = AppSettings.load(from: fixture.defaults)
+        #expect(settings.updateRemindedVersion == "")
+        settings.updateRemindedVersion = "0.1.2"
+        settings.save(to: fixture.defaults)
+        #expect(AppSettings.load(from: fixture.defaults).updateRemindedVersion == "0.1.2")
+    }
+
     @Test func everySettingSurvivesASaveAndReload() throws {
         let fixture = try Defaults()
         defer { fixture.dispose() }
@@ -232,6 +246,7 @@ struct SettingsUpgradeTests {
         settings.modifierFlags = 0x100000
         settings.onboardingCompleted = true
         settings.githubStarClicked = true
+        settings.updateRemindedVersion = "0.1.2"
         settings.save(to: fixture.defaults)
         #expect(AppSettings.load(from: fixture.defaults) == settings)
     }

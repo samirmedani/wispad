@@ -484,6 +484,56 @@ final class AppModel {
         hasKey(account: CleanupModel.deepSeekAccount)
     }
 
+    // MARK: - Mises à jour
+
+    /// Installation en un clic d'une release (téléchargement, signature, remplacement, relance).
+    let updater = UpdateInstaller()
+    /// Release dont la fenêtre de mise à jour est ouverte : notes de version, installation et son avancement.
+    var updateSheet: ReleaseInfo?
+    /// Fenêtre principale à l'écran (posé par le délégué de l'app) : la nouvelle version la rouvre après la relance.
+    @ObservationIgnored var isWindowVisible: () -> Bool = { false }
+
+    /// Version plus récente trouvée par la vérification : rappelée une seule fois par version dans la bulle, quand
+    /// elle se libère après une dictée ; jamais pendant la configuration guidée.
+    func noteAvailableRelease(_ release: ReleaseInfo) {
+        guard onboarding == nil,
+              UpdateReminder.shouldRemind(release.version, lastReminded: settings.updateRemindedVersion) else { return }
+        coordinator.offerUpdate(release)
+    }
+
+    /// Le rappel vient de paraître dans la bulle : il ne reviendra plus pour cette version.
+    func noteUpdateReminded(_ version: SemanticVersion) {
+        setDisplayChoice(\.updateRemindedVersion, version.description)
+    }
+
+    /// Ouvre la fenêtre sur la mise à jour : notes de version et bouton d'installation.
+    func showUpdate(_ release: ReleaseInfo) {
+        updateSheet = release
+        onOpenWindow?(selectedSection)
+    }
+
+    /// « Mettre à jour » : installation en un clic, suivie dans la fenêtre de mise à jour. Si elle ne peut pas se faire
+    /// ici (dossier non modifiable, release sans disque…), la page de la release s'ouvre à la place.
+    func installUpdate(_ release: ReleaseInfo) {
+        let status = BuildStatus.shared
+        let started = updater.install(
+            release, kind: status.kind, installed: status.version,
+            isIdle: { [weak self] in self?.coordinator.phase == .idle },
+            relaunchArguments: { [weak self] in self?.relaunchArguments() ?? ["--updated"] }
+        )
+        if started { updateSheet = release }
+    }
+
+    /// Arguments de la nouvelle version : elle confirme la mise à jour, et rouvre la fenêtre si elle était affichée.
+    func relaunchArguments() -> [String] {
+        isWindowVisible() ? ["--updated", "--section", selectedSection.rawValue] : ["--updated"]
+    }
+
+    /// Premier lancement après une mise à jour en un clic : la bulle le confirme, sans prendre le focus.
+    func announceUpdated() {
+        coordinator.announce(String(localized: "Wispad \(BuildStatus.shared.version) est installé"), relay: false)
+    }
+
     // MARK: - Clés saisies dans Fournisseurs
 
     /// Brouillons de clés par compte : jamais enregistrés tant qu'ils ne sont pas vérifiés.

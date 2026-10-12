@@ -66,6 +66,8 @@ struct AppSettings: Codable, Equatable {
     var muteMode: OutputMuteMode = .speakersOnly
     /// Bandeau « Une étoile sur GitHub » cliqué une fois : il ne revient plus (l'étoile est invérifiable).
     var githubStarClicked = false
+    /// Dernière version rappelée par la bulle (« 0.1.2 ») : une nouvelle version n'est rappelée qu'une fois.
+    var updateRemindedVersion = ""
     /// Choix d'affichage retrouvés au lancement suivant, écrits dès qu'ils changent : période de l'Accueil, période
     /// de Consommation (indépendantes), dernière section ouverte, clés API facultatives dépliées.
     var homePeriod: StatsPeriod = .days7
@@ -122,6 +124,7 @@ struct AppSettings: Codable, Equatable {
         muteWhileDictating = value(.muteWhileDictating, defaults.muteWhileDictating)
         muteMode = value(.muteMode, defaults.muteMode)
         githubStarClicked = value(.githubStarClicked, defaults.githubStarClicked)
+        updateRemindedVersion = value(.updateRemindedVersion, defaults.updateRemindedVersion)
         homePeriod = value(.homePeriod, defaults.homePeriod)
         usagePeriod = value(.usagePeriod, defaults.usagePeriod)
         lastSection = value(.lastSection, defaults.lastSection)

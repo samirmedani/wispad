@@ -15,11 +15,14 @@ enum OverlayMode: Equatable {
     case notice(String)
     /// Mot déjà ajouté : Oui le garde, Non le retire. Mêmes clics que la bulle en mains libres.
     case learning(String)
+    /// Nouvelle version de Wispad : Voir ouvre les notes de version, Ne plus me rappeler ferme le rappel.
+    case update(String)
 
     /// La dictée passe avant un message d'information.
-    static func resolve(phase: DictationPhase, notice: String?, confirmsLearning: Bool = false) -> OverlayMode? {
+    static func resolve(phase: DictationPhase, notice: String?, confirmsLearning: Bool = false, offersUpdate: Bool = false) -> OverlayMode? {
         if let mode = OverlayMode(phase) { return mode }
         guard let notice else { return nil }
+        if offersUpdate { return .update(notice) }
         return confirmsLearning ? .learning(notice) : .notice(notice)
     }
 
@@ -36,7 +39,7 @@ enum OverlayMode: Equatable {
     /// Seuls les états à boutons captent la souris, et seulement sur la pilule.
     var isInteractive: Bool {
         switch self {
-        case .handsFree, .failure, .notice, .learning: return true
+        case .handsFree, .failure, .notice, .learning, .update: return true
         case .listening, .finishing: return false
         }
     }
@@ -44,7 +47,7 @@ enum OverlayMode: Equatable {
     /// Message à décompte : ✕ au survol, décompte en pause sous le pointeur. Jamais la bulle d'enregistrement.
     var isMessage: Bool {
         switch self {
-        case .failure, .notice, .learning: return true
+        case .failure, .notice, .learning, .update: return true
         case .listening, .handsFree, .finishing: return false
         }
     }
@@ -129,6 +132,8 @@ enum OverlayStyle {
     /// Spectre d'une dictée servie par un relais (OpenAI quand xAI ou DeepSeek ne répondent pas).
     static let relay = Color(red: 0.06, green: 0.72, blue: 0.56)
     static let green = Color(red: 0.3, green: 0.85, blue: 0.45)
+    /// Nouvelle version disponible.
+    static let update = Color(red: 0.38, green: 0.66, blue: 1)
     /// Verre fumé noir : verre « clear » teinté, qui reste noir sur fond clair comme sur fond sombre.
     /// La teinte fait partie du verre : elle suit ses fusions et ses morphoses.
     static let glassTint = Color.black.opacity(0.85)
@@ -336,6 +341,20 @@ struct OverlayPill: View {
                     action: { model.coordinator.acceptLearning() },
                     secondaryTitle: String(localized: "Non"),
                     secondaryAction: { model.coordinator.declineLearning() }
+                )
+                .id(message)
+                .transition(.opacity)
+            case .update(let message):
+                MessageLine(
+                    symbol: "arrow.down.circle.fill",
+                    tint: OverlayStyle.update,
+                    message: message,
+                    countdown: model.coordinator.noticeTimer.countdown,
+                    onDismiss: model.coordinator.closeMessage,
+                    actionTitle: String(localized: "Voir"),
+                    action: { model.coordinator.openUpdateOffer() },
+                    secondaryTitle: String(localized: "Ne plus me rappeler"),
+                    secondaryAction: { model.coordinator.declineUpdateOffer() }
                 )
                 .id(message)
                 .transition(.opacity)
@@ -827,7 +846,9 @@ final class OverlayController {
 
     private func applyPhase(appearing: Bool) {
         guard let model,
-              let mode = OverlayMode.resolve(phase: model.coordinator.phase, notice: model.coordinator.notice, confirmsLearning: model.coordinator.noticeConfirmsLearning),
+              let mode = OverlayMode.resolve(phase: model.coordinator.phase, notice: model.coordinator.notice,
+                                             confirmsLearning: model.coordinator.noticeConfirmsLearning,
+                                             offersUpdate: model.coordinator.noticeOffersUpdate),
               mode != state.mode else { return }
         withTransaction(Self.modeTransaction(appearing: appearing, reduceMotion: reduceMotion)) {
             state.mode = mode
@@ -903,6 +924,7 @@ final class OverlayController {
             _ = model.coordinator.phase
             _ = model.coordinator.notice
             _ = model.coordinator.noticeConfirmsLearning
+            _ = model.coordinator.noticeOffersUpdate
         } onChange: { [weak self] in
             Task { @MainActor in
                 guard let self else { return }

@@ -45,8 +45,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                 self?.updateIcon()
             }
             installStatusItem()
-            // Retard sur le dépôt public : en arrière-plan, après le démarrage, puis toutes les 6 heures.
+            // Dernière release (ou, pour un build de développement, retard sur le dépôt public) : en arrière-plan, après
+            // le démarrage, puis toutes les 6 heures. Une version plus récente est rappelée une fois dans la bulle.
+            BuildStatus.shared.onAvailable = { [weak model] release in model?.noteAvailableRelease(release) }
             BuildStatus.shared.start()
+            model.isWindowVisible = { [weak self] in self?.window?.isVisible == true }
+            // Relancé par une mise à jour en un clic : la bulle le confirme, sans prendre le focus.
+            if CommandLine.arguments.contains("--updated") { model.announceUpdated() }
             retentionTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak model] _ in
                 Task { @MainActor in
                     model?.purgeAudio()

@@ -416,7 +416,7 @@ gardé tel quel).
 
 - Une mise à jour ou une réinstallation garde fournisseurs, réglages, clés API, historique et dictionnaire : même
   identifiant (`com.yatofix.wispad`), même dossier (`Application Support/Wispad`), mêmes préférences.
-  `scripts/install.sh` ne remplace que l'app.
+  `scripts/install.sh`, comme la mise à jour en un clic (voir « Version et mises à jour »), ne remplace que l'app.
 - Réglages lus un par un : un réglage absent prend sa valeur par défaut ; une valeur illisible ou retirée (mode,
   fournisseur, modèle) prend la valeur par défaut de ce seul réglage, ou la plus proche valide (fournisseur retiré →
   fournisseur par défaut, modèle retiré → modèle par défaut du même fournisseur). Les autres choix restent.
@@ -429,21 +429,77 @@ gardé tel quel).
 - Reprise depuis OpenFlow (une seule fois) : réglages, base, audios, journaux et fichier de clés, sans rien écraser
   de Wispad ; ce qui n'est pas repris reste en place.
 
-## Version et dépôt
+## Version et mises à jour
 
 - Bas de la barre latérale, au-dessus des raccourcis : un petit bandeau jaune « Une étoile sur GitHub »
   (« Star on GitHub » en anglais), sur une seule ligne et sans troncature à la largeur fixe de la barre, entièrement
   cliquable. Un clic ouvre la page du dépôt dans le navigateur, affiche « Merci ! » 1,6 s, puis le bandeau
   disparaît pour de bon (réglage `githubStarClicked`, enregistré dès le clic). Wispad ne peut pas savoir si
-  l'étoile a été donnée : le clic suffit. Dessous, toujours visibles : la version (« Wispad 0.1.0 · abc1234 » :
-  version et commit court gravé à la compilation), puis « À jour » ou « N commits de retard » (« 1 commit de
-  retard ») sur la branche `main` du dépôt public. Un clic sur le retard ouvre la page des commits.
-- Seul contact : `GET https://api.github.com/repos/samirmedani/wispad/compare/<commit>...main` (API publique, sans
-  clé ni cookie), 5 s après le lancement puis toutes les 6 heures, 8 s au plus. Rien d'autre n'est envoyé que
-  le commit de la version dans l'adresse. Le retard est le champ `ahead_by` (commits de `main` absents de la version).
-- GitHub injoignable, dépôt privé (404), commit inconnu (compilation locale non publiée), réponse illisible ou
-  commit non gravé (git absent à la compilation) : seule la version s'affiche, sans erreur. Ni le démarrage ni la
-  dictée n'attendent cette requête.
+  l'étoile a été donnée : le clic suffit. Dessous, toujours visibles : la version, puis l'état de la mise à jour.
+- **Release ou build de développement** : une release est l'app du `Wispad.dmg` publié sur GitHub ; seul
+  `scripts/release.sh` ajoute à son Info.plist la clé `WispadRelease` (vraie), avant de la signer. Sans cette clé,
+  c'est un build de développement, compilé depuis les sources (Xcode, `scripts/build.sh`, `scripts/install.sh`). Une
+  clé posée par le script de release plutôt que l'absence de signature Developer ID : explicite et testable, couverte
+  par la signature de l'app, et un contributeur qui signe son build avec son propre certificat Developer ID reste un
+  build de développement.
+- **Release** : la version seule (« Wispad 0.1.1 »), puis « À jour », ou « Wispad 0.1.2 est disponible » (un clic
+  ouvre la fenêtre de mise à jour) et le bouton « Mettre à jour ». Le tag de la dernière release (« v0.1.2 ») et la
+  version de l'app (`CFBundleShortVersionString`) se comparent en semver : X.Y.Z, une pré-version avant la version
+  finale. Une app plus récente que la dernière release (release retirée) reste « À jour ».
+- **Build de développement** : la version et le commit court gravé à la compilation (« Wispad 0.1.0 · abc1234 »),
+  puis « À jour » ou « N commits de retard » (« 1 commit de retard ») sur la branche `main` du dépôt public, comme
+  avant les releases. Un clic sur le retard ouvre la page des commits. Aucune release proposée ni demandée.
+- **Vérification**, seul contact hors des fournisseurs : pour une release
+  `GET https://api.github.com/repos/samirmedani/wispad/releases/latest`, pour un build de développement
+  `GET https://api.github.com/repos/samirmedani/wispad/compare/<commit>...main` (le retard est le champ `ahead_by`).
+  API publique, sans clé ni cookie, avec l'en-tête User-Agent demandé par GitHub ; 5 s après le lancement, puis
+  toutes les 6 heures, 8 s au plus. Rien d'autre n'est envoyé (pour un build de développement, le commit de la
+  version, dans l'adresse). Ni le démarrage ni la dictée n'attendent cette requête.
+- **Échecs silencieux**, sans message : hors ligne, délai dépassé ou GitHub en panne (5xx) → nouvel essai dans
+  30 minutes ; limite de l'API (403, 429) → nouvel essai à l'heure annoncée par GitHub (`Retry-After` ou
+  `X-RateLimit-Reset`), entre 5 minutes et 6 heures, une heure sans indication ; aucune release (404), tag mal formé
+  (autre chose que vX.Y.Z), brouillon, pré-version ou réponse illisible → rien de nouveau. Ce qui était affiché reste ;
+  sans aucune réponse lisible, seule la version s'affiche. Build de développement : dépôt privé (404), commit inconnu
+  (compilation locale non publiée) ou commit non gravé (git absent à la compilation) → seule la version.
+- **Rappel discret** d'une nouvelle version, une seule fois par version, dans la bulle : « Wispad 0.1.2 est
+  disponible », avec « Voir » (la fenêtre s'ouvre sur les notes de version) et « Ne plus me rappeler » ; ✕ au survol,
+  départ seul après 10 s, décompte en pause au survol. Il attend que la bulle se libère après une dictée (ou après un
+  autre message) : on est alors devant le Mac et on la regarde. Jamais pendant une dictée ni pendant la configuration
+  guidée ; la bulle ne prend ni le focus ni le premier plan. Coupé par une dictée qui commence, il reparaît à la fin
+  de celle-ci. Une version rappelée (réglage `updateRemindedVersion`) ne l'est plus jamais, même après une relance ;
+  une version plus récente l'est à son tour. La barre latérale la propose toujours.
+- **Fenêtre de mise à jour** : la version disponible et celle installée, les notes de version (le corps de la
+  release en markdown simple : titres, puces, listes numérotées, paragraphes, blocs de code ; gras, italique, liens
+  et `code` dans la ligne ; texte sélectionnable), « Voir sur GitHub », « Plus tard » et « Mettre à jour ». Pendant
+  l'installation : l'étape et sa progression, et « Annuler » tant que rien n'est remplacé. En cas d'échec : la
+  raison, « Ouvrir la page de la release » et « Réessayer ».
+- **Installation en un clic** (« Mettre à jour », dans la barre latérale ou la fenêtre de mise à jour, qui s'ouvre
+  pour suivre l'avancement ; la barre latérale le résume) :
+  1. téléchargement de `Wispad.dmg` (asset de la release, seulement depuis
+     `https://github.com/samirmedani/wispad/releases/download/`), avec sa progression ; taille et empreinte SHA-256
+     comparées à celles qu'annonce GitHub ;
+  2. montage en lecture seule, invisible dans le Finder (`hdiutil attach -nobrowse`) ;
+  3. vérification de `Wispad.app` dans le disque : version plus récente que celle qui tourne (jamais de retour en
+     arrière) ; signature intacte (toutes architectures, code imbriqué, validation stricte), Developer ID d'Apple,
+     même identifiant (`com.yatofix.wispad`) et même équipe (Team ID) que l'app qui tourne ;
+  4. copie cachée à côté de l'app (`.Wispad.nouveau.app`, même dossier), vérifiée à son tour ; démontage du disque ;
+  5. si une dictée est en cours, attente de sa fin (« Après la dictée… ») ; puis remplacement atomique de l'app par
+     la copie (échange des deux noms, APFS ; sinon deux renommages, l'ancienne app remise en place si le second
+     échoue) ; l'ancienne version est effacée ;
+  6. relance : une petite aide attend la fin de cette instance (60 s au plus), puis ouvre la nouvelle version, qui
+     rouvre la fenêtre si elle était affichée ; la bulle confirme « Wispad 0.1.2 est installé ».
+
+  Réglages, clés API, historique, audios et dictionnaire vivent hors de l'app (préférences de `com.yatofix.wispad`,
+  `Application Support/Wispad`, coffre de secrets) : la mise à jour n'y touche pas.
+- **Page de la release à la place** : app dans un dossier non modifiable (par exemple /Applications pour un compte
+  sans droits d'administration), lancée depuis le disque d'installation ou déplacée par macOS, app sans signature
+  Developer ID, ou release sans `Wispad.dmg` : « Mettre à jour » ouvre la page de la release dans le navigateur, et la
+  fenêtre de mise à jour dit pourquoi.
+- **Échec** (téléchargement, fichier incomplet ou modifié, disque illisible, signature refusée, version pas plus
+  récente, copie, remplacement, relance) : message clair dans la fenêtre de mise à jour, « Échec de la mise à jour »
+  dans la barre latérale (un clic rouvre la fenêtre), avec le lien vers la release. L'app en place n'est jamais
+  laissée à moitié remplacée ; le journal (`mise-a-jour`) ne garde que le nom de l'étape, sans chemin.
+- **Publier une release** (mainteneur) : `scripts/release.sh`, voir son en-tête (variables d'environnement, étapes).
 
 ## Diagnostic
 

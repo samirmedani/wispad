@@ -31,6 +31,316 @@
         }
       }
     },
+    "Wispad %@ est disponible" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wispad %@ is available"
+          }
+        }
+      }
+    },
+    "Mettre à jour" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update"
+          }
+        }
+      }
+    },
+    "Voir les notes de version" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "See release notes"
+          }
+        }
+      }
+    },
+    "Voir" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View"
+          }
+        }
+      }
+    },
+    "Ne plus me rappeler" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Don't remind me"
+          }
+        }
+      }
+    },
+    "Wispad %@ est installé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wispad %@ is installed"
+          }
+        }
+      }
+    },
+    "Tu utilises la version %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You're using version %@."
+          }
+        }
+      }
+    },
+    "Notes de version" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Release notes"
+          }
+        }
+      }
+    },
+    "Pas de notes pour cette version." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No notes for this version."
+          }
+        }
+      }
+    },
+    "Voir sur GitHub" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View on GitHub"
+          }
+        }
+      }
+    },
+    "Ouvrir la page de la release" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open the release page"
+          }
+        }
+      }
+    },
+    "Téléchargement…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Downloading…"
+          }
+        }
+      }
+    },
+    "Téléchargement… %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Downloading… %@"
+          }
+        }
+      }
+    },
+    "Vérification de la signature…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checking the signature…"
+          }
+        }
+      }
+    },
+    "Prête : installation dès la fin de la dictée en cours." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ready: it installs as soon as the current dictation ends."
+          }
+        }
+      }
+    },
+    "Installation…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installing…"
+          }
+        }
+      }
+    },
+    "Relance de Wispad…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relaunching Wispad…"
+          }
+        }
+      }
+    },
+    "Après la dictée…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "After the dictation…"
+          }
+        }
+      }
+    },
+    "Relance…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relaunching…"
+          }
+        }
+      }
+    },
+    "Échec de la mise à jour" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update failed"
+          }
+        }
+      }
+    },
+    "Le téléchargement a échoué. Vérifie ta connexion, puis réessaie." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The download failed. Check your connection, then try again."
+          }
+        }
+      }
+    },
+    "Le fichier téléchargé est incomplet ou modifié : rien n'a été installé." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The downloaded file is incomplete or altered: nothing was installed."
+          }
+        }
+      }
+    },
+    "Le disque de la mise à jour n'a pas pu être ouvert : rien n'a été installé." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The update disk image couldn't be opened: nothing was installed."
+          }
+        }
+      }
+    },
+    "Wispad est introuvable dans le disque de la mise à jour : rien n'a été installé." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wispad wasn't found in the update disk image: nothing was installed."
+          }
+        }
+      }
+    },
+    "Cette version n'est pas plus récente que la tienne : rien n'a été installé." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This version isn't newer than yours: nothing was installed."
+          }
+        }
+      }
+    },
+    "La signature de cette version n'est pas celle de Wispad : rien n'a été installé." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This version isn't signed by Wispad's developer: nothing was installed."
+          }
+        }
+      }
+    },
+    "La copie de la nouvelle version a échoué : rien n'a été remplacé." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copying the new version failed: nothing was replaced."
+          }
+        }
+      }
+    },
+    "Le remplacement de l'app a échoué : ta version actuelle reste en place." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Replacing the app failed: your current version stays in place."
+          }
+        }
+      }
+    },
+    "Wispad est à jour mais n'a pas pu se relancer : quitte-le, puis rouvre-le." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wispad is up to date but couldn't relaunch: quit it, then open it again."
+          }
+        }
+      }
+    },
+    "Wispad ne peut pas se remplacer là où il est installé : la nouvelle version se télécharge depuis la page de la release." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wispad can't replace itself where it's installed: download the new version from the release page."
+          }
+        }
+      }
+    },
+    "Cette version s'installe depuis la page de la release." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This version installs from the release page."
+          }
+        }
+      }
+    },
     "À la fin de la dictée, l'enregistrement complet est transcrit une seconde fois et comparé au texte reçu en direct." : {
       "localizations" : {
         "en" : {

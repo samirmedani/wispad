@@ -63,6 +63,12 @@ struct RootView: View {
         .frame(minWidth: 820, minHeight: 540)
         .tint(Theme.brand)
         .onAppear { model.refreshPermissions() }
+        .sheet(item: Binding(get: { model.updateSheet }, set: { model.updateSheet = $0 }),
+               onDismiss: { model.updater.dismissFailure() }) { release in
+            UpdateSheet(release: release)
+                .environment(model)
+                .tint(Theme.brand)
+        }
     }
 }
 
@@ -227,7 +233,8 @@ enum StarBanner: Equatable {
     }
 }
 
-/// Bandeau étoile, version et retard sur la branche principale : discret, au-dessus des raccourcis.
+/// Bandeau étoile, version et mise à jour : discret, au-dessus des raccourcis. Pour une release, la dernière version
+/// publiée ; pour un build de développement, le retard sur la branche principale.
 struct ProjectFooter: View {
     @Environment(AppModel.self) private var model
     var status = BuildStatus.shared
@@ -246,10 +253,20 @@ struct ProjectFooter: View {
                 .foregroundStyle(.tertiary)
                 .lineLimit(1)
                 .textSelection(.enabled)
-            freshness
+            switch status.display {
+            case .development(let freshness):
+                developmentLine(freshness)
+            case .upToDate:
+                line(String(localized: "À jour"), color: .green)
+            case .available(let release):
+                availableLines(release)
+            case .unknown:
+                EmptyView()
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .animation(Theme.quick, value: status.freshness)
+        .animation(Theme.quick, value: status.display)
+        .animation(Theme.quick, value: model.updater.phase)
         .animation(Theme.spring, value: banner)
     }
 
@@ -266,9 +283,10 @@ struct ProjectFooter: View {
         }
     }
 
-    @ViewBuilder private var freshness: some View {
-        if let label = status.freshness.label {
-            if case .behind = status.freshness {
+    /// Build compilé depuis les sources : retard sur la branche principale du dépôt public.
+    @ViewBuilder private func developmentLine(_ freshness: BuildFreshness) -> some View {
+        if let label = freshness.label {
+            if case .behind = freshness {
                 Button {
                     NSWorkspace.shared.open(BuildFreshnessCheck.commitsURL)
                 } label: {
@@ -279,6 +297,48 @@ struct ProjectFooter: View {
             } else {
                 line(label, color: .green)
             }
+        }
+    }
+
+    /// Release plus récente : « Wispad 0.1.2 est disponible » (ouvre les notes de version), puis « Mettre à jour »,
+    /// ou l'avancement de l'installation (qui rouvre la fenêtre de mise à jour).
+    @ViewBuilder private func availableLines(_ release: ReleaseInfo) -> some View {
+        let updater = model.updater
+        Button {
+            model.showUpdate(release)
+        } label: {
+            line(DictationCoordinator.updateMessage(release.version), color: Theme.brand)
+        }
+        .buttonStyle(HoverButtonStyle(treatment: .quiet))
+        .help("Voir les notes de version")
+        if let progress = updater.phase.sidebarText {
+            Button {
+                model.showUpdate(updater.release ?? release)
+            } label: {
+                HStack(spacing: 6) {
+                    if case .failed = updater.phase {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.orange)
+                    } else {
+                        ProgressView()
+                            .controlSize(.mini)
+                    }
+                    Text(progress)
+                        .font(.system(size: 10.5).monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            .buttonStyle(HoverButtonStyle(treatment: .quiet))
+            .transition(.opacity)
+        } else {
+            Button("Mettre à jour") { model.installUpdate(release) }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .hoverFeedback()
+                .padding(.top, 2)
+                .transition(.opacity)
         }
     }
 

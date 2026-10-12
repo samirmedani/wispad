@@ -1201,6 +1201,63 @@ struct AppRegressionTests {
         #expect(try !f.model.store.hasRefused("Seedance"))
     }
 
+    /// Nouvelle version : rappelée une seule fois, quand la bulle se libère après une dictée (jamais pendant), avec
+    /// Voir et Ne plus me rappeler ; jamais pendant la configuration guidée.
+    @Test func updateReminderComesOnceAfterADictation() async throws {
+        let f = try Fixture()
+        defer { f.dispose() }
+        f.model.overlay.displaysPanel = false
+        let coordinator = f.model.coordinator
+        var release = ReleaseInfo(version: SemanticVersion(major: 0, minor: 1, patch: 2), tag: "v0.1.2", notes: "",
+                                  pageURL: ReleaseCheck.releasesURL, diskImage: nil)
+        let message = DictationCoordinator.updateMessage(release.version)
+        #expect(message == "Wispad 0.1.2 est disponible")
+        // Configuration guidée en cours : aucun rappel.
+        #expect(f.model.onboarding != nil)
+        f.model.noteAvailableRelease(release)
+        #expect(coordinator.pendingUpdate == nil)
+        f.model.completeOnboarding()
+
+        // Rien au repos tant qu'aucune dictée n'a eu lieu : on n'est peut-être pas devant le Mac.
+        f.model.noteAvailableRelease(release)
+        #expect(coordinator.notice == nil)
+        await coordinator.begin(.pushToTalk)
+        #expect(coordinator.notice == nil)
+        coordinator.cancel()
+        #expect(coordinator.notice == message)
+        #expect(coordinator.noticeOffersUpdate)
+        #expect(OverlayMode.resolve(phase: coordinator.phase, notice: coordinator.notice, offersUpdate: true) == .update(message))
+        #expect(OverlayMode.update(message).isInteractive && OverlayMode.update(message).isMessage)
+        #expect(f.model.settings.updateRemindedVersion == "0.1.2")
+        #expect(f.model.updateSheet == nil)
+
+        // Coupé par une dictée, il reparaît à la fin de celle-ci.
+        await coordinator.begin(.pushToTalk)
+        #expect(coordinator.notice == nil)
+        coordinator.cancel()
+        #expect(coordinator.notice == message)
+
+        // Ne plus me rappeler : il part et ne revient plus pour cette version, même à la vérification suivante.
+        coordinator.declineUpdateOffer()
+        #expect(coordinator.notice == nil)
+        f.model.noteAvailableRelease(release)
+        await coordinator.begin(.pushToTalk)
+        coordinator.cancel()
+        #expect(coordinator.notice == nil)
+
+        // Une version plus récente est rappelée à son tour ; Voir ouvre la fenêtre sur ses notes.
+        release.version = SemanticVersion(major: 0, minor: 1, patch: 3)
+        release.tag = "v0.1.3"
+        f.model.noteAvailableRelease(release)
+        await coordinator.begin(.pushToTalk)
+        coordinator.cancel()
+        #expect(coordinator.notice == DictationCoordinator.updateMessage(release.version))
+        coordinator.openUpdateOffer()
+        #expect(coordinator.notice == nil)
+        #expect(f.model.updateSheet == release)
+        #expect(f.model.settings.updateRemindedVersion == "0.1.3")
+    }
+
     @Test func hoveringHoldsAMessageAndTheCrossClosesIt() async throws {
         let f = try Fixture()
         defer { f.dispose() }
@@ -1248,7 +1305,8 @@ struct AppRegressionTests {
         for (name, mode) in [("message-appris", OverlayMode.notice("Ajouté au dictionnaire : Seedance")),
                              ("message-confirmation", .learning("« Seedance » ajouté au dictionnaire. Le garder ?")),
                              ("message-erreur", .failure("Insertion impossible. Texte gardé dans l'historique.")),
-                             ("message-relais", .notice("DeepSeek ne répond pas : correction via OpenAI."))] {
+                             ("message-relais", .notice("DeepSeek ne répond pas : correction via OpenAI.")),
+                             ("message-mise-a-jour", .update("Wispad 10.12.3 est disponible"))] {
             let renderer = ImageRenderer(content: OverlayCluster(mode: mode)
                 .environment(f.model)
                 .environment(\.colorScheme, .dark)

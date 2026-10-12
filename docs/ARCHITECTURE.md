@@ -4,17 +4,39 @@
 
 | Module | Rôle | Dépend de |
 | --- | --- | --- |
-| `WispadCore` | Logique pure et testable : requêtes de transcription et de correction, consigne, garde-fou, comparaison flux/fichier, historique SQLite, coûts, retard de la version sur `main` (`BuildFreshness`), progression du premier lancement guidé (`OnboardingFlow`). Aucun texte d'interface. | — |
+| `WispadCore` | Logique pure et testable : requêtes de transcription et de correction, consigne, garde-fou, comparaison flux/fichier, historique SQLite, coûts, retard de la version sur `main` (`BuildFreshness`), releases et mises à jour (`ReleaseUpdate`, `UpdateInstallRules`), progression du premier lancement guidé (`OnboardingFlow`). Aucun texte d'interface. | — |
 | `Wispad` (app) | Coordinateur de dictée, raccourci, bulle, écrans SwiftUI, clés, traductions. | `WispadCore` |
 
 Le projet Xcode (hors Git) est généré par xcodegen depuis `project.yml`. `Package.swift` décrit les mêmes
 modules pour les tests (`swift test`), sans dépendance externe, l'app y devenant la cible `WispadApp`. La signature
 de l'app se règle dans `Signing.local.xcconfig`, ignoré par Git ; `Signing.xcconfig` garde la signature locale par défaut (voir le README).
 
+## Version et mises à jour
+
 Une phase de compilation (`scripts/build-commit.sh`) grave le commit court du dépôt dans l'Info.plist de l'app
-(clé `WispadBuildCommit`, absente si git ne répond pas). `BuildStatus` l'affiche avec la version dans la barre
-latérale et compare ce commit à `main` sur l'API publique de GitHub, en arrière-plan ; la lecture de la réponse est
-la fonction pure `BuildFreshnessCheck.freshness` (WispadCore, testée).
+(clé `WispadBuildCommit`, absente si git ne répond pas). `scripts/release.sh` ajoute en plus, avant de signer, la clé
+`WispadRelease` (vraie) : c'est elle qui fait une release (`BuildKind`, WispadCore) ; sans elle, l'app est un build de
+développement. Une clé posée par le seul script de release plutôt que l'absence de signature Developer ID : explicite,
+testée (`ReleaseScriptTests`), couverte par la signature de l'app, et indépendante du certificat d'un contributeur.
+
+- **Affichage** : `BuildStatus` (app) lit la version, le commit et `BuildKind`, puis interroge l'API publique de GitHub
+  en arrière-plan : `releases/latest` pour une release, `compare/<commit>...main` pour un build de développement.
+  Lecture des réponses (`ReleaseCheck.result`, `BuildFreshnessCheck.freshness`), délais (`ReleaseCheck.delay`),
+  versions (`SemanticVersion`) et choix de l'affichage (`UpdateDisplay.make`) sont dans WispadCore
+  (`ReleaseUpdate.swift`, `BuildFreshness.swift`), testés par `ReleaseUpdateTests` et `BuildFreshnessTests`. La barre
+  latérale (`ProjectFooter`) montre `BuildStatus.display` ; la lecture réseau est remplaçable (`fetchLatest`).
+- **Rappel** : `BuildStatus.onAvailable` → `AppModel.noteAvailableRelease` (une fois par version : `UpdateReminder`,
+  réglage `updateRemindedVersion`) → `DictationCoordinator.offerUpdate`. Comme une proposition de mot appris, la bulle
+  le montre (`OverlayMode.update`) au prochain moment où elle se libère, jamais pendant une dictée.
+- **Installation** : `UpdateInstaller` (`UpdateInstaller.swift`) enchaîne le téléchargement (`DiskImageDownload`,
+  progression, taille et SHA-256), le montage (`hdiutil -nobrowse`), la vérification de la signature (`CodeSignature`,
+  exigence `UpdateInstallRules.requirement` : Developer ID, même identifiant, même Team ID), la copie cachée à côté de
+  l'app (`ditto`), l'attente de la fin de la dictée, l'échange atomique (`renamex_np`) puis la relance par une aide
+  `/bin/sh`. Toutes ses frontières passent par `UpdateSystem`, remplacé dans `UpdateInstallerTests`. Les règles (qui
+  s'installe en place, signature exigée, chemins, sortie de `hdiutil`) sont dans `UpdateInstallRules` (WispadCore).
+  Fenêtre de mise à jour et notes de version (`ReleaseNotes` découpe le markdown simple) : `UpdateViews.swift`.
+- **Publier** : `scripts/release.sh` (en-tête : variables d'environnement, étapes). Rien de propre au mainteneur
+  (équipe, certificat, clé de notarisation) n'est dans le dépôt.
 
 ## Premier lancement guidé
 
@@ -183,7 +205,9 @@ fournisseur retiré : `APIKeys.LocalFile` garde les comptes qu'il ne connaît pa
 `SettingsUpgradeTests` avec un bloc qui contient encore l'ancienne valeur.
 
 **Réinstaller** : `scripts/install.sh` ne remplace que le paquet `.app` ; préférences, dossier
-`Application Support/Wispad` et clés restent en place (vérifié par `StorageIdentityTests`).
+`Application Support/Wispad` et clés restent en place (vérifié par `StorageIdentityTests`). La mise à jour en un clic
+(`UpdateInstaller`) aussi : seul le paquet `.app` change, jamais effacé avant que la nouvelle version soit en place
+(`UpdateInstallerTests`).
 
 ## Vérifier
 

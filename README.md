@@ -142,7 +142,8 @@ dans Consommation) et TypeSafe (pour juger les mots appris).
 - 🚫 **Pas de serveur Wispad** : il n'y en a pas. Ta voix va seulement au fournisseur que tu as choisi.
 - 👤 **Pas de compte**, pas d'inscription.
 - 📵 **Pas de télémétrie** : ni statistiques ni journal envoyés. En dehors de tes fournisseurs, Wispad ne contacte
-  que l'API publique de GitHub, pour savoir si ta version est à jour (sans clé ni cookie).
+  que GitHub : son API publique, pour savoir si une nouvelle version est publiée (sans clé ni cookie), et le
+  téléchargement de cette version quand tu cliques sur « Mettre à jour ».
 - 💻 **Historique et audio sur ton Mac**, avec une durée de conservation de l'audio réglable. Les journaux ne
   contiennent jamais ce que tu dictes.
 - 🔑 **Clés lisibles par ton seul compte** : `~/Library/Application Support/Wispad/api-keys.json`, ou ton propre
@@ -155,6 +156,10 @@ dans Consommation) et TypeSafe (pour juger les mots appris).
 1. Télécharge [Wispad.dmg](https://github.com/samirmedani/wispad/releases/latest/download/Wispad.dmg) (macOS 14 ou
    plus récent, Mac Intel ou Apple Silicon). L'app est signée et notarisée par Apple.
 2. Ouvre le fichier, glisse Wispad dans Applications, puis lance-le.
+
+Ensuite, Wispad se met à jour lui-même : quand une version est publiée, la barre latérale affiche « Mettre à jour ».
+Un clic télécharge la nouvelle version, vérifie sa signature, la met à la place de l'ancienne et relance Wispad ;
+réglages, clés, historique et dictionnaire restent.
 
 Toutes les versions : [Releases](https://github.com/samirmedani/wispad/releases).
 
@@ -207,9 +212,11 @@ scripts/test.sh       # tests locaux, sans micro, réseau, clé ni fenêtre
 scripts/build.sh      # build Debug dans build/DerivedData, avec les outils d'aperçu
 scripts/install.sh    # version Release dans /Applications/Wispad.app
 scripts/check.sh      # tests, traductions et compilation Release
+scripts/release.sh    # mainteneur : release GitHub signée et notarisée (voir l'en-tête du script)
 ```
 
-Le projet Xcode se génère avec `xcodegen generate` ; il n'est pas dans Git.
+Le projet Xcode se génère avec `xcodegen generate` ; il n'est pas dans Git. Un build compilé depuis les sources
+affiche son retard sur `main` ; seule une release (construite par `scripts/release.sh`) propose les mises à jour.
 
 - `Sources/WispadCore` : logique pure (transcription, correction, garde-fou, historique, coûts).
 - `Sources/Wispad` : l'app (dictée, bulle, écrans, clés, traductions).

@@ -1139,6 +1139,12 @@ final class DictationCoordinator {
     @ObservationIgnored private var learningQueue: [String] = []
     /// Mot dont la bulle demande confirmation, s'il y en a un à l'écran.
     @ObservationIgnored private(set) var learningOffer: String?
+    /// Nouvelle version à rappeler dès que la bulle se libère après une dictée.
+    @ObservationIgnored private(set) var pendingUpdate: ReleaseInfo?
+    /// Nouvelle version dont la bulle affiche le rappel.
+    @ObservationIgnored private(set) var updateOffer: ReleaseInfo?
+    /// Le message de la bulle rappelle une nouvelle version de Wispad (Voir, Ne plus me rappeler).
+    private(set) var noticeOffersUpdate = false
 
     /// Message bref montré dans la bulle quand aucune dictée n'est en cours.
     var notice: String?
@@ -1228,13 +1234,44 @@ extension DictationCoordinator {
         job.announcement = (service, message)
     }
 
+    static func updateMessage(_ version: SemanticVersion) -> String {
+        String(localized: "Wispad \(version.description) est disponible")
+    }
+
+    /// Rappel d'une nouvelle version : le temps de lire et de cliquer, en pause au survol.
+    static let updateSeconds = 10.0
+
+    /// Nouvelle version à rappeler. La bulle attend de se libérer après une dictée (ou un autre message) : on est
+    /// alors devant le Mac et on la regarde. Jamais pendant une dictée, jamais au premier plan.
+    func offerUpdate(_ release: ReleaseInfo) {
+        guard updateOffer?.version != release.version else { return }
+        pendingUpdate = release
+    }
+
+    /// « Voir » : la fenêtre s'ouvre sur les notes de version.
+    func openUpdateOffer() {
+        guard let release = updateOffer else { return }
+        clearNotice()
+        model?.showUpdate(release)
+    }
+
+    /// « Ne plus me rappeler » : le message part et cette version ne sera plus rappelée (elle reste proposée dans
+    /// la barre latérale).
+    func declineUpdateOffer() {
+        guard updateOffer != nil else { return }
+        clearNotice()
+    }
+
     /// Message bref dans la bulle, hors dictée.
-    func announce(_ message: String, relay: Bool, confirmsLearning: Bool = false, info: Bool = false, seconds: Double? = nil) {
+    func announce(_ message: String, relay: Bool, confirmsLearning: Bool = false, info: Bool = false,
+                  offersUpdate: Bool = false, seconds: Double? = nil) {
         // Pendant une dictée, la bulle sert à la dictée : le message est ignoré.
         guard phase == .idle, let model else { return }
         noticeIsRelay = relay
         noticeIsInfo = info
         noticeConfirmsLearning = confirmsLearning
+        noticeOffersUpdate = offersUpdate
+        if !offersUpdate { updateOffer = nil }
         notice = message
         model.overlay.show()
         let duration = seconds ?? (confirmsLearning ? Self.learningSeconds : Self.noticeSeconds)
@@ -1254,7 +1291,8 @@ extension DictationCoordinator {
         clearNotice()
     }
 
-    /// Relais d'abord, puis la prochaine confirmation de mot, quand la bulle ne sert plus à dicter.
+    /// Relais d'abord, puis la prochaine confirmation de mot, puis une nouvelle version, quand la bulle ne sert plus à
+    /// dicter.
     @discardableResult
     private func presentIdleBubble() -> Bool {
         guard phase == .idle, notice == nil else { return false }
@@ -1263,7 +1301,21 @@ extension DictationCoordinator {
             announce(message, relay: true)
             return true
         }
-        return presentNextLearningOffer()
+        if presentNextLearningOffer() { return true }
+        return presentUpdateOffer()
+    }
+
+    /// Rappel d'une nouvelle version, jamais pendant la configuration guidée. Une fois paru, il ne revient plus pour
+    /// cette version, sauf s'il est interrompu par une dictée : il reparaît alors à la fin de celle-ci.
+    @discardableResult
+    private func presentUpdateOffer() -> Bool {
+        guard phase == .idle, notice == nil, learningOffer == nil, let release = pendingUpdate,
+              let model, model.onboarding == nil else { return false }
+        pendingUpdate = nil
+        announce(Self.updateMessage(release.version), relay: false, offersUpdate: true, seconds: Self.updateSeconds)
+        updateOffer = release
+        model.noteUpdateReminded(release.version)
+        return true
     }
 
     @discardableResult
@@ -1281,11 +1333,17 @@ extension DictationCoordinator {
             learningQueue.insert(term, at: 0)
             learningOffer = nil
         }
+        // Rappel coupé par une dictée : il reparaît à la fin de celle-ci (sauf si une version plus récente l'a remplacé).
+        if phase != .idle, let release = updateOffer, pendingUpdate == nil {
+            pendingUpdate = release
+        }
+        updateOffer = nil
         let hadNotice = notice != nil
         notice = nil
         noticeIsRelay = false
         noticeIsInfo = false
         noticeConfirmsLearning = false
+        noticeOffersUpdate = false
         guard phase == .idle else { return }
         if presentIdleBubble() { return }
         if hadNotice { model?.overlay.hide() }
