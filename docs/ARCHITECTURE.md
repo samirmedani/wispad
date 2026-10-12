@@ -62,7 +62,8 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
    ressemblance à l'oreille (homophones, lettres épelées) avec `PhoneticKey`. Les raccourcis vocaux
    (`VoiceSnippets`) s'appliquent ensuite.
 7. La dictée est enregistrée (`HistoryStore`), collée dans l'ordre (`TextInserter`, raccord `SmartJoin`), puis
-   surveillée pour l'apprentissage (`CorrectionWatcher`, tri par `JevJudge` et `TermJudge`). Le statut du collage
+   surveillée pour l'apprentissage (`CorrectionWatcher`, tri par `JevJudge` et `TermJudge` ; chaque mot retenu porte
+   son juge, voir « Origine des mots du dictionnaire »). Le statut du collage
    vient de `FocusedField` (WispadCore) : confirmé, aucun champ (`FocusedFieldKind.notText` avant comme après ⌘V)
    ou envoyé. Tout statut non livré passe par `DictationCoordinator.offerReadyText` : texte copié, bulle avec
    Copier et Coller (`readyMessage`). Les messages de la bulle partent seuls (`MessageTimer`, décompte
@@ -74,6 +75,26 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
    (`UsagePresentation.events`) ; les bascules vers un fournisseur de secours sont lues dans ces appels
    (`FallbackSummary`, textes de la carte dans `FallbackPresentation`).
    Une clé devenue inutile dans `app_metadata` est supprimée à l'ouverture de `HistoryStore`, jamais les appels.
+
+## Origine des mots du dictionnaire
+
+- **Données** (WispadCore) : `DictionaryEntry.origin` est un `DictionaryOrigin` : `user` (ajout à la main,
+  `AppModel.addTerm`), `learned(DictionaryJudge)` (mot appris) ou `unknown` (avant le suivi). `DictionaryJudge`
+  garde le type de juge (`jev`, `correctionModel`), le fournisseur et le modèle de l'appel qui a tranché.
+  `confirmedAt` note le « Oui » de la bulle (`DictationCoordinator.acceptLearning` → `AppModel.confirmLearnedTerm`)
+  sans changer l'origine.
+- **Juge par mot** : `TermJudgement.kept` est une liste de `LearnedTerm` (mot et juge). `TermJudge.decide` attribue
+  chaque mot : Jev pour une note nette ou quand le modèle de correction ne répond pas, le modèle de correction pour un
+  cas douteux qu'il approuve. `TermJudge.askModel` rend la route qui a répondu (`ModelAnswer` : fournisseur et
+  modèle de `TextCleaner.Route`) ; Jev, le modèle de son appel (`UsageEvent.model`, annoncé par TypeSafe). Aucune
+  valeur fixe : le juge suit les clés et le fournisseur du moment.
+- **Base** : table `dictionary`, colonnes `origin` (`user`, `jev`, `model` ; NULL : avant le suivi),
+  `judge_provider`, `judge_model`, `confirmed_at`, ajoutées à une ancienne base à l'ouverture de `HistoryStore`.
+  Lecture tolérante : une valeur inconnue ou un juge incomplet donnent `unknown`. `addTerm(_:origin:)` sans origine
+  écrit `unknown`, jamais « ajouté par toi ».
+- **Écran** : `TermChip` affiche `OriginBadge` ; textes du badge, de l'info-bulle et de VoiceOver dans
+  `DictionaryOriginText` (`DictionaryViews.swift`) ; filtre `DictionaryFilter` (WispadCore), libellés dans
+  `Presentation.swift`, état éphémère de la vue.
 
 ## Coller la dernière dictée
 
@@ -164,6 +185,10 @@ Une mise à jour ne doit jamais faire perdre à l'utilisateur ses fournisseurs, 
   recopiées.
 - **Bloc illisible en entier** (pas un objet JSON) : copié une fois sous `wispad.settings.v1.illisible` avant toute
   écriture, jamais effacé ; l'app repart des valeurs d'une installation existante.
+- **Base SQLite** (`HistoryStore`) : elle évolue par colonnes ajoutées à l'ouverture (`ALTER TABLE … ADD COLUMN`
+  si `PRAGMA table_info` ne la trouve pas), jamais retirées ni renommées. Les lignes existantes gardent NULL dans les
+  nouvelles colonnes, lu comme « inconnu » (origine d'un mot du dictionnaire : « Avant le suivi »). Ajoutées en fin
+  de table, elles restent invisibles pour une version précédente.
 - Valeur par défaut d'un ancien bloc : la propriété porte celle d'une nouvelle installation ; si une installation
   existante doit garder l'ancien comportement, `init(from:)` donne une autre valeur quand la clé est absente
   (`useWindowContext`, `onboardingCompleted`, `language`).

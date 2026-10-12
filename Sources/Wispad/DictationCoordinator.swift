@@ -1205,10 +1205,11 @@ extension DictationCoordinator {
         }
     }
 
-    /// Oui : le mot reste, le message se ferme.
+    /// Oui : le mot reste, sa confirmation est notée (son origine ne change pas), le message se ferme.
     func acceptLearning() {
-        guard learningOffer != nil else { return }
+        guard let term = learningOffer else { return }
         learningOffer = nil
+        model?.confirmLearnedTerm(term)
         Self.learningLog.notice("Gardés 1, refusés 0")
         clearNotice()
     }

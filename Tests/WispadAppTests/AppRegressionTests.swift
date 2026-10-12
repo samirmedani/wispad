@@ -60,6 +60,12 @@ private func waitFor(_ condition: () -> Bool, seconds: Double = 2) async -> Bool
     return true
 }
 
+/// Mots retenus par un juge simulé : DeepSeek, comme l'appel compté par le juge du montage.
+private func learnedTerms(_ terms: [String]) -> [LearnedTerm] {
+    let judge = DictionaryJudge(kind: .correctionModel, provider: "DeepSeek", model: CleanupModel.deepSeek)
+    return terms.map { LearnedTerm(term: $0, judge: judge) }
+}
+
 private final class OpenedAt: @unchecked Sendable {
     var date: Date?
 }
@@ -230,7 +236,7 @@ private final class Fixture {
         deps.judgeTerms = { [weak self] candidates, _, _ in
             self?.judged.append(candidates)
             let kept = candidates.map(\.corrected).filter { self?.approved?.contains($0) ?? true }
-            return TermJudgement(kept: kept, usages: [UsageEvent(api: .deepSeekCleanup, model: CleanupModel.deepSeek, costUSD: 0.00001)])
+            return TermJudgement(kept: learnedTerms(kept), usages: [UsageEvent(api: .deepSeekCleanup, model: CleanupModel.deepSeek, costUSD: 0.00001)])
         }
         deps.insert = { [weak self] text, _, shouldProceed in
             guard shouldProceed() else { return .cancelled }
@@ -1134,7 +1140,7 @@ struct AppRegressionTests {
         defer { f.dispose() }
         f.model.overlay.displaysPanel = false
         let coordinator = f.model.coordinator
-        f.model.learn(["Seedance", "OpenRouter"])
+        f.model.learn(learnedTerms(["Seedance", "OpenRouter"]))
         #expect(f.model.dictionary.map(\.term) == ["OpenRouter", "Seedance"])
         #expect(coordinator.notice == DictationCoordinator.learningMessage("Seedance"))
         coordinator.acceptLearning()
@@ -1177,7 +1183,7 @@ struct AppRegressionTests {
         f.model.overlay.displaysPanel = false
         let coordinator = f.model.coordinator
         await coordinator.begin(.pushToTalk)
-        f.model.learn(["Seedance"])
+        f.model.learn(learnedTerms(["Seedance"]))
         #expect(coordinator.notice == nil)
         #expect(coordinator.phase != .idle)
         #expect(f.model.dictionary.map(\.term) == ["Seedance"])
@@ -1192,7 +1198,7 @@ struct AppRegressionTests {
         defer { f.dispose() }
         f.model.overlay.displaysPanel = false
         #expect(DictationCoordinator.learningSeconds == 8)
-        f.model.learn(["Seedance"])
+        f.model.learn(learnedTerms(["Seedance"]))
         #expect(f.model.coordinator.notice == DictationCoordinator.learningMessage("Seedance"))
         // Même geste que la minuterie de 8 s : le mot reste, le message part, rien n'est refusé.
         f.model.coordinator.dismissCurrentNotice()
@@ -1233,7 +1239,7 @@ struct AppRegressionTests {
         coordinator.holdMessages(false)
 
         // ✕ sur une proposition de mot : le mot reste, comme à la fin du décompte.
-        f.model.learn(["Seedance"])
+        f.model.learn(learnedTerms(["Seedance"]))
         #expect(coordinator.notice == DictationCoordinator.learningMessage("Seedance"))
         coordinator.closeMessage()
         #expect(coordinator.notice == nil)
@@ -2013,7 +2019,7 @@ struct AppRegressionTests {
         #expect(titles().contains("⇄ DeepSeek en pause : correction via OpenAI \(CleanupModel.openAIFallback)"))
         #expect(titles().contains("Réessayer les services maintenant"))
         // Mot appris à tort : retiré d'un clic depuis le menu.
-        f.model.learn(["Seedance"])
+        f.model.learn(learnedTerms(["Seedance"]))
         let remove = try #require(StatusMenu.items(model: f.model, target: nil).first { $0.title == "Retirer « Seedance » du dictionnaire" })
         #expect(remove.representedObject as? String == "Seedance")
         f.model.removeTerm(named: "Seedance")

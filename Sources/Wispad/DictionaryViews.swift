@@ -8,6 +8,8 @@ struct DictionaryView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.interactionReduceMotion) private var reduceMotion
     @State private var term = ""
+    /// Filtre par origine, éphémère : l'écran rouvre sur « Tous », pour qu'un mot filtré ne passe jamais pour perdu.
+    @State private var originFilter: DictionaryFilter = .all
     @FocusState private var focused: Bool
 
     var body: some View {
@@ -51,7 +53,7 @@ struct DictionaryView: View {
                         .foregroundStyle(.secondary)
                     FlowLayout(spacing: 8) {
                         ForEach(shown) { entry in
-                            TermChip(term: entry.term) {
+                            TermChip(entry: entry) {
                                 withAnimation(reduceMotion ? nil : Theme.spring) { model.deleteTerm(entry) }
                             }
                             .transition(.scale(scale: 0.85).combined(with: .opacity))
@@ -66,14 +68,23 @@ struct DictionaryView: View {
                 EmptyState(symbol: "character.book.closed", title: String(localized: "Dictionnaire vide"), message: String(localized: "Ajoute OpenAI, SwiftUI, RevenueCat ou tes propres noms."))
                     .card()
             } else {
+                let filtered = model.dictionary.filter(originFilter.includes)
                 VStack(alignment: .leading, spacing: 14) {
-                    CardTitle(model.dictionary.count == 1 ? String(localized: "1 terme") : String(localized: "\(model.dictionary.count) termes"))
-                    FlowLayout(spacing: 8) {
-                        ForEach(model.dictionary) { entry in
-                            TermChip(term: entry.term) {
-                                withAnimation(reduceMotion ? nil : Theme.spring) { model.deleteTerm(entry) }
+                    CardTitle(title: filtered.count == 1 ? String(localized: "1 terme") : String(localized: "\(filtered.count) termes")) {
+                        PillPicker(options: DictionaryFilter.allCases, selection: $originFilter, title: { $0.label })
+                    }
+                    if filtered.isEmpty {
+                        Text(DictionaryOriginText.emptyMessage(originFilter))
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                    } else {
+                        FlowLayout(spacing: 8) {
+                            ForEach(filtered) { entry in
+                                TermChip(entry: entry) {
+                                    withAnimation(reduceMotion ? nil : Theme.spring) { model.deleteTerm(entry) }
+                                }
+                                .transition(.scale(scale: 0.85).combined(with: .opacity))
                             }
-                            .transition(.scale(scale: 0.85).combined(with: .opacity))
                         }
                     }
                 }
@@ -100,7 +111,7 @@ struct TermChip: View {
     @Environment(\.interactionReduceMotion) private var reduceMotion
     @Environment(\.interactionPreviewHover) private var previewHover
     @Environment(\.isEnabled) private var isEnabled
-    var term: String
+    var entry: DictionaryEntry
     var onDelete: () -> Void
     @State private var hovering = false
 
@@ -108,8 +119,13 @@ struct TermChip: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Text(term)
-                .font(.system(size: 12.5, weight: .medium))
+            HStack(spacing: 6) {
+                Text(entry.term)
+                    .font(.system(size: 12.5, weight: .medium))
+                OriginBadge(origin: entry.origin)
+            }
+            .accessibilityElement(children: .combine)
+            .help(DictionaryOriginText.detail(entry))
             Button(action: onDelete) {
                 Image(systemName: "xmark")
                     .font(.system(size: 8, weight: .bold))
@@ -118,7 +134,7 @@ struct TermChip: View {
                     .background(Circle().fill(hovered ? Theme.subtleFill : .clear))
             }
             .buttonStyle(HoverButtonStyle(treatment: .icon))
-            .help("Supprimer « \(term) »")
+            .help("Supprimer « \(entry.term) »")
         }
         .padding(.leading, 11)
         .padding(.trailing, 6)
@@ -128,5 +144,86 @@ struct TermChip: View {
         .scaleEffect(hovered && !reduceMotion ? 1.025 : 1)
         .onHover { hovering = $0 }
         .animation(reduceMotion ? nil : Theme.hover, value: hovered)
+    }
+}
+
+/// Origine d'un mot, en petit dans sa puce : une personne pour « Toi », une étincelle et le juge pour un mot
+/// appris, « Avant le suivi » pour un mot plus ancien que ce suivi.
+struct OriginBadge: View {
+    var origin: DictionaryOrigin
+
+    var body: some View {
+        HStack(spacing: 3) {
+            switch origin {
+            case .user:
+                Image(systemName: "person.fill")
+            case .learned(let judge):
+                Image(systemName: "sparkles")
+                Text(DictionaryOriginText.judgeName(judge))
+            case .unknown:
+                Text("Avant le suivi")
+            }
+        }
+        .font(.system(size: 10, weight: .semibold))
+        .foregroundStyle(origin == .unknown ? HierarchicalShapeStyle.tertiary : HierarchicalShapeStyle.secondary)
+        .padding(.horizontal, 6)
+        .frame(height: 17)
+        .background(Capsule().fill(Theme.subtleFill))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(DictionaryOriginText.summary(origin))
+    }
+}
+
+/// Origine d'un mot en clair : nom court du juge, info-bulle (juge, fournisseur, modèle, dates) et VoiceOver.
+enum DictionaryOriginText {
+    /// Nom court du juge dans le badge : « Jev », ou le fournisseur du modèle de correction (« DeepSeek »).
+    static func judgeName(_ judge: DictionaryJudge) -> String {
+        judge.kind == .jev ? "Jev" : judge.provider
+    }
+
+    /// Une ligne, pour VoiceOver.
+    static func summary(_ origin: DictionaryOrigin) -> String {
+        switch origin {
+        case .user: return String(localized: "Ajouté par toi")
+        case .learned(let judge): return String(localized: "Appris automatiquement, juge : \(judgeName(judge))")
+        case .unknown: return String(localized: "Avant le suivi")
+        }
+    }
+
+    /// Qui a ajouté le mot et quand ; pour un mot appris, le juge avec le fournisseur et le modèle de l'appel qui a
+    /// tranché, puis « Gardé par toi » s'il a été confirmé par « Oui ».
+    static func detail(_ entry: DictionaryEntry, locale: Locale = appLocale) -> String {
+        let added = date(entry.createdAt, locale: locale)
+        switch entry.origin {
+        case .user:
+            return String(localized: "Ajouté par toi le \(added)")
+        case .learned(let judge):
+            var lines = [String(localized: "Appris automatiquement le \(added)")]
+            switch judge.kind {
+            case .jev:
+                lines.append(String(localized: "Juge : Jev (fournisseur \(judge.provider), modèle \(judge.model))"))
+            case .correctionModel:
+                lines.append(String(localized: "Juge : modèle de correction (fournisseur \(judge.provider), modèle \(judge.model))"))
+            }
+            if let confirmed = entry.confirmedAt {
+                lines.append(String(localized: "Gardé par toi le \(date(confirmed, locale: locale))"))
+            }
+            return lines.joined(separator: "\n")
+        case .unknown:
+            return [String(localized: "Avant le suivi : origine inconnue"), String(localized: "Ajouté le \(added)")].joined(separator: "\n")
+        }
+    }
+
+    /// Filtre sans aucun mot, alors que le dictionnaire en a.
+    static func emptyMessage(_ filter: DictionaryFilter) -> String {
+        switch filter {
+        case .all: return String(localized: "Dictionnaire vide")
+        case .addedByUser: return String(localized: "Aucun mot ajouté par toi pour l'instant.")
+        case .learned: return String(localized: "Aucun mot appris de tes corrections pour l'instant.")
+        }
+    }
+
+    static func date(_ date: Date, locale: Locale = appLocale) -> String {
+        date.formatted(.dateTime.day().month(.abbreviated).year().hour().minute().locale(locale))
     }
 }

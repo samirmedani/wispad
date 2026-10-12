@@ -51,6 +51,36 @@
         }
       }
     },
+    "Ajouté le %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Added on %@"
+          }
+        }
+      }
+    },
+    "Ajouté par toi" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Added by you"
+          }
+        }
+      }
+    },
+    "Ajouté par toi le %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Added by you on %@"
+          }
+        }
+      }
+    },
     "Ajoute une clé DeepSeek pour une correction moins chère." : {
       "localizations" : {
         "en" : {
@@ -61,12 +91,52 @@
         }
       }
     },
+    "Ajoutés par moi" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Added by me"
+          }
+        }
+      }
+    },
     "Apprentissage" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Learning"
+          }
+        }
+      }
+    },
+    "Appris automatiquement" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Learned automatically"
+          }
+        }
+      }
+    },
+    "Appris automatiquement le %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Learned automatically on %@"
+          }
+        }
+      }
+    },
+    "Appris automatiquement, juge : %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Learned automatically, judge: %@"
           }
         }
       }
@@ -91,12 +161,52 @@
         }
       }
     },
+    "Aucun mot ajouté par toi pour l'instant." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No words added by you yet."
+          }
+        }
+      }
+    },
+    "Aucun mot appris de tes corrections pour l'instant." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No words learned from your corrections yet."
+          }
+        }
+      }
+    },
     "Aucun texte dicté, audio, contexte d'application ni clé. Rien n'est envoyé automatiquement." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "No dictated text, audio, app context or key. Nothing is sent automatically."
+          }
+        }
+      }
+    },
+    "Avant le suivi" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Before tracking"
+          }
+        }
+      }
+    },
+    "Avant le suivi : origine inconnue" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Before tracking: origin unknown"
           }
         }
       }
@@ -247,6 +357,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A local file to understand a problem, with nothing you dictated."
+          }
+        }
+      }
+    },
+    "Gardé par toi le %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kept by you on %@"
+          }
+        }
+      }
+    },
+    "Juge : Jev (fournisseur %@, modèle %@)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Judge: Jev (provider %1$@, model %2$@)"
+          }
+        }
+      }
+    },
+    "Juge : modèle de correction (fournisseur %@, modèle %@)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Judge: correction model (provider %1$@, model %2$@)"
           }
         }
       }
@@ -497,6 +637,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tone by app"
+          }
+        }
+      }
+    },
+    "Tous" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All"
           }
         }
       }

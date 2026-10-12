@@ -29,6 +29,16 @@ extension FallbackStage {
     }
 }
 
+extension DictionaryFilter {
+    var label: String {
+        switch self {
+        case .all: return String(localized: "Tous")
+        case .addedByUser: return String(localized: "Ajoutés par moi")
+        case .learned: return String(localized: "Appris automatiquement")
+        }
+    }
+}
+
 extension OutputMuteMode {
     var label: String {
         switch self {

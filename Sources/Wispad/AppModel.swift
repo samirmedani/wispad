@@ -255,16 +255,24 @@ final class AppModel {
     /// Mots appris seuls depuis le lancement, du plus récent au plus ancien : le menu propose de les retirer.
     private(set) var recentlyLearned: [String] = []
 
-    /// Mots retenus après une dictée, ajoutés au dictionnaire.
-    func learn(_ terms: [String]) {
+    /// Mots retenus après une dictée, ajoutés au dictionnaire avec le juge qui les a retenus.
+    func learn(_ terms: [LearnedTerm]) {
         var added: [String] = []
-        for term in terms where !dictionary.contains(where: { $0.term.caseInsensitiveCompare(term) == .orderedSame }) {
-            if persist("ajout au dictionnaire", { try store.addTerm(term) }) { added.append(term) }
+        for learned in terms where !dictionary.contains(where: { $0.term.caseInsensitiveCompare(learned.term) == .orderedSame }) {
+            if persist("ajout au dictionnaire", { try store.addTerm(learned.term, origin: .learned(learned.judge)) }) {
+                added.append(learned.term)
+            }
         }
         guard !added.isEmpty else { return }
         recentlyLearned = Array((added.reversed() + recentlyLearned.filter { !added.contains($0) }).prefix(5))
         reloadDictionary()
         coordinator.notifyLearned(added)
+    }
+
+    /// Oui dans la bulle : le mot appris reste, et la confirmation est notée sans changer son origine.
+    func confirmLearnedTerm(_ term: String) {
+        persist("confirmation d'un mot") { try store.confirmLearnedTerm(term) }
+        reloadDictionary()
     }
 
     /// Retire un mot par son nom (menu de la barre : mot appris à tort).
@@ -685,8 +693,9 @@ final class AppModel {
         }
     }
 
+    /// Ajout à la main dans l'écran Dictionnaire : le mot est noté « ajouté par toi ».
     func addTerm(_ term: String) {
-        persist("ajout au dictionnaire") { try store.addTerm(term) }
+        persist("ajout au dictionnaire") { try store.addTerm(term, origin: .user) }
         reloadDictionary()
     }
 

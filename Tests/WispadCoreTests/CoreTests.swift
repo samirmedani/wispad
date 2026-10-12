@@ -710,11 +710,17 @@ final class TermJudgeTests: XCTestCase {
     func testJevDecidesClearCasesAndAsksForDoubtfulOnes() {
         let words = ["Seedance", "Commande", "Notion", "Cursor"].map { CorrectionLearner.Candidate(heard: $0.lowercased(), corrected: $0) }
         let scores = [0.9, 0.05, 0.8, 0.4]
+        let jev = DictionaryJudge(kind: .jev, provider: "TypeSafe", model: "jev-fixture")
+        let model = DictionaryJudge(kind: .correctionModel, provider: "DeepSeek", model: "modele-fixture")
+        func kept(secondOpinion approved: [String]?) -> [String] {
+            let answer = approved.map { TermJudge.ModelAnswer(approved: $0, judge: model) }
+            return TermJudge.decide(words, scores: scores, jev: jev, secondOpinion: answer).map(\.term)
+        }
         // Second avis : oui à Notion et Cursor ; Cursor reste refusé car Jev est sous 0,5.
-        XCTAssertEqual(TermJudge.decide(words, scores: scores, secondOpinion: ["Notion", "Cursor"]), ["Seedance", "Notion"])
-        XCTAssertEqual(TermJudge.decide(words, scores: scores, secondOpinion: []), ["Seedance"])
+        XCTAssertEqual(kept(secondOpinion: ["Notion", "Cursor"]), ["Seedance", "Notion"])
+        XCTAssertEqual(kept(secondOpinion: []), ["Seedance"])
         // Pas de second avis : Jev seul, seuil 0,7.
-        XCTAssertEqual(TermJudge.decide(words, scores: scores, secondOpinion: nil), ["Seedance", "Notion"])
+        XCTAssertEqual(kept(secondOpinion: nil), ["Seedance", "Notion"])
     }
 
     func testJevAnswerIsReadInCandidateOrder() throws {

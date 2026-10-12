@@ -140,8 +140,10 @@ final class LiveAPITests: XCTestCase {
             let judgement = await TermJudge.judge(candidates, dictated: dictated, speech: speech)
             let usage = try XCTUnwrap(judgement.usages.last)
             XCTAssertTrue(usage.succeeded, "Le juge doit répondre en moins de 15 s.")
-            XCTAssertEqual(judgement.kept, expected, dictated)
-            print("MESURE juge \(candidates.map(\.corrected)) → \(judgement.kept) entrée=\(usage.tokens.input)+\(usage.tokens.cachedInput) sortie=\(usage.tokens.output) coût=\(usage.costUSD ?? 0) $ latence=\(usage.latencyMs) ms")
+            XCTAssertEqual(judgement.kept.map(\.term), expected, dictated)
+            // Seul DeepSeek a une clé : c'est lui qui a tranché, avec le modèle de sa route.
+            XCTAssertTrue(judgement.kept.allSatisfy { $0.judge == DictionaryJudge(kind: .correctionModel, provider: "DeepSeek", model: CleanupModel.deepSeek) })
+            print("MESURE juge \(candidates.map(\.corrected)) → \(judgement.kept.map(\.term)) entrée=\(usage.tokens.input)+\(usage.tokens.cachedInput) sortie=\(usage.tokens.output) coût=\(usage.costUSD ?? 0) $ latence=\(usage.latencyMs) ms")
         }
     }
 
@@ -169,9 +171,9 @@ final class LiveAPITests: XCTestCase {
             .init(heard: "notion", corrected: "Notion"), .init(heard: "cursor", corrected: "Cursor")
         ]
         let judged = await TermJudge.judge(words, dictated: "On déploie sur cloud flair demain, note-le dans notion, j'ouvre cursor.", speech: speech)
-        print("MESURE juge → \(judged.kept) | appels : \(judged.usages.map { "\($0.api.rawValue) \($0.succeeded ? "ok" : "échec") \($0.latencyMs) ms" })")
-        XCTAssertTrue(judged.kept.contains("Cloudflare"))
-        XCTAssertFalse(judged.kept.contains("Demain"))
+        print("MESURE juge → \(judged.kept.map { "\($0.term) (\($0.judge.provider) \($0.judge.model))" }) | appels : \(judged.usages.map { "\($0.api.rawValue) \($0.succeeded ? "ok" : "échec") \($0.latencyMs) ms" })")
+        XCTAssertTrue(judged.kept.map(\.term).contains("Cloudflare"))
+        XCTAssertFalse(judged.kept.map(\.term).contains("Demain"))
     }
 
     private func mentionsMeeting(_ text: String) -> Bool {

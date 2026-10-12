@@ -106,8 +106,8 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   - « Clés facultatives » dépliées ou non dans Fournisseurs (repliées par défaut).
 
   Un choix illisible ou inconnu reprend sa valeur par défaut, sans toucher aux autres réglages. Restent
-  éphémères : la recherche de l'Historique, une saisie en cours (clé, terme du dictionnaire), une dictée dépliée
-  dans l'Historique, le détail ouvert.
+  éphémères : la recherche de l'Historique, une saisie en cours (clé, terme du dictionnaire), le filtre du
+  Dictionnaire, une dictée dépliée dans l'Historique, le détail ouvert.
 
 ## Réglages
 
@@ -338,6 +338,30 @@ gardé tel quel).
   le retire et ne le propose plus jamais ; sans réponse ou avec ✕, le mot reste.
 - Seuls la phrase dictée et le mot corrigé sont envoyés (à Jev et au modèle de correction) ; le journal ne contient ni mot ni texte.
 
+### Origine des mots
+
+Chaque mot garde, sur ce Mac, qui l'a ajouté :
+
+- **Toi** : mot ajouté à la main dans l'écran Dictionnaire.
+- **Appris automatiquement** : mot corrigé après une dictée et retenu par un juge. Jev (TypeSafe) quand sa note
+  suffit (cas net, ou modèle de correction sans réponse) ; sinon le modèle de correction qui a répondu (sans clé
+  TypeSafe ou sans réponse de Jev, ou mot douteux pour Jev). Le fournisseur et le modèle notés sont ceux de l'appel
+  qui a tranché : la route de correction qui a répondu (DeepSeek `deepseek-flash`, OpenAI `gpt-5.4-mini`, xAI
+  `grok-4.7`…), ou pour Jev le modèle annoncé par sa réponse. Après un changement de clé ou de fournisseur, les mots
+  suivants portent le nouveau modèle, les anciens gardent le leur.
+- **« Oui » dans la bulle** ne fait pas du mot un mot « Toi » : le juge l'avait déjà ajouté avant la question, et
+  « Oui » le garde comme le silence ou ✕ (seul « Non » change quelque chose). La confirmation est notée et
+  l'info-bulle dit « Gardé par toi » ; le mot garde son juge. « Toi » désigne seulement un mot ajouté à la main.
+- **Avant le suivi** : mot ajouté par une version précédente. L'historique ne relie aucun appel de jugement à un
+  mot ni ne garde le verdict de chaque mot : l'origine n'est pas devinée.
+
+Écran Dictionnaire : un petit badge dans chaque puce, une personne pour « Toi », une étincelle et le nom court du
+juge (« Jev », « DeepSeek », « OpenAI », « xAI ») pour un mot appris, « Avant le suivi » pour un mot plus ancien.
+Au survol, l'info-bulle donne le détail : qui, la date d'ajout, et pour un mot appris le juge avec son fournisseur et
+son modèle, puis « Gardé par toi » et sa date. Filtre de la liste complète : Tous, Ajoutés par moi, Appris
+automatiquement (gardés ou non par « Oui ») ; un mot d'avant le suivi ne paraît que dans Tous. Le filtre revient à
+Tous à chaque ouverture de l'écran.
+
 ## Relais en cas de panne
 
 - Voix : si xAI ne répond pas, le même enregistrement part chez OpenAI (et inversement) s'il a une clé ; après deux
@@ -417,6 +441,9 @@ gardé tel quel).
 - Une mise à jour ou une réinstallation garde fournisseurs, réglages, clés API, historique et dictionnaire : même
   identifiant (`com.yatofix.wispad`), même dossier (`Application Support/Wispad`), mêmes préférences.
   `scripts/install.sh` ne remplace que l'app.
+- La base locale s'enrichit sans rien perdre : les mots du dictionnaire d'une version précédente restent tels quels
+  (mot, date d'ajout) avec l'origine « Avant le suivi ». Revenir à une version précédente garde aussi les mots ;
+  ceux qu'elle ajoute sont ensuite « Avant le suivi ».
 - Réglages lus un par un : un réglage absent prend sa valeur par défaut ; une valeur illisible ou retirée (mode,
   fournisseur, modèle) prend la valeur par défaut de ce seul réglage, ou la plus proche valide (fournisseur retiré →
   fournisseur par défaut, modèle retiré → modèle par défaut du même fournisseur). Les autres choix restent.
