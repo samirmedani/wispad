@@ -154,6 +154,16 @@ struct DictationStyleAppTests {
         #expect(f.inserted == ["Traduis en anglais."])
     }
 
+    @Test func everyCorrectionCarriesTheDateFormat() async throws {
+        let f = try StyleFixture()
+        defer { f.dispose() }
+        let format = DictationDateFormat(order: .iso, clock: .twelveHour)
+        f.model.settings.dateFormat = format
+        await f.dictate("Rendez-vous le 3 novembre à 14 h.")
+        #expect(!f.requests.isEmpty)
+        #expect(f.requests.allSatisfy { $0.dateFormat == format })
+    }
+
     @Test func theToneFollowsTheAppCategory() async throws {
         let f = try StyleFixture()
         defer { f.dispose() }

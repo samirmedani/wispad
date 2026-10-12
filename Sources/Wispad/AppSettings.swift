@@ -38,6 +38,8 @@ struct AppSettings: Codable, Equatable {
     /// Avec du texte sélectionné, une dictée qui commence par une consigne (« reformule », « traduis ») transforme la sélection.
     var selectionCommands = true
     var structureDictation = true
+    /// Format des dates et des heures écrites par la correction (Réglages › Mise en forme), lu champ par champ.
+    var dateFormat = DictationDateFormat()
     /// La correction lit aussi la conversation visible dans la fenêtre où l'on dicte. Désactivé à la première
     /// installation, proposé au premier lancement ; les réglages antérieurs le gardent actif.
     var useWindowContext = false
@@ -103,6 +105,7 @@ struct AppSettings: Codable, Equatable {
         tones = table(.tones, defaults.tones)
         selectionCommands = value(.selectionCommands, defaults.selectionCommands)
         structureDictation = value(.structureDictation, defaults.structureDictation)
+        dateFormat = value(.dateFormat, defaults.dateFormat)
         useWindowContext = value(.useWindowContext, true)
         onboardingCompleted = value(.onboardingCompleted, true)
         onboardingResume = value(.onboardingResume, defaults.onboardingResume)

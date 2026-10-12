@@ -757,7 +757,10 @@ public enum TextCleaner {
                 )
                 var failed = requests.events
                 let usage = failed.popLast()
-                let formatted = request.structureDictation ? DictationStructure.format(faithful) : faithful
+                // Le texte retenu, corrigé ou transcrit, prend le format des dates et des heures sans dépendre du modèle.
+                let dated = DateTimeWriter.apply(faithful, format: request.dateFormat,
+                                                 english: CorrectionPrompt.language(for: request) == .english)
+                let formatted = request.structureDictation ? DictationStructure.format(dated) : dated
                 let settled = DictationStructure.collapseLoneItem(formatted, transcript: original)
                 return CleanupOutcome(text: settled, usage: usage, failedUsages: failed, fallback: fallback)
             } catch {

@@ -32,10 +32,12 @@ public enum FidelityGuard {
             alsoHeard: alsoHeard
         )
         let restored = restoreUnspokenReferences(heard: heard, corrected: repaired, alsoHeard: alsoHeard)
-        if spoken <= shortDictationWords, changesShortDictation(heard: heard, corrected: restored, alsoHeard: alsoHeard) {
+        // Une année que personne n'a dite (« le trois novembre » → « 03/11/2026 ») est retirée de la date.
+        let dated = DateTimeWriter.removingUnspokenYears(from: restored, heard: heard + alsoHeard)
+        if spoken <= shortDictationWords, changesShortDictation(heard: heard, corrected: dated, alsoHeard: alsoHeard) {
             return transcript
         }
-        return restored
+        return dated
     }
 
     /// Une dictée de trois mots au plus n'offre aucun contexte au modèle : il ne peut qu'y deviner.
@@ -192,7 +194,8 @@ public enum FidelityGuard {
     /// (« outils » → « tools »), ou l'inverse (« tool » → « outil »), est une traduction : on remet le mot entendu.
     /// Les vraies corrections d'écoute se ressemblent (« versel » → « Vercel », « fixe » → « fix »).
     /// Une marque ou une référence absente de tout contexte, et qui ne sonne pas comme les mots remplacés,
-    /// est une invention : on remet aussi les mots entendus. Un nombre dicté écrit en chiffres ne l'est pas.
+    /// est une invention : on remet aussi les mots entendus. Un nombre dicté écrit en chiffres ne l'est pas, ni une
+    /// date ou une heure dite écrite au format choisi (« quatorze heures trente » → « 14h30 »).
     static func restoreTranslatedWords(
         heard: [String],
         written: [String],
@@ -211,7 +214,8 @@ public enum FidelityGuard {
         // et ne fait pas sortir un bloc des tailles contrôlées (une marque inventée mise entre guillemets).
         let kept = written.indices.filter { !strip(written[$0]).isEmpty }
         let spokenWritten = kept.map { written[$0] }
-        let hunks = CorrectionLearner.replacements(spokenWritten.map(strip), heard.map(strip).filter { !$0.isEmpty })
+        let said = heard.map(strip).filter { !$0.isEmpty }
+        let hunks = CorrectionLearner.replacements(spokenWritten.map(strip), said)
         guard !hunks.isEmpty else { return corrected }
         let known = groundingKeys(transcript: heard.joined(separator: " "), dictionary: dictionary, context: context, previous: previousDictations)
         let otherKeys = Set(alsoHeard.map { CorrectionLearner.key(strip($0)) }).subtracting([""])
@@ -225,13 +229,18 @@ public enum FidelityGuard {
             let spoken = isSpokenReference(corrected: fromModel, heard: hunk.newWords)
             // Des lettres épelées regroupées (« aime E elle » → « M-E-L ») ne sont ni une traduction ni une invention.
             let spelled = PhoneticKey.spells(hunk.oldWords, hunk.newWords)
+            // La même date ou la même heure au format choisi (« 14h30 », « 2:30 PM », « November 3 ») non plus, lue avec
+            // le mot commun qui précède : « at 2 in the afternoon » → « at 2 PM » ne remplace que « PM ».
+            let shared = hunk.oldStart > 0 && hunk.newStart > 0 ? [said[hunk.newStart - 1]] : []
+            let moment = MomentReading.sameMoment(written: shared + hunk.oldWords, heard: shared + hunk.newWords)
             let vocabularyTranslation = (1...3).contains(hunk.oldWords.count)
                 && (1...3).contains(hunk.newWords.count)
                 && (isVocabulary(fromModel) || isVocabulary(fromSpeech))
                 && similarity < 0.45
                 && !spoken
                 && !spelled
-            let coined = !spoken && !spelled && similarity < 0.45 && hasUngroundedCoinage(hunk, written: spokenWritten, known: known)
+                && !moment
+            let coined = !spoken && !spelled && !moment && similarity < 0.45 && hasUngroundedCoinage(hunk, written: spokenWritten, known: known)
             guard vocabularyTranslation || coined else { continue }
             let restored = hunk.newWords.map(strip)
             if hunk.oldWords.count == restored.count {

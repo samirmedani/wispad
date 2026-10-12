@@ -100,6 +100,9 @@ curseur : messagerie, e-mail, éditeur de code, terminal, navigateur.
   ta place. Sinon, c'est ta transcription qui est collée.
 - **Listes et paragraphes** : trois éléments courts deviennent une liste à puces ; « première puce »,
   « nouveau paragraphe » ou « à la ligne » mettent en page à la voix.
+- **Dates et heures à ton format** : « le vingt-quatre octobre » devient « 24/10 », « 10/24 » ou « 24 octobre »,
+  « à quatorze heures trente » devient « à 14 h 30 », « à 14h30 » ou « à 2:30 PM ». Jamais d'année inventée, et
+  « deux heures de route » reste une durée.
 - **Ton selon l'app** : « Comme dicté », « Soigné » ou « Détendu », par catégorie (e-mails, messageries, documents,
   notes, code et terminal, navigateur). Le registre change, jamais les mots ni le sens.
 - **Réécrire une sélection** : sélectionne un texte et dis « reformule plus poliment », « traduis en anglais » ou

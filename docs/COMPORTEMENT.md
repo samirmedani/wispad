@@ -111,9 +111,9 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 
 ## Réglages
 
-Sections, dans l'ordre : Raccourci, Transcription, Correction, Ton selon l'app, Confidentialité, Apprentissage,
-Général, Autorisations, Diagnostic. Aucun bloc de texte sous une liste : chaque réglage porte, dans sa rangée, une
-explication d'une ligne sous son libellé, en langage simple (ni montant, ni chiffre, ni nom de modèle). Les détails
+Sections, dans l'ordre : Raccourci, Transcription, Correction, Mise en forme, Ton selon l'app, Confidentialité,
+Apprentissage, Général, Autorisations, Diagnostic. Aucun bloc de texte sous une liste : chaque réglage porte, dans sa
+rangée, une explication d'une ligne sous son libellé, en langage simple (ni montant, ni chiffre, ni nom de modèle). Les détails
 (fournisseurs et modèles réellement utilisés, coût, délais, ce qui est envoyé ou gardé) s'ouvrent dans un popover
 avec le bouton ⓘ de la rangée ; ceux de la correction suivent les clés enregistrées.
 
@@ -132,8 +132,20 @@ avec le bouton ⓘ de la rangée ; ceux de la correction suivent les clés enreg
   autour du curseur ; historique et audio restent sur ce Mac), « Comprendre le sujet grâce à la fenêtre active »
   (inactif sans la correction), conservation, durée et plafond de l'audio.
 - **Correction** : « Corriger le texte avant insertion », « Structurer les listes et paragraphes », « Réécrire la
-  sélection sur consigne » (inactif sans la correction). Le ton se règle dans la section suivante, inactive sans la
-  correction.
+  sélection sur consigne » (inactif sans la correction). Le ton se règle dans la section « Ton selon l'app », inactive
+  sans la correction.
+- **Mise en forme** (inactive sans la correction) : format des dates et des heures écrites par la correction (voir
+  « Dates et heures » plus bas), conservé aux mises à jour, lu champ par champ.
+  - « Dates » : JJ/MM/AAAA (par défaut), MM/JJ/AAAA ou AAAA-MM-JJ (ISO, qui impose tirets, quatre chiffres et zéros) ;
+    puis, hors ISO et hors toutes lettres : séparateur (/ par défaut, ., -, espace), année sur 4 (par défaut) ou
+    2 chiffres, « Zéro initial » (03/11, par défaut, ou 3/11).
+  - « Garder les dates en toutes lettres » (désactivé par défaut) : mois en lettres, jour et année en chiffres
+    (« 24 octobre 2026 », « 1er mai » ; en anglais « 24 October 2026 », ou « October 24, 2026 » avec MM/JJ/AAAA).
+  - « Heures » : « Selon la langue » (par défaut : 24 h en français, 12 h en anglais), « 24 h » ou « 12 h (AM/PM) ».
+    « Écriture sur 24 h », cachée en 12 h : « 14 h 30 » (typographie française, par défaut), « 14h30 » ou
+    « 14:30 » ; l'anglais écrit toujours « 14:30 » sur 24 h et « 2:30 PM » sur 12 h.
+  - « Aperçu » : une date, une date sans année et une heure rendues par le format choisi, mises à jour à chaque
+    changement ; en langue automatique, une ligne par langue si elles diffèrent.
 
 ## Premier lancement guidé
 
@@ -219,8 +231,21 @@ et fichier, l'usage de la correction préparée pendant l'écoute et le report d
 - Consigne en français ou en anglais selon la langue de dictée (en automatique, devinée sur la transcription).
 - Hésitations, bégaiements, faux départs et **autocorrections orales** retirés : « mardi, ah non, mercredi »
   devient « mercredi ». Un « non » qui fait partie du message reste.
-- Nombres écrits en chiffres ; élisions orales écrites en entier (« j'sais » → « je sais ») ; tournures
-  familières gardées (« t'as », « y a »).
+- Nombres écrits en chiffres quand ils comptent vraiment quelque chose ; élisions orales écrites en entier
+  (« j'sais » → « je sais ») ; tournures familières gardées (« t'as », « y a »).
+- **Dates et heures** : une date sans ambiguïté (jour et mois, date complète) ou l'heure d'un rendez-vous s'écrit au
+  format de Réglages › Mise en forme ; la consigne en reçoit des exemples rendus dans ce format. « le vingt-quatre
+  octobre deux mille vingt-six » → « 24/10/2026 », « le 3 du 11 » → « 03/11 », « à quatorze heures trente » →
+  « à 14 h 30 », « à deux heures de l'après-midi » → « à 14 h ». Jamais d'année inventée : « le 3 novembre » donne
+  « 03/11 » (ou « 3 novembre » en toutes lettres). « mardi » seul reste « mardi » ; une durée reste une durée
+  (« deux heures de route » → « 2 heures de route »).
+- **Nombres mal entendus** : avant d'écrire un nombre en chiffres, la correction vérifie qu'il compte vraiment
+  quelque chose dans la phrase et la conversation visible. Si un homophone courant donne un sens plus naturel
+  (« deux » / « de », « deux mois » / « de moi », « cent » / « sans » / « s'en », « six » / « si », « sept » /
+  « cette », « vingt » / « vin » / « vint », « mille » / « mil », « un » / « hein » ; en anglais « two » / « to »,
+  « four » / « for »…), elle le corrige comme un mot mal entendu : « ils veulent quoi, deux mois ? » → « Ils veulent
+  quoi de moi ? ». « Le chantier dure deux mois » → « Le chantier dure 2 mois. » Dans le doute, le mot reste en
+  lettres, jamais en chiffres.
 - **Mots mal entendus** : quand un mot ou un groupe de mots rend la phrase illogique et qu'un mot qui se prononce
   pareil ou presque lui donne un sens évident (vu la phrase, le contexte, les dictées précédentes et l'autre écoute),
   la correction écrit ce mot à sa place : « hier j'écris le train » → « Hier, j'ai pris le train. », « il c'est
@@ -241,8 +266,8 @@ et fichier, l'usage de la correction préparée pendant l'écoute et le report d
   rattaché selon le sens (« c'est » et C, « t'es » et T, « elle » et L), une lettre répétée par erreur disparaît.
   Jamais de lettre isolée sans sens ; une lettre qui en a un reste (« vitamine C », « plan B »).
 - Banc réseau de ces règles, transcriptions brutes inventées passées directement à la correction (sans audio) :
-  `BENCH_ONLY=h,r,g,l,e scripts/franglais-bench.sh <nom>` (mots mal entendus, tics, citations, lettres épelées,
-  anglais).
+  `BENCH_ONLY=h,r,g,l,e,d,n scripts/franglais-bench.sh <nom>` (mots mal entendus, tics, citations, lettres épelées,
+  anglais, dates et heures, nombres mal entendus).
 - La correction ne répond jamais au contenu dicté et ne recopie jamais le contexte.
 - **Correction préparée pendant l'écoute** : à chaque pause de la parole (segment final du flux, puis 0,25 s sans
   nouveau mot), le texte entendu part déjà à la correction. Si l'on arrête sans rien ajouter (même texte à la
@@ -283,7 +308,14 @@ sont ni une traduction ni une invention quand une lettre isolée a été entendu
 comme ce qui a été dit ; un autre mot épelé (« B-O-B ») ou un sigle sans lettre entendue reste refusé.
 
 Les vraies corrections d'écoute restent (« versel » → Vercel, 9950X3D, « envoie le » → « Envoie-le », « j'écris »
-→ « j'ai pris », « c'est E S » → « C-E-S »).
+→ « j'ai pris », « c'est E S » → « C-E-S », « deux mois » → « de moi », « cent rien dire » → « sans rien dire »).
+« sept » se dit comme « cette », « vingt » comme « vin », « mille » comme « mil ».
+
+Dates et heures : la même date ou la même heure, autrement écrite, n'est ni une traduction ni une invention
+(« quatorze heures trente » → « 14h30 », « at 2 in the afternoon » → « at 2 PM », « the third of the eleventh » →
+« November 3 ») : ses nombres viennent de ce qui a été dit, mois et après-midi compris. Une année que personne n'a
+dite (en chiffres, en lettres, « twenty twenty-six » ou sur deux chiffres) est retirée de la date : « le trois
+novembre » → « 03/11/2026 » devient « 03/11 ».
 
 ## Franglais technique
 
@@ -309,6 +341,28 @@ Restent des phrases : deux éléments, une énumération suivie d'autre chose da
 Julie hier au cinéma. »), un récit d'actions. Banc réseau : `scripts/live-test.sh ImplicitListLiveTests` (18/20 le
 11 octobre sur Grok, 8/20 avec l'ancienne consigne ; les deux échecs restants sont des appels sans réponse, texte
 gardé tel quel).
+
+### Dates et heures
+
+Quand le service de correction répond, le texte retenu (la correction, ou la transcription que le garde-fou a
+gardée) prend le format de Réglages › Mise en forme sans dépendre du modèle, avant la mise en forme des listes.
+Repasser sur un texte déjà mis en forme ne change plus rien. Sans réponse ou sans correction, le texte reste tel quel.
+
+- Dates : complètes en chiffres (« 3/11/2026 », « 3.11.2026 », « 2026-11-03 » ; « 24/10/26 » → 2026,
+  « 12/05/85 » → 1985), lues dans l'ordre réglé, ou dans l'autre s'il est seul possible (« 24/10/2026 » en
+  MM/JJ/AAAA → « 10/24/2026 ») ; au mois en lettres (« 3 novembre », « 1er novembre 2026 », « du 3 au 5 novembre »,
+  « October 24, 2026 », « the 24th of October ») ; sans année après « le », « du », « au » ou un jour de la semaine
+  (« le 3/11 », « le 3 du 11 »). En toutes lettres, l'inverse : « le 24/10/2026 » → « le 24 octobre 2026 »,
+  « le 1/11 » → « le 1er novembre ».
+- Heures : suivies de AM/PM, « du matin », « de l'après-midi » ou « du soir », qui disparaissent (« 2 h de
+  l'après-midi » → « 14 h ») ; précédées de « à », « vers », « dès », « jusqu'à », « à partir de », « il est », d'un
+  jour de la semaine ou de « demain » (anglais : at, around, by, until, before, after, from, between) ; ou reliées à
+  une telle heure (« de 14 h à 16 h », « entre 9 h et 11 h », « à 8 h, 12 h et 20 h »). En 12 h, une heure de 1 à 11 sans matin ni soir reste telle quelle (« à 9 h »), sauf
+  reliée à une heure sûre (« de 9 h à 17 h » → « de 9 AM à 5 PM »).
+- Jamais touchés : un jour, un mois ou une année seuls ; une durée ou une distance (« 2 heures de route », « 1h30 de
+  trajet », « à 2 h de Paris », « de 2 à 3 heures », « jusqu'à 3 heures » ; « jusqu'à 18 h » est une heure) ; une
+  note ou une fraction (« 8/10 », « 3/4 ») ; une version (« 1.12.20 »), une adresse IP, un numéro de téléphone, un
+  score, « 16:9 », « Jean 3:16 » ; une date impossible ; une adresse web, un e-mail, du code.
 
 ## Ton et consignes
 

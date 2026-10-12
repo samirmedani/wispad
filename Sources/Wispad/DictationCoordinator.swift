@@ -964,6 +964,7 @@ final class DictationCoordinator {
             var request = CorrectionRequest(transcript: raw, dictionary: model.dictionary.map(\.term), appName: record.targetApp,
                                             structureDictation: model.settings.structureDictation, language: model.settings.language)
             request.tone = model.tone(bundleID: record.targetBundle, appName: record.targetApp)
+            request.dateFormat = model.settings.dateFormat
             let cleaned = await model.dependencies.clean(
                 raw,
                 request,

@@ -105,6 +105,98 @@ enum SettingsPresentation {
     static let toneTitle = String(localized: "Ton selon l'app")
     static let toneSummary = String(localized: "Change le registre (tournures familières, ponctuation), jamais les mots ni le sens.")
 
+    // MARK: Mise en forme
+
+    static let formattingTitle = String(localized: "Mise en forme")
+    static let formattingSummary = String(localized: "Dates et heures écrites par la correction, quand le contexte est sans ambiguïté.")
+
+    static let dateOrder = SettingText(
+        title: String(localized: "Dates"),
+        summary: String(localized: "Ordre du jour, du mois et de l'année."),
+        details: [
+            String(localized: "Une date dite s'écrit dans ce format quand le contexte la rend évidente : « le vingt-quatre octobre deux mille vingt-six » devient « 24/10/2026 »."),
+            String(localized: "Sans année dite, la date reste sans année : « le trois novembre » devient « 03/11 ». Un jour seul, comme « mardi », reste en lettres."),
+            String(localized: "Une date déjà écrite en chiffres prend aussi ce format, même si le service de correction l'a écrite autrement.")
+        ]
+    )
+
+    static let dateSeparator = SettingText(
+        title: String(localized: "Séparateur"),
+        summary: String(localized: "Signe entre le jour, le mois et l'année.")
+    )
+
+    static let dateYear = SettingText(
+        title: String(localized: "Année"),
+        summary: String(localized: "Année complète, ou ses deux derniers chiffres seulement.")
+    )
+
+    static let leadingZero = SettingText(
+        title: String(localized: "Zéro initial"),
+        summary: String(localized: "Jour et mois toujours sur deux chiffres."),
+        details: [String(localized: "Activé : « 03/11 ». Désactivé : « 3/11 ».")]
+    )
+
+    static let monthInWords = SettingText(
+        title: String(localized: "Garder les dates en toutes lettres"),
+        summary: String(localized: "Mois en lettres, jour et année en chiffres."),
+        details: [
+            String(localized: "« 24 octobre 2026 » plutôt que « 24/10/2026 », « 3 novembre » plutôt que « 03/11 »."),
+            String(localized: "En anglais, l'ordre choisi décide entre « October 24, 2026 » et « 24 October 2026 ».")
+        ]
+    )
+
+    static let clock = SettingText(
+        title: String(localized: "Heures"),
+        summary: String(localized: "Selon la langue : sur vingt-quatre heures en français, AM/PM en anglais."),
+        details: [
+            String(localized: "L'heure d'un rendez-vous s'écrit dans ce format : « à quatorze heures trente » devient « à 14 h 30 », ou « à 2:30 PM » sur 12 h."),
+            String(localized: "Une durée reste une durée : « deux heures de route » devient « 2 heures de route »."),
+            String(localized: "Sur 12 h, une heure déjà en chiffres sans matin ni soir (« à 9 h ») reste telle quelle : elle pourrait être l'une ou l'autre.")
+        ]
+    )
+
+    static let timeStyle = SettingText(
+        title: String(localized: "Écriture sur 24 h"),
+        summary: String(localized: "Typographie française par défaut ; l'anglais écrit toujours avec deux-points.")
+    )
+
+    static let datePreview = SettingText(
+        title: String(localized: "Aperçu"),
+        summary: String(localized: "Une date, une date sans année et une heure, telles qu'elles seront écrites.")
+    )
+
+    static func label(_ order: DictationDateFormat.Order) -> String {
+        switch order {
+        case .dayMonthYear: return String(localized: "JJ/MM/AAAA")
+        case .monthDayYear: return String(localized: "MM/JJ/AAAA")
+        case .iso: return String(localized: "AAAA-MM-JJ (ISO)")
+        }
+    }
+
+    static func label(_ separator: DictationDateFormat.Separator) -> String {
+        separator == .space ? String(localized: "Espace") : separator.character
+    }
+
+    static func label(_ clock: DictationDateFormat.Clock) -> String {
+        switch clock {
+        case .byLanguage: return String(localized: "Selon la langue")
+        case .twentyFourHour: return String(localized: "24 h")
+        case .twelveHour: return String(localized: "12 h (AM/PM)")
+        }
+    }
+
+    /// Exemples rendus par le format lui-même : une ligne pour la langue de dictée, deux en automatique si elles
+    /// diffèrent (heures sur 12 h en anglais, noms des mois).
+    static func preview(_ format: DictationDateFormat, language: DictationLanguage) -> [String] {
+        let french = format.samples(english: false).joined(separator: " · ")
+        let english = format.samples(english: true).joined(separator: " · ")
+        switch language {
+        case .french: return [french]
+        case .english: return [english]
+        case .auto: return french == english ? [french] : [String(localized: "Français : \(french)"), String(localized: "Anglais : \(english)")]
+        }
+    }
+
     // MARK: Confidentialité
 
     static let sentData = SettingText(

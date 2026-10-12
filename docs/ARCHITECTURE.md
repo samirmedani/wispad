@@ -4,7 +4,7 @@
 
 | Module | Rôle | Dépend de |
 | --- | --- | --- |
-| `WispadCore` | Logique pure et testable : requêtes de transcription et de correction, consigne, garde-fou, comparaison flux/fichier, historique SQLite, coûts, retard de la version sur `main` (`BuildFreshness`), progression du premier lancement guidé (`OnboardingFlow`). Aucun texte d'interface. | — |
+| `WispadCore` | Logique pure et testable : requêtes de transcription et de correction, consigne, garde-fou, format des dates et des heures (`DictationDateFormat`, `DateTimeWriter`), comparaison flux/fichier, historique SQLite, coûts, retard de la version sur `main` (`BuildFreshness`), progression du premier lancement guidé (`OnboardingFlow`). Aucun texte d'interface. | — |
 | `Wispad` (app) | Coordinateur de dictée, raccourci, bulle, écrans SwiftUI, clés, traductions. | `WispadCore` |
 
 Le projet Xcode (hors Git) est généré par xcodegen depuis `project.yml`. `Package.swift` décrit les mêmes
@@ -57,10 +57,13 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
 5. `DictationCoordinator+Transcription` choisit le texte retenu : flux, enregistrement complet
    (`TranscriptEquivalence`, mots du fichier reportés par `CorrectionPatch`) ou relais ; le fichier part chez le
    fournisseur (`BatchTranscriber`). Sans réponse, l'audio reste dans l'historique pour Retranscrire. Le texte passe par `FranglaisNormalizer` avant et après la correction.
-6. `TextCleaner` corrige (consigne `CorrectionPrompt`, puis `FidelityGuard`, puis `DictationStructure`) ; une
-   consigne sur la sélection passe par `TextCleaner.transform`, sans garde-fou. `FidelityGuard` juge la
-   ressemblance à l'oreille (homophones, lettres épelées) avec `PhoneticKey`. Les raccourcis vocaux
-   (`VoiceSnippets`) s'appliquent ensuite.
+6. `TextCleaner` corrige (consigne `CorrectionPrompt`, puis `FidelityGuard`, puis `DateTimeWriter`, puis
+   `DictationStructure`) ; une consigne sur la sélection passe par `TextCleaner.transform`, sans garde-fou.
+   `FidelityGuard` juge la ressemblance à l'oreille (homophones, lettres épelées, nombres) avec `PhoneticKey`, et
+   reconnaît une date ou une heure réécrite à ses nombres (`MomentReading`) ; il retire une année non dite
+   (`DateTimeWriter.removingUnspokenYears`). Le format choisi (`DictationDateFormat`, dans `CorrectionRequest.dateFormat`)
+   donne ses exemples à la consigne, puis `DateTimeWriter.apply` l'impose aux dates et heures déjà en chiffres du
+   texte retenu. Les raccourcis vocaux (`VoiceSnippets`) s'appliquent ensuite.
 7. La dictée est enregistrée (`HistoryStore`), collée dans l'ordre (`TextInserter`, raccord `SmartJoin`), puis
    surveillée pour l'apprentissage (`CorrectionWatcher`, tri par `JevJudge` et `TermJudge`). Le statut du collage
    vient de `FocusedField` (WispadCore) : confirmé, aucun champ (`FocusedFieldKind.notText` avant comme après ⌘V)
@@ -133,7 +136,8 @@ la sonde de compter les lignes évaluées.
 `LiveSpeechSession`, le fichier dans `BatchTranscriber`, les coûts dans `UsageAPI` et `ProviderCatalog`.
 
 **Un réglage** : une propriété dans `AppSettings` (`AppSettings.swift`) avec sa lecture tolérante dans
-`init(from:)`, puis son contrôle dans l'écran : une rangée `SettingRow` ou `SettingToggle` (`SettingsRows.swift`)
+`init(from:)` (un réglage composé, comme `dateFormat`, lit lui-même ses champs un par un), puis son contrôle dans
+l'écran : une rangée `SettingRow` ou `SettingToggle` (`SettingsRows.swift`)
 dont les textes (libellé, résumé d'une ligne, détails du popover ⓘ) sont dans `SettingsPresentation`, testés par
 `SettingsPresentationTests`. Pas de texte sous la section. Voir « Réglages et mises à jour » ci-dessous.
 
@@ -201,7 +205,7 @@ fournisseur retiré : `APIKeys.LocalFile` garde les comptes qu'il ne connaît pa
   moyenne, p95, max, étapes de plus de 16 ms ; évaluations de lignes et lignes distinctes).
 - Tests réseau à la demande, clés de test seulement : `scripts/live-test.sh SelfCorrectionLiveTests`.
 - Banc franglais (audios de `Tests/Fixtures/franglais`, clés de test) : `scripts/franglais-bench.sh <nom> [référence]` ;
-  `BENCH_ONLY=h,r,g,l,e` ne rejoue que les cas de correction seule (champ `transcript` : transcription brute
-  inventée, passée directement à la correction, sans audio ni flux xAI).
+  `BENCH_ONLY=h,r,g,l,e,d,n` ne rejoue que les cas de correction seule (champ `transcript` : transcription brute
+  inventée, passée directement à la correction, sans audio ni flux xAI ; `dateFormat` facultatif).
 - Erreurs signalées depuis l'historique (`ErrorReportArchive`) : `scripts/report-bench.sh <nom>` les rejoue et compte
   les mots faux avant et après un changement de consigne, de garde-fou ou de fournisseur.

@@ -6740,6 +6740,386 @@
           }
         }
       }
+    },
+    "Mise en forme" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Formatting"
+          }
+        }
+      }
+    },
+    "Dates et heures écrites par la correction, quand le contexte est sans ambiguïté." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dates and times written by the correction, when the context leaves no doubt."
+          }
+        }
+      }
+    },
+    "Dates" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dates"
+          }
+        }
+      }
+    },
+    "Ordre du jour, du mois et de l'année." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Order of the day, the month and the year."
+          }
+        }
+      }
+    },
+    "Une date dite s'écrit dans ce format quand le contexte la rend évidente : « le vingt-quatre octobre deux mille vingt-six » devient « 24/10/2026 »." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A spoken date is written in this format when the context makes it obvious: “October twenty-fourth twenty twenty-six” becomes “24/10/2026”."
+          }
+        }
+      }
+    },
+    "Sans année dite, la date reste sans année : « le trois novembre » devient « 03/11 ». Un jour seul, comme « mardi », reste en lettres." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Without a spoken year, the date stays without a year: “November third” becomes “03/11”. A weekday alone, like “Tuesday”, stays in words."
+          }
+        }
+      }
+    },
+    "Une date déjà écrite en chiffres prend aussi ce format, même si le service de correction l'a écrite autrement." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A date already written in digits also takes this format, even if the correction service wrote it differently."
+          }
+        }
+      }
+    },
+    "Séparateur" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Separator"
+          }
+        }
+      }
+    },
+    "Signe entre le jour, le mois et l'année." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sign between the day, the month and the year."
+          }
+        }
+      }
+    },
+    "Année" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Year"
+          }
+        }
+      }
+    },
+    "Année complète, ou ses deux derniers chiffres seulement." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Full year, or only its last two digits."
+          }
+        }
+      }
+    },
+    "Zéro initial" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leading zero"
+          }
+        }
+      }
+    },
+    "Jour et mois toujours sur deux chiffres." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Day and month always written with two digits."
+          }
+        }
+      }
+    },
+    "Activé : « 03/11 ». Désactivé : « 3/11 »." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On: “03/11”. Off: “3/11”."
+          }
+        }
+      }
+    },
+    "Garder les dates en toutes lettres" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep dates in words"
+          }
+        }
+      }
+    },
+    "Mois en lettres, jour et année en chiffres." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Month in words, day and year in digits."
+          }
+        }
+      }
+    },
+    "« 24 octobre 2026 » plutôt que « 24/10/2026 », « 3 novembre » plutôt que « 03/11 »." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“24 October 2026” rather than “24/10/2026”, “3 November” rather than “03/11”."
+          }
+        }
+      }
+    },
+    "En anglais, l'ordre choisi décide entre « October 24, 2026 » et « 24 October 2026 »." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In English, the chosen order decides between “October 24, 2026” and “24 October 2026”."
+          }
+        }
+      }
+    },
+    "Heures" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clock"
+          }
+        }
+      }
+    },
+    "Selon la langue : sur vingt-quatre heures en français, AM/PM en anglais." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "By language: twenty-four-hour clock in French, AM/PM in English."
+          }
+        }
+      }
+    },
+    "L'heure d'un rendez-vous s'écrit dans ce format : « à quatorze heures trente » devient « à 14 h 30 », ou « à 2:30 PM » sur 12 h." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The time of an appointment is written in this format: “at two thirty in the afternoon” becomes “at 2:30 PM”, or “at 14:30” on a 24-hour clock."
+          }
+        }
+      }
+    },
+    "Une durée reste une durée : « deux heures de route » devient « 2 heures de route »." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A duration stays a duration: “two hours of driving” becomes “2 hours of driving”."
+          }
+        }
+      }
+    },
+    "Sur 12 h, une heure déjà en chiffres sans matin ni soir (« à 9 h ») reste telle quelle : elle pourrait être l'une ou l'autre." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On a 12-hour clock, a time already in digits with no morning or evening (“at 9:00”) stays as it is: it could be either."
+          }
+        }
+      }
+    },
+    "Écriture sur 24 h" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "24-hour style"
+          }
+        }
+      }
+    },
+    "Typographie française par défaut ; l'anglais écrit toujours avec deux-points." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "French typography by default; English always uses a colon."
+          }
+        }
+      }
+    },
+    "Aperçu" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preview"
+          }
+        }
+      }
+    },
+    "Une date, une date sans année et une heure, telles qu'elles seront écrites." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A date, a date without a year and a time, as they will be written."
+          }
+        }
+      }
+    },
+    "JJ/MM/AAAA" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DD/MM/YYYY"
+          }
+        }
+      }
+    },
+    "MM/JJ/AAAA" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MM/DD/YYYY"
+          }
+        }
+      }
+    },
+    "AAAA-MM-JJ (ISO)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YYYY-MM-DD (ISO)"
+          }
+        }
+      }
+    },
+    "Espace" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Space"
+          }
+        }
+      }
+    },
+    "Selon la langue" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "By language"
+          }
+        }
+      }
+    },
+    "24 h" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "24-hour"
+          }
+        }
+      }
+    },
+    "12 h (AM/PM)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "12-hour (AM/PM)"
+          }
+        }
+      }
+    },
+    "Français : %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "French: %@"
+          }
+        }
+      }
+    },
+    "Anglais : %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "English: %@"
+          }
+        }
+      }
+    },
+    "4 chiffres" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "4 digits"
+          }
+        }
+      }
+    },
+    "2 chiffres" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "2 digits"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

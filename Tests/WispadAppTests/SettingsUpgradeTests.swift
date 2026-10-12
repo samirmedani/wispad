@@ -102,6 +102,27 @@ struct SettingsUpgradeTests {
         #expect(try fixture.storedObject()["pasteLastShortcut"] != nil)
     }
 
+    /// Format des dates et des heures : absent d'un ancien bloc, celui par défaut ; illisible en entier, celui par défaut
+    /// sans toucher aux autres réglages ; un champ illisible ne remet que lui-même ; un choix survit à un rechargement.
+    @Test func dateFormatIsReadLenientlyAndPersists() throws {
+        #expect(try decode(#"{"provider": "openai"}"#).dateFormat == DictationDateFormat())
+        let unreadable = try decode(#"{"dateFormat": "JJ/MM/AAAA", "provider": "openai", "keyCode": 61}"#)
+        #expect(unreadable.dateFormat == DictationDateFormat())
+        #expect(unreadable.provider == .openAI)
+        #expect(unreadable.keyCode == 61)
+        let partial = try decode(#"{"dateFormat": {"order": "iso", "clock": "horloge-retiree", "monthInWords": true}}"#)
+        #expect(partial.dateFormat == DictationDateFormat(order: .iso, monthInWords: true))
+
+        let fixture = try Defaults()
+        defer { fixture.dispose() }
+        var settings = AppSettings.load(from: fixture.defaults)
+        settings.dateFormat = DictationDateFormat(order: .monthDayYear, separator: .dot, fourDigitYear: false, leadingZero: false,
+                                                  monthInWords: true, clock: .twelveHour, timeStyle: .colon)
+        settings.save(to: fixture.defaults)
+        #expect(AppSettings.load(from: fixture.defaults).dateFormat == settings.dateFormat)
+        #expect(try fixture.storedObject()["dateFormat"] != nil)
+    }
+
     /// Fournisseur ou modèle de voix retiré : le fournisseur par défaut, ou le modèle par défaut du même fournisseur.
     @Test func removedProviderOrModelFallsBackToTheClosestValidOne() throws {
         let removedProvider = try decode(#"{"provider": "fournisseur-retire", "cleanupEnabled": false}"#)
@@ -141,6 +162,7 @@ struct SettingsUpgradeTests {
         #expect(settings.retention == defaults.retention)
         #expect(settings.language == .french)
         #expect(settings.onboardingCompleted)
+        #expect(settings.dateFormat == defaults.dateFormat)
     }
 
     /// Un élément illisible d'une liste ou d'un dictionnaire est écarté, ses voisins restent.
@@ -232,6 +254,7 @@ struct SettingsUpgradeTests {
         settings.modifierFlags = 0x100000
         settings.onboardingCompleted = true
         settings.githubStarClicked = true
+        settings.dateFormat = DictationDateFormat(order: .iso, clock: .twelveHour)
         settings.save(to: fixture.defaults)
         #expect(AppSettings.load(from: fixture.defaults) == settings)
     }

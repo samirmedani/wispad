@@ -314,6 +314,7 @@ extension DictationCoordinator {
             language: model.settings.language
         )
         request.tone = model.tone(bundleID: context.bundleID, appName: context.appName)
+        request.dateFormat = model.settings.dateFormat
         return request
     }
 
