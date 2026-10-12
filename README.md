@@ -22,6 +22,10 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/samirmedani/wispad/releases/latest/download/Wispad.dmg"><img src="https://img.shields.io/github/v/release/samirmedani/wispad?label=T%C3%A9l%C3%A9charger%20pour%20macOS&logo=apple&logoColor=white&color=e5483f&style=for-the-badge" alt="Télécharger Wispad pour macOS"></a>
+</p>
+
+<p align="center">
   <a href="#installer"><b>Installer</b></a> ·
   <a href="#fonctionnalités"><b>Fonctionnalités</b></a> ·
   <a href="#confidentialité"><b>Confidentialité</b></a> ·
@@ -146,13 +150,21 @@ dans Consommation) et TypeSafe (pour juger les mots appris).
 
 ## Installer
 
-### Prérequis
+### Télécharger l'app
+
+1. Télécharge [Wispad.dmg](https://github.com/samirmedani/wispad/releases/latest/download/Wispad.dmg) (macOS 14 ou
+   plus récent, Mac Intel ou Apple Silicon). L'app est signée et notarisée par Apple.
+2. Ouvre le fichier, glisse Wispad dans Applications, puis lance-le.
+
+Toutes les versions : [Releases](https://github.com/samirmedani/wispad/releases).
+
+### Compiler depuis les sources
 
 - macOS 14 ou plus récent.
 - Xcode 26 ou plus récent (SDK macOS 26), et [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`).
 - Une clé API xAI ou OpenAI (DeepSeek en plus pour la correction la moins chère).
 
-### En trois commandes
+#### En trois commandes
 
 ```bash
 git clone https://github.com/samirmedani/wispad.git && cd wispad
