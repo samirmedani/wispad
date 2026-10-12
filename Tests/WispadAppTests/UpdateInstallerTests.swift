@@ -85,7 +85,8 @@ struct UpdateInstallerTests {
     @Test func verifiesCopiesNextToTheAppThenSwapsAndRelaunches() async throws {
         let journal = Journal()
         let installer = makeInstaller(journal)
-        #expect(install(installer, journal))
+        let started = install(installer, journal)
+        #expect(started)
         #expect(installer.isBusy)
         try await waitUntil { journal.terminated }
         #expect(journal.steps == ["download", "mount", "verify Wispad.app", "copy .Wispad.nouveau.app",
@@ -106,7 +107,9 @@ struct UpdateInstallerTests {
         for (writable, team, kind) in cases {
             let journal = Journal()
             let installer = makeInstaller(journal, writable: writable, team: team)
-            #expect(!installer.install(Self.release, kind: kind, installed: "0.1.1", isIdle: { true }, relaunchArguments: { [] }))
+            let started = installer.install(Self.release, kind: kind, installed: "0.1.1", isIdle: { true },
+                                            relaunchArguments: { [] })
+            #expect(!started)
             #expect(journal.opened == [Self.release.pageURL])
             #expect(journal.steps.isEmpty)
             #expect(installer.phase == .idle)
