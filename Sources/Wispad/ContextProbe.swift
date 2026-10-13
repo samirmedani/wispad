@@ -306,9 +306,15 @@ enum ContextProbe {
 
     private static func nearby(value: String, element: AXUIElement) -> String {
         var rangeValue: CFTypeRef?
+        let read = AXUIElementCopyAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, &rangeValue) == .success
+        return nearby(value: value, selection: read ? rangeValue : nil)
+    }
+
+    /// Texte autour de la sélection que l'app annonce. Une valeur qui n'est pas une plage, ou une plage démesurée,
+    /// ne fait pas planter Wispad : le début du champ sert alors de repère, comme sans sélection lisible.
+    static func nearby(value: String, selection rangeValue: CFTypeRef?) -> String {
         var range = CFRange(location: 0, length: 0)
-        if AXUIElementCopyAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, &rangeValue) == .success,
-           let rangeValue {
+        if let rangeValue, CFGetTypeID(rangeValue) == AXValueGetTypeID() {
             let axValue = rangeValue as! AXValue
             withUnsafeMutablePointer(to: &range) { pointer in
                 _ = AXValueGetValue(axValue, .cfRange, pointer)
@@ -317,7 +323,8 @@ enum ContextProbe {
         let ns = value as NSString
         let location = min(max(0, range.location), ns.length)
         let start = max(0, location - 220)
-        let end = min(ns.length, location + max(range.length, 0) + 220)
+        // Longueur bornée au champ avant l'addition, qui ne peut plus déborder.
+        let end = min(ns.length, location + min(max(range.length, 0), ns.length) + 220)
         guard end > start else { return String(value.prefix(400)) }
         return ns.substring(with: NSRange(location: start, length: end - start))
     }
