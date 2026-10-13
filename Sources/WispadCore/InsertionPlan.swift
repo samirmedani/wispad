@@ -36,6 +36,19 @@ public enum InsertionPlanner {
 }
 
 public enum InsertionCheck {
+    /// Comparer l'édition complète au curseur couvre aussi une sélection remplacée dont le début ne change pas.
+    /// Les transformations typographiques de l'éditeur ne sont pas des échecs d'insertion.
+    public static func matchesReplacement(before: String?, selection: NSRange?, after: String?, inserted: String) -> Bool {
+        guard let before, let selection, let after,
+              selection.location >= 0, selection.length >= 0,
+              selection.location <= (before as NSString).length,
+              selection.length <= (before as NSString).length - selection.location else { return false }
+        let expected = (before as NSString).replacingCharacters(in: selection, with: inserted)
+        if expected == after { return true }
+        // Pour un texte composé uniquement de ponctuation, seule l'égalité exacte ci-dessus fait foi.
+        return !normalize(inserted).isEmpty && normalize(expected) == normalize(after)
+    }
+
     /// Vrai seulement si la valeur du champ a changé et contient une fois de plus le début du texte collé.
     /// Seuls les lettres et les chiffres comptent : les éditeurs riches (Claude, ChatGPT dans Chrome) réécrivent
     /// espaces, apostrophes, tirets de liste et retours à la ligne.
@@ -94,8 +107,8 @@ public enum FocusedField {
         return nonTextRoles.contains(role) ? .notText : .unknown
     }
 
-    /// Statut d'un collage envoyé : confirmé, parti dans le vide (le focus n'était sur aucun champ, avant comme
-    /// après ⌘V) ou envoyé sans preuve. Un champ de texte vu une seule fois suffit à garder « Collage envoyé ».
+    /// Une lecture inchangée peut être un instantané AX en retard : elle ne prouve pas l'échec d'un envoi.
+    /// Sans preuve d'insertion, conserver le statut incertain et l'accès au texte.
     public static func status(confirmed: Bool, kinds: [FocusedFieldKind]) -> InsertionStatus {
         if confirmed { return .inserted }
         if kinds.contains(.notText), !kinds.contains(.text) { return .noTarget }

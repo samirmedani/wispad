@@ -111,7 +111,7 @@ private final class FallbackFixture {
         dependencies.restoreOutput = {}
         dependencies.watchCorrections = { _, _, _, _ in }
         dependencies.judgeTerms = { _, _, _ in TermJudgement(kept: []) }
-        dependencies.insert = { [weak self] _, _, shouldProceed in
+        dependencies.insert = { [weak self] _, _, shouldProceed, _ in
             guard shouldProceed() else { return .cancelled }
             self?.inserted += 1
             return .inserted

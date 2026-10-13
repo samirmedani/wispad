@@ -2,14 +2,26 @@ import Foundation
 
 /// Verdict sur des mots corrigés juste après une dictée.
 public struct TermJudgement: Equatable, Sendable {
-    /// Termes à ajouter au dictionnaire, orthographiés comme l'utilisateur les a écrits.
-    public var kept: [String]
+    /// Termes à ajouter au dictionnaire, chacun avec le juge qui l'a retenu.
+    public var kept: [LearnedTerm]
     /// Appels effectués (réussis ou non), à compter dans la consommation.
     public var usages: [UsageEvent]
 
-    public init(kept: [String], usages: [UsageEvent] = []) {
+    public init(kept: [LearnedTerm], usages: [UsageEvent] = []) {
         self.kept = kept
         self.usages = usages
+    }
+}
+
+/// Mot retenu après une correction, et le juge qui l'a retenu.
+public struct LearnedTerm: Equatable, Sendable {
+    /// Orthographié comme l'utilisateur l'a écrit.
+    public var term: String
+    public var judge: DictionaryJudge
+
+    public init(term: String, judge: DictionaryJudge) {
+        self.term = term
+        self.judge = judge
     }
 }
 
@@ -59,7 +71,7 @@ public enum TermJudge {
     /// Sans second avis (modèle de correction muet), Jev décide seul avec ce seuil plus strict.
     public static let jevAlone = 0.7
 
-    /// Jev tranche les cas nets en 0,3 s ; les cas douteux reçoivent un second avis du modèle de correction.
+    /// Jev tranche les cas nets ; les cas douteux reçoivent un second avis du modèle de correction.
     /// Sans Jev, le modèle de correction décide seul ; sans réponse exploitable, rien n'est ajouté.
     public static func judge(_ candidates: [CorrectionLearner.Candidate], dictated: String, speech: SpeechRequest) async -> TermJudgement {
         await judge(candidates, dictated: dictated, speech: speech, scoreRequest: {
@@ -71,42 +83,57 @@ public enum TermJudge {
                       scoreRequest: @escaping ScoreRequest, transport: @escaping TextCleaner.HTTPTransport) async -> TermJudgement {
         guard !candidates.isEmpty, !Task.isCancelled else { return TermJudgement(kept: []) }
         var usages: [UsageEvent] = []
-        var scores: [Double]?
+        var jev: (scores: [Double], judge: DictionaryJudge)?
         if let key = speech.judgeKey, !key.isEmpty {
             let (result, usage) = await scoreRequest(candidates, dictated, key)
             usages.append(usage)
-            scores = result
+            // Fournisseur et modèle de l'appel qui a noté : TypeSafe annonce le modèle facturé.
+            jev = result.map { ($0, DictionaryJudge(kind: .jev, provider: usage.api.provider, model: usage.model)) }
         }
         guard !Task.isCancelled else { return TermJudgement(kept: [], usages: usages) }
-        guard let scores else {
+        guard let jev else {
             // Un Jev absent n'est pas une panne ; un Jev réellement essayé sans résultat l'est.
             let previousAPI: UsageAPI? = usages.isEmpty ? nil : .typesafeJudge
-            let (kept, llmUsages) = await askModel(candidates, dictated: dictated, speech: speech, previousAPI: previousAPI, transport: transport)
-            return TermJudgement(kept: kept ?? [], usages: usages + llmUsages)
+            let (answer, llmUsages) = await askModel(candidates, dictated: dictated, speech: speech, previousAPI: previousAPI, transport: transport)
+            let kept = answer.map { answer in answer.approved.map { LearnedTerm(term: $0, judge: answer.judge) } } ?? []
+            return TermJudgement(kept: kept, usages: usages + llmUsages)
         }
-        let doubtful = zip(candidates, scores).filter { $0.1 < jevKeep && $0.1 > jevReject }.map(\.0)
-        var approved: [String]?
+        let doubtful = zip(candidates, jev.scores).filter { $0.1 < jevKeep && $0.1 > jevReject }.map(\.0)
+        var secondOpinion: ModelAnswer?
         if !doubtful.isEmpty {
             let (answer, llmUsages) = await askModel(doubtful, dictated: dictated, speech: speech, transport: transport)
             usages += llmUsages
-            approved = answer
+            secondOpinion = answer
         }
-        return TermJudgement(kept: decide(candidates, scores: scores, secondOpinion: approved), usages: usages)
+        return TermJudgement(kept: decide(candidates, scores: jev.scores, jev: jev.judge, secondOpinion: secondOpinion), usages: usages)
     }
 
-    /// Verdict final. `secondOpinion` : mots approuvés par le modèle de correction parmi les cas douteux, nil s'il n'a pas répondu.
-    public static func decide(_ candidates: [CorrectionLearner.Candidate], scores: [Double], secondOpinion: [String]?) -> [String] {
+    /// Verdict final, avec le juge de chaque terme retenu : Jev quand sa note suffit (nette, ou au-dessus de
+    /// `jevAlone` si le modèle de correction n'a pas répondu), le modèle de correction pour un cas douteux qu'il
+    /// approuve. `secondOpinion` : sa réponse sur les cas douteux, nil s'il n'a pas répondu.
+    static func decide(_ candidates: [CorrectionLearner.Candidate], scores: [Double], jev: DictionaryJudge,
+                       secondOpinion: ModelAnswer?) -> [LearnedTerm] {
         zip(candidates, scores).compactMap { candidate, score in
-            if score >= jevKeep { return candidate.corrected }
+            if score >= jevKeep { return LearnedTerm(term: candidate.corrected, judge: jev) }
             if score <= jevReject { return nil }
-            let keep = secondOpinion.map { $0.contains(candidate.corrected) && score >= 0.5 } ?? (score >= jevAlone)
-            return keep ? candidate.corrected : nil
+            guard let secondOpinion else {
+                return score >= jevAlone ? LearnedTerm(term: candidate.corrected, judge: jev) : nil
+            }
+            let approved = secondOpinion.approved.contains(candidate.corrected) && score >= 0.5
+            return approved ? LearnedTerm(term: candidate.corrected, judge: secondOpinion.judge) : nil
         }
+    }
+
+    /// Réponse du modèle de correction : termes approuvés, et le fournisseur et le modèle de la route qui a
+    /// répondu (le modèle demandé, comme dans Consommation).
+    struct ModelAnswer: Equatable, Sendable {
+        var approved: [String]
+        var judge: DictionaryJudge
     }
 
     /// Avis du modèle de correction (DeepSeek, puis le relais). nil : aucun modèle n'a répondu.
     static func askModel(_ candidates: [CorrectionLearner.Candidate], dictated: String, speech: SpeechRequest,
-                         previousAPI: UsageAPI? = nil, transport: @escaping TextCleaner.HTTPTransport = TextCleaner.httpTransport) async -> ([String]?, [UsageEvent]) {
+                         previousAPI: UsageAPI? = nil, transport: @escaping TextCleaner.HTTPTransport = TextCleaner.httpTransport) async -> (ModelAnswer?, [UsageEvent]) {
         let user = userText(candidates, dictated: dictated)
         let requests = TextCleaner.RequestLog()
         let routes = Array(TextCleaner.routes(speech).prefix(2))
@@ -123,7 +150,8 @@ public enum TermJudge {
                     try await TextCleaner.send(system: system, user: user, route: route, maxTokens: 80, includeReasoning: true,
                                                transport: transport, requests: requests, fallback: transition)
                 }
-                return (parse(reply.content, candidates: candidates), requests.events)
+                let judge = DictionaryJudge(kind: .correctionModel, provider: route.provider, model: route.model)
+                return (ModelAnswer(approved: parse(reply.content, candidates: candidates), judge: judge), requests.events)
             } catch {
                 if TextCleaner.isCancellation(error) { break }
             }

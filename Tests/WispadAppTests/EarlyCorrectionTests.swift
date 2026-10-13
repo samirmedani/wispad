@@ -23,9 +23,16 @@ private final class EarlyStream: SpeechStreaming, @unchecked Sendable {
     var onPartial: (@Sendable (String) -> Void)?
     var onSettled: (@Sendable (String) -> Void)?
     var text = ""
+    /// Temps que met le flux à donner son texte final après l'arrêt.
+    var finishDelay: Double = 0
+    var onFinish: (@MainActor () -> Void)?
     func start() async throws {}
     func send(_ data: Data) {}
-    func finish() async throws -> StreamFinish { StreamFinish(text: text, endingFinalized: true) }
+    func finish() async throws -> StreamFinish {
+        if finishDelay > 0 { try? await Task.sleep(nanoseconds: UInt64(finishDelay * 1_000_000_000)) }
+        if let onFinish { await onFinish() }
+        return StreamFinish(text: text, endingFinalized: true)
+    }
     func cancel() {}
 }
 
@@ -71,7 +78,7 @@ private final class EarlyFixture {
         dependencies.restoreOutput = {}
         dependencies.watchCorrections = { _, _, _, _ in }
         dependencies.judgeTerms = { _, _, _ in TermJudgement(kept: []) }
-        dependencies.insert = { [weak self] text, _, allowed in
+        dependencies.insert = { [weak self] text, _, allowed, _ in
             guard allowed() else { return .cancelled }
             self?.inserted.append(text)
             return .inserted
@@ -146,7 +153,8 @@ struct EarlyCorrectionTests {
         #expect(try f.trace().earlyCorrectionUsed == true)
     }
 
-    @Test func speechThatResumesRightAwayPreparesNothing() async throws {
+    /// Pas de pause : la correction part à l'arrêt sur ce qui a été entendu, pendant que le flux finalise.
+    @Test func speechThatResumesRightAwayIsCorrectedAtRelease() async throws {
         let f = try EarlyFixture()
         defer { f.dispose() }
         f.fileText = "Bonjour à tous"
@@ -159,7 +167,47 @@ struct EarlyCorrectionTests {
 
         #expect(f.cleanTexts == ["Bonjour à tous"])
         #expect(f.inserted == ["BONJOUR À TOUS"])
-        #expect(try f.trace().earlyCorrections == nil)
+        let trace = try f.trace()
+        #expect(trace.earlyCorrections == 1)
+        #expect(trace.earlyCorrectionUsed == true)
+    }
+
+    /// Le texte final du flux arrive tard : la correction est déjà partie, elle n'attend pas ce texte.
+    @Test func correctionStartsWhileTheStreamFinalizes() async throws {
+        let f = try EarlyFixture()
+        defer { f.dispose() }
+        f.fileText = "On se voit mardi"
+        f.stream.finishDelay = 0.3
+        var startedBeforeFinal: [String] = []
+        f.stream.onFinish = { startedBeforeFinal = f.cleanTexts }
+        await f.model.coordinator.begin(.pushToTalk)
+        f.stream.onPartial?("On se voit mardi")
+        f.stream.text = "On se voit mardi."
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        await f.model.coordinator.end()
+
+        #expect(startedBeforeFinal == ["On se voit mardi"])
+        #expect(f.cleanTexts == ["On se voit mardi"])
+        #expect(f.inserted == ["ON SE VOIT MARDI"])
+        #expect(try f.trace().earlyCorrectionUsed == true)
+    }
+
+    /// Le texte final ajoute un mot : la correction de l'arrêt est comptée, une autre corrige le texte final.
+    @Test func aFinalTextThatAddsWordsGetsItsOwnCorrection() async throws {
+        let f = try EarlyFixture()
+        defer { f.dispose() }
+        f.fileText = "Bonjour à tous"
+        await f.model.coordinator.begin(.pushToTalk)
+        f.stream.onPartial?("Bonjour à")
+        f.stream.text = "Bonjour à tous"
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        await f.model.coordinator.end()
+
+        #expect(f.cleanTexts == ["Bonjour à", "Bonjour à tous"])
+        #expect(f.inserted == ["BONJOUR À TOUS"])
+        try? await Task.sleep(nanoseconds: 100_000_000)
+        #expect(f.cleanupCount() == 2)
+        #expect(try f.trace().earlyCorrectionUsed == false)
     }
 
     @Test func wordsAddedAfterThePauseGetTheirOwnCorrectionAndBothAreBilled() async throws {
@@ -170,15 +218,17 @@ struct EarlyCorrectionTests {
         await f.pause(after: "Bonjour à tous")
         f.stream.onPartial?("Bonjour à tous et merci")
         f.stream.text = "Bonjour à tous et merci"
+        try? await Task.sleep(nanoseconds: 50_000_000)
         await f.model.coordinator.end()
 
         #expect(f.cleanTexts == ["Bonjour à tous", "Bonjour à tous et merci"])
         #expect(f.inserted == ["BONJOUR À TOUS ET MERCI"])
         try? await Task.sleep(nanoseconds: 100_000_000)
         #expect(f.cleanupCount() == 2)
+        // La pause a préparé la première ; l'arrêt, celle du texte complet, qui sert.
         let trace = try f.trace()
-        #expect(trace.earlyCorrections == 1)
-        #expect(trace.earlyCorrectionUsed == false)
+        #expect(trace.earlyCorrections == 2)
+        #expect(trace.earlyCorrectionUsed == true)
     }
 
     @Test func cancelledDictationBillsThePreparedCorrectionAndPastesNothing() async throws {

@@ -77,7 +77,7 @@ private final class TrialFixture {
         dependencies.restoreOutput = {}
         dependencies.watchCorrections = { _, _, _, _ in }
         dependencies.judgeTerms = { _, _, _ in TermJudgement(kept: []) }
-        dependencies.insert = { [unowned self] text, _, allowed in
+        dependencies.insert = { [unowned self] text, _, allowed, _ in
             guard allowed() else { return .cancelled }
             self.pasted.append(text)
             return .inserted

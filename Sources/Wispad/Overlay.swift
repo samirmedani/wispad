@@ -15,11 +15,14 @@ enum OverlayMode: Equatable {
     case notice(String)
     /// Mot déjà ajouté : Oui le garde, Non le retire. Mêmes clics que la bulle en mains libres.
     case learning(String)
+    /// Nouvelle version de Wispad : Voir ouvre les notes de version, Ne plus me rappeler ferme le rappel.
+    case update(String)
 
     /// La dictée passe avant un message d'information.
-    static func resolve(phase: DictationPhase, notice: String?, confirmsLearning: Bool = false) -> OverlayMode? {
+    static func resolve(phase: DictationPhase, notice: String?, confirmsLearning: Bool = false, offersUpdate: Bool = false) -> OverlayMode? {
         if let mode = OverlayMode(phase) { return mode }
         guard let notice else { return nil }
+        if offersUpdate { return .update(notice) }
         return confirmsLearning ? .learning(notice) : .notice(notice)
     }
 
@@ -36,16 +39,30 @@ enum OverlayMode: Equatable {
     /// Seuls les états à boutons captent la souris, et seulement sur la pilule.
     var isInteractive: Bool {
         switch self {
-        case .handsFree, .failure, .notice, .learning: return true
+        case .handsFree, .failure, .notice, .learning, .update: return true
         case .listening, .finishing: return false
         }
+    }
+
+    var isLearning: Bool {
+        if case .learning = self { return true }
+        return false
     }
 
     /// Message à décompte : ✕ au survol, décompte en pause sous le pointeur. Jamais la bulle d'enregistrement.
     var isMessage: Bool {
         switch self {
-        case .failure, .notice, .learning: return true
+        case .failure, .notice, .learning, .update: return true
         case .listening, .handsFree, .finishing: return false
+        }
+    }
+
+    /// Place à l'écran : celle de la dictée, des alertes de collage ou des messages brefs.
+    var role: OverlayRole {
+        switch self {
+        case .listening, .handsFree, .finishing: return .dictation
+        case .failure: return .alerts
+        case .notice, .learning, .update: return .info
         }
     }
 }
@@ -69,7 +86,7 @@ final class OverlayState {
 @MainActor
 enum OverlayLayout {
     /// Assez grand pour l'état d'erreur, l'ombre et le rebond d'apparition : le panneau ne bouge plus.
-    static let panelSize = CGSize(width: 560, height: 84)
+    static let panelSize = CGSize(width: 560, height: 156)
     static let pillHeight: CGFloat = 30
     /// Espace transparent sous la pilule, pour l'ombre.
     static let bottomMargin: CGFloat = 10
@@ -98,6 +115,23 @@ enum OverlayLayout {
             width: panelSize.width,
             height: panelSize.height
         )
+    }
+
+    /// Panneau dont la bulle a son bas-centre en ce point.
+    static func panelFrame(bottomCenter: CGPoint) -> NSRect {
+        NSRect(x: (bottomCenter.x - panelSize.width / 2).rounded(), y: (bottomCenter.y - bottomMargin).rounded(),
+               width: panelSize.width, height: panelSize.height)
+    }
+
+    /// Taille maximale de ce que montre la bulle dans ce mode, pour la garder à l'écran et hors du champ.
+    static func contentSize(for mode: OverlayMode, hasReadyText: Bool) -> CGSize {
+        switch mode {
+        case .listening, .finishing: return CGSize(width: spectrumPillWidth, height: pillHeight)
+        case .handsFree: return CGSize(width: handsFreeWidth, height: pillHeight)
+        case .failure: return hasReadyText ? CGSize(width: 420, height: 122) : CGSize(width: 470, height: pillHeight)
+        case .learning: return CGSize(width: 470, height: 112)
+        case .notice, .update: return CGSize(width: 470, height: pillHeight)
+        }
     }
 
     /// Le Dock est-il affiché sur cet écran ? Dans un espace plein écran il est caché, mais visibleFrame
@@ -129,6 +163,8 @@ enum OverlayStyle {
     /// Spectre d'une dictée servie par un relais (OpenAI quand xAI ou DeepSeek ne répondent pas).
     static let relay = Color(red: 0.06, green: 0.72, blue: 0.56)
     static let green = Color(red: 0.3, green: 0.85, blue: 0.45)
+    /// Nouvelle version disponible.
+    static let update = Color(red: 0.38, green: 0.66, blue: 1)
     /// Verre fumé noir : verre « clear » teinté, qui reste noir sur fond clair comme sur fond sombre.
     /// La teinte fait partie du verre : elle suit ses fusions et ses morphoses.
     static let glassTint = Color.black.opacity(0.85)
@@ -286,7 +322,7 @@ struct OverlayCluster: View {
                 .transition(.opacity)
             }
             OverlayPill(mode: mode)
-                .overlayGlass(Capsule(), id: "pill", in: glass)
+                .overlayGlass(RoundedRectangle(cornerRadius: mode.isLearning ? 18 : 15, style: .continuous), id: "pill", in: glass)
         }
         // La mise en page suit les boutons sortis : centrage et zone cliquable couvrent ✕ et ■.
         .frame(width: handsFree ? OverlayLayout.handsFreeWidth : nil)
@@ -326,16 +362,20 @@ struct OverlayPill: View {
                     .id(message)
                     .transition(.opacity)
             case .learning(let message):
+                LearningNoticePill(fallbackMessage: message)
+                    .id(message)
+                    .transition(.opacity)
+            case .update(let message):
                 MessageLine(
-                    symbol: "checkmark.circle.fill",
-                    tint: OverlayStyle.green,
+                    symbol: "arrow.down.circle.fill",
+                    tint: OverlayStyle.update,
                     message: message,
                     countdown: model.coordinator.noticeTimer.countdown,
                     onDismiss: model.coordinator.closeMessage,
-                    actionTitle: String(localized: "Oui"),
-                    action: { model.coordinator.acceptLearning() },
-                    secondaryTitle: String(localized: "Non"),
-                    secondaryAction: { model.coordinator.declineLearning() }
+                    actionTitle: String(localized: "Voir"),
+                    action: { model.coordinator.openUpdateOffer() },
+                    secondaryTitle: String(localized: "Ne plus me rappeler"),
+                    secondaryAction: { model.coordinator.declineUpdateOffer() }
                 )
                 .id(message)
                 .transition(.opacity)
@@ -483,7 +523,7 @@ struct OverlayOrbButton: View {
     }
 }
 
-/// Message d'erreur sur une ligne : action utile, croix au survol et départ automatique.
+/// Le texte récupérable a sa propre carte : titre lisible, explication et actions sur deux lignes.
 struct FailurePill: View {
     @Environment(AppModel.self) private var model
     var message: String
@@ -494,18 +534,13 @@ struct FailurePill: View {
         if coordinator.failureCopied {
             MessageLine(symbol: "checkmark.circle.fill", tint: OverlayStyle.green, message: message, countdown: countdown, onDismiss: coordinator.closeMessage)
         } else if coordinator.failureText != nil {
-            // Le texte n'a pu être écrit nulle part : Copier en évidence, Coller pour le champ de l'app active.
-            MessageLine(
-                symbol: "exclamationmark.circle.fill",
-                tint: OverlayStyle.red,
+            RecoveryMessageCard(
                 message: message,
+                hovered: model.overlay.state.isHovered,
                 countdown: countdown,
                 onDismiss: coordinator.closeMessage,
-                actionTitle: String(localized: "Copier"),
-                action: { coordinator.copyReadyText() },
-                secondaryTitle: String(localized: "Coller"),
-                secondaryAction: { coordinator.pasteReadyText() },
-                emphasizesAction: true
+                onCopy: { coordinator.copyReadyText() },
+                onPaste: { coordinator.pasteReadyText() }
             )
         } else if !coordinator.failureOffersHistory {
             MessageLine(symbol: "exclamationmark.circle.fill", tint: OverlayStyle.red, message: message, countdown: countdown, onDismiss: coordinator.closeMessage)
@@ -514,6 +549,143 @@ struct FailurePill: View {
                 coordinator.dismissFailure()
                 model.open(.history)
             })
+        }
+    }
+}
+
+struct RecoveryMessageCard: View {
+    var message: String
+    var hovered: Bool
+    var countdown: MessageCountdown?
+    var onDismiss: () -> Void
+    var onCopy: () -> Void
+    var onPaste: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "doc.on.clipboard")
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundStyle(Color.orange)
+                    .frame(width: 28, height: 28)
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("Texte prêt à copier")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(.white)
+                    Text(message)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.white.opacity(0.78))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Button(action: onDismiss) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.85))
+                        .frame(width: 26, height: 26)
+                        .background(Circle().fill(.white.opacity(0.12)))
+                }
+                .buttonStyle(.plain)
+                .opacity(hovered ? 1 : 0)
+                .allowsHitTesting(hovered)
+                .accessibilityLabel("Fermer le message")
+            }
+            HStack(spacing: 8) {
+                Spacer()
+                Button(action: onPaste) { Label("Coller", systemImage: "arrow.turn.down.right").padding(.horizontal, 12).frame(height: 30) }
+                    .background(RoundedRectangle(cornerRadius: 8).fill(.white.opacity(0.12)))
+                    .foregroundStyle(.white)
+                Button(action: onCopy) { Label("Copier", systemImage: "doc.on.doc").padding(.horizontal, 12).frame(height: 30) }
+                    .background(RoundedRectangle(cornerRadius: 8).fill(.white))
+                    .foregroundStyle(.black.opacity(0.9))
+            }
+            .buttonStyle(.plain)
+            .font(.system(size: 13, weight: .medium))
+        }
+        .padding(14)
+        .frame(width: 420)
+        .overlay(alignment: .bottom) {
+            TimelineView(.animation(paused: countdown?.isPaused ?? true)) { timeline in
+                GeometryReader { proxy in
+                    Capsule().fill(.white.opacity(0.4))
+                        .frame(width: proxy.size.width * CGFloat(countdown?.fraction(at: timeline.date) ?? 0), height: 2)
+                }
+            }
+            .frame(height: 2)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 4)
+        }
+    }
+}
+
+/// Une confirmation groupée, lisible et indépendante de la ligne des erreurs de dictée.
+struct LearningNoticePill: View {
+    @Environment(AppModel.self) private var model
+    var fallbackMessage: String
+
+    var body: some View {
+        let coordinator = model.coordinator
+        let terms = coordinator.learningOfferedTerms
+        let title = terms.count > 1 ? String(localized: "\(terms.count) ajouts au dictionnaire") : String(localized: "Ajout au dictionnaire")
+        VStack(alignment: .leading, spacing: 9) {
+            HStack(spacing: 8) {
+                Image(systemName: "sparkles").foregroundStyle(.purple)
+                Text(title).font(.system(size: 12, weight: .semibold))
+                Spacer()
+                Button { coordinator.closeMessage() } label: {
+                    Image(systemName: "xmark").font(.system(size: 10, weight: .semibold))
+                        .frame(width: 22, height: 22)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.white.opacity(0.65))
+                .opacity(model.overlay.state.isHovered ? 1 : 0)
+                .allowsHitTesting(model.overlay.state.isHovered)
+                .accessibilityLabel("Fermer le message")
+            }
+            Text(terms.isEmpty ? fallbackMessage : terms.joined(separator: " · "))
+                .font(.system(size: 13, weight: .medium))
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+                .help(terms.joined(separator: "\n"))
+            HStack(spacing: 8) {
+                Text("Appris de tes corrections")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.white.opacity(0.6))
+                Spacer(minLength: 6)
+                Button("Voir") {
+                    if let term = terms.first {
+                        model.setDisplayChoice(\.dictionaryKind, DictionaryKind.classify(term))
+                    }
+                    model.setDisplayChoice(\.dictionaryOriginFilter, .learned)
+                    model.setDisplayChoice(\.dictionaryPeriod, .all)
+                    coordinator.acceptLearning()
+                    model.open(.dictionary)
+                }
+                .buttonStyle(.plain)
+                Button("Annuler l'ajout") { coordinator.declineLearning() }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
+                    .background(Capsule().fill(.white.opacity(0.12)))
+                    .help("Retirer ces ajouts et ne plus les apprendre automatiquement")
+            }
+            .font(.system(size: 11, weight: .medium))
+        }
+        .foregroundStyle(.white.opacity(0.94))
+        .padding(.horizontal, 16)
+        .padding(.top, 10)
+        .padding(.bottom, 14)
+        .frame(width: 460)
+        .overlay(alignment: .bottomLeading) {
+            TimelineView(.animation(paused: coordinator.noticeTimer.countdown?.isPaused ?? true)) { timeline in
+                GeometryReader { proxy in
+                    Capsule().fill(.purple.opacity(0.7))
+                        .frame(width: proxy.size.width * CGFloat(coordinator.noticeTimer.countdown?.fraction(at: timeline.date) ?? 0), height: 2)
+                }
+            }
+            .frame(height: 2)
+            .padding(.horizontal, 18)
+            .padding(.bottom, 5)
         }
     }
 }
@@ -636,6 +808,8 @@ final class OverlayController {
     var displaysPanel = true
     /// Lecture de `isOnActiveSpace`, remplaçable dans les tests faute d'espace plein écran.
     var isOnActiveSpace: @MainActor (NSWindow) -> Bool = { $0.isOnActiveSpace }
+    /// Aperçu demandé depuis Réglages : le message bref s'affiche à la place de ce rôle.
+    var previewRole: OverlayRole?
 
     var isMonitoringMouse: Bool { !monitors.isEmpty }
 
@@ -714,12 +888,10 @@ final class OverlayController {
             replacePanelIfOffActiveSpace()
         }
         if let panel, !panel.isVisible, displaysPanel {
-            let screen = NSScreen.screens.first { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) } ?? NSScreen.main
-            if let screen {
-                let frame = OverlayLayout.panelFrame(screen: screen.frame, visible: screen.visibleFrame, dockShown: Self.dockShown(on: screen))
-                panel.setFrame(frame, display: false)
-            }
+            if let frame = targetFrame(for: state.mode) { panel.setFrame(frame, display: false) }
             panel.orderFrontRegardless()
+        } else {
+            moveToTarget()
         }
         if appearing {
             withAnimation(reduceMotion ? OverlayStyle.fade : OverlayStyle.appear) {
@@ -778,8 +950,8 @@ final class OverlayController {
         if replacePanelIfOffActiveSpace(), let replacement = self.panel {
             panel = replacement
         }
-        if !onScreen, let screen = NSScreen.main {
-            panel.setFrame(OverlayLayout.panelFrame(screen: screen.frame, visible: screen.visibleFrame, dockShown: Self.dockShown(on: screen)), display: false)
+        if !onScreen, let frame = targetFrame(for: state.mode) {
+            panel.setFrame(frame, display: false)
         }
         panel.alphaValue = 1
         panel.orderFrontRegardless()
@@ -814,6 +986,51 @@ final class OverlayController {
         state.forcesReduceMotion || NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
     }
 
+    /// Cadre du panneau pour ce mode : position choisie dans Réglages (sinon au-dessus du Dock, au centre), puis,
+    /// pour les messages, décalage hors de la zone de saisie lue au dernier collage dans l'app au premier plan.
+    func targetFrame(for mode: OverlayMode) -> NSRect? {
+        guard let model else { return nil }
+        let placement = model.settings.overlayPlacement
+        let role = mode.isMessage ? (previewRole ?? mode.role) : mode.role
+        let size = OverlayLayout.contentSize(for: mode, hasReadyText: model.coordinator.failureText != nil)
+        let zone = mode.isMessage && placement.avoidsInput && previewRole == nil
+            ? InputZoneTracker.zone(frontmost: NSWorkspace.shared.frontmostApplication?.processIdentifier) : nil
+        // Écran de la saisie, sinon celui où la bulle est déjà (pas de saut d'écran en cours de dictée), sinon la souris.
+        func screen(containing point: CGPoint) -> NSScreen? { NSScreen.screens.first { $0.frame.contains(point) } }
+        let shown = panel.flatMap { $0.isVisible ? CGPoint(x: $0.frame.midX, y: $0.frame.minY + OverlayLayout.bottomMargin) : nil }
+        let screen = zone.flatMap { screen(containing: CGPoint(x: $0.midX, y: $0.midY)) }
+            ?? shown.flatMap(screen(containing:))
+            ?? screen(containing: NSEvent.mouseLocation) ?? NSScreen.main
+        guard let screen else { return nil }
+        let visible = screen.visibleFrame
+        var bottomCenter: CGPoint
+        if let anchor = placement.anchor(for: role) {
+            bottomCenter = OverlayGeometry.point(for: anchor, visible: visible, contentSize: size)
+        } else {
+            bottomCenter = CGPoint(x: visible.midX,
+                                   y: OverlayLayout.pillBottom(screen: screen.frame, visible: visible, dockShown: Self.dockShown(on: screen)))
+        }
+        if let zone {
+            bottomCenter = OverlayGeometry.avoiding(zone, bottomCenter: bottomCenter, contentSize: size, visible: visible)
+        }
+        return OverlayLayout.panelFrame(bottomCenter: bottomCenter)
+    }
+
+    /// Bulle déjà affichée dont le mode change de place (fin de dictée → alerte) : elle glisse vers sa nouvelle place.
+    func moveToTarget() {
+        guard displaysPanel, wanted, let panel, panel.isVisible, let frame = targetFrame(for: state.mode),
+              abs(frame.minX - panel.frame.minX) > 1 || abs(frame.minY - panel.frame.minY) > 1 else { return }
+        if reduceMotion {
+            panel.setFrame(frame, display: true)
+        } else {
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.22
+                context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                panel.animator().setFrame(frame, display: true)
+            }
+        }
+    }
+
     /// Transaction qui pose un nouveau mode. Bulle qui naît : déjà dans le bon état dès la première
     /// image, sans morphose depuis la dictée précédente. Bulle déjà là : le changement s'anime.
     static func modeTransaction(appearing: Bool, reduceMotion: Bool) -> Transaction {
@@ -827,7 +1044,9 @@ final class OverlayController {
 
     private func applyPhase(appearing: Bool) {
         guard let model,
-              let mode = OverlayMode.resolve(phase: model.coordinator.phase, notice: model.coordinator.notice, confirmsLearning: model.coordinator.noticeConfirmsLearning),
+              let mode = OverlayMode.resolve(phase: model.coordinator.phase, notice: model.coordinator.notice,
+                                             confirmsLearning: model.coordinator.noticeConfirmsLearning,
+                                             offersUpdate: model.coordinator.noticeOffersUpdate),
               mode != state.mode else { return }
         withTransaction(Self.modeTransaction(appearing: appearing, reduceMotion: reduceMotion)) {
             state.mode = mode
@@ -894,6 +1113,7 @@ final class OverlayController {
 
     private func refresh() {
         applyPhase(appearing: !wanted || !state.presented)
+        moveToTarget()
         updateInteractivity()
     }
 
@@ -903,6 +1123,7 @@ final class OverlayController {
             _ = model.coordinator.phase
             _ = model.coordinator.notice
             _ = model.coordinator.noticeConfirmsLearning
+            _ = model.coordinator.noticeOffersUpdate
         } onChange: { [weak self] in
             Task { @MainActor in
                 guard let self else { return }

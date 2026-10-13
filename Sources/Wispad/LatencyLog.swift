@@ -9,6 +9,7 @@ final class LatencyMarks {
     var firstAudio: Int?
     var stream: Int?
     var released: Int?
+    var pasteSent: Int?
     var pasted: Int?
 
     init(pressed: Int?) {
@@ -41,6 +42,7 @@ enum LatencyLog {
             "appui→micro \(span(origin, marks.microphone))",
             "appui→audio \(span(origin, marks.firstAudio))",
             "appui→flux \(span(origin, marks.stream))",
+            "fin→envoi \(span(marks.released, marks.pasteSent))",
             "fin→collé \(span(marks.released, marks.pasted))",
             status
         ].joined(separator: "  ")

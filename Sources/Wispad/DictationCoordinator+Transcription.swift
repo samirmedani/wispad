@@ -6,19 +6,24 @@ import WispadCore
 /// Texte retenu à la fin d'une dictée : flux en direct, enregistrement complet, ou relais.
 extension DictationCoordinator {
     func launchFile(url: URL, speech: SpeechRequest, seconds: Double, run: DictationTraceRecorder, model: AppModel) -> FileLedger {
+        let completion = FileLedger.Completion()
         let task = Task { @MainActor in
+            let attempt: FileAttempt
             if Task.isCancelled {
-                return FileAttempt(text: "", started: Date(), latencyMs: 0, failed: false, called: false)
+                attempt = FileAttempt(text: "", started: Date(), latencyMs: 0, failed: false, called: false)
+            } else {
+                let started = Date()
+                do {
+                    let text = try await model.dependencies.transcribe(url, speech)
+                    attempt = FileAttempt(text: text, started: started, latencyMs: Self.milliseconds(since: started), failed: false, called: true)
+                } catch {
+                    attempt = FileAttempt(text: "", started: started, latencyMs: Self.milliseconds(since: started), failed: true, called: true)
+                }
             }
-            let started = Date()
-            do {
-                let text = try await model.dependencies.transcribe(url, speech)
-                return FileAttempt(text: text, started: started, latencyMs: Self.milliseconds(since: started), failed: false, called: true)
-            } catch {
-                return FileAttempt(text: "", started: started, latencyMs: Self.milliseconds(since: started), failed: true, called: true)
-            }
+            completion.attempt = attempt
+            return attempt
         }
-        return FileLedger(task: task, speech: speech, seconds: seconds, run: run, model: model)
+        return FileLedger(task: task, completion: completion, speech: speech, seconds: seconds, run: run, model: model)
     }
 
     struct FileDecision {
@@ -64,6 +69,21 @@ extension DictationCoordinator {
 
         let streamText = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         if !context.fieldRead { context.apply(await current.field.value) }
+        // Le fichier peut être revenu pendant la finalisation du flux. Le choix est alors déjà connu :
+        // inutile de corriger le flux, puis d'attendre cette correction pour finalement corriger le fichier.
+        if let attempt = ledger.completion.attempt, !attempt.failed,
+           !TranscriptEquivalence.normalize(attempt.text).isEmpty {
+            await ledger.account()
+            selectVerifiedTranscript(attempt, raw: raw, streamText: streamText, streamMs: streamMs, job: job, decision: &decision)
+            if !job.cancelled, model.settings.cleanupEnabled,
+               model.commandSelection(for: decision.raw, context: context) == nil {
+                decision.ledger = claimEarlyCorrection(
+                    for: FranglaisNormalizer.normalize(decision.raw), current: current, model: model
+                )
+                decision.usePrepared = decision.ledger != nil
+            }
+            return decision
+        }
         // Une consigne sur la sélection n'a pas de correction du flux à préparer.
         if model.settings.cleanupEnabled, !job.cancelled, model.commandSelection(for: streamText, context: context) == nil {
             let normalized = FranglaisNormalizer.normalize(streamText)
@@ -108,18 +128,7 @@ extension DictationCoordinator {
         // Un fichier sans aucun mot face à un flux qui en a ne gagne pas : la dictée serait perdue.
         if let attempt, !attempt.failed, !TranscriptEquivalence.normalize(attempt.text).isEmpty {
             await ledger.account()
-            current.run.trace.streamWords = WordCount.count(streamText)
-            current.run.trace.fileWords = WordCount.count(attempt.text)
-            if TranscriptEquivalence.equivalent(streamText, attempt.text) {
-                decision.raw = raw
-                decision.usePrepared = decision.ledger != nil
-                noteChoice(.stream, .equivalent, attempt.latencyMs, streamMs, job.duration, current.run)
-            } else {
-                decision.raw = attempt.text
-                decision.alternative = streamText
-                current.run.trace.divergentWords = TranscriptEquivalence.differingWords(streamText, attempt.text)
-                noteChoice(.file, .diverged, attempt.latencyMs, streamMs, job.duration, current.run)
-            }
+            selectVerifiedTranscript(attempt, raw: raw, streamText: streamText, streamMs: streamMs, job: job, decision: &decision)
             return decision
         }
         if let attempt {
@@ -135,6 +144,25 @@ extension DictationCoordinator {
         decision.usePrepared = decision.ledger != nil
         noteChoice(.stream, .fileTimeout, waited, streamMs, job.duration, current.run)
         return decision
+    }
+
+    private func selectVerifiedTranscript(
+        _ attempt: FileAttempt, raw: String, streamText: String, streamMs: Int,
+        job: FinishJob, decision: inout FileDecision
+    ) {
+        let run = job.capture.run
+        run.trace.streamWords = WordCount.count(streamText)
+        run.trace.fileWords = WordCount.count(attempt.text)
+        if TranscriptEquivalence.equivalent(streamText, attempt.text) {
+            decision.raw = raw
+            decision.usePrepared = decision.ledger != nil
+            noteChoice(.stream, .equivalent, attempt.latencyMs, streamMs, job.duration, run)
+        } else {
+            decision.raw = attempt.text
+            decision.alternative = streamText
+            run.trace.divergentWords = TranscriptEquivalence.differingWords(streamText, attempt.text)
+            noteChoice(.file, .diverged, attempt.latencyMs, streamMs, job.duration, run)
+        }
     }
 
     private enum LaunchedFileResult {
@@ -314,6 +342,8 @@ extension DictationCoordinator {
             language: model.settings.language
         )
         request.tone = model.tone(bundleID: context.bundleID, appName: context.appName)
+        request.dateFormat = model.settings.dateFormat
+        request.numberFormat = model.settings.numberFormat
         return request
     }
 

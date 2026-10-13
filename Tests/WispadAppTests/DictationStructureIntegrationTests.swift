@@ -73,7 +73,7 @@ private final class StructureAppFixture {
         dependencies.restoreOutput = {}
         dependencies.watchCorrections = { _, _, _, _ in }
         dependencies.judgeTerms = { _, _, _ in TermJudgement(kept: []) }
-        dependencies.insert = { [weak self] text, _, allowed in
+        dependencies.insert = { [weak self] text, _, allowed, _ in
             guard allowed() else { return .cancelled }
             self?.insertedTexts.append(text)
             return .inserted

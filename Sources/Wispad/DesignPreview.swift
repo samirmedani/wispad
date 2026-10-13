@@ -107,6 +107,13 @@ enum DesignPreview {
             model.health.record(ServiceHealth.deepSeek, succeeded: false)
             model.health.record(ServiceHealth.deepSeek, succeeded: false)
         }
+        if arguments.contains("--dictionary-phrases") {
+            model.settings.dictionaryKind = .phrase
+            for value in ["Visual Studio Code", "Observatoire des aurores boréales", "Merci pour ton retour. Nous préparerons ensemble la prochaine étape, en prenant le temps de vérifier chaque détail.", String(repeating: "Une expression longue reste entièrement lisible. ", count: 8)] {
+                try? model.store.addTerm(value, origin: .user)
+            }
+            model.reloadDictionary()
+        }
         if arguments.contains("--banner") {
             model.statusBanner = "Ajouté au dictionnaire : Seedance."
         }
@@ -492,8 +499,17 @@ enum DesignPreview {
                 latencyMs: Int.random(in: 300...900, using: &generator)
             ))
         }
-        for term in ["SwiftUI", "RevenueCat", "Seedance", "Grafana", "Kubernetes", "DeepSeek", "xAI", "Supabase", "Next.js", "PostgreSQL", "Terraform", "Figma"] {
-            try store.addTerm(term)
+        // Toutes les origines : à la main, apprises (Jev, modèle de correction) et d'avant le suivi.
+        let jev = DictionaryJudge(kind: .jev, provider: UsageAPI.typesafeJudge.provider, model: JevJudge.model)
+        let deepSeek = DictionaryJudge(kind: .correctionModel, provider: "DeepSeek", model: CleanupModel.deepSeek)
+        let openAI = DictionaryJudge(kind: .correctionModel, provider: "OpenAI", model: CleanupModel.openAIFallback)
+        let terms: [(String, DictionaryOrigin)] = [
+            ("SwiftUI", .user), ("RevenueCat", .user), ("Seedance", .learned(jev)), ("Grafana", .learned(deepSeek)),
+            ("Kubernetes", .unknown), ("DeepSeek", .user), ("xAI", .unknown), ("Supabase", .learned(openAI)),
+            ("Next.js", .unknown), ("PostgreSQL", .learned(jev)), ("Terraform", .user), ("Figma", .unknown)
+        ]
+        for (term, origin) in terms {
+            try store.addTerm(term, origin: origin)
         }
     }
 }

@@ -40,6 +40,10 @@ final class DictationTraceRecorder {
             trace.timings.streamReadyMs = elapsed(to: marks.stream)
             if let released = marks.released {
                 trace.timings.afterReleaseMs = max(0, (marks.pasted ?? KeyboardTap.now()) - released)
+                if let sent = marks.pasteSent {
+                    trace.timings.pasteSentAfterReleaseMs = max(0, sent - released)
+                    if let pasted = marks.pasted { trace.timings.confirmationMs = max(0, pasted - sent) }
+                }
             }
         }
         if model.persist("détail d'une dictée", { try model.store.saveTrace(trace) }) { model.traceRevision += 1 }

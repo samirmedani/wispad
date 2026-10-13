@@ -74,7 +74,7 @@ private final class OfflineFixture {
         deps.muteOutput = { _, _ in }
         deps.restoreOutput = {}
         deps.watchCorrections = { _, _, _, _ in }
-        deps.insert = { [weak self] text, _, _ in
+        deps.insert = { [weak self] text, _, _, _ in
             self?.inserted.append(text)
             return .inserted
         }

@@ -200,7 +200,7 @@ struct CleanupFallbackTests {
     @Test func dictionaryPrimaryFailureHasOwnStage() async {
         let stub = CleanupHTTPStub([.failure, .reply()], content: #"{"garder":["OpenAI"]}"#)
         let result = await Self.judge(stub)
-        #expect(result.kept == ["OpenAI"])
+        #expect(result.kept.map(\.term) == ["OpenAI"])
         #expect(result.usages.last?.fallback == APIFallback(fromAPI: .deepSeekCleanup, stage: .dictionary, reason: .requestFailed))
     }
 
@@ -222,7 +222,7 @@ struct CleanupFallbackTests {
     @Test func dictionarySecondOpinionIsNotJevFallback() async {
         let stub = CleanupHTTPStub([.reply(tokens: false)], content: #"{"garder":["OpenAI"]}"#)
         let result = await Self.judge(stub, speech: Self.speech(jev: true), scores: [0.6])
-        #expect(result.kept == ["OpenAI"])
+        #expect(result.kept.map(\.term) == ["OpenAI"])
         #expect(result.usages.map(\.api) == [.typesafeJudge, .deepSeekCleanup])
         #expect(result.usages.allSatisfy { $0.fallback == nil })
         #expect(result.usages.last?.succeeded == true)
@@ -312,7 +312,7 @@ struct CleanupFallbackTests {
         #expect(result.usages.count == 2)
         #expect(result.usages.map(\.succeeded) == [false, true])
         #expect(result.usages.allSatisfy { $0.fallback == nil })
-        #expect(result.kept == ["OpenAI"])
+        #expect(result.kept.map(\.term) == ["OpenAI"])
     }
 
     @Test func dictionaryTruncationPreservesUsageWhenRelayIsUsed() async throws {
@@ -324,7 +324,7 @@ struct CleanupFallbackTests {
         #expect(failed.tokens == TokenUsage(input: 10, output: 5))
         #expect(try #require(failed.costUSD) > 0)
         #expect(result.usages.last?.fallback == APIFallback(fromAPI: .deepSeekCleanup, stage: .dictionary, reason: .requestFailed))
-        #expect(result.kept == ["OpenAI"])
+        #expect(result.kept.map(\.term) == ["OpenAI"])
     }
 
     @Test func healthProbeMissingTokensHasUnknownCost() async throws {

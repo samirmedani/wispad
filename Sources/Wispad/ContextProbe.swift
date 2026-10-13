@@ -112,6 +112,11 @@ enum ContextProbe {
         guard AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString, &focused) == .success,
               let focused, CFGetTypeID(focused) == AXUIElementGetTypeID() else { return nil }
         let element = focused as! AXUIElement
+        // Le repli système peut appartenir à une autre app si le focus a changé pendant la lecture.
+        if let pid {
+            var owner: pid_t = 0
+            guard AXUIElementGetPid(element, &owner) == .success, owner == pid else { return nil }
+        }
         AXUIElementSetMessagingTimeout(element, 0.5)
         return element
     }
@@ -140,6 +145,69 @@ enum ContextProbe {
     static func hasTextCursor(_ element: AXUIElement) -> Bool {
         var range: CFTypeRef?
         return AXUIElementCopyAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, &range) == .success && range != nil
+    }
+
+    static func selectedRange(_ element: AXUIElement) -> NSRange? {
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, &value) == .success,
+              let value, CFGetTypeID(value) == AXValueGetTypeID() else { return nil }
+        var range = CFRange(location: 0, length: 0)
+        guard AXValueGetValue(value as! AXValue, .cfRange, &range), range.location >= 0, range.length >= 0 else { return nil }
+        return NSRange(location: range.location, length: range.length)
+    }
+
+    /// Où se trouve la saisie à l'écran : champ actif, ligne du curseur et fenêtre active, en coordonnées macOS.
+    /// Quelques lectures d'accessibilité, faites après l'envoi du texte : ni la bulle ni le collage ne les attendent.
+    struct InputLocation: Sendable {
+        var field: CGRect?
+        var caret: CGRect?
+        var window: CGRect?
+        var zone: CGRect? { OverlayGeometry.inputZone(field: field, caret: caret, window: window) }
+    }
+
+    static func inputLocation(pid: pid_t) -> InputLocation {
+        // Écran principal (barre des menus) : origine des coordonnées d'accessibilité. Lisible hors du fil principal.
+        let primaryHeight = CGDisplayBounds(CGMainDisplayID()).height
+        let flip = { (rect: CGRect) in OverlayGeometry.flipped(rect, primaryHeight: primaryHeight) }
+        var location = InputLocation()
+        if let element = focusedElement(pid: pid), !isSecure(element) {
+            location.field = frame(of: element).map(flip)
+            location.caret = caretBounds(element).map(flip)
+        }
+        let app = AXUIElementCreateApplication(pid)
+        AXUIElementSetMessagingTimeout(app, 0.3)
+        var window: CFTypeRef?
+        if AXUIElementCopyAttributeValue(app, kAXFocusedWindowAttribute as CFString, &window) == .success,
+           let window, CFGetTypeID(window) == AXUIElementGetTypeID() {
+            location.window = frame(of: window as! AXUIElement).map(flip)
+        }
+        return location
+    }
+
+    static func frame(of element: AXUIElement) -> CGRect? {
+        var position: CFTypeRef?
+        var size: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, kAXPositionAttribute as CFString, &position) == .success,
+              AXUIElementCopyAttributeValue(element, kAXSizeAttribute as CFString, &size) == .success,
+              let position, let size, CFGetTypeID(position) == AXValueGetTypeID(), CFGetTypeID(size) == AXValueGetTypeID() else { return nil }
+        var origin = CGPoint.zero
+        var extent = CGSize.zero
+        guard AXValueGetValue(position as! AXValue, .cgPoint, &origin), AXValueGetValue(size as! AXValue, .cgSize, &extent),
+              extent.width > 0, extent.height > 0 else { return nil }
+        return CGRect(origin: origin, size: extent)
+    }
+
+    /// Rectangle de la sélection ou du curseur, si l'app sait le donner.
+    static func caretBounds(_ element: AXUIElement) -> CGRect? {
+        guard let range = selectedRange(element) else { return nil }
+        var wanted = CFRange(location: range.location, length: range.length)
+        guard let parameter = AXValueCreate(.cfRange, &wanted) else { return nil }
+        var value: CFTypeRef?
+        guard AXUIElementCopyParameterizedAttributeValue(element, kAXBoundsForRangeParameterizedAttribute as CFString, parameter, &value) == .success,
+              let value, CFGetTypeID(value) == AXValueGetTypeID() else { return nil }
+        var rect = CGRect.zero
+        guard AXValueGetValue(value as! AXValue, .cgRect, &rect), rect.height > 0 else { return nil }
+        return rect
     }
 
     /// Valeur courte du champ, pour constater un collage. Jamais journalisée.

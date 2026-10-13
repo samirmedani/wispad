@@ -105,6 +105,142 @@ enum SettingsPresentation {
     static let toneTitle = String(localized: "Ton selon l'app")
     static let toneSummary = String(localized: "Change le registre (tournures familières, ponctuation), jamais les mots ni le sens.")
 
+    // MARK: Mise en forme
+
+    static let formattingTitle = String(localized: "Mise en forme")
+    static let formattingSummary = String(localized: "Dates, heures, montants et unités écrits par la correction.")
+
+    static let dateOrder = SettingText(
+        title: String(localized: "Dates"),
+        summary: String(localized: "Ordre du jour, du mois et de l'année."),
+        details: [
+            String(localized: "Une date dite s'écrit dans ce format quand le contexte la rend évidente : « le vingt-quatre octobre deux mille vingt-six » devient « 24/10/2026 »."),
+            String(localized: "Sans année dite, la date reste sans année : « le trois novembre » devient « 03/11 ». Un jour seul, comme « mardi », reste en lettres."),
+            String(localized: "Une date déjà écrite en chiffres prend aussi ce format, même si le service de correction l'a écrite autrement.")
+        ]
+    )
+
+    static let dateSeparator = SettingText(
+        title: String(localized: "Séparateur"),
+        summary: String(localized: "Signe entre le jour, le mois et l'année.")
+    )
+
+    static let dateYear = SettingText(
+        title: String(localized: "Année"),
+        summary: String(localized: "Année complète, ou ses deux derniers chiffres seulement.")
+    )
+
+    static let leadingZero = SettingText(
+        title: String(localized: "Zéro initial"),
+        summary: String(localized: "Jour et mois toujours sur deux chiffres."),
+        details: [String(localized: "Activé : « 03/11 ». Désactivé : « 3/11 ».")]
+    )
+
+    static let monthInWords = SettingText(
+        title: String(localized: "Garder les dates en toutes lettres"),
+        summary: String(localized: "Mois en lettres, jour et année en chiffres."),
+        details: [
+            String(localized: "« 24 octobre 2026 » plutôt que « 24/10/2026 », « 3 novembre » plutôt que « 03/11 »."),
+            String(localized: "En anglais, l'ordre choisi décide entre « October 24, 2026 » et « 24 October 2026 ».")
+        ]
+    )
+
+    static let clock = SettingText(
+        title: String(localized: "Heures"),
+        summary: String(localized: "Selon la langue : sur vingt-quatre heures en français, AM/PM en anglais."),
+        details: [
+            String(localized: "L'heure d'un rendez-vous s'écrit dans ce format : « à quatorze heures trente » devient « à 14h30 », ou « à 2:30 PM » sur 12 h."),
+            String(localized: "Une durée reste une durée : « deux heures de route » devient « 2 heures de route »."),
+            String(localized: "Sur 12 h, une heure déjà en chiffres sans matin ni soir (« à 9 h ») reste telle quelle : elle pourrait être l'une ou l'autre.")
+        ]
+    )
+
+    static let timeStyle = SettingText(
+        title: String(localized: "Écriture sur 24 h"),
+        summary: String(localized: "Typographie française par défaut ; l'anglais écrit toujours avec deux-points.")
+    )
+
+    static let datePreview = SettingText(
+        title: String(localized: "Aperçu"),
+        summary: String(localized: "Une date, une date sans année et une heure, telles qu'elles seront écrites.")
+    )
+
+    static let amounts = SettingText(
+        title: String(localized: "Montants et unités"),
+        summary: String(localized: "Avec leur symbole, ou en toutes lettres."),
+        details: [
+            String(localized: "Symboles : « vingt-cinq euros » devient « 25 € », « cinq kilomètres » devient « 5 km », « quinze pour cent » devient « 15 % »."),
+            String(localized: "En toutes lettres : « 25 euros », « 5 kilomètres ». Le pourcentage garde toujours « % »."),
+            String(localized: "Un montant ou une mesure déjà en chiffres prend aussi ce format. Années, codes postaux, références et numéros de version ne changent jamais."),
+            String(localized: "Les numéros de téléphone français s'écrivent par paires : « 06 12 34 56 78 », « +33 6 12 34 56 78 ».")
+        ]
+    )
+
+    static let thousands = SettingText(
+        title: String(localized: "Milliers"),
+        summary: String(localized: "Séparateur des grands nombres."),
+        details: [
+            String(localized: "Selon la langue : « 12 500 » en français, avec une espace qui ne coupe jamais le nombre en fin de ligne ; « 12,500 » en anglais."),
+            String(localized: "Les fiches techniques gardent leurs chiffres collés : « 6000 MHz », « 1024 Go ».")
+        ]
+    )
+
+    static let numberPreview = SettingText(
+        title: String(localized: "Aperçu des nombres"),
+        summary: String(localized: "Un montant, un prix, un pourcentage et une distance, tels qu'ils seront écrits.")
+    )
+
+    static func label(_ thousands: DictationNumberFormat.Thousands) -> String {
+        switch thousands {
+        case .byLanguage: return String(localized: "Selon la langue")
+        case .space: return String(localized: "Espace")
+        case .none: return String(localized: "Aucun")
+        }
+    }
+
+    /// Exemples rendus par le format lui-même, comme pour les dates.
+    static func preview(_ format: DictationNumberFormat, language: DictationLanguage) -> [String] {
+        let french = format.samples(english: false).joined(separator: " · ")
+        let english = format.samples(english: true).joined(separator: " · ")
+        switch language {
+        case .french: return [french]
+        case .english: return [english]
+        case .auto: return [String(localized: "Français : \(french)"), String(localized: "Anglais : \(english)")]
+        }
+    }
+
+    static func label(_ order: DictationDateFormat.Order) -> String {
+        switch order {
+        case .dayMonthYear: return String(localized: "JJ/MM/AAAA")
+        case .monthDayYear: return String(localized: "MM/JJ/AAAA")
+        case .iso: return String(localized: "AAAA-MM-JJ (ISO)")
+        }
+    }
+
+    static func label(_ separator: DictationDateFormat.Separator) -> String {
+        separator == .space ? String(localized: "Espace") : separator.character
+    }
+
+    static func label(_ clock: DictationDateFormat.Clock) -> String {
+        switch clock {
+        case .byLanguage: return String(localized: "Selon la langue")
+        case .twentyFourHour: return String(localized: "24 h")
+        case .twelveHour: return String(localized: "12 h (AM/PM)")
+        }
+    }
+
+    /// Exemples rendus par le format lui-même : une ligne pour la langue de dictée, deux en automatique si elles
+    /// diffèrent (heures sur 12 h en anglais, noms des mois).
+    static func preview(_ format: DictationDateFormat, language: DictationLanguage) -> [String] {
+        let french = format.samples(english: false).joined(separator: " · ")
+        let english = format.samples(english: true).joined(separator: " · ")
+        switch language {
+        case .french: return [french]
+        case .english: return [english]
+        case .auto: return french == english ? [french] : [String(localized: "Français : \(french)"), String(localized: "Anglais : \(english)")]
+        }
+    }
+
     // MARK: Confidentialité
 
     static let sentData = SettingText(
@@ -168,6 +304,26 @@ enum SettingsPresentation {
         details: [
             String(localized: "Rapport JSON : autorisations, état du raccourci et de la bulle, durées, API utilisées et résultats des 50 dernières tentatives."),
             String(localized: "Aucun texte dicté, audio, contexte d'application ni clé. Rien n'est envoyé automatiquement.")
+        ]
+    )
+
+    // MARK: Aide et retours
+
+    static let helpTitle = String(localized: "Aide et retours")
+    static let helpSummary = String(localized: "Sur GitHub : seules les versions de Wispad et de macOS sont préremplies.")
+
+    // MARK: Bulle et messages
+
+    static let overlayTitle = String(localized: "Bulle et messages")
+    static let overlaySummary = String(localized: "Où la bulle de dictée et ses messages apparaissent à l'écran.")
+
+    static let avoidInput = SettingText(
+        title: String(localized: "Ne jamais couvrir le champ de saisie"),
+        summary: String(localized: "Les messages se placent au-dessus du champ où tu écris."),
+        details: [
+            String(localized: "Après chaque collage, Wispad repère le champ actif ; pour les apps qui ne le montrent pas (Codex, apps Electron), le bas de la fenêtre."),
+            String(localized: "Ce repérage a lieu après l'envoi du texte : il ne retarde ni la bulle ni le collage."),
+            String(localized: "La bulle de dictée garde sa place ; seuls les messages se décalent.")
         ]
     )
 }

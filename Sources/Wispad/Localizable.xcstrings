@@ -1,6 +1,16 @@
 {
   "sourceLanguage" : "fr",
   "strings" : {
+    "Collage non confirmé : le texte est prêt" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paste unconfirmed: your text is ready"
+          }
+        }
+      }
+    },
     " · fichier %@" : {
       "localizations" : {
         "en" : {
@@ -31,6 +41,316 @@
         }
       }
     },
+    "Wispad %@ est disponible" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wispad %@ is available"
+          }
+        }
+      }
+    },
+    "Mettre à jour" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update"
+          }
+        }
+      }
+    },
+    "Voir les notes de version" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "See release notes"
+          }
+        }
+      }
+    },
+    "Voir" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View"
+          }
+        }
+      }
+    },
+    "Ne plus me rappeler" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Don't remind me"
+          }
+        }
+      }
+    },
+    "Wispad %@ est installé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wispad %@ is installed"
+          }
+        }
+      }
+    },
+    "Tu utilises la version %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You're using version %@."
+          }
+        }
+      }
+    },
+    "Notes de version" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Release notes"
+          }
+        }
+      }
+    },
+    "Pas de notes pour cette version." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No notes for this version."
+          }
+        }
+      }
+    },
+    "Voir sur GitHub" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View on GitHub"
+          }
+        }
+      }
+    },
+    "Ouvrir la page de la release" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open the release page"
+          }
+        }
+      }
+    },
+    "Téléchargement…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Downloading…"
+          }
+        }
+      }
+    },
+    "Téléchargement… %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Downloading… %@"
+          }
+        }
+      }
+    },
+    "Vérification de la signature…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checking the signature…"
+          }
+        }
+      }
+    },
+    "Prête : installation dès la fin de la dictée en cours." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ready: it installs as soon as the current dictation ends."
+          }
+        }
+      }
+    },
+    "Installation…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installing…"
+          }
+        }
+      }
+    },
+    "Relance de Wispad…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relaunching Wispad…"
+          }
+        }
+      }
+    },
+    "Après la dictée…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "After the dictation…"
+          }
+        }
+      }
+    },
+    "Relance…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relaunching…"
+          }
+        }
+      }
+    },
+    "Échec de la mise à jour" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update failed"
+          }
+        }
+      }
+    },
+    "Le téléchargement a échoué. Vérifie ta connexion, puis réessaie." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The download failed. Check your connection, then try again."
+          }
+        }
+      }
+    },
+    "Le fichier téléchargé est incomplet ou modifié : rien n'a été installé." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The downloaded file is incomplete or altered: nothing was installed."
+          }
+        }
+      }
+    },
+    "Le disque de la mise à jour n'a pas pu être ouvert : rien n'a été installé." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The update disk image couldn't be opened: nothing was installed."
+          }
+        }
+      }
+    },
+    "Wispad est introuvable dans le disque de la mise à jour : rien n'a été installé." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wispad wasn't found in the update disk image: nothing was installed."
+          }
+        }
+      }
+    },
+    "Cette version n'est pas plus récente que la tienne : rien n'a été installé." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This version isn't newer than yours: nothing was installed."
+          }
+        }
+      }
+    },
+    "La signature de cette version n'est pas celle de Wispad : rien n'a été installé." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This version isn't signed by Wispad's developer: nothing was installed."
+          }
+        }
+      }
+    },
+    "La copie de la nouvelle version a échoué : rien n'a été remplacé." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copying the new version failed: nothing was replaced."
+          }
+        }
+      }
+    },
+    "Le remplacement de l'app a échoué : ta version actuelle reste en place." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Replacing the app failed: your current version stays in place."
+          }
+        }
+      }
+    },
+    "Wispad est à jour mais n'a pas pu se relancer : quitte-le, puis rouvre-le." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wispad is up to date but couldn't relaunch: quit it, then open it again."
+          }
+        }
+      }
+    },
+    "Wispad ne peut pas se remplacer là où il est installé : la nouvelle version se télécharge depuis la page de la release." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wispad can't replace itself where it's installed: download the new version from the release page."
+          }
+        }
+      }
+    },
+    "Cette version s'installe depuis la page de la release." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This version installs from the release page."
+          }
+        }
+      }
+    },
     "À la fin de la dictée, l'enregistrement complet est transcrit une seconde fois et comparé au texte reçu en direct." : {
       "localizations" : {
         "en" : {
@@ -51,6 +371,36 @@
         }
       }
     },
+    "Ajouté le %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Added on %@"
+          }
+        }
+      }
+    },
+    "Ajouté par toi" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Added by you"
+          }
+        }
+      }
+    },
+    "Ajouté par toi le %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Added by you on %@"
+          }
+        }
+      }
+    },
     "Ajoute une clé DeepSeek pour une correction moins chère." : {
       "localizations" : {
         "en" : {
@@ -61,12 +411,52 @@
         }
       }
     },
+    "Ajoutés par moi" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Added by me"
+          }
+        }
+      }
+    },
     "Apprentissage" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Learning"
+          }
+        }
+      }
+    },
+    "Appris automatiquement" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Learned automatically"
+          }
+        }
+      }
+    },
+    "Appris automatiquement le %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Learned automatically on %@"
+          }
+        }
+      }
+    },
+    "Appris automatiquement, juge : %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Learned automatically, judge: %@"
           }
         }
       }
@@ -91,12 +481,52 @@
         }
       }
     },
+    "Aucun mot ajouté par toi pour l'instant." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No words added by you yet."
+          }
+        }
+      }
+    },
+    "Aucun mot appris de tes corrections pour l'instant." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No words learned from your corrections yet."
+          }
+        }
+      }
+    },
     "Aucun texte dicté, audio, contexte d'application ni clé. Rien n'est envoyé automatiquement." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "No dictated text, audio, app context or key. Nothing is sent automatically."
+          }
+        }
+      }
+    },
+    "Avant le suivi" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Before tracking"
+          }
+        }
+      }
+    },
+    "Avant le suivi : origine inconnue" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Before tracking: origin unknown"
           }
         }
       }
@@ -247,6 +677,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A local file to understand a problem, with nothing you dictated."
+          }
+        }
+      }
+    },
+    "Gardé par toi le %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kept by you on %@"
+          }
+        }
+      }
+    },
+    "Juge : Jev (fournisseur %@, modèle %@)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Judge: Jev (provider %1$@, model %2$@)"
+          }
+        }
+      }
+    },
+    "Juge : modèle de correction (fournisseur %@, modèle %@)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Judge: correction model (provider %1$@, model %2$@)"
           }
         }
       }
@@ -497,6 +957,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tone by app"
+          }
+        }
+      }
+    },
+    "Tous" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All"
           }
         }
       }
@@ -6737,6 +7207,1250 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "The microphone didn't start: try again"
+          }
+        }
+      }
+    },
+    "Aide et retours" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Help and feedback"
+          }
+        }
+      }
+    },
+    "Sur GitHub : seules les versions de Wispad et de macOS sont préremplies." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On GitHub: only your Wispad and macOS versions are prefilled."
+          }
+        }
+      }
+    },
+    "Signaler un problème" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report a problem"
+          }
+        }
+      }
+    },
+    "Proposer une idée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suggest an idea"
+          }
+        }
+      }
+    },
+    "Poser une question" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ask a question"
+          }
+        }
+      }
+    },
+    "Aide" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Help"
+          }
+        }
+      }
+    },
+    "Mise en forme" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Formatting"
+          }
+        }
+      }
+    },
+    "Dates" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dates"
+          }
+        }
+      }
+    },
+    "Ordre du jour, du mois et de l'année." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Order of the day, the month and the year."
+          }
+        }
+      }
+    },
+    "Une date dite s'écrit dans ce format quand le contexte la rend évidente : « le vingt-quatre octobre deux mille vingt-six » devient « 24/10/2026 »." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A spoken date is written in this format when the context makes it obvious: “October twenty-fourth twenty twenty-six” becomes “24/10/2026”."
+          }
+        }
+      }
+    },
+    "Sans année dite, la date reste sans année : « le trois novembre » devient « 03/11 ». Un jour seul, comme « mardi », reste en lettres." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Without a spoken year, the date stays without a year: “November third” becomes “03/11”. A weekday alone, like “Tuesday”, stays in words."
+          }
+        }
+      }
+    },
+    "Une date déjà écrite en chiffres prend aussi ce format, même si le service de correction l'a écrite autrement." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A date already written in digits also takes this format, even if the correction service wrote it differently."
+          }
+        }
+      }
+    },
+    "Séparateur" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Separator"
+          }
+        }
+      }
+    },
+    "Signe entre le jour, le mois et l'année." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sign between the day, the month and the year."
+          }
+        }
+      }
+    },
+    "Année" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Year"
+          }
+        }
+      }
+    },
+    "Année complète, ou ses deux derniers chiffres seulement." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Full year, or only its last two digits."
+          }
+        }
+      }
+    },
+    "Zéro initial" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leading zero"
+          }
+        }
+      }
+    },
+    "Jour et mois toujours sur deux chiffres." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Day and month always written with two digits."
+          }
+        }
+      }
+    },
+    "Activé : « 03/11 ». Désactivé : « 3/11 »." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On: “03/11”. Off: “3/11”."
+          }
+        }
+      }
+    },
+    "Garder les dates en toutes lettres" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep dates in words"
+          }
+        }
+      }
+    },
+    "Mois en lettres, jour et année en chiffres." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Month in words, day and year in digits."
+          }
+        }
+      }
+    },
+    "« 24 octobre 2026 » plutôt que « 24/10/2026 », « 3 novembre » plutôt que « 03/11 »." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“24 October 2026” rather than “24/10/2026”, “3 November” rather than “03/11”."
+          }
+        }
+      }
+    },
+    "En anglais, l'ordre choisi décide entre « October 24, 2026 » et « 24 October 2026 »." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In English, the chosen order decides between “October 24, 2026” and “24 October 2026”."
+          }
+        }
+      }
+    },
+    "Heures" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clock"
+          }
+        }
+      }
+    },
+    "Selon la langue : sur vingt-quatre heures en français, AM/PM en anglais." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "By language: twenty-four-hour clock in French, AM/PM in English."
+          }
+        }
+      }
+    },
+    "Une durée reste une durée : « deux heures de route » devient « 2 heures de route »." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A duration stays a duration: “two hours of driving” becomes “2 hours of driving”."
+          }
+        }
+      }
+    },
+    "Sur 12 h, une heure déjà en chiffres sans matin ni soir (« à 9 h ») reste telle quelle : elle pourrait être l'une ou l'autre." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On a 12-hour clock, a time already in digits with no morning or evening (“at 9:00”) stays as it is: it could be either."
+          }
+        }
+      }
+    },
+    "Écriture sur 24 h" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "24-hour style"
+          }
+        }
+      }
+    },
+    "Typographie française par défaut ; l'anglais écrit toujours avec deux-points." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "French typography by default; English always uses a colon."
+          }
+        }
+      }
+    },
+    "Aperçu" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preview"
+          }
+        }
+      }
+    },
+    "Une date, une date sans année et une heure, telles qu'elles seront écrites." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A date, a date without a year and a time, as they will be written."
+          }
+        }
+      }
+    },
+    "JJ/MM/AAAA" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DD/MM/YYYY"
+          }
+        }
+      }
+    },
+    "MM/JJ/AAAA" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MM/DD/YYYY"
+          }
+        }
+      }
+    },
+    "AAAA-MM-JJ (ISO)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YYYY-MM-DD (ISO)"
+          }
+        }
+      }
+    },
+    "Espace" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Space"
+          }
+        }
+      }
+    },
+    "Selon la langue" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "By language"
+          }
+        }
+      }
+    },
+    "24 h" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "24-hour"
+          }
+        }
+      }
+    },
+    "12 h (AM/PM)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "12-hour (AM/PM)"
+          }
+        }
+      }
+    },
+    "Français : %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "French: %@"
+          }
+        }
+      }
+    },
+    "Anglais : %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "English: %@"
+          }
+        }
+      }
+    },
+    "4 chiffres" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "4 digits"
+          }
+        }
+      }
+    },
+    "2 chiffres" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "2 digits"
+          }
+        }
+      }
+    },
+    "%@, %lld mots" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, %2$lld words"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$lld mots"
+          }
+        }
+      }
+    },
+    "%lld sur %lld mots" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld of %2$lld words"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld sur %2$lld mots"
+          }
+        }
+      }
+    },
+    "7 derniers jours" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last 7 days"
+          }
+        }
+      }
+    },
+    "30 derniers jours" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last 30 days"
+          }
+        }
+      }
+    },
+    "Afficher tous les mots" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show all words"
+          }
+        }
+      }
+    },
+    "Ajouté le" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Added on"
+          }
+        }
+      }
+    },
+    "Ajoute un nom ou un mot que tu utilises souvent." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a name or a word you use often."
+          }
+        }
+      }
+    },
+    "Aucun mot ne correspond à ces filtres." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No words match these filters."
+          }
+        }
+      }
+    },
+    "Aucun mot sans origine enregistrée." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No words with an unknown origin."
+          }
+        }
+      }
+    },
+    "Ces mots aident ton fournisseur à mieux te comprendre." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "These words help your provider understand you better."
+          }
+        }
+      }
+    },
+    "Date d'ajout" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Date added"
+          }
+        }
+      }
+    },
+    "Filtrer par date d'ajout" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filter by date added"
+          }
+        }
+      }
+    },
+    "L'origine de ces anciens mots n'a pas été enregistrée." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The origin of these older words was not recorded."
+          }
+        }
+      }
+    },
+    "Mot" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Word"
+          }
+        }
+      }
+    },
+    "Origine" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Origin"
+          }
+        }
+      }
+    },
+    "Par toi" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "By you"
+          }
+        }
+      }
+    },
+    "Rechercher un mot…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search words…"
+          }
+        }
+      }
+    },
+    "Réinitialiser les filtres" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reset filters"
+          }
+        }
+      }
+    },
+    "Toute période" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Any time"
+          }
+        }
+      }
+    },
+    "%@, %lld entrées" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, %2$lld entries"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$lld entrées"
+          }
+        }
+      }
+    },
+    "%lld ajouts au dictionnaire" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld dictionary additions"
+          }
+        }
+      }
+    },
+    "%lld sur %lld entrées" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld of %2$lld entries"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld sur %2$lld entrées"
+          }
+        }
+      }
+    },
+    "Ajout au dictionnaire" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Added to your dictionary"
+          }
+        }
+      }
+    },
+    "Ajoute les termes que tu veux mieux faire reconnaître." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add terms you want recognized more accurately."
+          }
+        }
+      }
+    },
+    "Ajouter une expression ou une phrase…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a phrase or a sentence…"
+          }
+        }
+      }
+    },
+    "Annuler l'ajout" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Undo addition"
+          }
+        }
+      }
+    },
+    "Appris de tes corrections" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Learned from your corrections"
+          }
+        }
+      }
+    },
+    "Aucun mot pour l’instant" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No words yet"
+          }
+        }
+      }
+    },
+    "Aucune entrée ne correspond à ces filtres." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No entries match these filters."
+          }
+        }
+      }
+    },
+    "Aucune expression pour l’instant" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No phrases yet"
+          }
+        }
+      }
+    },
+    "Ces termes aident ton fournisseur à mieux te comprendre." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "These terms help your provider understand you better."
+          }
+        }
+      }
+    },
+    "Expression ou phrase à ajouter" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Phrase or sentence to add"
+          }
+        }
+      }
+    },
+    "Expressions et phrases (%lld)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Phrases and sentences (%lld)"
+          }
+        }
+      }
+    },
+    "Mots (%lld)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Words (%lld)"
+          }
+        }
+      }
+    },
+    "Rechercher une expression…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search phrases…"
+          }
+        }
+      }
+    },
+    "Retirer ces ajouts et ne plus les apprendre automatiquement" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove these additions and stop learning them automatically"
+          }
+        }
+      }
+    },
+    "Supprimer cette expression" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete this phrase"
+          }
+        }
+      }
+    },
+    "Type d'entrée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entry type"
+          }
+        }
+      }
+    },
+    "Expression" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Expression"
+          }
+        }
+      }
+    },
+    "Tri croissant" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ascending order"
+          }
+        }
+      }
+    },
+    "Tri décroissant" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descending order"
+          }
+        }
+      }
+    },
+    "Non trié" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not sorted"
+          }
+        }
+      }
+    },
+    "Cliquer pour trier, puis inverser l’ordre" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Click to sort, then reverse the order"
+          }
+        }
+      }
+    },
+    "La bulle de dictée apparaîtra ici" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The dictation bubble will appear here"
+          }
+        }
+      }
+    },
+    "Les alertes de collage apparaîtront ici" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paste alerts will appear here"
+          }
+        }
+      }
+    },
+    "Les messages apparaîtront ici" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Messages will appear here"
+          }
+        }
+      }
+    },
+    "Bulle et messages" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bubble and messages"
+          }
+        }
+      }
+    },
+    "Où la bulle de dictée et ses messages apparaissent à l'écran." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Where the dictation bubble and its messages appear on screen."
+          }
+        }
+      }
+    },
+    "Ne jamais couvrir le champ de saisie" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Never cover the text field"
+          }
+        }
+      }
+    },
+    "Les messages se placent au-dessus du champ où tu écris." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Messages move above the field you're typing in."
+          }
+        }
+      }
+    },
+    "Après chaque collage, Wispad repère le champ actif ; pour les apps qui ne le montrent pas (Codex, apps Electron), le bas de la fenêtre." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "After each paste, Wispad locates the active field; for apps that don't expose it (Codex, Electron apps), the bottom of the window."
+          }
+        }
+      }
+    },
+    "Ce repérage a lieu après l'envoi du texte : il ne retarde ni la bulle ni le collage." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This happens after the text is sent: it delays neither the bubble nor the paste."
+          }
+        }
+      }
+    },
+    "La bulle de dictée garde sa place ; seuls les messages se décalent." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The dictation bubble keeps its place; only messages move."
+          }
+        }
+      }
+    },
+    "Dictée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dictation"
+          }
+        }
+      }
+    },
+    "Alertes de collage" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paste alerts"
+          }
+        }
+      }
+    },
+    "Messages" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Messages"
+          }
+        }
+      }
+    },
+    "Position à l'écran" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Position on screen"
+          }
+        }
+      }
+    },
+    "Fais glisser chaque bulle : elle apparaîtra à cet endroit. Double-clic : place par défaut." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drag each bubble: it will appear there. Double-click: default place."
+          }
+        }
+      }
+    },
+    "Aperçu à l'écran" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preview on screen"
+          }
+        }
+      }
+    },
+    "Par défaut" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Default"
+          }
+        }
+      }
+    },
+    "Tout réinitialiser" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reset all"
+          }
+        }
+      }
+    },
+    "Position personnalisée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Custom position"
+          }
+        }
+      }
+    },
+    "Place par défaut" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Default place"
+          }
+        }
+      }
+    },
+    "Montants et unités" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Amounts and units"
+          }
+        }
+      }
+    },
+    "Avec leur symbole, ou en toutes lettres." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "With their symbol, or spelled out."
+          }
+        }
+      }
+    },
+    "Symboles : « vingt-cinq euros » devient « 25 € », « cinq kilomètres » devient « 5 km », « quinze pour cent » devient « 15 % »." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Symbols: “twenty-five euros” becomes “€25”, “five kilometers” becomes “5 km”, “fifteen percent” becomes “15%”."
+          }
+        }
+      }
+    },
+    "En toutes lettres : « 25 euros », « 5 kilomètres ». Le pourcentage garde toujours « % »." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spelled out: “25 euros”, “5 kilometers”. Percentages always keep “%”."
+          }
+        }
+      }
+    },
+    "Un montant ou une mesure déjà en chiffres prend aussi ce format. Années, codes postaux, références et numéros de version ne changent jamais." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An amount or a measurement already in digits takes this format too. Years, zip codes, references and version numbers never change."
+          }
+        }
+      }
+    },
+    "Les numéros de téléphone français s'écrivent par paires : « 06 12 34 56 78 », « +33 6 12 34 56 78 »." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "French phone numbers are written in pairs: “06 12 34 56 78”, “+33 6 12 34 56 78”."
+          }
+        }
+      }
+    },
+    "Milliers" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thousands"
+          }
+        }
+      }
+    },
+    "Séparateur des grands nombres." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Separator for large numbers."
+          }
+        }
+      }
+    },
+    "Selon la langue : « 12 500 » en français, avec une espace qui ne coupe jamais le nombre en fin de ligne ; « 12,500 » en anglais." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "By language: “12 500” in French, with a space that never breaks the number at the end of a line; “12,500” in English."
+          }
+        }
+      }
+    },
+    "Les fiches techniques gardent leurs chiffres collés : « 6000 MHz », « 1024 Go »." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Technical specs keep their digits together: “6000 MHz”, “1024 GB”."
+          }
+        }
+      }
+    },
+    "Aperçu des nombres" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Number preview"
+          }
+        }
+      }
+    },
+    "Un montant, un prix, un pourcentage et une distance, tels qu'ils seront écrits." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An amount, a price, a percentage and a distance, as they will be written."
+          }
+        }
+      }
+    },
+    "Aucun" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "None"
+          }
+        }
+      }
+    },
+    "Symboles" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Symbols"
+          }
+        }
+      }
+    },
+    "En lettres" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spelled out"
+          }
+        }
+      }
+    },
+    "Dates, heures, montants et unités écrits par la correction." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dates, times, amounts and units written by the cleanup."
+          }
+        }
+      }
+    },
+    "L'heure d'un rendez-vous s'écrit dans ce format : « à quatorze heures trente » devient « à 14h30 », ou « à 2:30 PM » sur 12 h." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An appointment time is written in this format: “at two thirty in the afternoon” becomes “at 14h30”, or “at 2:30 PM” in 12-hour time."
           }
         }
       }

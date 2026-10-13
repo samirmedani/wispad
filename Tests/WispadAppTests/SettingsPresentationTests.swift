@@ -19,6 +19,14 @@ struct SettingsPresentationTests {
             SettingsPresentation.retention, SettingsPresentation.learning(hasTypeSafeKey: true),
             SettingsPresentation.learning(hasTypeSafeKey: false), SettingsPresentation.mute,
             SettingsPresentation.muteMode, SettingsPresentation.diagnostics
+        ] + formattingRows
+    }
+
+    private var formattingRows: [SettingText] {
+        [
+            SettingsPresentation.dateOrder, SettingsPresentation.dateSeparator, SettingsPresentation.dateYear,
+            SettingsPresentation.leadingZero, SettingsPresentation.monthInWords, SettingsPresentation.clock,
+            SettingsPresentation.timeStyle, SettingsPresentation.datePreview
         ]
     }
 
@@ -38,6 +46,10 @@ struct SettingsPresentationTests {
             #expect(!row.details.contains(summary), "\(summary)")
         }
         #expect(SettingsPresentation.toneSummary.count <= 90)
+        // Aide et retours : une seule ligne d'explication, sous le titre de la section.
+        #expect(SettingsPresentation.helpSummary.count <= 90)
+        #expect(SettingsPresentation.helpSummary.rangeOfCharacter(from: .decimalDigits) == nil)
+        #expect(SettingsPresentation.formattingSummary.count <= 90)
     }
 
     /// Aucune phrase n'est répétée d'un réglage à l'autre.
@@ -49,7 +61,7 @@ struct SettingsPresentationTests {
             SettingsPresentation.sentData, SettingsPresentation.windowContext, SettingsPresentation.retention,
             SettingsPresentation.learning(hasTypeSafeKey: false), SettingsPresentation.mute,
             SettingsPresentation.muteMode, SettingsPresentation.diagnostics
-        ]
+        ] + formattingRows
         let sentences = unique.flatMap { [$0.summary].compactMap { $0 } + $0.details }
         #expect(Set(sentences).count == sentences.count)
     }
@@ -115,6 +127,27 @@ struct SettingsPresentationTests {
         #expect(SettingsPresentation.pasteLast.details.contains("Sans champ où écrire, le texte est copié et la bulle propose Copier."))
     }
 
+    /// Mise en forme : l'aperçu est rendu par le format lui-même, une ligne par langue de dictée (deux en automatique,
+    /// seulement si elles diffèrent) ; ce que la correction fait et ne fait pas reste dans les détails.
+    @Test func formattingPreviewFollowsTheFormatAndTheLanguage() {
+        let format = DictationDateFormat()
+        #expect(SettingsPresentation.preview(format, language: .french) == ["24/10/2026 · 03/11 · 14 h 30"])
+        #expect(SettingsPresentation.preview(format, language: .english) == ["24/10/2026 · 03/11 · 2:30 PM"])
+        #expect(SettingsPresentation.preview(format, language: .auto)
+            == ["Français : 24/10/2026 · 03/11 · 14 h 30", "Anglais : 24/10/2026 · 03/11 · 2:30 PM"])
+        let iso = DictationDateFormat(order: .iso, clock: .twentyFourHour, timeStyle: .colon)
+        #expect(SettingsPresentation.preview(iso, language: .auto) == ["2026-10-24 · 11-03 · 14:30"])
+        #expect(SettingsPresentation.preview(DictationDateFormat(monthInWords: true), language: .french)
+            == ["24 octobre 2026 · 3 novembre · 14 h 30"])
+        #expect(SettingsPresentation.label(DictationDateFormat.Order.dayMonthYear) == "JJ/MM/AAAA")
+        #expect(SettingsPresentation.label(DictationDateFormat.Order.iso) == "AAAA-MM-JJ (ISO)")
+        #expect(SettingsPresentation.label(DictationDateFormat.Separator.space) == "Espace")
+        #expect(SettingsPresentation.label(DictationDateFormat.Separator.dot) == ".")
+        #expect(SettingsPresentation.label(DictationDateFormat.Clock.byLanguage) == "Selon la langue")
+        #expect(SettingsPresentation.dateOrder.details.contains { $0.contains("« le trois novembre » devient « 03/11 »") })
+        #expect(SettingsPresentation.clock.details.contains("Une durée reste une durée : « deux heures de route » devient « 2 heures de route »."))
+    }
+
     /// La nouvelle présentation ne change aucune valeur par défaut.
     @Test func defaultsAreUnchanged() {
         let settings = AppSettings()
@@ -127,5 +160,10 @@ struct SettingsPresentationTests {
         #expect(settings.retention == .temporary)
         #expect(settings.muteWhileDictating)
         #expect(settings.muteMode == .speakersOnly)
+        #expect(settings.dateFormat == DictationDateFormat(timeStyle: .compact))
+        #expect(settings.dateFormat.order == .dayMonthYear)
+        #expect(settings.dateFormat.clock == .byLanguage)
+        #expect(settings.dateFormat.timeStyle == .compact)
+        #expect(!settings.dateFormat.monthInWords)
     }
 }
