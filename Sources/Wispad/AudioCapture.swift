@@ -30,6 +30,7 @@ final class AudioCapture: @unchecked Sendable {
     private var analyzer = SpectrumAnalyzer()
     private let inputChoice = OSAllocatedUnfairLock<String?>(initialState: nil)
     private let pcmSink = OSAllocatedUnfairLock<(@Sendable (Data) -> Void)?>(initialState: nil)
+    private let interruptionSink = OSAllocatedUnfairLock<(@Sendable () -> Void)?>(initialState: nil)
     /// Micro réellement réglé sur le moteur (file `control` seulement) ; nil : celui du système.
     private var appliedInput: String?
     /// Écoute des reconfigurations du moteur actuel (file `control` seulement).
@@ -39,6 +40,8 @@ final class AudioCapture: @unchecked Sendable {
     /// Redémarrages sur reconfiguration pendant l'écoute en cours : bornés, pour ne jamais boucler.
     private var reconfigurations = 0
     private static let maxReconfigurations = 3
+    /// L'arrêt de l'écoute en cours a déjà été signalé (file `control` seulement).
+    private var interruptionSignaled = false
     private static let log = Logger.wispad("audio")
 
     /// Micro voulu pour la prochaine écoute (identifiant CoreAudio) ; nil : celui du système.
@@ -52,6 +55,12 @@ final class AudioCapture: @unchecked Sendable {
     var onPCM: (@Sendable (Data) -> Void)? {
         get { pcmSink.withLock { $0 } }
         set { pcmSink.withLock { $0 = newValue } }
+    }
+    /// Posé sur le fil principal, appelé sur la file `control` : sous verrou, comme `onPCM`. Ne doit rien y attendre
+    /// (jamais `stop()`), seulement prévenir la dictée.
+    var onInterruption: (@Sendable () -> Void)? {
+        get { interruptionSink.withLock { $0 } }
+        set { interruptionSink.withLock { $0 = newValue } }
     }
     var isRunning: Bool { control.sync { engine?.isRunning == true } }
 
@@ -91,9 +100,16 @@ final class AudioCapture: @unchecked Sendable {
         }
     }
 
-    /// La dictée n'attend plus les démarrages en cours : chacun se referme dès qu'il rend la main.
+    /// La dictée n'attend plus les démarrages en cours : chacun se referme dès qu'il rend la main. L'écoute qu'un
+    /// démarrage (ou un redémarrage) aurait ouverte juste avant l'abandon se referme aussi, à son tour dans la file :
+    /// jamais celle d'une dictée suivante, demandée après.
     func abandonStart() {
         tickets.withLock { $0.abandoned = $0.issued }
+        control.async {
+            guard self.wav != nil else { return }
+            let stopped = self.stopAudio()
+            if let url = stopped.url { try? FileManager.default.removeItem(at: url) }
+        }
     }
 
     private func isAbandoned(_ ticket: Int) -> Bool {
@@ -119,6 +135,7 @@ final class AudioCapture: @unchecked Sendable {
         let writer = try WAVStream(url: url, sampleRate: 16_000)
         wav = writer
         reconfigurations = 0
+        interruptionSignaled = false
         analyzer = SpectrumAnalyzer()
         state.withLock { $0 = CaptureState() }
         do {
@@ -217,14 +234,29 @@ final class AudioCapture: @unchecked Sendable {
             dropEngine()
             return
         }
-        guard reconfigurations < Self.maxReconfigurations else { return }
+        guard reconfigurations < Self.maxReconfigurations else {
+            // Arrêté par cette reconfiguration, le moteur ne sera plus relancé : la dictée doit le savoir.
+            guard !engine.isRunning else { return }
+            Self.log.error("reconfigurations répétées pendant l'écoute : micro arrêté")
+            signalInterruption()
+            return
+        }
         reconfigurations += 1
         Self.log.notice("entrée audio reconfigurée pendant l'écoute : moteur redémarré")
         do {
             try runEngine(fresh: true)
         } catch {
             Self.log.error("redémarrage du micro impossible après reconfiguration")
+            signalInterruption()
         }
+    }
+
+    /// File `control` : l'écoute en cours ne reçoit plus rien et ne repartira pas (micro disparu sans autre
+    /// micro, moteur refusé). Signalé une fois par écoute : la dictée s'arrête avec l'audio déjà reçu.
+    private func signalInterruption() {
+        guard wav != nil, !interruptionSignaled else { return }
+        interruptionSignaled = true
+        onInterruption?()
     }
 
     func stop() -> (url: URL?, duration: Double) {

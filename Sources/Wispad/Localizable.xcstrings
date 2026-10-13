@@ -7221,6 +7221,16 @@
         }
       }
     },
+    "Le micro ne répond plus : dictée arrêtée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The microphone stopped responding: dictation ended"
+          }
+        }
+      }
+    },
     "Aide et retours" : {
       "localizations" : {
         "en" : {

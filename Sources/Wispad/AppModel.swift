@@ -355,10 +355,28 @@ final class AppModel {
         FallbackSummary.make(events: usageEvents(for: period, now: now, calendar: calendar), period: .all, now: now, calendar: calendar)
     }
 
+    /// Relecture des clés en cours : une dictée qui attend sa clé la rejoint au lieu d'en relancer une.
+    @ObservationIgnored private var keyRefresh: (token: UUID, task: Task<Void, Never>)?
+    /// Attente maximale des clés par une dictée : un coffre qui ne répond plus ne retient jamais le raccourci.
+    static let keyRefreshSeconds = 10.0
+    /// Raccourcie par les tests.
+    @ObservationIgnored var keyRefreshLimit = AppModel.keyRefreshSeconds
+
     /// Relit les clés (fichier de l'app, ou coffre de secrets s'il est configuré).
     func refreshKeys() async {
-        keysReachable = await dependencies.refreshKeys()
-        keysLoadedAt = Date()
+        await startKeyRefresh().value
+    }
+
+    /// Relecture des clés, notée en cours dès son lancement et oubliée à sa fin.
+    private func startKeyRefresh() -> Task<Void, Never> {
+        let token = UUID()
+        let task = Task { @MainActor in
+            keysReachable = await dependencies.refreshKeys()
+            keysLoadedAt = Date()
+            if keyRefresh?.token == token { keyRefresh = nil }
+        }
+        keyRefresh = (token, task)
+        return task
     }
 
     /// Nom d'une clé dans le coffre de secrets.
@@ -685,18 +703,24 @@ final class AppModel {
 
     /// Ce qui empêche une dictée de partir : clé absente ou coffre injoignable.
     func voiceProblem() async -> (outcome: DictationOutcome, message: String)? {
-        // Clé pas encore lue (démarrage) ou ajoutée depuis : une relecture suffit.
-        if (apiKey() ?? "").isEmpty { await refreshKeys() }
+        // Clé pas encore lue (démarrage) ou ajoutée depuis : une relecture suffit, celle en cours si elle existe.
+        // Sans réponse dans `keyRefreshLimit`, le coffre est dit injoignable et la relecture continue seule.
+        var reachable = keysReachable
+        if (apiKey() ?? "").isEmpty {
+            let refresh = keyRefresh?.task ?? startKeyRefresh()
+            let answered = await DictationCoordinator.value(of: refresh, within: keyRefreshLimit) != nil
+            reachable = answered && keysReachable
+        }
         guard let key = apiKey(), !key.isEmpty else {
             let provider = settings.provider.displayName
             switch dependencies.keyStore {
             case .vault:
                 let name = keyLocation(for: settings.provider.rawValue)
-                return (.keyUnavailable, keysReachable
+                return (.keyUnavailable, reachable
                     ? String(localized: "Aucune clé \(provider) dans le coffre (\(name)).")
                     : String(localized: "Coffre de secrets injoignable : clé \(name) indisponible."))
             case .file:
-                return (.keyUnavailable, keysReachable
+                return (.keyUnavailable, reachable
                     ? String(localized: "Ajoute ta clé \(provider) dans Fournisseurs.")
                     : String(localized: "Clés illisibles sur ce Mac : clé \(provider) indisponible."))
             }

@@ -4,6 +4,9 @@ import WispadCore
 
 protocol AudioRecording: AnyObject, Sendable {
     var onPCM: (@Sendable (Data) -> Void)? { get set }
+    /// L'écoute en cours s'est arrêtée sans pouvoir repartir (micro disparu sans autre micro, moteur refusé) :
+    /// plus aucun audio n'arrivera. Appelé une fois, hors du fil principal.
+    var onInterruption: (@Sendable () -> Void)? { get set }
     /// Niveaux par bande de fréquence (grave → aigu), pour l'overlay.
     var bands: [Float] { get }
     /// Micro choisi (identifiant CoreAudio) pour la prochaine écoute ; nil : celui du système.
@@ -12,7 +15,8 @@ protocol AudioRecording: AnyObject, Sendable {
     func stop() -> (url: URL?, duration: Double)
     /// Écoute en cours mais muette : redémarre le micro sur un moteur neuf, dans le même fichier.
     func restart() async throws
-    /// Démarrage trop long : la dictée ne l'attend plus, il se refermera seul en rendant la main.
+    /// Démarrage ou redémarrage trop long : la dictée ne l'attend plus. Ce qu'il a ouvert pour elle se referme
+    /// seul dès qu'il rend la main, sans `stop()` à attendre sur le fil principal.
     func abandonStart()
 }
 
@@ -20,6 +24,12 @@ extension AudioRecording {
     /// Un enregistreur sans moteur à relancer (tests) : rien à faire.
     func restart() async throws {}
     func abandonStart() {}
+
+    /// Un enregistreur qui ne s'interrompt jamais seul (tests) : rien à signaler.
+    var onInterruption: (@Sendable () -> Void)? {
+        get { nil }
+        set {}
+    }
 
     /// Un enregistreur qui ne choisit pas son micro (tests) : toujours celui du système.
     var inputDeviceUID: String? {
