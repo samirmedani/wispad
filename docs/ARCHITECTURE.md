@@ -32,8 +32,11 @@ testée (`ReleaseScriptTests`), couverte par la signature de l'app, et indépend
   progression, taille et SHA-256), le montage (`hdiutil -nobrowse`), la vérification de la signature (`CodeSignature`,
   exigence `UpdateInstallRules.requirement` : Developer ID, même identifiant, même Team ID), la copie cachée à côté de
   l'app (`ditto`), l'attente de la fin de la dictée, l'échange atomique (`renamex_np`) puis la relance par une aide
-  `/bin/sh`. Toutes ses frontières passent par `UpdateSystem`, remplacé dans `UpdateInstallerTests`. Les règles (qui
-  s'installe en place, signature exigée, chemins, sortie de `hdiutil`) sont dans `UpdateInstallRules` (WispadCore).
+  `/bin/sh`, le tout sous un verrou partagé par les instances de Wispad (`flock`, `UpdateTools.lock`). Toutes ses
+  frontières passent par `UpdateSystem`, remplacé dans `UpdateInstallerTests` et `UpdateInterruptionTests` (disque
+  simulé : l'app reste entière à chaque état, même Wispad tué) ; échange, verrou et aide réels sont testés dans
+  `UpdateToolsTests`. Les règles (qui s'installe en place, signature exigée, chemins, sortie de `hdiutil`) sont dans
+  `UpdateInstallRules` (WispadCore).
   Fenêtre de mise à jour et notes de version (`ReleaseNotes` découpe le markdown simple) : `UpdateViews.swift`.
 - **Publier** : `scripts/release.sh` (en-tête : variables d'environnement, étapes). Rien de propre au mainteneur
   (équipe, certificat, clé de notarisation) n'est dans le dépôt.

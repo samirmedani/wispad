@@ -692,8 +692,9 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
      même identifiant (`com.yatofix.wispad`) et même équipe (Team ID) que l'app qui tourne ;
   4. copie cachée à côté de l'app (`.Wispad.nouveau.app`, même dossier), vérifiée à son tour ; démontage du disque ;
   5. si une dictée est en cours, attente de sa fin (« Après la dictée… ») ; puis remplacement atomique de l'app par
-     la copie (échange des deux noms, APFS ; sinon deux renommages, l'ancienne app remise en place si le second
-     échoue) ; l'ancienne version est effacée ;
+     la copie (échange des deux noms, APFS : un échange raté, disque plein ou droits retirés, laisse l'app à sa
+     place sans la déplacer ; sur un volume qui ne sait pas échanger, HFS+, exFAT ou partage réseau, deux
+     renommages, l'ancienne app remise en place si le second échoue) ; l'ancienne version est effacée ;
   6. relance : la fenêtre de mise à jour se ferme (affichée en feuille, elle fait refuser, sans rien dire, la
      fermeture de l'app par macOS), puis Wispad quitte ; une petite aide attend la fin de cette instance (60 s au
      plus), puis ouvre la nouvelle version, qui rouvre la fenêtre si elle était affichée ; la bulle confirme
@@ -703,16 +704,23 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
      l'accessibilité et ne peut plus dicter. L'aide ouvre alors la nouvelle version.
 
   Réglages, clés API, historique, audios et dictionnaire vivent hors de l'app (préférences de `com.yatofix.wispad`,
-  `Application Support/Wispad`, coffre de secrets) : la mise à jour n'y touche pas. Une copie cachée laissée par une
-  installation interrompue (Wispad quitté avant le remplacement) est effacée au lancement suivant.
+  `Application Support/Wispad`, coffre de secrets) : la mise à jour n'y touche pas. Les copies cachées laissées par
+  une installation interrompue (la nouvelle version, Wispad quitté avant le remplacement ; l'ancienne,
+  `.Wispad.ancien.app`, entre les deux renommages) sont effacées au lancement suivant.
+
+  Une seule installation à la fois, même avec deux Wispad ouverts (`open -n`, deux sessions) : un verrou dans le
+  dossier temporaire de l'utilisateur, que macOS rend si Wispad est tué. Le second s'arrête avant de rien
+  télécharger ni toucher (« Un autre Wispad ouvert installe déjà une mise à jour : réessaie quand il aura fini. »),
+  et son nettoyage du lancement laisse en place la copie cachée que le premier installe.
 - **Page de la release à la place** : app dans un dossier non modifiable (par exemple /Applications pour un compte
   sans droits d'administration), lancée depuis le disque d'installation ou déplacée par macOS, app sans signature
   Developer ID, ou release sans `Wispad.dmg` : « Mettre à jour » ouvre la page de la release dans le navigateur, et la
   fenêtre de mise à jour dit pourquoi.
-- **Échec** (téléchargement, fichier incomplet ou modifié, disque illisible, signature refusée, version pas plus
-  récente, copie, remplacement, relance) : message clair dans la fenêtre de mise à jour, « Échec de la mise à jour »
-  dans la barre latérale (un clic rouvre la fenêtre), avec le lien vers la release. L'app en place n'est jamais
-  laissée à moitié remplacée ; le journal (`mise-a-jour`) ne garde que le nom de l'étape, sans chemin.
+- **Échec** (autre installation en cours, téléchargement, fichier incomplet ou modifié, disque illisible, signature
+  refusée, version pas plus récente, copie, remplacement, relance) : message clair dans la fenêtre de mise à jour,
+  « Échec de la mise à jour » dans la barre latérale (un clic rouvre la fenêtre), avec le lien vers la release. L'app
+  en place n'est jamais laissée à moitié remplacée ; le journal (`mise-a-jour`) ne garde que le nom de l'étape, sans
+  chemin.
 - **Publier une release** (mainteneur) : `scripts/release.sh`, voir son en-tête (variables d'environnement, étapes).
 
 ## Aide et retours

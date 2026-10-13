@@ -341,6 +341,16 @@
         }
       }
     },
+    "Un autre Wispad ouvert installe déjà une mise à jour : réessaie quand il aura fini." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Another open Wispad is already installing an update: try again once it's done."
+          }
+        }
+      }
+    },
     "Wispad ne peut pas se remplacer là où il est installé : la nouvelle version se télécharge depuis la page de la release." : {
       "localizations" : {
         "en" : {

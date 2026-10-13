@@ -7,6 +7,8 @@ import WispadCore
 
 /// Ce qui a arrêté une installation. L'app en place n'est jamais laissée à moitié remplacée.
 enum UpdateFailure: Error, Equatable {
+    /// Un autre Wispad ouvert installe déjà une mise à jour : rien n'est touché.
+    case busy
     /// Téléchargement interrompu (réseau, serveur).
     case download
     /// Taille ou empreinte différente de celles annoncées par GitHub.
@@ -56,6 +58,9 @@ struct UpdateSystem {
     /// Échange la copie et l'app : après l'appel, la copie contient l'ancienne version.
     var swap: (URL, URL) throws -> Void = { try UpdateTools.swap($0, into: $1) }
     var remove: (URL) -> Void = { _ = try? FileManager.default.removeItem(at: $0) }
+    /// Verrou partagé par les instances de Wispad, le temps d'une installation ou du nettoyage du lancement : la
+    /// fonction qui le rend, ou nil si un autre Wispad ouvert le tient. macOS le rend aussi quand Wispad est tué.
+    var lock: () -> (() -> Void)? = { UpdateTools.lock(at: UpdateTools.lockURL) }
     /// Lance l'aide qui attend la fin de cette instance puis ouvre la nouvelle ; faux si elle n'a pas démarré.
     var relaunch: (URL, [String]) -> Bool = { UpdateTools.relaunch($0, arguments: $1) }
     /// Ferme cette instance pour la relance. Ne rend la main que si macOS a refusé de la fermer.
@@ -160,11 +165,17 @@ final class UpdateInstaller {
         if case .failed = phase { phase = .idle }
     }
 
-    /// Copie cachée laissée par une installation interrompue (Wispad quitté entre la copie et le remplacement) :
-    /// effacée au lancement suivant. Jamais l'app elle-même.
+    /// Copies cachées laissées par une installation interrompue (Wispad quitté entre la copie et le remplacement, ou
+    /// entre les deux renommages d'un volume qui ne sait pas échanger deux noms) : effacées au lancement suivant.
+    /// Jamais l'app elle-même, ni la copie qu'un autre Wispad ouvert est en train d'installer.
     func removeLeftovers() {
-        let staged = UpdateInstallRules.stagingURL(for: system.appURL())
-        if system.exists(staged) { system.remove(staged) }
+        guard let unlock = system.lock() else { return }
+        defer { unlock() }
+        let app = system.appURL()
+        for leftover in [UpdateInstallRules.stagingURL(for: app), UpdateInstallRules.backupURL(for: app)]
+        where system.exists(leftover) {
+            system.remove(leftover)
+        }
     }
 
     private func run(attempt current: Int, asset: DiskImageAsset, teamID: String, app: URL, installed: String,
@@ -172,6 +183,10 @@ final class UpdateInstaller {
                      beforeQuit: @MainActor () -> Void) async {
         let system = self.system
         guard !Task.isCancelled else { return finish(current, .idle) }
+        // Un seul Wispad à la fois : la copie cachée est la même pour toutes ses instances, et un deuxième Wispad
+        // ouvert l'effacerait ou la remplacerait pendant que le premier l'échange avec l'app.
+        guard let unlock = system.lock() else { return finish(current, .failed(.busy)) }
+        defer { unlock() }
         guard let workspace = try? system.makeWorkspace() else { return finish(current, .failed(.download)) }
         defer { system.remove(workspace) }
         let image = workspace.appendingPathComponent(ReleaseCheck.diskImageName)
@@ -340,17 +355,17 @@ enum UpdateTools {
         }.value
     }
 
-    /// Échange atomique de deux dossiers du même volume (`renamex_np`, APFS). Repli : deux renommages, l'ancienne app
-    /// remise en place si le second échoue. Dans les deux cas, `staged` contient ensuite l'ancienne version.
-    static func swap(_ staged: URL, into app: URL) throws {
-        let swapped = staged.withUnsafeFileSystemRepresentation { (from: UnsafePointer<CChar>?) -> Bool in
-            app.withUnsafeFileSystemRepresentation { (to: UnsafePointer<CChar>?) -> Bool in
-                guard let from, let to else { return false }
-                return renamex_np(from, to, UInt32(RENAME_SWAP)) == 0
-            }
-        }
-        if swapped { return }
+    /// Échange atomique de deux dossiers du même volume (`renamex_np`, APFS). Repli, seulement sur un volume qui ne
+    /// sait pas échanger deux noms (HFS+, exFAT, partage réseau) : deux renommages, l'ancienne app remise en place si
+    /// le second échoue. Dans les deux cas, `staged` contient ensuite l'ancienne version. Sur un volume qui sait
+    /// échanger, un échange raté (disque plein, droits retirés, copie disparue) ne déplace jamais l'app.
+    static func swap(_ staged: URL, into app: URL, exchange: (URL, URL) -> Bool = UpdateTools.exchangeNames,
+                     canSwap: (URL) -> Bool? = UpdateTools.volumeCanSwap) throws {
+        if exchange(staged, app) { return }
+        guard canSwap(app.deletingLastPathComponent()) != true else { throw UpdateFailure.replace }
         let fileManager = FileManager.default
+        // Copie disparue : rien ne prendrait la place de l'app, qui ne bouge pas.
+        guard fileManager.fileExists(atPath: staged.path) else { throw UpdateFailure.replace }
         let backup = UpdateInstallRules.backupURL(for: app)
         try? fileManager.removeItem(at: backup)
         try fileManager.moveItem(at: app, to: backup)
@@ -363,19 +378,60 @@ enum UpdateTools {
         try? fileManager.moveItem(at: backup, to: staged)
     }
 
+    /// `renamex_np` avec `RENAME_SWAP` : vrai si les deux noms ont été échangés d'un coup.
+    static func exchangeNames(_ staged: URL, _ app: URL) -> Bool {
+        staged.withUnsafeFileSystemRepresentation { (from: UnsafePointer<CChar>?) -> Bool in
+            app.withUnsafeFileSystemRepresentation { (to: UnsafePointer<CChar>?) -> Bool in
+                guard let from, let to else { return false }
+                return renamex_np(from, to, UInt32(RENAME_SWAP)) == 0
+            }
+        }
+    }
+
+    /// Le volume de ce dossier sait-il échanger deux noms d'un coup (APFS) ? Nil si macOS ne le dit pas.
+    static func volumeCanSwap(_ folder: URL) -> Bool? {
+        (try? folder.resourceValues(forKeys: [.volumeSupportsSwapRenamingKey]))?.volumeSupportsSwapRenaming
+    }
+
+    /// Verrou de l'installation : un fichier du dossier temporaire de l'utilisateur, commun à toutes ses instances.
+    static var lockURL: URL {
+        FileManager.default.temporaryDirectory.appendingPathComponent("WispadUpdate.lock")
+    }
+
+    /// Prend le verrou sans attendre (`flock`) : la fonction qui le rend, ou nil si un autre Wispad le tient. macOS le
+    /// rend aussi à la fin du processus, même tué. Un fichier de verrou impossible à créer (disque plein) ne bloque
+    /// rien : le verrou est alors sans effet, comme avant qu'il existe.
+    static func lock(at url: URL) -> (() -> Void)? {
+        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let descriptor = open(url.path, O_RDWR | O_CREAT | O_CLOEXEC, 0o600)
+        guard descriptor >= 0 else { return {} }
+        guard flock(descriptor, LOCK_EX | LOCK_NB) == 0 else {
+            let held = errno == EWOULDBLOCK
+            close(descriptor)
+            return held ? nil : {}
+        }
+        return { _ = close(descriptor) }
+    }
+
     /// Petite aide : attend la fin de cette instance (60 s au plus), puis ouvre la nouvelle version ; LaunchServices
     /// peut mettre un instant à la voir. Chemin et arguments passés à part, jamais dans le texte de la commande.
     static func relaunch(_ app: URL, arguments: [String]) -> Bool {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/sh")
-        process.arguments = ["-c", relaunchScript, "wispad-relance",
-                             String(ProcessInfo.processInfo.processIdentifier), app.path] + arguments
+        process.arguments = relaunchCommand(pid: ProcessInfo.processInfo.processIdentifier, app: app,
+                                            arguments: arguments)
         do {
             try process.run()
             return true
         } catch {
             return false
         }
+    }
+
+    /// Arguments de `/bin/sh` pour l'aide : le script, toujours le même, puis ses paramètres. Le shell ne lit comme du
+    /// code que le script ; numéro du processus, chemin de l'app et arguments n'en sont que les paramètres ($1, $2…).
+    static func relaunchCommand(pid: Int32, app: URL, arguments: [String]) -> [String] {
+        ["-c", relaunchScript, "wispad-relance", String(pid), app.path] + arguments
     }
 
     static let relaunchScript = """

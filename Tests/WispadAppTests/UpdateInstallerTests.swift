@@ -59,6 +59,9 @@ struct UpdateInstallerTests {
         system.copy = { _, destination in journal.steps.append("copy " + destination.lastPathComponent) }
         system.swap = { staged, app in journal.steps.append("swap \(staged.lastPathComponent) \(app.lastPathComponent)") }
         system.remove = { journal.removed.append($0) }
+        // Verrou entre instances toujours libre ici (le vrai est testé dans UpdateToolsTests) : les tests, lancés en
+        // parallèle, ne se le disputent pas.
+        system.lock = { {} }
         system.relaunch = { _, arguments in
             journal.relaunched = arguments
             return true

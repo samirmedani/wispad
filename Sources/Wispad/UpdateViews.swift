@@ -229,6 +229,8 @@ extension UpdateFailure {
     /// Message clair de l'échec ; la fenêtre propose aussi la page de la release.
     var message: String {
         switch self {
+        case .busy:
+            return String(localized: "Un autre Wispad ouvert installe déjà une mise à jour : réessaie quand il aura fini.")
         case .download:
             return String(localized: "Le téléchargement a échoué. Vérifie ta connexion, puis réessaie.")
         case .corrupted:
