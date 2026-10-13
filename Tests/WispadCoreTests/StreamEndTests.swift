@@ -119,7 +119,7 @@ private final class OutboundLog: @unchecked Sendable {
     }
 
     func wait(until predicate: @escaping @Sendable ([String]) -> Bool) async -> [String] {
-        let deadline = Date().addingTimeInterval(2)
+        let deadline = Date().addingTimeInterval(15)
         while Date() < deadline {
             let kinds = snapshot()
             if predicate(kinds) { return kinds }

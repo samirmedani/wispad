@@ -54,9 +54,10 @@ private final class FakeAudio: AudioRecording, @unchecked Sendable {
     }
 }
 
-/// Attend qu'une condition devienne vraie (2 s au plus), sans bloquer le fil principal.
+/// Attend qu'une condition devienne vraie, sans bloquer le fil principal. Rend la main dès qu'elle l'est : les 15 s
+/// ne servent qu'aux machines de CI chargées, où 2 s ne suffisaient pas toujours. Jamais pour prouver une absence.
 @MainActor
-private func waitFor(_ condition: () -> Bool, seconds: Double = 2) async -> Bool {
+private func waitFor(_ condition: () -> Bool, seconds: Double = 15) async -> Bool {
     let deadline = Date().addingTimeInterval(seconds)
     while !condition() {
         if Date() > deadline { return false }
@@ -1412,7 +1413,7 @@ struct AppRegressionTests {
         // Le pointeur sort : le décompte reprend où il s'était arrêté, puis le message part.
         coordinator.holdMessages(false)
         #expect(coordinator.noticeTimer.countdown?.isPaused == false)
-        let deadline = Date().addingTimeInterval(2)
+        let deadline = Date().addingTimeInterval(15)
         while coordinator.notice != nil, Date() < deadline { try await Task.sleep(nanoseconds: 20_000_000) }
         #expect(coordinator.notice == nil)
         #expect(coordinator.noticeTimer.countdown == nil)
@@ -2761,7 +2762,7 @@ struct PasteLastDictationTests {
         await coordinator.end()
         next = .pasteSent
         coordinator.pasteReadyText()
-        let deadline = Date().addingTimeInterval(2)
+        let deadline = Date().addingTimeInterval(15)
         while f.model.history.first?.insertionStatus != InsertionStatus.pasteSent.rawValue, Date() < deadline {
             try await Task.sleep(nanoseconds: 20_000_000)
         }

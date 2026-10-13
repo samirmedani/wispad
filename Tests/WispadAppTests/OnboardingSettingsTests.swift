@@ -232,7 +232,9 @@ struct OnboardingControllerTests {
         defer { f.dispose() }
         f.fake.grantAll()
         let guide = f.controller(at: .microphone)
-        for _ in 0..<100 where f.fake.meter.onLevel == nil { await Task.yield() }
+        // Le vumètre démarre dans une tâche : attendu jusqu'à 15 s (machine de CI chargée), rendu dès qu'il est prêt.
+        let deadline = Date().addingTimeInterval(15)
+        while f.fake.meter.onLevel == nil, Date() < deadline { try await Task.sleep(nanoseconds: 10_000_000) }
         let deliver = try #require(f.fake.meter.onLevel)
         for _ in 0..<20 { deliver(-62, 0.05) }
         #expect(guide.currentStatus == .inProgress)
