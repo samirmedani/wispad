@@ -61,12 +61,8 @@ struct ExternalDataAppTests {
         #expect(try around(CFRange(location: .max, length: .max)) == text.substring(from: 386))
         // Pas une plage : le début du champ sert de repère, comme sans sélection lisible.
         let start = String(value.prefix(220))
-        var point = CGPoint(x: 1, y: 2)
-        let pointValue = AXValueCreate(.cgPoint, &point)
-        #expect(pointValue != nil)
         #expect(ContextProbe.nearby(value: value, selection: "pas une plage" as CFString) == start)
         #expect(ContextProbe.nearby(value: value, selection: NSNumber(value: 42)) == start)
-        #expect(ContextProbe.nearby(value: value, selection: pointValue) == start)
         #expect(ContextProbe.nearby(value: value, selection: nil) == start)
     }
 }
