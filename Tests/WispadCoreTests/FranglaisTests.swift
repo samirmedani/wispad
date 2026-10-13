@@ -222,4 +222,17 @@ final class FranglaisTests: XCTestCase {
         XCTAssertEqual(FranglaisNormalizer.normalize("Trois services, functions à part."), "Trois services, functions à part.")
         XCTAssertEqual(FranglaisNormalizer.normalize("Une journée d'inference."), "Une journée d'inference.")
     }
+
+    /// Les expressions ne sont compilées qu'une fois : un appel ne coûte plus que la recherche. Les recompiler à chaque
+    /// appel, plusieurs fois par dictée sur le fil principal, coûtait au moins leur compilation (sous Linux : 3,6 ms par
+    /// appel avant, 0,06 ms après).
+    func testNormalizeDoesNotRecompileItsExpressions() {
+        let text = "J'ai fixe le bug du O Auth avec les scopes sur la RTX 50 70 et le Ryzen 9 7 950X 3D."
+        XCTAssertEqual(FranglaisNormalizer.normalize(text), "J'ai fix le bug du OAuth avec les scopes sur la RTX 5070 et le Ryzen 9 7950X3D.")
+        let patterns = FranglaisNormalizer.expressions.map(\.pattern)
+        XCTAssertGreaterThanOrEqual(patterns.count, 20)
+        let compile = Timing.fastest { for pattern in patterns { _ = try? NSRegularExpression(pattern: pattern) } }
+        let normalize = Timing.fastest { _ = FranglaisNormalizer.normalize(text) }
+        XCTAssertLessThan(normalize, compile / 2)
+    }
 }
