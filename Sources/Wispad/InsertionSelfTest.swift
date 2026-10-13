@@ -21,6 +21,8 @@ private final class PasteOnlyView: NSView {
 @MainActor
 enum InsertionSelfTest {
     static func run() {
+        // Ses propres fenêtres sont la cible du test : l'accessibilité doit pouvoir les lire (voir ContextProbe).
+        ContextProbe.selfTestReadsOwnProcess.withLock { $0 = true }
         let app = NSApplication.shared
         app.setActivationPolicy(.regular)
         MainMenu.install()

@@ -129,8 +129,17 @@ enum ContextProbe {
     /// fil principal, SwiftUI y recalcule l'interface et macOS arrête l'app (plantage du 13 octobre 2026). Sa
     /// fenêtre n'apporte rien à la dictée, et un collage dans Wispad n'a pas besoin de confirmation.
     static func isOwnProcess(_ pid: pid_t?) -> Bool {
-        pid == ownPID
+        #if DEBUG
+        // Autotest d'insertion (`--self-test`, développement seulement) : il vise exprès ses fenêtres AppKit.
+        if selfTestReadsOwnProcess.withLock({ $0 }) { return false }
+        #endif
+        return pid == ownPID
     }
+
+    #if DEBUG
+    /// Posé par `InsertionSelfTest` au démarrage ; absent de la version Release.
+    static let selfTestReadsOwnProcess = OSAllocatedUnfairLock(initialState: false)
+    #endif
 
     /// Repli : champ actif de l'app au premier plan, demandé à l'élément système. Jamais quand c'est Wispad (sa
     /// fenêtre ouverte pendant la lecture d'une autre app) : la question lui serait servie dans son propre processus,
