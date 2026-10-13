@@ -109,6 +109,8 @@ final class KeyboardTap: @unchecked Sendable {
         let watchdog = CFRunLoopTimerCreateWithHandler(kCFAllocatorDefault, CFAbsoluteTimeGetCurrent() + 3, 3, 0, 0) { [self] _ in
             checkTap()
         }
+        // Toujours toutes les 3 s, à 0,3 s près : macOS peut grouper ce réveil avec d'autres au repos.
+        CFRunLoopTimerSetTolerance(watchdog, 0.3)
         CFRunLoopAddTimer(CFRunLoopGetCurrent(), watchdog, .commonModes)
         CFRunLoopRun()
     }
