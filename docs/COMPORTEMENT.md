@@ -80,6 +80,8 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 - La recherche filtre dès que l'on cesse de taper (150 ms) ; l'effacer réaffiche tout aussitôt.
 - Le défilement reste fluide avec des milliers de dictées : seules les lignes visibles sont construites, et une
   ligne déjà vue n'est ni reformatée ni remesurée.
+- Un texte enregistré (dictée, transcription, autre écoute, app, mot du dictionnaire, refus) se relit en entier, même
+  avec un caractère de contrôle : un caractère nul ne le coupe plus.
 
 ## Bulle
 

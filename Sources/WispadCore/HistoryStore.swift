@@ -706,8 +706,9 @@ public final class HistoryStore: @unchecked Sendable {
         }
     }
 
+    /// Longueur en octets : un caractère nul dans le texte ne le coupe pas (SQLite s'arrêterait au premier).
     private func bind(_ value: String, at index: Int32, _ statement: OpaquePointer?) {
-        sqlite3_bind_text(statement, index, value, -1, transient)
+        sqlite3_bind_text64(statement, index, value, UInt64(value.utf8.count), transient, UInt8(SQLITE_UTF8))
     }
 
     private func bindOptional(_ value: String?, at index: Int32, _ statement: OpaquePointer?) {
@@ -720,7 +721,9 @@ public final class HistoryStore: @unchecked Sendable {
 
     private func column(_ index: Int32, _ statement: OpaquePointer?) -> String {
         guard let pointer = sqlite3_column_text(statement, index) else { return "" }
-        return String(cString: pointer)
+        // Après sqlite3_column_text, comme le demande SQLite : la taille du texte en UTF-8, caractères nuls compris.
+        let bytes = UnsafeBufferPointer(start: pointer, count: Int(sqlite3_column_bytes(statement, index)))
+        return String(decoding: bytes, as: UTF8.self)
     }
 
     private func optionalColumn(_ index: Int32, _ statement: OpaquePointer?) -> String? {
