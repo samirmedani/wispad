@@ -861,11 +861,10 @@ final class AppModel {
     func purgeAudio() {
         let files: [StoredAudio] = history.compactMap { record in
             guard let path = record.audioPath else { return nil }
-            let bytes = (try? FileManager.default.attributesOfItem(atPath: path)[.size] as? NSNumber)?.intValue ?? 0
             return StoredAudio(
                 id: record.id,
                 path: path,
-                bytes: bytes,
+                bytes: StoredAudio.bytes(atPath: path),
                 createdAt: record.createdAt,
                 expiresAt: record.audioExpiresAt
             )
@@ -877,8 +876,10 @@ final class AppModel {
         )
         guard !victims.isEmpty else { return }
         if let id = historyPlayer.recordID, victims.contains(id) { historyPlayer.close() }
+        // Audio de chaque dictée, lu une fois : chercher chaque victime dans tout l'historique était quadratique.
+        let audioPaths = Dictionary(history.map { ($0.id, $0.audioPath) }, uniquingKeysWith: { first, _ in first })
         for id in victims {
-            if let path = history.first(where: { $0.id == id })?.audioPath {
+            if let path = audioPaths[id] ?? nil {
                 try? FileManager.default.removeItem(atPath: path)
             }
             persist("purge d'un audio") { try store.updateAudio(id: id, path: nil, expiresAt: nil) }
