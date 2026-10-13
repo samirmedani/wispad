@@ -77,8 +77,10 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
    parallèle la lecture du champ actif (`ContextProbe`) et, si la correction et le réglage le permettent, de la
    conversation visible (`WindowTextProbe`). Puis il affiche la bulle et ouvre le micro (`AudioCapture`).
    Le démarrage est surveillé : délai de `audio.start`, puis premier paquet attendu, un redémarrage sur un moteur
-   neuf, puis abandon expliqué dans la bulle (règle `MicrophoneStartWatch`, WispadCore). `AudioCapture` relance
-   aussi son moteur sur `AVAudioEngineConfigurationChange` et referme seul un démarrage abandonné (`abandonStart`).
+   neuf (même délai), puis abandon expliqué dans la bulle (règle `MicrophoneStartWatch`, WispadCore). `AudioCapture`
+   relance aussi son moteur sur `AVAudioEngineConfigurationChange`, referme seul un démarrage ou un redémarrage
+   abandonné (`abandonStart`, dans l'ordre de sa file) et signale une écoute qui ne peut plus repartir
+   (`onInterruption`) : le coordinateur termine alors la dictée avec l'audio déjà reçu.
 3. Le flux en direct (`LiveSpeechSession`) reçoit l'audio dès que le champ actif est lu (150 ms au plus), et
    l'audio est aussi enregistré ; à chaque pause, une correction est préparée (`DictationCoordinator+EarlyCorrection`).
 4. `endCapture` ferme le micro ; un `FinishJob` termine la dictée en arrière-plan.

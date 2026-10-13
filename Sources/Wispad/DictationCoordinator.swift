@@ -108,8 +108,14 @@ final class DictationCoordinator {
     static var microphoneStalledMessage: String {
         String(localized: "Le micro n'a pas démarré : réessaie")
     }
-    /// Délais de démarrage du micro (`MicrophoneStartWatch`) ; raccourcis par les tests.
+    /// Message de la bulle quand le micro s'arrête en pleine écoute sans pouvoir repartir.
+    static var microphoneLostMessage: String {
+        String(localized: "Le micro ne répond plus : dictée arrêtée")
+    }
+    /// Délais de démarrage du micro (`MicrophoneStartWatch`) ; raccourcis par les tests. Un redémarrage sur un
+    /// moteur neuf a le même délai que le premier démarrage.
     @ObservationIgnored var audioStartLimit = MicrophoneStartWatch.startLimit
+    @ObservationIgnored var audioRestartLimit = MicrophoneStartWatch.startLimit
     @ObservationIgnored var firstPacketLimit = MicrophoneStartWatch.firstPacketLimit
 
     var isListening: Bool {
@@ -196,6 +202,13 @@ final class DictationCoordinator {
                     current.marks.firstAudio = at
                     self.signalAudioReady(current)
                 }
+            }
+        }
+        // Micro disparu en pleine écoute, sans autre micro pour repartir : la dictée s'arrête avec ce qui a été dit.
+        audio.onInterruption = { [weak self, weak current] in
+            Task { @MainActor in
+                guard let self, let current else { return }
+                self.microphoneLost(current)
             }
         }
         let directory = model.audioDirectory
@@ -300,6 +313,7 @@ final class DictationCoordinator {
     private func watchFirstAudio(_ current: Capture, audio: any AudioRecording, packetArrived: @escaping @Sendable () -> Bool) {
         guard !packetArrived() else { return }
         let limit = firstPacketLimit
+        let restartLimit = audioRestartLimit
         current.audioWatch = Task { @MainActor [weak self] in
             var watch = MicrophoneStartWatch()
             while true {
@@ -310,12 +324,27 @@ final class DictationCoordinator {
                     return
                 case .restart:
                     Self.audioLog.notice("aucun audio du micro : redémarrage sur un moteur neuf")
-                    do {
-                        try await audio.restart()
-                    } catch {
-                        guard self.isCapturing(current) else { return }
+                    // Un moteur neuf peut tarder autant qu'au premier démarrage : même délai, jamais d'attente sans fin.
+                    let restarting = Task.detached(priority: Task.currentPriority) { () async -> Bool in
+                        do {
+                            try await audio.restart()
+                            return true
+                        } catch {
+                            return false
+                        }
+                    }
+                    let restarted = await Self.value(of: restarting, within: restartLimit)
+                    guard self.isCapturing(current) else { return }
+                    guard restarted == true else {
                         _ = watch.restartFailed()
-                        Self.audioLog.error("redémarrage du micro impossible : dictée abandonnée")
+                        if restarted == nil {
+                            // Il se refermera seul en rendant la main : rien n'attend sa file sur le fil principal.
+                            audio.abandonStart()
+                            current.audio = nil
+                            Self.audioLog.error("redémarrage du micro trop long : dictée abandonnée")
+                        } else {
+                            Self.audioLog.error("redémarrage du micro impossible : dictée abandonnée")
+                        }
                         self.failMicrophone(current, message: Self.microphoneStalledMessage)
                         return
                     }
@@ -333,6 +362,20 @@ final class DictationCoordinator {
         shownFailure = ShownFailure(message: message, text: nil, offersHistory: false)
         model?.statusBanner = message
         discard(current)
+    }
+
+    /// Le micro s'est arrêté en pleine écoute sans pouvoir repartir : la dictée s'arrête là, comme si on l'avait
+    /// terminée (ce qui a déjà été dit est transcrit et collé), le raccourci est libre et la bulle dit pourquoi.
+    private func microphoneLost(_ current: Capture) {
+        guard isCapturing(current) else { return }
+        Self.audioLog.error("micro arrêté pendant l'écoute : dictée terminée avec l'audio déjà reçu")
+        model?.hotkeys?.sessionEnded()
+        endCapture()
+        let message = Self.microphoneLostMessage
+        model?.statusBanner = message
+        shownFailure = ShownFailure(message: message, text: nil, offersHistory: false)
+        refreshPhase()
+        changed()
     }
 
     /// Relais pris d'emblée : voix chez l'autre fournisseur si le principal est en panne, correction par OpenAI
@@ -457,15 +500,20 @@ final class DictationCoordinator {
         changed()
     }
 
-    /// Écoute qui n'a pas pu commencer (micro refusé, capture impossible).
+    /// Écoute qui n'a pas pu commencer (micro refusé, capture impossible) ou micro resté muet : tout ce qu'elle a
+    /// ouvert se referme, spectre et flux en direct compris.
     private func discard(_ current: Capture, outcome: DictationOutcome = .captureFailed) {
         current.cancelled = true
         current.audioWatch?.cancel()
         capture = nil
+        stopMeter()
+        current.startTask?.cancel()
         current.field.cancel()
         current.pcm.close()
         let stopped = current.audio?.stop()
         current.audio = nil
+        // Flux déjà branché quand le micro reste muet : refermé, sans audio rien n'a été envoyé ni facturé.
+        current.session?.cancel()
         delete(stopped?.url ?? current.audioURL)
         if let model { current.run.complete(outcome, model: model) }
         model?.hotkeys?.sessionEnded()
@@ -1159,6 +1207,9 @@ final class DictationCoordinator {
         meter?.stop()
         meter = nil
     }
+
+    /// Le spectre suit le micro à la cadence de l'écran : seulement pendant une écoute.
+    var isMetering: Bool { meter != nil }
 
     private func pushLevel(elapsed: Double) {
         let bands = capture?.audio?.bands ?? []

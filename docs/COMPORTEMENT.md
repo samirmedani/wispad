@@ -56,10 +56,15 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 - Démarrage du micro surveillé, première dictée après un lancement comprise : si macOS reconfigure l'entrée
   (micro Bluetooth qui change de profil, autre fréquence, micro débranché), le moteur repart aussitôt, dans le même
   enregistrement ; au repos, il est remplacé par un neuf à la dictée suivante. Aucun audio 1,5 s après le
-  démarrage : le micro redémarre une fois sur un moteur neuf. Toujours rien 1,5 s plus tard, ou démarrage qui ne
-  rend pas la main en 4 s : la dictée est abandonnée, rien n'est envoyé, Wispad revient prêt (le raccourci
-  redémarre une dictée) et la bulle affiche « Le micro n'a pas démarré : réessaie ». Une erreur du micro (aucun
-  micro, moteur refusé) s'affiche de même dans la bulle. Jamais de bulle figée sur un spectre immobile.
+  démarrage : le micro redémarre une fois sur un moteur neuf. Toujours rien 1,5 s plus tard, ou démarrage (comme
+  redémarrage) qui ne rend pas la main en 4 s : la dictée est abandonnée, rien n'est envoyé, Wispad revient prêt
+  (le raccourci redémarre une dictée) et la bulle affiche « Le micro n'a pas démarré : réessaie ». Rien ne reste
+  ouvert : micro, flux de transcription déjà branché et spectre se referment, même un démarrage qui rend la main
+  juste après l'abandon. Une erreur du micro (aucun micro, moteur refusé) s'affiche de même dans la bulle.
+- Micro qui disparaît en pleine dictée sans autre micro pour prendre le relais (ou moteur qui refuse de repartir) :
+  la dictée s'arrête là, comme si on l'avait terminée. Ce qui a déjà été dit est transcrit et collé, le raccourci est
+  aussitôt libre et la bulle affiche « Le micro ne répond plus : dictée arrêtée ». Jamais de bulle figée sur un
+  spectre immobile.
 - Le micro reste fermé au repos ; un appui simple ne le prépare pas.
 - La lecture du champ actif (lente dans les apps Electron) ne retarde pas l'enregistrement : l'audio est gardé
   jusqu'à ce que la transcription en direct soit branchée (le champ est attendu 150 ms au plus pour ses mots-clés).
@@ -585,6 +590,9 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
   en mémoire, rien d'écrit sur le Mac. Une clé que le coffre ne rend pas (connexion ratée) est redemandée deux fois
   (0,5 s puis 1,5 s) ; une clé absente ne l'est pas. Noms : `WISPAD_XAI_API_KEY`, `WISPAD_OPENAI_API_KEY`,
   `WISPAD_DEEPSEEK_API_KEY`, `WISPAD_XAI_MANAGEMENT_KEY`, `TYPESAFE_API_KEY`.
+- Une dictée sans clé en mémoire relit les clés, ou rejoint la relecture déjà en cours (lancement, appui précédent),
+  10 s au plus : un coffre qui ne répond plus est dit injoignable, sans ouvrir le micro, et le raccourci reste libre.
+  La relecture continue seule ; l'appui suivant la rejoint au lieu d'en lancer une autre.
 - Chaque clé de voix ou de correction (xAI, OpenAI, DeepSeek) est vérifiée chez le fournisseur avant d'être
   enregistrée ; les clés de gestion xAI et TypeSafe sont enregistrées sans vérification.
 
