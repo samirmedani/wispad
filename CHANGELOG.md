@@ -3,7 +3,12 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
-## Prochaine version
+## 0.2.1 — 14 octobre 2026
+
+Corrige deux plantages de la 0.2.0 et la mise à jour en un clic.
+
+> Depuis la 0.2.0 : si la mise à jour reste sur « Relance… », ferme cette fenêtre, puis quitte Wispad et rouvre-le.
+> La 0.2.1 est déjà installée.
 
 **Corrigé**
 - Wispad pouvait se fermer brutalement : à la fin d'une dictée juste après son lancement (le texte n'était pas collé), ou en dictant pendant que sa propre fenêtre était au premier plan.
