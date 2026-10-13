@@ -127,7 +127,8 @@ public enum MeasureUnit: CaseIterable, Sendable {
         case .dollar: return ["dollars", "dollar"]
         case .pound: return ["livres sterling", "livre sterling"]
         case .percent: return ["pour cent", "pourcents", "pourcent", "percent", "per cent"]
-        case .kilometerPerHour: return ["kilometres par heure", "kilometres heure", "kilometres-heure", "kilometers per hour", "kilometres per hour"]
+        case .kilometerPerHour: return ["kilometres par heure", "kilometres heure", "kilometres-heure", "kilometers per hour", "kilometres per hour",
+                                        "kilometre par heure", "kilometre heure", "kilometre-heure", "kilometer per hour", "kilometre per hour"]
         case .kilometer: return ["kilometres", "kilometre", "kilometers", "kilometer"]
         case .meter: return ["metres", "metre", "meters", "meter"]
         case .centimeter: return ["centimetres", "centimetre", "centimeters", "centimeter"]
@@ -149,7 +150,8 @@ public enum MeasureUnit: CaseIterable, Sendable {
         case .terabyte: return ["terabytes", "terabyte"]
         case .gigahertz: return ["gigahertz"]
         case .megahertz: return ["megahertz"]
-        case .kilowattHour: return ["kilowattheures", "kilowattheure", "kilowatts-heure", "kilowatt-heure", "kilowatt hours", "kilowatt hour"]
+        case .kilowattHour: return ["kilowattheures", "kilowattheure", "kilowatts-heure", "kilowatt-heure", "kilowatt-hours", "kilowatt-hour",
+                                    "kilowatt hours", "kilowatt hour"]
         case .kilowatt: return ["kilowatts", "kilowatt"]
         }
     }
@@ -270,10 +272,11 @@ public enum NumberWriter {
 
     private static let spaces = "[ \\u00A0\\u202F]"
 
-    /// Nombre entier, groupé ou non, avec ses décimales. Jamais la fin d'un nombre plus long ni d'une référence.
+    /// Nombre entier, groupé ou non, avec ses décimales. Jamais la fin d'un nombre plus long ni d'une référence, ni un
+    /// montant déjà précédé de sa devise (« $5m » : cinq millions de dollars, pas des mètres).
     private static func numberPattern(english: Bool) -> String {
         let grouped = english ? "\\d{1,3}(?:[ \\u00A0\\u202F,]\\d{3})+" : "\\d{1,3}(?:[ \\u00A0\\u202F]\\d{3})+"
-        return "(?<![\\p{L}\\d.,/])(?<!\\d[ \\u00A0\\u202F])(" + grouped + "|\\d+)(?:([.,])(\\d+))?"
+        return "(?<![\\p{L}\\d.,/€$£])(?<!\\d[ \\u00A0\\u202F])(" + grouped + "|\\d+)(?:([.,])(\\d+))?"
     }
 
     /// Mots d'unité sans casse (« Celsius », « Euros ») ; symboles à la casse près (« Go » oui, « go » non).
@@ -351,8 +354,9 @@ public enum NumberWriter {
 
     // MARK: Devise devant le nombre (« €25 », « $3.50 »)
 
+    /// Un symbole qui suit déjà un montant (« payé 20 € 3 fois ») n'est pas celui du nombre suivant.
     private static let prefixedCurrency = try! NSRegularExpression(
-        pattern: "(?<![\\p{L}\\d])([€$£])" + "[ \\u00A0\\u202F]?" + "(\\d{1,3}(?:[ \\u00A0\\u202F,]\\d{3})+|\\d+)(?:([.,])(\\d{1,2}))?(?![\\d\\p{L}])"
+        pattern: "(?<![\\p{L}\\d])(?<!\\d[ \\u00A0\\u202F])([€$£])" + "[ \\u00A0\\u202F]?" + "(\\d{1,3}(?:[ \\u00A0\\u202F,]\\d{3})+|\\d+)(?:([.,])(\\d{1,2}))?(?![\\d\\p{L}])"
     )
 
     private static func rewritePrefixedCurrencies(_ text: String, format: DictationNumberFormat, english: Bool) -> String {
