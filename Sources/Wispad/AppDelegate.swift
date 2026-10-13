@@ -59,6 +59,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                     await model?.checkDownServices()
                 }
             }
+            // Toujours chaque minute, à quelques secondes près : macOS peut grouper ce réveil avec d'autres au repos.
+            retentionTimer?.tolerance = 6
             Task { @MainActor [weak self] in
                 await model.refreshKeys()
                 // Relance technique ou diagnostic : aucune fenêtre, même si le coffre ne répond pas.
