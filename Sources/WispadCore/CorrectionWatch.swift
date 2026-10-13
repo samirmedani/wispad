@@ -49,7 +49,11 @@ public struct CorrectionWatch: Sendable {
 
     private let inserted: String
     private let known: [String]
+    /// Mots de la dictée, découpés une fois.
+    private let insertedWords: [String]
     private var before: String?
+    /// Mots de `before` et place de la dictée parmi eux : `before` ne change plus, ils sont découpés une fois.
+    private var baseline: (words: [String], span: Range<Int>)?
     private var lastValid: String?
     private var misses = 0
     private var finished: Outcome?
@@ -65,6 +69,7 @@ public struct CorrectionWatch: Sendable {
     public init(inserted: String, known: [String]) {
         self.inserted = inserted
         self.known = known
+        insertedWords = CorrectionLearner.words(in: inserted)
     }
 
     public mutating func observe(_ sample: FocusSample) -> Step {
@@ -75,15 +80,20 @@ public struct CorrectionWatch: Sendable {
             return miss(.unreadable)
         }
         if before == nil {
-            guard CorrectionLearner.insertedSpan(of: inserted, in: value) != nil else {
+            let words = CorrectionLearner.words(in: value)
+            guard let span = CorrectionLearner.insertedSpan(of: insertedWords, in: words) else {
                 // Le collage n'est pas encore là : on attend, sans suivre un autre champ.
                 return .continueWatching(adoptElement: false)
             }
             before = value
+            baseline = (words, span)
             lastValid = value
             return .continueWatching(adoptElement: !sample.sameElement)
         }
-        guard Self.recognizes(inserted: inserted, baseline: before ?? value, in: value) else {
+        // Champ identique, octet pour octet, à la dernière lecture reconnue (le cas courant : quatre lectures par
+        // seconde pendant 30 s) : la dictée y est reconnue, comme la dernière fois, sans tout redécouper.
+        let unchanged = lastValid.map { Self.sameBytes(value, $0) } ?? false
+        guard unchanged || recognizes(value) else {
             return miss(.fieldGone)
         }
         misses = 0
@@ -118,15 +128,33 @@ public struct CorrectionWatch: Sendable {
         return outcome
     }
 
+    /// Mêmes octets UTF-8 : le même texte, au bit près (comparaison directe quand les deux sont stockés d'un bloc).
+    static func sameBytes(_ a: String, _ b: String) -> Bool {
+        let direct = a.utf8.withContiguousStorageIfAvailable { left in
+            b.utf8.withContiguousStorageIfAvailable { right in
+                left.count == right.count && (left.isEmpty || memcmp(left.baseAddress!, right.baseAddress!, left.count) == 0)
+            }
+        }
+        if let direct, let same = direct { return same }
+        return a.utf8.elementsEqual(b.utf8)
+    }
+
     /// La dictée collée est-elle encore dans `value`, éventuellement retouchée ?
-    static func recognizes(inserted: String, baseline: String, in value: String) -> Bool {
-        if value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return false }
-        if CorrectionLearner.insertedSpan(of: inserted, in: value) != nil { return true }
-        guard let span = CorrectionLearner.insertedSpan(of: inserted, in: baseline) else { return false }
-        let baselineWords = CorrectionLearner.words(in: baseline)
+    private func recognizes(_ value: String) -> Bool {
+        guard let baseline else { return false }
+        return Self.recognizes(insertedWords: insertedWords, baseline: baseline, in: value)
+    }
+
+    /// `baseline` : mots de la valeur d'après collage et place de la dictée parmi eux. Une valeur sans aucun mot
+    /// (vide ou blanche) n'est jamais reconnue.
+    static func recognizes(insertedWords: [String], baseline: (words: [String], span: Range<Int>), in value: String) -> Bool {
+        let all = CorrectionLearner.words(in: value)
+        guard !all.isEmpty else { return false }
+        if CorrectionLearner.insertedSpan(of: insertedWords, in: all) != nil { return true }
+        let span = baseline.span
+        let baselineWords = baseline.words
         guard span.upperBound <= baselineWords.count else { return false }
         let target = Array(baselineWords[span])
-        let all = CorrectionLearner.words(in: value)
         let minLength = max(1, target.count - 2)
         let maxLength = target.count + 1
         guard !target.isEmpty, all.count >= minLength else { return false }
