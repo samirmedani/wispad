@@ -405,7 +405,8 @@ Réglages › Mise en forme : **Montants et unités** (symboles, par défaut, ou
 
 - Montant, pourcentage ou mesure suivi de son unité, dite ou écrite : « 25 euros », « 25€ » → « 25 € » ; « 3,5 € »,
   « 3.50 € » → « 3,50 € » ; « 15% », « 15 pour cent » → « 15 % » ; « 5 kilomètres » → « 5 km » ; « 12 kilomètres par
-  heure » → « 12 km/h » ; « 120 mètres carrés » → « 120 m² » ; « 20 degrés Celsius » → « 20 °C » ;
+  heure », « 1,5 kilomètre par heure » → « 12 km/h », « 1,5 km/h » ; « 120 mètres carrés » → « 120 m² » ;
+  « 20 degrés Celsius » → « 20 °C » ; « 15 kilowatt-hours » (anglais) → « 15 kWh » ;
   « 16 gigaoctets » → « 16 Go », mais « 16 gigas », dit ainsi, reste tel quel. En français, espace insécable
   avant le symbole et espace fine insécable entre les milliers (« 1 500 € ») ; en anglais, « $25 », « €3.50 », « 15% », « $1,500 ». Un prix garde ses centimes sur deux chiffres.
 - En toutes lettres : « 25 euros », « 1 euro », « 1,50 euro », « 5 kilomètres » (pluriel à partir de 2 en
@@ -416,7 +417,9 @@ Réglages › Mise en forme : **Montants et unités** (symboles, par défaut, ou
   des lettres.
 - Jamais touchés : un nombre sans unité reconnue (années, codes postaux, références de matériel, numéros de version,
   « 12 500 personnes »), les durées (« 5 min », « 300 ms », « 2 heures de route »), une élision après un nombre
-  (« les 3 l'ont vu »), « 3,50 € » écrit à la française dans une dictée anglaise, les codes EUR, USD et GBP.
+  (« les 3 l'ont vu »), « 3,50 € » écrit à la française dans une dictée anglaise, les codes EUR, USD et GBP. Un
+  symbole qui suit déjà un montant ne passe pas au nombre suivant (« payé 20 € 3 fois », « 3 € 50 ») et un nombre
+  précédé de sa devise n'est jamais une mesure (« $5m », cinq millions).
 - « Et demi » reste en lettres après un nom, accordé : la transcription vocale écrit parfois « 2 mois et 1/2 », qui
   devient « 2 mois et demi » ; « 1 heure et 1/2 » → « 1 heure et demie ». Une fraction seule (« 1/2 litre ») ne change
   pas et n'est jamais lue comme une quantité.
