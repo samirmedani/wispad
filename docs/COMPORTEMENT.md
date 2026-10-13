@@ -380,7 +380,9 @@ Repasser sur un texte déjà mis en forme ne change plus rien. Sans réponse ou 
   MM/JJ/AAAA → « 10/24/2026 ») ; au mois en lettres (« 3 novembre », « 1er novembre 2026 », « du 3 au 5 novembre »,
   « October 24, 2026 », « the 24th of October ») ; sans année après « le », « du », « au » ou un jour de la semaine
   (« le 3/11 », « le 3 du 11 »). En toutes lettres, l'inverse : « le 24/10/2026 » → « le 24 octobre 2026 »,
-  « le 1/11 » → « le 1er novembre ».
+  « le 1/11 » → « le 1er novembre ». En anglais, deux lectures qui se chevauchent : la première du texte l'emporte
+  (« on 3 May 8 people came » → « on 03/05 8 people came ») ; « the » n'appartient à la date que devant un ordinal ou
+  « of » (« the 24th of October » → « 24/10 », mais « the 31 May deadline » → « the 31/05 deadline »).
 - Heures : suivies de AM/PM, « du matin », « de l'après-midi » ou « du soir », qui disparaissent (« 2 h de
   l'après-midi » → « 14 h ») ; précédées de « à », « vers », « dès », « jusqu'à », « à partir de », « il est », d'un
   jour de la semaine ou de « demain » (anglais : at, around, by, until, before, after, from, between) ; ou reliées à
@@ -389,7 +391,8 @@ Repasser sur un texte déjà mis en forme ne change plus rien. Sans réponse ou 
 - Jamais touchés : un jour, un mois ou une année seuls ; une durée ou une distance (« 2 heures de route », « 1h30 de
   trajet », « à 2 h de Paris », « de 2 à 3 heures », « jusqu'à 3 heures » ; « jusqu'à 18 h » est une heure) ; une
   note ou une fraction (« 8/10 », « 3/4 ») ; une version (« 1.12.20 »), une adresse IP, un numéro de téléphone, un
-  score, « 16:9 », « Jean 3:16 » ; une date impossible ; une adresse web, un e-mail, du code.
+  score, « 16:9 », « Jean 3:16 » ; une date impossible ; deux jours après un mois anglais (« May 14/15 »,
+  « May 4-5 ») ; une adresse web, un e-mail, du code.
 
 ### Nombres, montants et unités
 
