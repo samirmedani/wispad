@@ -50,7 +50,8 @@ struct ExternalDataAppTests {
         let text = value as NSString
         func around(_ range: CFRange) throws -> String {
             var range = range
-            let selection = try #require(AXValueCreate(.cfRange, &range))
+            let created = AXValueCreate(.cfRange, &range)
+            let selection = try #require(created)
             return ContextProbe.nearby(value: value, selection: selection)
         }
         // Cas ordinaire : 220 caractères de part et d'autre de la sélection.
@@ -61,9 +62,11 @@ struct ExternalDataAppTests {
         // Pas une plage : le début du champ sert de repère, comme sans sélection lisible.
         let start = String(value.prefix(220))
         var point = CGPoint(x: 1, y: 2)
+        let pointValue = AXValueCreate(.cgPoint, &point)
+        #expect(pointValue != nil)
         #expect(ContextProbe.nearby(value: value, selection: "pas une plage" as CFString) == start)
         #expect(ContextProbe.nearby(value: value, selection: NSNumber(value: 42)) == start)
-        #expect(ContextProbe.nearby(value: value, selection: AXValueCreate(.cgPoint, &point)) == start)
+        #expect(ContextProbe.nearby(value: value, selection: pointValue) == start)
         #expect(ContextProbe.nearby(value: value, selection: nil) == start)
     }
 }
