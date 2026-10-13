@@ -329,6 +329,9 @@ Après la correction, `FidelityGuard` rejette ou répare :
   s'ajoute (hors « ne » rétabli) : la transcription est collée (« Était sérieux » ne devient pas « Sois sérieux » ;
   « cloud code » → « Claude Code » et « un sot d'eau » → « Un seau d'eau. » restent).
 
+Le texte rendu n'est jamais blanc quand la transcription ne l'est pas : une correction blanche, ou une transcription
+sans mot (« … ») dont la correction n'était qu'une référence inventée, laisse la transcription.
+
 À l'oreille : prononciation française approchée (`PhoneticKey`), à une différence près pour cinq sons ; une lettre
 isolée se lit par son nom (« C » comme « c'est »). Des lettres épelées regroupées (« aime E elle » → « M-E-L ») ne
 sont ni une traduction ni une invention quand une lettre isolée a été entendue et que les noms des lettres sonnent

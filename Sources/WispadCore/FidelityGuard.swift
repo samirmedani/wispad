@@ -16,7 +16,7 @@ public enum FidelityGuard {
         // Autre écoute du même audio : un mot repris de là a été entendu, ce n'est ni une invention ni une traduction.
         let alsoHeard = alternative.map { locatedWords(in: $0).map(\.text) } ?? []
         let written = locatedWords(in: corrected).map(\.text)
-        guard !heard.isEmpty, !written.isEmpty else { return corrected.isEmpty ? transcript : corrected }
+        guard !heard.isEmpty, !written.isEmpty else { return written.isEmpty ? transcript : corrected }
         // Une correction enlève des hésitations et ajoute de la ponctuation : elle n'allonge pas le texte.
         // Seuls les mots comptent : les guillemets d'une citation ou un deux-points isolé n'en sont pas.
         let spoken = heard.filter(isWord).count
@@ -37,6 +37,8 @@ public enum FidelityGuard {
         if spoken <= shortDictationWords, changesShortDictation(heard: heard, corrected: dated, alsoHeard: alsoHeard) {
             return transcript
         }
+        // Une transcription sans mot (« … ») dont la réponse n'était qu'une référence inventée : rien ne resterait à coller.
+        if dated.allSatisfy(\.isWhitespace) { return transcript }
         return dated
     }
 
