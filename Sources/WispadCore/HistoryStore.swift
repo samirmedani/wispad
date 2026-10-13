@@ -294,7 +294,8 @@ public final class HistoryStore: @unchecked Sendable {
             bind(record.finalText, at: 3, statement)
             bind(record.rawText, at: 4, statement)
             sqlite3_bind_double(statement, 5, record.durationSeconds)
-            sqlite3_bind_int(statement, 6, Int32(record.wordCount))
+            // Colonne lue en Int32 : un compte démesuré y est borné au lieu de faire planter l'écriture.
+            sqlite3_bind_int(statement, 6, Int32(clamping: record.wordCount))
             bind(record.provider, at: 7, statement)
             bind(record.model, at: 8, statement)
             bindOptional(record.targetApp, at: 9, statement)
@@ -339,7 +340,7 @@ public final class HistoryStore: @unchecked Sendable {
         try run("UPDATE dictations SET final_text = ?, raw_text = ?, word_count = ? WHERE id = ?;") { statement in
             bind(finalText, at: 1, statement)
             bind(rawText, at: 2, statement)
-            sqlite3_bind_int(statement, 3, Int32(wordCount))
+            sqlite3_bind_int(statement, 3, Int32(clamping: wordCount))
             bind(id, at: 4, statement)
         }
     }

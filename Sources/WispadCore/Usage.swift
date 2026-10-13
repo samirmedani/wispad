@@ -85,6 +85,21 @@ public struct TokenUsage: Equatable, Sendable {
               number.doubleValue.rounded(.towardZero) == number.doubleValue else { return nil }
         return count
     }
+
+    /// Jetons d'entrée, cache compris. Un compteur démesuré (réponse inattendue d'un fournisseur, base abîmée)
+    /// plafonne à `Int.max` au lieu de faire planter l'addition.
+    public var totalInput: Int { Self.capped(input, cachedInput) }
+
+    /// Somme de deux usages, chaque compteur plafonné de la même façon.
+    public func adding(_ other: TokenUsage) -> TokenUsage {
+        TokenUsage(input: Self.capped(input, other.input), cachedInput: Self.capped(cachedInput, other.cachedInput),
+                   output: Self.capped(output, other.output))
+    }
+
+    private static func capped(_ a: Int, _ b: Int) -> Int {
+        let (sum, overflow) = a.addingReportingOverflow(b)
+        return overflow ? (b < 0 ? .min : .max) : sum
+    }
 }
 
 public struct UsageEvent: Identifiable, Equatable, Sendable {
@@ -292,9 +307,7 @@ public struct UsageSummary: Equatable, Sendable {
                 requests: matching.count,
                 failures: matching.filter { !$0.succeeded }.count,
                 audioSeconds: matching.reduce(0) { $0 + $1.audioSeconds },
-                tokens: matching.reduce(TokenUsage()) {
-                    TokenUsage(input: $0.input + $1.tokens.input, cachedInput: $0.cachedInput + $1.tokens.cachedInput, output: $0.output + $1.tokens.output)
-                },
+                tokens: matching.reduce(TokenUsage()) { $0.adding($1.tokens) },
                 costUSD: matching.reduce(0) { $0 + ($1.costUSD ?? 0) },
                 hasUnpricedCalls: matching.contains { $0.costUSD == nil },
                 lastCall: matching.map(\.createdAt).max()
