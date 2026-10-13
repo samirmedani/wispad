@@ -51,6 +51,11 @@ final class OnboardingController {
     let replay: Bool
     /// Aperçu de développement : états fictifs figés, aucune demande au système, aucun sondage.
     private(set) var isPreview = false
+    /// Fenêtre fermée ou parcours quitté : le sondage s'arrête. La fenêtre fermée reste en mémoire avec sa vue,
+    /// dont la tâche de sondage n'est pas forcément annulée par SwiftUI.
+    private(set) var isSuspended = false
+    /// Avance à chaque reprise : la vue relance son sondage à la réouverture, même sans avoir vu la suspension.
+    private(set) var activation = 0
 
     private(set) var step: OnboardingStep
     /// Étapes passées avec « Plus tard ».
@@ -171,14 +176,26 @@ final class OnboardingController {
         model.completeOnboarding(openSettings: openSettings)
     }
 
-    /// Fenêtre fermée ou parcours terminé : micro et écoute de la touche rendus.
+    /// Fenêtre fermée ou parcours terminé : micro et écoute de la touche rendus, sondage arrêté.
     func suspend() {
+        isSuspended = true
         leave(step)
     }
 
-    /// Fenêtre (ré)affichée : l'étape courante reprend ses contrôles.
+    /// Fenêtre (ré)affichée : l'étape courante reprend ses contrôles, et la vue son sondage.
     func resume() {
+        isSuspended = false
+        activation += 1
         enter(step)
+    }
+
+    /// Sondage de la vue : `tick` toutes les 0,5 s tant que la fenêtre est affichée. Il s'arrête dès la suspension
+    /// (fenêtre fermée) : plus de lecture des autorisations, deux fois par seconde, derrière une fenêtre fermée.
+    func poll(every interval: Duration = .milliseconds(500)) async {
+        while !Task.isCancelled, !isSuspended {
+            tick()
+            try? await Task.sleep(for: interval)
+        }
     }
 
     /// Sondage léger (toutes les 0,5 s pendant l'affichage) : autorisations, attentes, réussite de l'essai.

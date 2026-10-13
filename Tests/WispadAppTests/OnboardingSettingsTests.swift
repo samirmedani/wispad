@@ -62,12 +62,17 @@ private final class FakeSystem {
     var opened: [PermissionKind] = []
     var relaunches = 0
     var reinstalls = 0
+    /// Lectures des autorisations : chaque passage du sondage en fait une.
+    var permissionReads = 0
     var fnUsage: Int?
     let meter = FakeMeter()
 
     var system: OnboardingSystem {
         var system = OnboardingSystem()
-        system.permissions = { [unowned self] in self.snapshot }
+        system.permissions = { [unowned self] in
+            self.permissionReads += 1
+            return self.snapshot
+        }
         system.requestMicrophone = { [unowned self] in
             self.microphoneRequests += 1
             return self.snapshot.microphoneGranted
@@ -335,6 +340,32 @@ struct OnboardingControllerTests {
         f.model.noteCompletion(DictationTrace(origin: .retry, outcome: .transcriptionFailed))
         guide.tick()
         #expect(guide.currentStatus == .todo)
+    }
+
+    /// Fenêtre fermée pendant la configuration : le sondage (autorisations relues deux fois par seconde) s'arrête au
+    /// lieu de continuer derrière la fenêtre fermée, que SwiftUI garde en mémoire avec sa vue ; il repart à la
+    /// réouverture.
+    @Test func closingTheWindowStopsThePolling() async throws {
+        let f = try GuideFixture()
+        defer { f.dispose() }
+        let guide = f.controller(at: .permissions)
+        let before = f.fake.permissionReads
+        let polling = Task { await guide.poll(every: .milliseconds(5)) }
+        try await Task.sleep(for: .milliseconds(50))
+        #expect(f.fake.permissionReads > before)
+        // Fenêtre fermée.
+        guide.suspend()
+        let stopped = await DictationCoordinator.value(of: polling, within: 2) != nil
+        #expect(stopped)
+        let reads = f.fake.permissionReads
+        try await Task.sleep(for: .milliseconds(50))
+        #expect(f.fake.permissionReads == reads)
+        // Réouverture : la clé de la tâche change, la vue relance le sondage.
+        let activation = guide.activation
+        guide.resume()
+        #expect(!guide.isSuspended)
+        #expect(guide.activation == activation + 1)
+        polling.cancel()
     }
 
     @Test func laterIsOnlyOfferedWhereItMakesSense() throws {

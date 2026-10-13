@@ -182,6 +182,12 @@ enum OnboardingCopy {
 
 // MARK: - Écran
 
+/// Le sondage repart à chaque étape et à chaque réouverture de la fenêtre.
+private struct OnboardingPollKey: Equatable {
+    var step: OnboardingStep
+    var activation: Int
+}
+
 struct OnboardingView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.interactionReduceMotion) private var reduceMotion
@@ -214,12 +220,10 @@ struct OnboardingView: View {
         .animation(reduceMotion ? nil : Theme.spring, value: controller.step)
         .onAppear { controller.resume() }
         .onDisappear { controller.suspend() }
-        .task(id: controller.step) {
-            // Sondage léger : autorisations accordées dans Réglages Système, attentes, réussite de l'essai.
-            while !Task.isCancelled {
-                controller.tick()
-                try? await Task.sleep(nanoseconds: 500_000_000)
-            }
+        .task(id: OnboardingPollKey(step: controller.step, activation: controller.activation)) {
+            // Sondage léger : autorisations accordées dans Réglages Système, attentes, réussite de l'essai. Arrêté
+            // fenêtre fermée, relancé à la réouverture.
+            await controller.poll()
         }
         .onChange(of: model.coordinator.isListening) { _, listening in
             if listening { controller.dictationStarted() }
