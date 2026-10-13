@@ -94,35 +94,53 @@ public enum WindowContext {
     }
 
     private static func isActionLabel(_ text: String) -> Bool {
-        let stripped = text.lowercased().trimmingCharacters(in: CharacterSet.punctuationCharacters.union(.symbols))
+        let stripped = text.lowercased().trimmingCharacters(in: punctuationAndSymbols)
         return actionLabels.contains(stripped)
     }
 
     private static func isTimestamp(_ text: String) -> Bool {
-        let patterns = [
-            #"(?i)^\d{1,2}:\d{2}(:\d{2})?( ?[ap]m)?$"#,
-            #"(?i)^\d{1,2}h\d{2}$"#,
-            #"(?i)^il y a \d+ (s|sec|secs|seconde|secondes|min|mins|minute|minutes|h|heure|heures)$"#,
-            #"(?i)^\d+ (s|sec|secs|min|mins|h) ago$"#,
-            #"(?i)^(aujourd'hui|aujourd’hui|hier|today|yesterday)$"#,
-        ]
-        return patterns.contains { text.range(of: $0, options: .regularExpression) != nil }
+        matchesAny(timestampPatterns, text)
     }
 
     private static func isCounter(_ text: String) -> Bool {
-        let patterns = [
-            #"^\d+$"#,
-            #"^\(\d+\)$"#,
-            #"^\+\d+$"#,
-            #"^\d+/\d+$"#,
-            #"(?i)^\d+ (messages?|nouveaux?|comments?|commentaires?|items?)$"#,
-        ]
-        return patterns.contains { text.range(of: $0, options: .regularExpression) != nil }
+        matchesAny(counterPatterns, text)
     }
+
+    // Compilées une fois : une lecture de fenêtre passe chaque fragment (des centaines) par ces dix expressions,
+    // qu'une recherche `range(of:options: .regularExpression)` recompilait à chaque appel. Même moteur (ICU), même
+    // motif, mêmes options : le résultat ne change pas.
+    private static let timestampPatterns = expressions([
+        #"(?i)^\d{1,2}:\d{2}(:\d{2})?( ?[ap]m)?$"#,
+        #"(?i)^\d{1,2}h\d{2}$"#,
+        #"(?i)^il y a \d+ (s|sec|secs|seconde|secondes|min|mins|minute|minutes|h|heure|heures)$"#,
+        #"(?i)^\d+ (s|sec|secs|min|mins|h) ago$"#,
+        #"(?i)^(aujourd'hui|aujourd’hui|hier|today|yesterday)$"#,
+    ])
+
+    private static let counterPatterns = expressions([
+        #"^\d+$"#,
+        #"^\(\d+\)$"#,
+        #"^\+\d+$"#,
+        #"^\d+/\d+$"#,
+        #"(?i)^\d+ (messages?|nouveaux?|comments?|commentaires?|items?)$"#,
+    ])
+
+    /// Un motif invalide ne reconnaît rien, comme une recherche `range(of:options:)` qui échoue.
+    private static func expressions(_ patterns: [String]) -> [NSRegularExpression] {
+        patterns.compactMap { try? NSRegularExpression(pattern: $0) }
+    }
+
+    private static func matchesAny(_ expressions: [NSRegularExpression], _ text: String) -> Bool {
+        let range = NSRange(text.startIndex..., in: text)
+        return expressions.contains { $0.firstMatch(in: text, range: range) != nil }
+    }
+
+    /// Calculé une fois : l'union était refaite pour chaque fragment et chaque mot d'une lecture de fenêtre.
+    private static let punctuationAndSymbols = CharacterSet.punctuationCharacters.union(.symbols)
 
     private static func words(in text: String) -> [String] {
         text.split(whereSeparator: \.isWhitespace).compactMap { token in
-            let cleaned = token.trimmingCharacters(in: CharacterSet.punctuationCharacters.union(.symbols))
+            let cleaned = token.trimmingCharacters(in: punctuationAndSymbols)
             return cleaned.isEmpty ? nil : String(cleaned)
         }
     }
@@ -133,7 +151,7 @@ public enum WindowContext {
         guard current.count < previous.count else { return false }
         let lastStart = previous.count - current.count
         for start in 0...lastStart {
-            if Array(previous[start..<(start + current.count)]) == current { return true }
+            if previous[start..<(start + current.count)].elementsEqual(current) { return true }
         }
         return false
     }
