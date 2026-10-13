@@ -8,21 +8,21 @@ import Testing
 @testable import WispadCore
 
 private final class FakeAudio: AudioRecording, @unchecked Sendable {
-    var onPCM: (@Sendable (Data) -> Void)?
-    var bands = Array(repeating: Float(0), count: SpectrumAnalyzer.bandCount)
-    var duration = 2.0
-    var url: URL?
-    var starts = 0
-    var isRunning = false
-    var emitsPCMOnStart = true
-    var startGate: AsyncResult<Void>?
-    var onStarting: (@Sendable () -> Void)?
-    var startError: Error?
+    @Guarded var onPCM: (@Sendable (Data) -> Void)?
+    @Guarded var bands = Array(repeating: Float(0), count: SpectrumAnalyzer.bandCount)
+    @Guarded var duration = 2.0
+    @Guarded var url: URL?
+    @Guarded var starts = 0
+    @Guarded var isRunning = false
+    @Guarded var emitsPCMOnStart = true
+    @Guarded var startGate: AsyncResult<Void>?
+    @Guarded var onStarting: (@Sendable () -> Void)?
+    @Guarded var startError: Error?
     /// Démarrages qui ont rendu la main (même abandonnés par la dictée).
-    var finishedStarts = 0
-    var restarts = 0
-    var restartEmitsPCM = true
-    var abandoned = 0
+    @Guarded var finishedStarts = 0
+    @Guarded var restarts = 0
+    @Guarded var restartEmitsPCM = true
+    @Guarded var abandoned = 0
     func start(directory: URL) async throws -> URL {
         starts += 1
         onStarting?()

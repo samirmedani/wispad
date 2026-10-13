@@ -94,9 +94,9 @@ private final class FakeSystem {
 }
 
 private final class FakeMeter: MicrophoneMetering, @unchecked Sendable {
-    var onLevel: (@MainActor @Sendable (Double, Double) -> Void)?
-    var starts = 0
-    var stops = 0
+    @Guarded var onLevel: (@MainActor @Sendable (Double, Double) -> Void)?
+    @Guarded var starts = 0
+    @Guarded var stops = 0
 
     func start(deviceUID: String?, onLevel: @escaping @MainActor @Sendable (Double, Double) -> Void) async throws {
         starts += 1

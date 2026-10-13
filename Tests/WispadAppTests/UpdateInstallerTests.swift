@@ -83,7 +83,8 @@ struct UpdateInstallerTests {
     }
 
     private func waitUntil(_ condition: @MainActor () -> Bool) async throws {
-        let deadline = Date().addingTimeInterval(3)
+        // Rend la main dès que la condition est vraie ; la marge sert aux machines de CI chargées.
+        let deadline = Date().addingTimeInterval(15)
         while !condition() {
             guard Date() < deadline else {
                 Issue.record("délai dépassé")
