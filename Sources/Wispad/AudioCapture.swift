@@ -29,6 +29,7 @@ final class AudioCapture: @unchecked Sendable {
     private var wav: WAVStream?
     private var analyzer = SpectrumAnalyzer()
     private let inputChoice = OSAllocatedUnfairLock<String?>(initialState: nil)
+    private let pcmSink = OSAllocatedUnfairLock<(@Sendable (Data) -> Void)?>(initialState: nil)
     /// Micro réellement réglé sur le moteur (file `control` seulement) ; nil : celui du système.
     private var appliedInput: String?
     /// Écoute des reconfigurations du moteur actuel (file `control` seulement).
@@ -46,7 +47,12 @@ final class AudioCapture: @unchecked Sendable {
         set { inputChoice.withLock { $0 = newValue } }
     }
 
-    var onPCM: (@Sendable (Data) -> Void)?
+    /// Posé sur le fil principal, appelé sur le fil du micro : sous verrou, car un démarrage abandonné (micro trop
+    /// lent) peut encore livrer un paquet pendant que la dictée suivante pose le sien.
+    var onPCM: (@Sendable (Data) -> Void)? {
+        get { pcmSink.withLock { $0 } }
+        set { pcmSink.withLock { $0 = newValue } }
+    }
     var isRunning: Bool { control.sync { engine?.isRunning == true } }
 
     /// Bandes à afficher maintenant : rejouées tranche par tranche entre deux paquets micro.
