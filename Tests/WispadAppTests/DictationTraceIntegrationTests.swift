@@ -94,7 +94,7 @@ private final class TraceFixture {
         dependencies.restoreOutput = {}
         dependencies.watchCorrections = { _, _, _, _ in }
         dependencies.judgeTerms = { _, _, _ in TermJudgement(kept: []) }
-        dependencies.insert = { [weak self] text, _, allowed in
+        dependencies.insert = { [weak self] text, _, allowed, _ in
             guard allowed() else { return .cancelled }
             self?.insertedTexts.append(text)
             return .inserted
@@ -134,7 +134,7 @@ struct DictationTraceIntegrationTests {
                 try? await Task.sleep(nanoseconds: 25_000_000)
                 return CleanupOutcome(text: text, usage: cleanup)
             }
-            $0.insert = { _, _, allowed in
+            $0.insert = { _, _, allowed, _ in
                 try? await Task.sleep(nanoseconds: 25_000_000)
                 return allowed() ? .inserted : .cancelled
             }
@@ -379,7 +379,7 @@ struct DictationTraceIntegrationTests {
         let entered = AsyncResult<Void>()
         let releaseInsertion = AsyncResult<Void>()
         let f = try TraceFixture {
-            $0.insert = { _, _, allowed in
+            $0.insert = { _, _, allowed, _ in
                 entered.resolve(.success(()))
                 try? await releaseInsertion.value()
                 return allowed() ? .inserted : .cancelled
@@ -406,7 +406,7 @@ struct DictationTraceIntegrationTests {
     }
 
     @Test func sentPasteKeepsItsUnconfirmedOutcomeInTheTechnicalDetail() async throws {
-        let f = try TraceFixture { $0.insert = { _, _, _ in .pasteSent } }
+        let f = try TraceFixture { $0.insert = { _, _, _, _ in .pasteSent } }
         defer { f.dispose() }
         try await f.dictate()
 

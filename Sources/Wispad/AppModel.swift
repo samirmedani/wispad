@@ -232,15 +232,21 @@ final class AppModel {
     /// Mots corrigés juste après une dictée : le modèle de correction décide lesquels méritent le dictionnaire,
     /// pour qu'une retouche sans intérêt (mot courant, faute de frappe) n'y entre pas.
     func considerLearning(_ candidates: [CorrectionLearner.Candidate], dictated: String, speech: SpeechRequest, traceID: String? = nil) {
-        let refused = (try? store.refusedTerms()) ?? []
-        let fresh = candidates.filter { candidate in
-            !dictionary.contains { $0.term.caseInsensitiveCompare(candidate.corrected) == .orderedSame }
-                && !refused.contains { $0.caseInsensitiveCompare(candidate.corrected) == .orderedSame }
-        }
-        guard !fresh.isEmpty else { return }
+        guard settings.learnCorrections, !candidates.isEmpty else { return }
         let previous = learning
         learning = Task {
             await previous?.value
+            guard !Task.isCancelled, settings.learnCorrections,
+                  let refused = try? store.refusedTerms() else { return }
+            // La file précédente a pu ajouter ou refuser un terme pendant notre attente.
+            var seen = Set<String>()
+            let fresh = candidates.filter { candidate in
+                let term = candidate.corrected.trimmingCharacters(in: .whitespacesAndNewlines)
+                return !term.isEmpty && seen.insert(term.lowercased()).inserted
+                    && !dictionary.contains { $0.term.caseInsensitiveCompare(term) == .orderedSame }
+                    && !refused.contains { $0.caseInsensitiveCompare(term) == .orderedSame }
+            }
+            guard !fresh.isEmpty else { return }
             let judgement = await dependencies.judgeTerms(fresh, dictated, speech)
             for usage in judgement.usages { recordUsage(usage) }
             if let traceID {
@@ -248,23 +254,39 @@ final class AppModel {
                     traceRevision += 1
                 }
             }
-            learn(judgement.kept)
+            guard !Task.isCancelled, settings.learnCorrections else { return }
+            // Une réponse ne peut introduire un terme qui n'avait pas été proposé.
+            learn(judgement.kept.filter { kept in fresh.contains { $0.corrected == kept.term } })
         }
     }
 
     /// Mots appris seuls depuis le lancement, du plus récent au plus ancien : le menu propose de les retirer.
     private(set) var recentlyLearned: [String] = []
 
-    /// Mots retenus après une dictée, ajoutés au dictionnaire.
-    func learn(_ terms: [String]) {
+    /// Mots retenus après une dictée, ajoutés au dictionnaire avec le juge qui les a retenus.
+    func learn(_ terms: [LearnedTerm]) {
+        guard settings.learnCorrections, let refused = try? store.refusedTerms() else { return }
+        var known = Set(dictionary.map { $0.term.lowercased() })
         var added: [String] = []
-        for term in terms where !dictionary.contains(where: { $0.term.caseInsensitiveCompare(term) == .orderedSame }) {
-            if persist("ajout au dictionnaire", { try store.addTerm(term) }) { added.append(term) }
+        for learned in terms {
+            let term = learned.term.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !term.isEmpty, !known.contains(term.lowercased()),
+                  !refused.contains(where: { $0.caseInsensitiveCompare(term) == .orderedSame }) else { continue }
+            if persist("ajout au dictionnaire", { try store.addTerm(term, origin: .learned(learned.judge)) }) {
+                known.insert(term.lowercased())
+                added.append(term)
+            }
         }
         guard !added.isEmpty else { return }
         recentlyLearned = Array((added.reversed() + recentlyLearned.filter { !added.contains($0) }).prefix(5))
         reloadDictionary()
         coordinator.notifyLearned(added)
+    }
+
+    /// Oui dans la bulle : le mot appris reste, et la confirmation est notée sans changer son origine.
+    func confirmLearnedTerm(_ term: String) {
+        persist("confirmation d'un mot") { try store.confirmLearnedTerm(term) }
+        reloadDictionary()
     }
 
     /// Retire un mot par son nom (menu de la barre : mot appris à tort).
@@ -484,6 +506,57 @@ final class AppModel {
         hasKey(account: CleanupModel.deepSeekAccount)
     }
 
+    // MARK: - Mises à jour
+
+    /// Installation en un clic d'une release (téléchargement, signature, remplacement, relance).
+    let updater = UpdateInstaller()
+    /// Release dont la fenêtre de mise à jour est ouverte : notes de version, installation et son avancement.
+    var updateSheet: ReleaseInfo?
+    /// Fenêtre principale à l'écran (posé par le délégué de l'app) : la nouvelle version la rouvre après la relance.
+    @ObservationIgnored var isWindowVisible: () -> Bool = { false }
+
+    /// Version plus récente trouvée par la vérification : rappelée une seule fois par version dans la bulle, quand
+    /// elle se libère après une dictée ; jamais pendant la configuration guidée.
+    func noteAvailableRelease(_ release: ReleaseInfo) {
+        guard onboarding == nil,
+              UpdateReminder.shouldRemind(release.version, lastReminded: settings.updateRemindedVersion) else { return }
+        coordinator.offerUpdate(release)
+    }
+
+    /// Le rappel vient de paraître dans la bulle : il ne reviendra plus pour cette version.
+    func noteUpdateReminded(_ version: SemanticVersion) {
+        setDisplayChoice(\.updateRemindedVersion, version.description)
+    }
+
+    /// Ouvre la fenêtre sur la mise à jour : notes de version et bouton d'installation.
+    func showUpdate(_ release: ReleaseInfo) {
+        updateSheet = release
+        onOpenWindow?(selectedSection)
+    }
+
+    /// « Mettre à jour » : installation en un clic, suivie dans la fenêtre de mise à jour. Si elle ne peut pas se faire
+    /// ici (dossier non modifiable, release sans disque…), la page de la release s'ouvre à la place.
+    func installUpdate(_ release: ReleaseInfo) {
+        let status = BuildStatus.shared
+        guard let version = status.version else { return }
+        let started = updater.install(
+            release, kind: status.kind, installed: version,
+            isIdle: { [weak self] in self?.coordinator.phase == .idle },
+            relaunchArguments: { [weak self] in self?.relaunchArguments() ?? ["--updated"] }
+        )
+        if started { updateSheet = release }
+    }
+
+    /// Arguments de la nouvelle version : elle confirme la mise à jour, et rouvre la fenêtre si elle était affichée.
+    func relaunchArguments() -> [String] {
+        isWindowVisible() ? ["--updated", "--section", selectedSection.rawValue] : ["--updated"]
+    }
+
+    /// Premier lancement après une mise à jour en un clic : la bulle le confirme, sans prendre le focus.
+    func announceUpdated() {
+        coordinator.announce(String(localized: "Wispad \(BuildStatus.shared.version ?? "—") est installé"), relay: false)
+    }
+
     // MARK: - Clés saisies dans Fournisseurs
 
     /// Brouillons de clés par compte : jamais enregistrés tant qu'ils ne sont pas vérifiés.
@@ -685,8 +758,9 @@ final class AppModel {
         }
     }
 
+    /// Ajout à la main dans l'écran Dictionnaire : le mot est noté « ajouté par toi ».
     func addTerm(_ term: String) {
-        persist("ajout au dictionnaire") { try store.addTerm(term) }
+        persist("ajout au dictionnaire") { try store.addTerm(term, origin: .user) }
         reloadDictionary()
     }
 

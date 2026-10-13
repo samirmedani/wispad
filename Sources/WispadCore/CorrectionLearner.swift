@@ -64,7 +64,9 @@ public enum CorrectionLearner {
             return hasDistinctiveShape(newText) ? newText : nil
         }
         // Simple accord (« maison » → « maisons ») : une faute de grammaire, pas un mot mal entendu.
-        if isInflection(oldKey, newKey) { return nil }
+        // Une forme distinctive peut être un nom propre mal entendu (« terraforme » → « Terraform »).
+        // Elle doit parvenir au juge ; celui-ci écarte les mots courants simplement capitalisés.
+        if isInflection(oldKey, newKey), !hasDistinctiveShape(newText) { return nil }
         let similarity = 1 - Double(levenshtein(oldKey, newKey)) / Double(max(oldKey.count, newKey.count))
         guard similarity >= 0.45 else { return nil }
         // Un mot courant en minuscules vaut rarement d'être appris ; un terme marqué, oui.

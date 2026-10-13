@@ -27,12 +27,12 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 - Il colle au curseur actuel la dernière dictée non insérée de la dernière demi-heure (prête à copier, aucun champ,
   collage raté, champ sécurisé), sinon la dernière dictée. Jamais une dictée annulée, vide ou sans transcription.
   Rien à coller : la bulle le dit (« Aucune dictée à coller »).
-- Même collage qu'une dictée (⌘V, presse-papiers restauré après), dans l'app au premier plan, envoyé une fois ⌃ et
-  ⌥ relâchés (0,6 s au plus).
-- Collé (inséré ou collage envoyé), il se termine comme une dictée : la bulle affiche « Collé » (coche verte, sans
+- Même insertion qu'une dictée, dans l'app au premier plan. Les touches modificatrices doivent être relâchées
+  (0,8 s au plus) ; sinon le texte reste prêt à copier, aucun raccourci parasite n'est envoyé.
+- Insertion confirmée, il se termine comme une dictée : la bulle affiche « Collé » (coche verte, sans
   bouton, disparaît seule), le champ est surveillé 30 s pour apprendre les mots corrigés (mêmes règles qu'après
-  une dictée, voir « Dictionnaire et apprentissage »), et la dictée non insérée passe à « Inséré » ou « Collage
-  envoyé » avec l'app où elle a été collée. Un nouvel échec ne change jamais le statut d'une dictée déjà livrée.
+  une dictée, voir « Dictionnaire et apprentissage »), et la dictée non insérée passe à « Inséré »
+  avec l'app où elle a été collée. Un nouvel échec ne change jamais le statut d'une dictée déjà livrée.
   Toujours pas de champ : le texte est copié et la bulle affiche le même message qu'après une dictée. Même fin pour
   **Coller** dans la bulle.
 - Avalé : la combinaison n'atteint pas l'app. Une fois par enfoncement (la répétition ne recolle pas). Ignoré
@@ -87,6 +87,18 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   droite et le décompte (barre comprise) s'arrête ; il reprend où il en était à la sortie. Un message qui paraît
   sous le pointeur attend aussi. La ✕ ferme le message tout de suite, sans prendre le focus ni le premier plan à
   l'app active. La bulle d'enregistrement (spectre, finalisation) n'a ni ✕ ni décompte.
+- **Place à l'écran** (Réglages › Bulle et messages) : trois places réglables à main levée sur un schéma quadrillé
+  de l'écran, la grille aimantant légèrement les bulles. **Dictée** (spectre et finalisation), **Alertes de
+  collage** (texte prêt à copier) et **Messages** (« Collé », mot appris, relais, nouvelle version). Par défaut :
+  au-dessus du Dock, au centre. Double-clic sur une bulle du schéma ou « Par défaut » : place d'origine ; « Aperçu à
+  l'écran » montre un message 3 s à la place choisie. Entre deux places, la bulle glisse (0,22 s, sans animation si
+  le mouvement est réduit). Une place est gardée en fractions de l'écran, et la bulle reste entière à l'écran.
+- **Ne jamais couvrir le champ de saisie** (activé par défaut, désactivable) : après chaque collage, Wispad lit où se
+  trouve la saisie dans l'app au premier plan. C'est le champ actif s'il mesure au plus 240 points de haut, sinon la
+  ligne du curseur ; pour un champ invisible à l'accessibilité (Codex, apps Electron), les 22 % du bas de la fenêtre
+  active (90 à 200 points). Les messages qui couvriraient cette zone se placent 12 points au-dessus, sinon en
+  dessous ; la bulle de dictée garde sa place. Cette lecture suit l'envoi du texte (au plus 0,3 s, hors du fil
+  principal) : ni la bulle ni le collage ne l'attendent. Elle vaut pour cette app pendant 2 minutes.
 - Deux notes montantes signalent le premier audio réellement reçu, une seule fois ; d'autres sons marquent la fin
   et l'annulation. Tous se coupent dans Réglages.
 - Une app passée en plein écran après la première bulle reçoit une bulle neuve : macOS ne rattache une fenêtre de
@@ -101,21 +113,22 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 - Choix d'affichage mémorisés, retrouvés après avoir quitté et relancé Wispad, chacun enregistré dès qu'il change :
   - période de l'Accueil (7 jours par défaut) ;
   - période de Consommation (Aujourd'hui par défaut), indépendante de celle de l'Accueil ;
+  - section, origine et période du Dictionnaire (Mots, Tous et Toute période par défaut) ;
   - dernière section ouverte dans la barre latérale (Accueil par défaut) : la fenêtre rouvre dessus depuis le
     Dock ou « Ouvrir Wispad » ; un raccourci de section ou un menu de section ouvre toujours la sienne ;
   - « Clés facultatives » dépliées ou non dans Fournisseurs (repliées par défaut).
 
   Un choix illisible ou inconnu reprend sa valeur par défaut, sans toucher aux autres réglages. Restent
-  éphémères : la recherche de l'Historique, une saisie en cours (clé, terme du dictionnaire), une dictée dépliée
-  dans l'Historique, le détail ouvert.
+  éphémères : les recherches de l'Historique et du Dictionnaire, une saisie en cours (clé, terme du dictionnaire),
+  une dictée dépliée dans l'Historique, le détail ouvert.
 
 ## Réglages
 
-Sections, dans l'ordre : Raccourci, Transcription, Correction, Ton selon l'app, Confidentialité, Apprentissage,
-Général, Autorisations, Diagnostic. Aucun bloc de texte sous une liste : chaque réglage porte, dans sa rangée, une
-explication d'une ligne sous son libellé, en langage simple (ni montant, ni chiffre, ni nom de modèle). Les détails
-(fournisseurs et modèles réellement utilisés, coût, délais, ce qui est envoyé ou gardé) s'ouvrent dans un popover
-avec le bouton ⓘ de la rangée ; ceux de la correction suivent les clés enregistrées.
+Sections, dans l'ordre : Raccourci, Transcription, Correction, Mise en forme, Ton selon l'app, Confidentialité, Apprentissage,
+Général, Autorisations, Diagnostic, Aide et retours. Aucun bloc de texte sous une liste : chaque réglage porte, dans
+sa rangée, une explication d'une ligne sous son libellé, en langage simple (ni montant, ni chiffre, ni nom de
+modèle). Les détails (fournisseurs et modèles réellement utilisés, coût, délais, ce qui est envoyé ou gardé)
+s'ouvrent dans un popover avec le bouton ⓘ de la rangée ; ceux de la correction suivent les clés enregistrées.
 
 - **Raccourci** : chaque raccourci (dictée, « Coller la dernière dictée ») est dessiné en touches de clavier Mac
   compactes, toutes de la même hauteur, une par touche à enfoncer, symbole et nom sur une ligne, séparées par un
@@ -132,8 +145,20 @@ avec le bouton ⓘ de la rangée ; ceux de la correction suivent les clés enreg
   autour du curseur ; historique et audio restent sur ce Mac), « Comprendre le sujet grâce à la fenêtre active »
   (inactif sans la correction), conservation, durée et plafond de l'audio.
 - **Correction** : « Corriger le texte avant insertion », « Structurer les listes et paragraphes », « Réécrire la
-  sélection sur consigne » (inactif sans la correction). Le ton se règle dans la section suivante, inactive sans la
-  correction.
+  sélection sur consigne » (inactif sans la correction). Le ton se règle dans la section « Ton selon l'app », inactive
+  sans la correction.
+- **Mise en forme** (inactive sans la correction) : format des dates et des heures écrites par la correction (voir
+  « Dates et heures » plus bas), conservé aux mises à jour, lu champ par champ.
+  - « Dates » : JJ/MM/AAAA (par défaut), MM/JJ/AAAA ou AAAA-MM-JJ (ISO, qui impose tirets, quatre chiffres et zéros) ;
+    puis, hors ISO et hors toutes lettres : séparateur (/ par défaut, ., -, espace), année sur 4 (par défaut) ou
+    2 chiffres, « Zéro initial » (03/11, par défaut, ou 3/11).
+  - « Garder les dates en toutes lettres » (désactivé par défaut) : mois en lettres, jour et année en chiffres
+    (« 24 octobre 2026 », « 1er mai » ; en anglais « 24 October 2026 », ou « October 24, 2026 » avec MM/JJ/AAAA).
+  - « Heures » : « Selon la langue » (par défaut : 24 h en français, 12 h en anglais), « 24 h » ou « 12 h (AM/PM) ».
+    « Écriture sur 24 h », cachée en 12 h : « 14h30 » (par défaut, d'un seul bloc), « 14 h 30 » (typographie
+    française stricte) ou « 14:30 » ; l'anglais écrit toujours « 14:30 » sur 24 h et « 2:30 PM » sur 12 h.
+  - « Aperçu » : une date, une date sans année et une heure rendues par le format choisi, mises à jour à chaque
+    changement ; en langue automatique, une ligne par langue si elles diffèrent.
 
 ## Premier lancement guidé
 
@@ -191,9 +216,15 @@ Toujours chez un fournisseur, au choix dans Fournisseurs : xAI `grok-voice-trans
   avec la dictée dans l'historique local (pour comprendre le désaccord et pour le banc des erreurs signalées) ;
 - texte différent d'un ou deux remplacements courts (trois mots au plus, même nombre de mots à un près, voisin
   retrouvé, mot unique dans la correction, aucun terme du dictionnaire) : les mots du fichier sont reportés dans la
-  correction du flux, sans second appel, si elle est prête dans les 0,3 s. Sinon, correction complète du fichier ;
+  correction du flux, sans second appel, si elle est déjà prête. Sinon, correction complète du fichier immédiate,
+  sans attendre 0,3 s une correction obsolète ;
 - fichier en échec, sans aucun mot ou trop lent (1,2 s + 0,06 s par seconde d'audio, 4 s au plus) : le flux est
   gardé. Il l'est aussi quand le réglage est coupé et qu'une fin de flux peu fiable rappelle un fichier vide.
+
+Si le fichier a déjà répondu quand le flux se termine, le choix est fait immédiatement : seule la transcription
+retenue part à la correction. Une correction déjà préparée sur ce même texte reste réutilisable. Sinon, la
+correction du flux continue à se préparer en parallèle du fichier. La vérification audio n'est pas sautée,
+même pour une dictée de quelques mots.
 
 **Sans connexion** : rien n'est transcrit sur le Mac. Si la connexion manque ou se perd pendant la dictée (flux,
 fichier, puis le relais de voix s'il a une clé, en échec), l'audio reste dans l'historique pour **Retranscrire** une
@@ -219,8 +250,21 @@ et fichier, l'usage de la correction préparée pendant l'écoute et le report d
 - Consigne en français ou en anglais selon la langue de dictée (en automatique, devinée sur la transcription).
 - Hésitations, bégaiements, faux départs et **autocorrections orales** retirés : « mardi, ah non, mercredi »
   devient « mercredi ». Un « non » qui fait partie du message reste.
-- Nombres écrits en chiffres ; élisions orales écrites en entier (« j'sais » → « je sais ») ; tournures
-  familières gardées (« t'as », « y a »).
+- Nombres écrits en chiffres quand ils comptent vraiment quelque chose ; élisions orales écrites en entier
+  (« j'sais » → « je sais ») ; tournures familières gardées (« t'as », « y a »).
+- **Dates et heures** : une date sans ambiguïté (jour et mois, date complète) ou l'heure d'un rendez-vous s'écrit au
+  format de Réglages › Mise en forme ; la consigne en reçoit des exemples rendus dans ce format. « le vingt-quatre
+  octobre deux mille vingt-six » → « 24/10/2026 », « le 3 du 11 » → « 03/11 », « à quatorze heures trente » →
+  « à 14h30 », « à deux heures de l'après-midi » → « à 14h » (réglages par défaut). Jamais d'année inventée : « le 3 novembre » donne
+  « 03/11 » (ou « 3 novembre » en toutes lettres). « mardi » seul reste « mardi » ; une durée reste une durée
+  (« deux heures de route » → « 2 heures de route »).
+- **Nombres mal entendus** : avant d'écrire un nombre en chiffres, la correction vérifie qu'il compte vraiment
+  quelque chose dans la phrase et la conversation visible. Si un homophone courant donne un sens plus naturel
+  (« deux » / « de », « deux mois » / « de moi », « cent » / « sans » / « s'en », « six » / « si », « sept » /
+  « cette », « vingt » / « vin » / « vint », « mille » / « mil », « un » / « hein » ; en anglais « two » / « to »,
+  « four » / « for »…), elle le corrige comme un mot mal entendu : « ils veulent quoi, deux mois ? » → « Ils veulent
+  quoi de moi ? ». « Le chantier dure deux mois » → « Le chantier dure 2 mois. » Dans le doute, le mot reste en
+  lettres, jamais en chiffres.
 - **Mots mal entendus** : quand un mot ou un groupe de mots rend la phrase illogique et qu'un mot qui se prononce
   pareil ou presque lui donne un sens évident (vu la phrase, le contexte, les dictées précédentes et l'autre écoute),
   la correction écrit ce mot à sa place : « hier j'écris le train » → « Hier, j'ai pris le train. », « il c'est
@@ -241,14 +285,18 @@ et fichier, l'usage de la correction préparée pendant l'écoute et le report d
   rattaché selon le sens (« c'est » et C, « t'es » et T, « elle » et L), une lettre répétée par erreur disparaît.
   Jamais de lettre isolée sans sens ; une lettre qui en a un reste (« vitamine C », « plan B »).
 - Banc réseau de ces règles, transcriptions brutes inventées passées directement à la correction (sans audio) :
-  `BENCH_ONLY=h,r,g,l,e scripts/franglais-bench.sh <nom>` (mots mal entendus, tics, citations, lettres épelées,
-  anglais).
+  `BENCH_ONLY=h,r,g,l,e,d,n scripts/franglais-bench.sh <nom>` (mots mal entendus, tics, citations, lettres épelées,
+  anglais, dates et heures, nombres mal entendus).
 - La correction ne répond jamais au contenu dicté et ne recopie jamais le contexte.
 - **Correction préparée pendant l'écoute** : à chaque pause de la parole (segment final du flux, puis 0,25 s sans
   nouveau mot), le texte entendu part déjà à la correction. Si l'on arrête sans rien ajouter (même texte à la
   ponctuation, la casse ou l'écriture des nombres près), cette correction sert telle quelle et le texte se colle sans
   attendre un nouvel appel. Si la parole reprend, elle est comptée (coût réel)
   et la suivante la remplace ; quatre au plus par dictée. Jamais si la correction est coupée.
+- **Correction lancée à l'arrêt** : dès l'arrêt, ce que le flux a déjà affiché part à la correction, sans attendre
+  son texte final (0,3 à 0,5 s sur les dictées courtes, mesuré le 13 octobre 2026). Si le texte final dit la même
+  chose, cette correction sert ; sinon elle est comptée et une correction du texte final la remplace. Rien de plus
+  n'est lancé si une correction préparée à une pause porte déjà sur ce texte.
 - Expressions mal entendues malgré les mots-clés, réécrites avant et après la correction : « services functions »
   → « serverless functions », « day inference » → « AI inference ».
 
@@ -283,7 +331,14 @@ sont ni une traduction ni une invention quand une lettre isolée a été entendu
 comme ce qui a été dit ; un autre mot épelé (« B-O-B ») ou un sigle sans lettre entendue reste refusé.
 
 Les vraies corrections d'écoute restent (« versel » → Vercel, 9950X3D, « envoie le » → « Envoie-le », « j'écris »
-→ « j'ai pris », « c'est E S » → « C-E-S »).
+→ « j'ai pris », « c'est E S » → « C-E-S », « deux mois » → « de moi », « cent rien dire » → « sans rien dire »).
+« sept » se dit comme « cette », « vingt » comme « vin », « mille » comme « mil ».
+
+Dates et heures : la même date ou la même heure, autrement écrite, n'est ni une traduction ni une invention
+(« quatorze heures trente » → « 14h30 », « at 2 in the afternoon » → « at 2 PM », « the third of the eleventh » →
+« November 3 ») : ses nombres viennent de ce qui a été dit, mois et après-midi compris. Une année que personne n'a
+dite (en chiffres, en lettres, « twenty twenty-six » ou sur deux chiffres) est retirée de la date : « le trois
+novembre » → « 03/11/2026 » devient « 03/11 ».
 
 ## Franglais technique
 
@@ -310,6 +365,56 @@ Julie hier au cinéma. »), un récit d'actions. Banc réseau : `scripts/live-te
 11 octobre sur Grok, 8/20 avec l'ancienne consigne ; les deux échecs restants sont des appels sans réponse, texte
 gardé tel quel).
 
+### Dates et heures
+
+Quand le service de correction répond, le texte retenu (la correction, ou la transcription que le garde-fou a
+gardée) prend le format de Réglages › Mise en forme sans dépendre du modèle, avant la mise en forme des listes.
+Repasser sur un texte déjà mis en forme ne change plus rien. Sans réponse ou sans correction, le texte reste tel quel.
+
+- Dates : complètes en chiffres (« 3/11/2026 », « 3.11.2026 », « 2026-11-03 » ; « 24/10/26 » → 2026,
+  « 12/05/85 » → 1985), lues dans l'ordre réglé, ou dans l'autre s'il est seul possible (« 24/10/2026 » en
+  MM/JJ/AAAA → « 10/24/2026 ») ; au mois en lettres (« 3 novembre », « 1er novembre 2026 », « du 3 au 5 novembre »,
+  « October 24, 2026 », « the 24th of October ») ; sans année après « le », « du », « au » ou un jour de la semaine
+  (« le 3/11 », « le 3 du 11 »). En toutes lettres, l'inverse : « le 24/10/2026 » → « le 24 octobre 2026 »,
+  « le 1/11 » → « le 1er novembre ».
+- Heures : suivies de AM/PM, « du matin », « de l'après-midi » ou « du soir », qui disparaissent (« 2 h de
+  l'après-midi » → « 14 h ») ; précédées de « à », « vers », « dès », « jusqu'à », « à partir de », « il est », d'un
+  jour de la semaine ou de « demain » (anglais : at, around, by, until, before, after, from, between) ; ou reliées à
+  une telle heure (« de 14 h à 16 h », « entre 9 h et 11 h », « à 8 h, 12 h et 20 h »). En 12 h, une heure de 1 à 11 sans matin ni soir reste telle quelle (« à 9 h »), sauf
+  reliée à une heure sûre (« de 9 h à 17 h » → « de 9 AM à 5 PM »).
+- Jamais touchés : un jour, un mois ou une année seuls ; une durée ou une distance (« 2 heures de route », « 1h30 de
+  trajet », « à 2 h de Paris », « de 2 à 3 heures », « jusqu'à 3 heures » ; « jusqu'à 18 h » est une heure) ; une
+  note ou une fraction (« 8/10 », « 3/4 ») ; une version (« 1.12.20 »), une adresse IP, un numéro de téléphone, un
+  score, « 16:9 », « Jean 3:16 » ; une date impossible ; une adresse web, un e-mail, du code.
+
+### Nombres, montants et unités
+
+Réglages › Mise en forme : **Montants et unités** (symboles, par défaut, ou en toutes lettres) et **Milliers**
+(selon la langue, par défaut ; espace ; aucun). La consigne reçoit des exemples rendus dans ce format, puis
+`NumberWriter` l'impose sans le modèle, après le garde-fou de fidélité, au texte retenu :
+
+- Montant, pourcentage ou mesure suivi de son unité, dite ou écrite : « 25 euros », « 25€ » → « 25 € » ; « 3,5 € »,
+  « 3.50 € » → « 3,50 € » ; « 15% », « 15 pour cent » → « 15 % » ; « 5 kilomètres » → « 5 km » ; « 12 kilomètres par
+  heure » → « 12 km/h » ; « 120 mètres carrés » → « 120 m² » ; « 20 degrés Celsius » → « 20 °C » ;
+  « 16 gigaoctets » → « 16 Go », mais « 16 gigas », dit ainsi, reste tel quel. En français, espace insécable
+  avant le symbole et espace fine insécable entre les milliers (« 1 500 € ») ; en anglais, « $25 », « €3.50 », « 15% », « $1,500 ». Un prix garde ses centimes sur deux chiffres.
+- En toutes lettres : « 25 euros », « 1 euro », « 1,50 euro », « 5 kilomètres » (pluriel à partir de 2 en
+  français) ; « % » reste un symbole, et un symbole d'une seule lettre (« 5 m », « 250 g ») n'est pas récrit.
+- Les unités informatiques (Go, Mo, To, GB, MB, TB, GHz, MHz) ne regroupent pas les milliers : « 6000 MHz ».
+- Téléphones français par paires : « 0612345678 », « 06.12.34.56.78 » → « 06 12 34 56 78 » ;
+  « +33612345678 », « +33 (0)6 12 34 56 78 » → « +33 6 12 34 56 78 ». Pas plus long, ni collé à une adresse ou à
+  des lettres.
+- Jamais touchés : un nombre sans unité reconnue (années, codes postaux, références de matériel, numéros de version,
+  « 12 500 personnes »), les durées (« 5 min », « 300 ms », « 2 heures de route »), une élision après un nombre
+  (« les 3 l'ont vu »), « 3,50 € » écrit à la française dans une dictée anglaise, les codes EUR, USD et GBP.
+- « Et demi » reste en lettres après un nom, accordé : la transcription vocale écrit parfois « 2 mois et 1/2 », qui
+  devient « 2 mois et demi » ; « 1 heure et 1/2 » → « 1 heure et demie ». Une fraction seule (« 1/2 litre ») ne change
+  pas et n'est jamais lue comme une quantité.
+- Mots du fichier reportés dans la correction du flux (`CorrectionPatch`) : ils reprennent aussi le format des dates,
+  des heures et des nombres (« 80 m² » ne redevient pas « 80 mètres carrés »).
+- Le garde-fou reconnaît les symboles d'unité (« °C », « kWh », « km/h ») : il ne les remplace pas par les mots
+  entendus.
+
 ## Ton et consignes
 
 - **Ton selon l'app** (Réglages › Ton selon l'app) : par catégorie (e-mails, messageries, documents, notes, code et
@@ -334,9 +439,59 @@ gardé tel quel).
   entendu corrigé à la main (« Sidance » → « Seedance ») est jugé : marque, nom, sigle ou jargon seulement. Avec
   une clé TypeSafe, Jev le note d'abord et tranche les cas nets ; le modèle de correction décide des autres (et
   de tous sans clé TypeSafe). Sans réponse du modèle de correction, la note de Jev suffit.
-- Le mot retenu est ajouté, puis la bulle demande « Le garder ? » (Oui / Non, 8 s, sans prendre le focus). Non
-  le retire et ne le propose plus jamais ; sans réponse ou avec ✕, le mot reste.
+- Les termes retenus sont ajoutés, puis une bulle « Ajout au dictionnaire » les présente ensemble (jusqu'à trois,
+  8 s, sans prendre le focus). « Voir » ouvre leur section dans le dictionnaire ; « Annuler l'ajout » retire le
+  groupe affiché et mémorise le refus. Sans réponse ou avec ✕, les termes restent. Le décompte se suspend au
+  survol et une nouvelle dictée passe toujours avant la bulle, qui revient ensuite.
+- Les jugements sont sérialisés : un terme déjà ajouté par le jugement précédent n'est pas rejugé. Les refus
+  sont relus après l'attente et avant l'ajout. Une réponse tardive n'ajoute rien si l'apprentissage a été coupé
+  entre-temps. Un résultat ne peut ajouter que les candidats effectivement soumis, sans doublons.
+- Un nom à graphie distinctive ressemblant à une simple flexion (« terraforme » → « Terraform ») est transmis
+  au juge, pas ajouté aveuglément. Les accords ordinaires restent exclus par le filtre local.
 - Seuls la phrase dictée et le mot corrigé sont envoyés (à Jev et au modèle de correction) ; le journal ne contient ni mot ni texte.
+
+### Origine des mots
+
+Chaque mot garde, sur ce Mac, qui l'a ajouté :
+
+- **Toi** : mot ajouté à la main dans l'écran Dictionnaire.
+- **Appris automatiquement** : mot corrigé après une dictée et retenu par un juge. Jev (TypeSafe) quand sa note
+  suffit (cas net, ou modèle de correction sans réponse) ; sinon le modèle de correction qui a répondu (sans clé
+  TypeSafe ou sans réponse de Jev, ou mot douteux pour Jev). Le fournisseur et le modèle notés sont ceux de l'appel
+  qui a tranché : la route de correction qui a répondu (DeepSeek `deepseek-flash`, OpenAI `gpt-5.4-mini`, xAI
+  `grok-4.7`…), ou pour Jev le modèle annoncé par sa réponse. Après un changement de clé ou de fournisseur, les mots
+  suivants portent le nouveau modèle, les anciens gardent le leur.
+- **« Voir » dans la bulle** ne fait pas du mot un mot « Toi » : le juge l'avait déjà ajouté.
+  Le terme reste comme avec le silence ou ✕ ; « Annuler l'ajout » le retire. La confirmation est notée et
+  l'info-bulle dit « Gardé par toi » ; le mot garde son juge. « Toi » désigne seulement un mot ajouté à la main.
+- **Avant le suivi** : mot ajouté par une version précédente. L'historique ne relie aucun appel de jugement à un
+  mot ni ne garde le verdict de chaque mot : l'origine n'est pas devinée.
+
+Le dictionnaire affiche par défaut les entrées les plus récentes en haut, dans tous les filtres et dans les deux
+sections. Les en-têtes **Mot / Expression**, **Origine** et **Ajouté le** trient la liste ; un second clic inverse
+le sens, indiqué par une flèche. Le choix reste mémorisé après relance. Le tri par origine groupe Par toi,
+Automatique puis Avant le suivi (ou l'inverse), avec les plus récents en tête de chaque groupe. Il ne change ni
+les données conservées ni l'ordre des termes transmis aux fournisseurs.
+
+Écran Dictionnaire : deux sections mémorisées, Mots et Expressions et phrases. La classification suit le texte :
+un seul élément sans espace reste un mot, plusieurs éléments (espaces ou retours à la ligne) forment une
+expression. Les termes existants sont répartis sans être modifiés. Les noms composés peuvent donc être dans
+Expressions et phrases ; ce n'est pas une décision du modèle. Aucune limite de longueur n'est ajoutée.
+
+Les mots utilisent une table compacte Mot / Origine / Ajouté le. Les expressions ont toute la largeur, avec
+retour à la ligne et métadonnées dessous. Leur saisie accepte plusieurs lignes. Ajouter un terme ouvre sa section
+et remet les filtres à Tous / Toute période pour qu'il reste visible. La recherche est temporaire ; origine et
+période sont mémorisées. Les filtres se croisent, avec un compteur de résultats et un bouton de réinitialisation.
+
+Badges : bleu « Par toi », violet « Automatique », gris « Avant le suivi ». Pour un terme appris, le juge
+(« Jev », « DeepSeek », « OpenAI », « xAI »…) reste visible ; l'info-bulle précise le fournisseur, le modèle et
+les dates. La corbeille retire une entrée. L'apprentissage automatique reste ciblé sur les corrections de noms,
+marques et jargon ; il ne mémorise pas des paragraphes entiers.
+
+Le banc synthétique `scripts/learning-bench.sh` vérifie l'extraction et mesure sa latence. `--live` demande une
+clé dédiée `WISPAD_TEST_TYPESAFE_API_KEY` (et éventuellement `WISPAD_TEST_DEEPSEEK_API_KEY`) et mesure les
+vrais verdicts, faux positifs, faux négatifs, erreurs et latences. Sans ces clés, aucun benchmark réseau n'est
+fait et les résultats locaux ne constituent pas une mesure de la qualité de Jev.
 
 ## Relais en cas de panne
 
@@ -349,24 +504,41 @@ gardé tel quel).
 ## Reprise après erreur
 
 - Erreur réseau, de clé ou de quota : l'audio reste dans l'historique ; **Retranscrire** puis **Copier**.
-- Texte qui n'a pu être écrit nulle part : jamais en silence. La bulle le dit en une ligne, avec **Copier** en
-  évidence et **Coller** : « Pas de champ où écrire : le texte est prêt » (focus sur une liste, un bouton, un menu,
-  ou le bureau et les fenêtres du Finder, avant comme après ⌘V), « Collage impossible : le texte est prêt »
-  (accessibilité refusée, app cible fermée ou qui n'a pas repris le premier plan, presse-papiers non modifiable,
-  ⌘V non envoyé), « Champ sécurisé : le texte est prêt ». Le texte est déjà copié, sauf pour un champ sécurisé.
-  12 s, avec une barre qui se vide (en pause au survol) ; ✕ au survol ou Échap la ferment. Elle ne prend jamais
-  le focus : **Copier** remet le texte au presse-papiers et confirme « Copié » (1,5 s), **Coller** le colle dans
-  le champ de l'app active (même collage que « Coller la dernière dictée »). Le collage garde tous les formats du
-  presse-papiers précédent et refuse les champs sécurisés.
-- Sans confirmation d'accessibilité, le statut reste « Collage envoyé », sans fausse alerte : un champ illisible
-  ou un conteneur (groupe, zone web, fenêtre, tableau) ne prouve pas l'échec, beaucoup d'éditeurs (Electron,
-  terminaux, éditeurs dessinés) collent sans exposer leur texte. « Coller la dernière dictée » rattrape un tel
-  collage parti dans le vide.
-- Lectures d'accessibilité bornées au collage : champ actif 0,3 s avant ⌘V, confirmation 0,7 s après. Une app qui
+- Texte qui n'a pas pu être écrit : jamais en silence. La bulle le dit dans une carte avec un titre de 14 points,
+  une explication de 12 points et des boutons de 30 points sur une ligne séparée, avec **Copier** en évidence et
+  **Coller** : « Pas de champ où écrire : le texte est prêt » (focus sur une liste, un bouton, un menu, ou le bureau
+  et les fenêtres du Finder, avant l'envoi), « Le texte n'est pas arrivé dans le champ » (champ lisible resté
+  identique 1 s après ⌘V), « Collage impossible : le texte est prêt » (accessibilité refusée, app cible fermée ou
+  qui a perdu le premier plan, presse-papiers non modifiable, ⌘V non envoyé), « Champ sécurisé : le texte est
+  prêt ». Le texte est déjà copié, sauf pour un champ sécurisé. 12 s, avec une barre qui se vide (en pause au
+  survol) ; ✕ au survol ou Échap la ferment. Elle ne prend jamais le focus : **Copier** remet le texte au
+  presse-papiers et confirme « Copié » (1,5 s), **Coller** le colle dans le champ de l'app active (même collage que
+  « Coller la dernière dictée »). Le collage garde tous les formats du presse-papiers précédent et refuse les champs
+  sécurisés.
+- Champ illisible (Codex, apps Electron, éditeurs dessinés) ou remplacé par un autre pendant la relecture : rien ne
+  prouve un échec. Le statut reste « Collage envoyé », sans carte ni copie : la bulle ne revient pas à chaque dictée.
+  Si le texte manque, « Coller la dernière dictée » et l'historique le gardent. Aucun apprentissage sur une
+  insertion non confirmée ; « Coller la dernière dictée » dit « Collé » dans les deux cas.
+- Insertion par ⌘V comme au clavier, dans toutes les apps : ⌘ enfoncée (changement de modificateur), V, puis ⌘
+  relâchée, envoyés au système une fois l'app cible vérifiée au premier plan et les modificateurs relâchés. Le
+  13 octobre 2026, l'écriture par `AXSelectedText` dans Chrome et un ⌘V adressé au seul processus cible laissaient
+  le champ vide : ces deux voies sont retirées. Tous les chemins d'insertion partagent une file.
+- Une app qui a perdu le premier plan n'est pas réactivée de force : la bulle propose de récupérer le texte.
+- Lectures d'accessibilité bornées au collage : champ actif 0,3 s avant ⌘V, confirmation 1 s après. Une app qui
   construit encore son arbre (Chrome à la première dictée) ne retarde ni le texte ni la dictée suivante.
-  Champ non lu avant ⌘V : il est relu pendant la confirmation. La confirmation ne compare que lettres et chiffres
-  (les éditeurs riches réécrivent tirets de liste, apostrophes et retours) et demande que le début du texte collé
-  apparaisse une fois de plus qu'avant. Un collage non confirmé laisse sa cause dans le journal `insertion`, sans texte.
+  Le focus est relu pendant la confirmation, y compris si le composant web a recréé son champ. La valeur attendue
+  après remplacement de la sélection est comparée au texte observé, en tolérant les transformations typographiques
+  des éditeurs riches. Remplacer une sélection par le même texte demande aussi que le curseur se soit déplacé à sa
+  fin. À défaut de sélection exploitable, le début du texte doit apparaître une fois de plus dans le même champ.
+  Les lectures initiales réutilisent la valeur et la sélection déjà obtenues, sans les redemander plusieurs fois. Un collage non confirmé laisse sa cause dans le journal `insertion`, sans texte.
+- Le spectre de traitement disparaît dès l'envoi de ⌘V. La confirmation continue sans bloquer l'affichage ; seul un
+  échec avéré fait paraître la carte **Copier / Coller**. Collage confirmé : le presse-papiers précédent revient
+  aussitôt. Sinon, la dictée y reste au moins 1,5 s après ⌘V, car une app occupée (page web lourde, Electron) peut
+  le lire tard ; le statut, lui, n'attend pas. Le presse-papiers reste réservé jusqu'à sa restauration : les dictées
+  rapprochées ne se remplacent pas. Une nouvelle écoute garde sa propre bulle. Échap après l'envoi ne transforme
+  pas le texte déjà collé en dictée annulée.
+- Les traces distinguent l'envoi de ⌘V après relâchement (`pasteSentAfterReleaseMs`) et la confirmation
+  (`confirmationMs`). Les anciennes durées restent disponibles ; ces deux mesures sont absentes sur les anciennes traces.
 - Les apps Electron ouvrent leur arbre d'accessibilité avec AXManualAccessibility ; les navigateurs Chromium
   (Chrome, Brave, Edge, Arc, Vivaldi, Opera) l'ignorent et reçoivent aussi AXEnhancedUserInterface, comme pour un
   lecteur d'écran : le champ d'une page devient lisible (confirmation du collage, contexte, apprentissage).
@@ -414,9 +586,15 @@ gardé tel quel).
 
 ## Mises à jour et réinstallation
 
+- Une version absente des métadonnées s'affiche « — » ; aucune mise à jour automatique n'est proposée tant que la
+  version installée ne peut pas être comparée. Le signalement de bug garde le commit disponible sans inventer de version.
+
 - Une mise à jour ou une réinstallation garde fournisseurs, réglages, clés API, historique et dictionnaire : même
   identifiant (`com.yatofix.wispad`), même dossier (`Application Support/Wispad`), mêmes préférences.
-  `scripts/install.sh` ne remplace que l'app.
+  `scripts/install.sh`, comme la mise à jour en un clic (voir « Version et mises à jour »), ne remplace que l'app.
+- La base locale s'enrichit sans rien perdre : les mots du dictionnaire d'une version précédente restent tels quels
+  (mot, date d'ajout) avec l'origine « Avant le suivi ». Revenir à une version précédente garde aussi les mots ;
+  ceux qu'elle ajoute sont ensuite « Avant le suivi ».
 - Réglages lus un par un : un réglage absent prend sa valeur par défaut ; une valeur illisible ou retirée (mode,
   fournisseur, modèle) prend la valeur par défaut de ce seul réglage, ou la plus proche valide (fournisseur retiré →
   fournisseur par défaut, modèle retiré → modèle par défaut du même fournisseur). Les autres choix restent.
@@ -429,21 +607,93 @@ gardé tel quel).
 - Reprise depuis OpenFlow (une seule fois) : réglages, base, audios, journaux et fichier de clés, sans rien écraser
   de Wispad ; ce qui n'est pas repris reste en place.
 
-## Version et dépôt
+## Version et mises à jour
 
 - Bas de la barre latérale, au-dessus des raccourcis : un petit bandeau jaune « Une étoile sur GitHub »
   (« Star on GitHub » en anglais), sur une seule ligne et sans troncature à la largeur fixe de la barre, entièrement
   cliquable. Un clic ouvre la page du dépôt dans le navigateur, affiche « Merci ! » 1,6 s, puis le bandeau
   disparaît pour de bon (réglage `githubStarClicked`, enregistré dès le clic). Wispad ne peut pas savoir si
-  l'étoile a été donnée : le clic suffit. Dessous, toujours visibles : la version (« Wispad 0.1.0 · abc1234 » :
-  version et commit court gravé à la compilation), puis « À jour » ou « N commits de retard » (« 1 commit de
-  retard ») sur la branche `main` du dépôt public. Un clic sur le retard ouvre la page des commits.
-- Seul contact : `GET https://api.github.com/repos/samirmedani/wispad/compare/<commit>...main` (API publique, sans
-  clé ni cookie), 5 s après le lancement puis toutes les 6 heures, 8 s au plus. Rien d'autre n'est envoyé que
-  le commit de la version dans l'adresse. Le retard est le champ `ahead_by` (commits de `main` absents de la version).
-- GitHub injoignable, dépôt privé (404), commit inconnu (compilation locale non publiée), réponse illisible ou
-  commit non gravé (git absent à la compilation) : seule la version s'affiche, sans erreur. Ni le démarrage ni la
-  dictée n'attendent cette requête.
+  l'étoile a été donnée : le clic suffit. Dessous, toujours visibles : la version, puis l'état de la mise à jour.
+- **Release ou build de développement** : une release est l'app du `Wispad.dmg` publié sur GitHub ; seul
+  `scripts/release.sh` ajoute à son Info.plist la clé `WispadRelease` (vraie), avant de la signer. Sans cette clé,
+  c'est un build de développement, compilé depuis les sources (Xcode, `scripts/build.sh`, `scripts/install.sh`). Une
+  clé posée par le script de release plutôt que l'absence de signature Developer ID : explicite et testable, couverte
+  par la signature de l'app, et un contributeur qui signe son build avec son propre certificat Developer ID reste un
+  build de développement.
+- **Release** : la version seule (« Wispad 0.1.1 »), puis « À jour », ou « Wispad 0.1.2 est disponible » (un clic
+  ouvre la fenêtre de mise à jour) et le bouton « Mettre à jour ». Le tag de la dernière release (« v0.1.2 ») et la
+  version de l'app (`CFBundleShortVersionString`) se comparent en semver : X.Y.Z, une pré-version avant la version
+  finale. Une app plus récente que la dernière release (release retirée) reste « À jour ».
+- **Build de développement** : la version et le commit court gravé à la compilation (« Wispad 0.1.0 · abc1234 »),
+  puis « À jour » ou « N commits de retard » (« 1 commit de retard ») sur la branche `main` du dépôt public, comme
+  avant les releases. Un clic sur le retard ouvre la page des commits. Aucune release proposée ni demandée.
+- **Vérification**, seul contact hors des fournisseurs : pour une release
+  `GET https://api.github.com/repos/samirmedani/wispad/releases/latest`, pour un build de développement
+  `GET https://api.github.com/repos/samirmedani/wispad/compare/<commit>...main` (le retard est le champ `ahead_by`).
+  API publique, sans clé ni cookie, avec l'en-tête User-Agent demandé par GitHub ; 5 s après le lancement, puis
+  toutes les 6 heures, 8 s au plus. Rien d'autre n'est envoyé (pour un build de développement, le commit de la
+  version, dans l'adresse). Ni le démarrage ni la dictée n'attendent cette requête.
+- **Échecs silencieux**, sans message : hors ligne, délai dépassé ou GitHub en panne (5xx) → nouvel essai dans
+  30 minutes ; limite de l'API (403, 429) → nouvel essai à l'heure annoncée par GitHub (`Retry-After` ou
+  `X-RateLimit-Reset`), entre 5 minutes et 6 heures, une heure sans indication ; aucune release (404), tag mal formé
+  (autre chose que vX.Y.Z), brouillon, pré-version ou réponse illisible → rien de nouveau. Ce qui était affiché reste ;
+  sans aucune réponse lisible, seule la version s'affiche. Build de développement : dépôt privé (404), commit inconnu
+  (compilation locale non publiée) ou commit non gravé (git absent à la compilation) → seule la version.
+- **Rappel discret** d'une nouvelle version, une seule fois par version, dans la bulle : « Wispad 0.1.2 est
+  disponible », avec « Voir » (la fenêtre s'ouvre sur les notes de version) et « Ne plus me rappeler » ; ✕ au survol,
+  départ seul après 10 s, décompte en pause au survol. Il attend que la bulle se libère après une dictée (ou après un
+  autre message) : on est alors devant le Mac et on la regarde. Jamais pendant une dictée ni pendant la configuration
+  guidée ; la bulle ne prend ni le focus ni le premier plan. Coupé par une dictée qui commence, il reparaît à la fin
+  de celle-ci. Une version rappelée (réglage `updateRemindedVersion`) ne l'est plus jamais, même après une relance ;
+  une version plus récente l'est à son tour. La barre latérale la propose toujours.
+- **Fenêtre de mise à jour** : la version disponible et celle installée, les notes de version (le corps de la
+  release en markdown simple : titres, puces, listes numérotées, paragraphes, blocs de code ; gras, italique, liens
+  et `code` dans la ligne ; texte sélectionnable), « Voir sur GitHub », « Plus tard » et « Mettre à jour ». Pendant
+  l'installation : l'étape et sa progression, et « Annuler » tant que rien n'est remplacé. En cas d'échec : la
+  raison, « Ouvrir la page de la release » et « Réessayer ».
+- **Installation en un clic** (« Mettre à jour », dans la barre latérale ou la fenêtre de mise à jour, qui s'ouvre
+  pour suivre l'avancement ; la barre latérale le résume) :
+  1. téléchargement de `Wispad.dmg` (asset de la release, seulement depuis
+     `https://github.com/samirmedani/wispad/releases/download/`), avec sa progression ; taille et empreinte SHA-256
+     comparées à celles qu'annonce GitHub ;
+  2. montage en lecture seule, invisible dans le Finder (`hdiutil attach -nobrowse`) ;
+  3. vérification de `Wispad.app` dans le disque : version plus récente que celle qui tourne (jamais de retour en
+     arrière) ; signature intacte (toutes architectures, code imbriqué, validation stricte), Developer ID d'Apple,
+     même identifiant (`com.yatofix.wispad`) et même équipe (Team ID) que l'app qui tourne ;
+  4. copie cachée à côté de l'app (`.Wispad.nouveau.app`, même dossier), vérifiée à son tour ; démontage du disque ;
+  5. si une dictée est en cours, attente de sa fin (« Après la dictée… ») ; puis remplacement atomique de l'app par
+     la copie (échange des deux noms, APFS ; sinon deux renommages, l'ancienne app remise en place si le second
+     échoue) ; l'ancienne version est effacée ;
+  6. relance : une petite aide attend la fin de cette instance (60 s au plus), puis ouvre la nouvelle version, qui
+     rouvre la fenêtre si elle était affichée ; la bulle confirme « Wispad 0.1.2 est installé ».
+
+  Réglages, clés API, historique, audios et dictionnaire vivent hors de l'app (préférences de `com.yatofix.wispad`,
+  `Application Support/Wispad`, coffre de secrets) : la mise à jour n'y touche pas. Une copie cachée laissée par une
+  installation interrompue (Wispad quitté avant le remplacement) est effacée au lancement suivant.
+- **Page de la release à la place** : app dans un dossier non modifiable (par exemple /Applications pour un compte
+  sans droits d'administration), lancée depuis le disque d'installation ou déplacée par macOS, app sans signature
+  Developer ID, ou release sans `Wispad.dmg` : « Mettre à jour » ouvre la page de la release dans le navigateur, et la
+  fenêtre de mise à jour dit pourquoi.
+- **Échec** (téléchargement, fichier incomplet ou modifié, disque illisible, signature refusée, version pas plus
+  récente, copie, remplacement, relance) : message clair dans la fenêtre de mise à jour, « Échec de la mise à jour »
+  dans la barre latérale (un clic rouvre la fenêtre), avec le lien vers la release. L'app en place n'est jamais
+  laissée à moitié remplacée ; le journal (`mise-a-jour`) ne garde que le nom de l'étape, sans chemin.
+- **Publier une release** (mainteneur) : `scripts/release.sh`, voir son en-tête (variables d'environnement, étapes).
+
+## Aide et retours
+
+Réglages › Aide et retours, en bas de l'écran : une ligne d'explication (« Sur GitHub : seules les versions de
+Wispad et de macOS sont préremplies. ») et trois liens. « Signaler un problème » et « Proposer une idée » sont
+aussi dans le menu de la barre des menus, juste avant Quitter, et dans le menu Aide. Chaque lien ouvre sa page dans
+le navigateur ; depuis un menu, la fenêtre de Wispad ne s'ouvre pas.
+
+- **Signaler un problème** : nouveau ticket sur le formulaire de bug du dépôt (`bug.yml`), prérempli par l'adresse.
+  Champ `version` : la version et le commit de la barre latérale, sans le nom de l'app (« 0.1.0 · abc1234 ») ; le
+  commit seul si la version manque, la version seule sans commit gravé, rien si les deux manquent. Champ `macos` :
+  « macOS 15.3.1 », toujours trois nombres. Valeurs encodées pour l'adresse (espace, « · », « + », « & », « # »…).
+- **Proposer une idée** : Discussions du dépôt, catégorie Ideas. **Poser une question** : catégorie Q&A.
+- Rien d'autre dans l'adresse : ni dictée, ni réglage, ni donnée personnelle. Wispad n'envoie rien lui-même : un
+  ticket n'existe que si on le publie sur GitHub.
 
 ## Diagnostic
 

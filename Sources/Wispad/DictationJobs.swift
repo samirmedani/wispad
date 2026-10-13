@@ -66,6 +66,8 @@ final class FinishJob {
     var cancelSideWork: () -> Void = {}
     /// Texte collé (ou envoyé au collage).
     var delivered = false
+    /// ⌘V envoyé : seule la confirmation reste, sans spectre de traitement.
+    var pasteSent = false
     /// Première bascule de la panne vers un relais, à annoncer une fois ce texte collé.
     var announcement: (service: String, message: String)?
 
@@ -94,15 +96,21 @@ struct PreparedCorrection: Sendable {
 /// Un appel fichier déjà lancé. `account` ne le compte qu'une fois, même s'il finit après la dictée.
 @MainActor
 final class FileLedger {
+    /// Rempli par l'appel avant son retour, sans attente ni seconde requête.
+    final class Completion {
+        var attempt: FileAttempt?
+    }
     let task: Task<FileAttempt, Never>
+    let completion: Completion
     private var recorded = false
     private let speech: SpeechRequest
     private let seconds: Double
     private let run: DictationTraceRecorder
     private let model: AppModel
 
-    init(task: Task<FileAttempt, Never>, speech: SpeechRequest, seconds: Double, run: DictationTraceRecorder, model: AppModel) {
+    init(task: Task<FileAttempt, Never>, completion: Completion, speech: SpeechRequest, seconds: Double, run: DictationTraceRecorder, model: AppModel) {
         self.task = task
+        self.completion = completion
         self.speech = speech
         self.seconds = seconds
         self.run = run
@@ -127,10 +135,22 @@ final class FileLedger {
 /// Correction lancée sur le flux avant de savoir si le fichier dira la même chose.
 @MainActor
 final class CorrectionLedger {
+    private final class Completion { var value: PreparedCorrection? }
+    private let completion = Completion()
     let task: Task<PreparedCorrection, Never>
+    var ready: PreparedCorrection? { completion.value }
     private var recorded = false
 
-    init(task: Task<PreparedCorrection, Never>) { self.task = task }
+    init(task source: Task<PreparedCorrection, Never>) {
+        let completion = completion
+        task = Task { @MainActor in
+            await withTaskCancellationHandler {
+                let prepared = await source.value
+                completion.value = prepared
+                return prepared
+            } onCancel: { source.cancel() }
+        }
+    }
 
     func account(model: AppModel, run: DictationTraceRecorder) async -> PreparedCorrection {
         let prepared = await task.value

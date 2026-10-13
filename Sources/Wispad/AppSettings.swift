@@ -38,6 +38,11 @@ struct AppSettings: Codable, Equatable {
     /// Avec du texte sélectionné, une dictée qui commence par une consigne (« reformule », « traduis ») transforme la sélection.
     var selectionCommands = true
     var structureDictation = true
+    /// Format des dates et des heures écrites par la correction (Réglages › Mise en forme), lu champ par champ.
+    /// Heures en « 14h30 » par défaut : « 14 h 30 », la typographie stricte, reste au choix.
+    var dateFormat = DictationDateFormat(timeStyle: .compact)
+    /// Montants, pourcentages, unités et milliers (Réglages › Mise en forme), lu champ par champ.
+    var numberFormat = DictationNumberFormat()
     /// La correction lit aussi la conversation visible dans la fenêtre où l'on dicte. Désactivé à la première
     /// installation, proposé au premier lancement ; les réglages antérieurs le gardent actif.
     var useWindowContext = false
@@ -66,12 +71,20 @@ struct AppSettings: Codable, Equatable {
     var muteMode: OutputMuteMode = .speakersOnly
     /// Bandeau « Une étoile sur GitHub » cliqué une fois : il ne revient plus (l'étoile est invérifiable).
     var githubStarClicked = false
+    /// Dernière version rappelée par la bulle (« 0.1.2 ») : une nouvelle version n'est rappelée qu'une fois.
+    var updateRemindedVersion = ""
     /// Choix d'affichage retrouvés au lancement suivant, écrits dès qu'ils changent : période de l'Accueil, période
-    /// de Consommation (indépendantes), dernière section ouverte, clés API facultatives dépliées.
+    /// de Consommation (indépendantes), dernière section ouverte, clés API facultatives et filtres du dictionnaire.
     var homePeriod: StatsPeriod = .days7
     var usagePeriod: StatsPeriod = .today
     var lastSection: AppSection = .home
     var showsOptionalKeys = false
+    var dictionaryOriginFilter: DictionaryFilter = .all
+    var dictionaryPeriod: DictionaryPeriod = .all
+    var dictionaryKind: DictionaryKind = .word
+    var dictionarySort: DictionarySort = .newest
+    /// Place de la bulle et de ses messages, et décalage hors du champ de saisie (Réglages › Bulle et messages).
+    var overlayPlacement = OverlayPlacement()
 
     init() {}
 
@@ -103,6 +116,8 @@ struct AppSettings: Codable, Equatable {
         tones = table(.tones, defaults.tones)
         selectionCommands = value(.selectionCommands, defaults.selectionCommands)
         structureDictation = value(.structureDictation, defaults.structureDictation)
+        dateFormat = value(.dateFormat, defaults.dateFormat)
+        numberFormat = value(.numberFormat, defaults.numberFormat)
         useWindowContext = value(.useWindowContext, true)
         onboardingCompleted = value(.onboardingCompleted, true)
         onboardingResume = value(.onboardingResume, defaults.onboardingResume)
@@ -122,10 +137,16 @@ struct AppSettings: Codable, Equatable {
         muteWhileDictating = value(.muteWhileDictating, defaults.muteWhileDictating)
         muteMode = value(.muteMode, defaults.muteMode)
         githubStarClicked = value(.githubStarClicked, defaults.githubStarClicked)
+        updateRemindedVersion = value(.updateRemindedVersion, defaults.updateRemindedVersion)
         homePeriod = value(.homePeriod, defaults.homePeriod)
         usagePeriod = value(.usagePeriod, defaults.usagePeriod)
         lastSection = value(.lastSection, defaults.lastSection)
         showsOptionalKeys = value(.showsOptionalKeys, defaults.showsOptionalKeys)
+        dictionaryOriginFilter = value(.dictionaryOriginFilter, defaults.dictionaryOriginFilter)
+        dictionaryPeriod = value(.dictionaryPeriod, defaults.dictionaryPeriod)
+        dictionaryKind = value(.dictionaryKind, defaults.dictionaryKind)
+        dictionarySort = value(.dictionarySort, defaults.dictionarySort)
+        overlayPlacement = value(.overlayPlacement, defaults.overlayPlacement)
     }
 
     /// Bornes des réglages de conservation, partagées avec leurs contrôles dans Réglages.

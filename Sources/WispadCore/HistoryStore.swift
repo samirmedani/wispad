@@ -59,11 +59,18 @@ public struct DictionaryEntry: Identifiable, Equatable, Sendable {
     public var id: String
     public var term: String
     public var createdAt: Date
+    /// Qui a ajouté le mot ; `.unknown` pour un mot d'avant le suivi de l'origine.
+    public var origin: DictionaryOrigin
+    /// « Oui » dans la bulle « Le garder ? » : l'utilisateur a gardé ce mot appris. L'origine ne change pas.
+    public var confirmedAt: Date?
 
-    public init(id: String = UUID().uuidString, term: String, createdAt: Date = Date()) {
+    public init(id: String = UUID().uuidString, term: String, createdAt: Date = Date(),
+                origin: DictionaryOrigin = .unknown, confirmedAt: Date? = nil) {
         self.id = id
         self.term = term
         self.createdAt = createdAt
+        self.origin = origin
+        self.confirmedAt = confirmedAt
     }
 }
 
@@ -138,10 +145,22 @@ public final class HistoryStore: @unchecked Sendable {
             CREATE TABLE IF NOT EXISTS dictionary (
                 id TEXT PRIMARY KEY,
                 term TEXT NOT NULL UNIQUE COLLATE NOCASE,
-                created_at REAL NOT NULL
+                created_at REAL NOT NULL,
+                origin TEXT,
+                judge_provider TEXT,
+                judge_model TEXT,
+                confirmed_at REAL
             );
             """
         )
+        // Origine des mots : les colonnes s'ajoutent aux anciennes bases sans toucher aux mots, et restent NULL sur
+        // les mots d'avant ce suivi (origine inconnue) : l'historique ne relie aucun appel de jugement à un mot,
+        // rien ne permet de la retrouver de façon sûre.
+        let dictionaryColumns = Set(try query("PRAGMA table_info(dictionary);") { column(1, $0) })
+        let originColumns = [("origin", "TEXT"), ("judge_provider", "TEXT"), ("judge_model", "TEXT"), ("confirmed_at", "REAL")]
+        for (name, type) in originColumns where !dictionaryColumns.contains(name) {
+            try execute("ALTER TABLE dictionary ADD COLUMN \(name) \(type);")
+        }
         try execute(
             """
             CREATE TABLE IF NOT EXISTS api_usage (
@@ -524,22 +543,61 @@ public final class HistoryStore: @unchecked Sendable {
     }
 
     public func dictionary() throws -> [DictionaryEntry] {
-        try query("SELECT id, term, created_at FROM dictionary ORDER BY term COLLATE NOCASE;") { statement in
+        try query(
+            """
+            SELECT id, term, created_at, origin, judge_provider, judge_model, confirmed_at
+            FROM dictionary ORDER BY term COLLATE NOCASE;
+            """
+        ) { statement in
             DictionaryEntry(
                 id: column(0, statement),
                 term: column(1, statement),
-                createdAt: Date(timeIntervalSince1970: sqlite3_column_double(statement, 2))
+                createdAt: Date(timeIntervalSince1970: sqlite3_column_double(statement, 2)),
+                origin: DictionaryOrigin(
+                    stored: optionalColumn(3, statement),
+                    provider: optionalColumn(4, statement),
+                    model: optionalColumn(5, statement)
+                ),
+                confirmedAt: sqlite3_column_type(statement, 6) == SQLITE_NULL
+                    ? nil
+                    : Date(timeIntervalSince1970: sqlite3_column_double(statement, 6))
             )
         }
     }
 
-    public func addTerm(_ term: String) throws {
+    /// Ajoute un mot avec son origine. Sans origine précisée, il est noté comme d'avant le suivi : jamais « ajouté
+    /// par toi » ni un juge par défaut. Un mot déjà présent, à la casse près, garde son entrée et son origine.
+    public func addTerm(_ term: String, origin: DictionaryOrigin = .unknown) throws {
         let cleaned = term.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleaned.isEmpty else { return }
-        try run("INSERT OR IGNORE INTO dictionary (id, term, created_at) VALUES (?, ?, ?);") { statement in
+        try run(
+            """
+            INSERT OR IGNORE INTO dictionary (id, term, created_at, origin, judge_provider, judge_model)
+            VALUES (?, ?, ?, ?, ?, ?);
+            """
+        ) { statement in
             bind(UUID().uuidString, at: 1, statement)
             bind(cleaned, at: 2, statement)
             sqlite3_bind_double(statement, 3, Date().timeIntervalSince1970)
+            bindOptional(origin.storedValue, at: 4, statement)
+            bindOptional(origin.judge?.provider, at: 5, statement)
+            bindOptional(origin.judge?.model, at: 6, statement)
+        }
+    }
+
+    /// « Oui » dans la bulle « Le garder ? » : note la confirmation d'un mot appris, sans changer son origine.
+    /// Un mot ajouté à la main, d'avant le suivi ou déjà confirmé n'est pas touché. La casse ne compte pas.
+    public func confirmLearnedTerm(_ term: String) throws {
+        let cleaned = term.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else { return }
+        try run(
+            """
+            UPDATE dictionary SET confirmed_at = ?
+            WHERE term = ? AND origin IN ('jev', 'model') AND confirmed_at IS NULL;
+            """
+        ) { statement in
+            sqlite3_bind_double(statement, 1, Date().timeIntervalSince1970)
+            bind(cleaned, at: 2, statement)
         }
     }
 

@@ -69,6 +69,7 @@ struct SettingsView: View {
                     set: { model.settings.selectionCommands = $0; model.saveSettings() }
                 ), enabled: model.settings.cleanupEnabled)
             }
+            FormattingSection()
             ToneSection()
             Section("Confidentialité") {
                 SettingRow(text: SettingsPresentation.sentData)
@@ -103,6 +104,7 @@ struct SettingsView: View {
                     set: { model.settings.learnCorrections = $0; model.saveSettings() }
                 ))
             }
+            OverlayPlacementSection()
             Section("Général") {
                 Toggle("Sons de début et de fin", isOn: Binding(
                     get: { model.settings.soundsEnabled },
@@ -160,6 +162,7 @@ struct SettingsView: View {
                 }
             }
             DiagnosticsSection()
+            HelpSection()
         }
         .onAppear { model.refreshPermissions() }
     }
@@ -217,6 +220,162 @@ struct DictationShortcutRow: View {
             model.stopRecordingPasteShortcut()
             model.isRecordingShortcut = true
         }
+    }
+}
+
+/// Format des dates et des heures écrites par la correction. L'aperçu suit chaque choix ; les rangées sans effet pour le
+/// format choisi (séparateur en ISO ou en toutes lettres, écriture sur 24 h en AM/PM) se cachent.
+struct FormattingSection: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        let format = model.settings.dateFormat
+        Section {
+            orderRow
+            if format.order != .iso, !format.monthInWords {
+                separatorRow
+                yearRow
+                SettingToggle(text: SettingsPresentation.leadingZero, isOn: binding(\.leadingZero))
+            }
+            SettingToggle(text: SettingsPresentation.monthInWords, isOn: binding(\.monthInWords))
+            clockRow
+            if format.clock != .twelveHour {
+                timeStyleRow
+            }
+            previewRow
+            amountsRow
+            thousandsRow
+            numberPreviewRow
+        } header: {
+            SectionTitle(title: SettingsPresentation.formattingTitle, summary: SettingsPresentation.formattingSummary)
+        }
+        .disabled(!model.settings.cleanupEnabled)
+    }
+
+    private var orderRow: some View {
+        SettingRow(text: SettingsPresentation.dateOrder) {
+            Picker(SettingsPresentation.dateOrder.title, selection: binding(\.order)) {
+                ForEach(DictationDateFormat.Order.allCases, id: \.self) { order in
+                    Text(SettingsPresentation.label(order)).tag(order)
+                }
+            }
+            .labelsHidden()
+            .fixedSize()
+        }
+    }
+
+    private var separatorRow: some View {
+        SettingRow(text: SettingsPresentation.dateSeparator) {
+            Picker(SettingsPresentation.dateSeparator.title, selection: binding(\.separator)) {
+                ForEach(DictationDateFormat.Separator.allCases, id: \.self) { separator in
+                    Text(SettingsPresentation.label(separator)).tag(separator)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
+        }
+    }
+
+    private var yearRow: some View {
+        SettingRow(text: SettingsPresentation.dateYear) {
+            Picker(SettingsPresentation.dateYear.title, selection: binding(\.fourDigitYear)) {
+                Text("4 chiffres").tag(true)
+                Text("2 chiffres").tag(false)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
+        }
+    }
+
+    private var clockRow: some View {
+        SettingRow(text: SettingsPresentation.clock) {
+            Picker(SettingsPresentation.clock.title, selection: binding(\.clock)) {
+                ForEach(DictationDateFormat.Clock.allCases, id: \.self) { clock in
+                    Text(SettingsPresentation.label(clock)).tag(clock)
+                }
+            }
+            .labelsHidden()
+            .fixedSize()
+        }
+    }
+
+    /// Chaque écriture est montrée telle qu'elle sortira : « 14 h 30 », « 14h30 », « 14:30 ».
+    private var timeStyleRow: some View {
+        SettingRow(text: SettingsPresentation.timeStyle) {
+            Picker(SettingsPresentation.timeStyle.title, selection: binding(\.timeStyle)) {
+                ForEach(DictationDateFormat.TimeStyle.allCases, id: \.self) { style in
+                    Text(verbatim: DictationDateFormat(clock: .twentyFourHour, timeStyle: style).time(hour: 14, minute: 30, english: false))
+                        .tag(style)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
+        }
+    }
+
+    private var previewRow: some View {
+        SettingRow(text: SettingsPresentation.datePreview) {
+            VStack(alignment: .trailing, spacing: 2) {
+                ForEach(SettingsPresentation.preview(model.settings.dateFormat, language: model.settings.language), id: \.self) { line in
+                    Text(verbatim: line)
+                }
+            }
+            .monospacedDigit()
+            .foregroundStyle(.secondary)
+        }
+    }
+
+    private func binding<Value>(_ keyPath: WritableKeyPath<DictationDateFormat, Value>) -> Binding<Value> {
+        Binding(
+            get: { model.settings.dateFormat[keyPath: keyPath] },
+            set: { model.settings.dateFormat[keyPath: keyPath] = $0; model.saveSettings() }
+        )
+    }
+
+    private var amountsRow: some View {
+        SettingRow(text: SettingsPresentation.amounts) {
+            Picker(SettingsPresentation.amounts.title, selection: numberBinding(\.symbols)) {
+                Text("Symboles").tag(true)
+                Text("En lettres").tag(false)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
+        }
+    }
+
+    private var thousandsRow: some View {
+        SettingRow(text: SettingsPresentation.thousands) {
+            Picker(SettingsPresentation.thousands.title, selection: numberBinding(\.thousands)) {
+                ForEach(DictationNumberFormat.Thousands.allCases, id: \.self) { thousands in
+                    Text(SettingsPresentation.label(thousands)).tag(thousands)
+                }
+            }
+            .labelsHidden()
+            .fixedSize()
+        }
+    }
+
+    private var numberPreviewRow: some View {
+        SettingRow(text: SettingsPresentation.numberPreview) {
+            VStack(alignment: .trailing, spacing: 2) {
+                ForEach(SettingsPresentation.preview(model.settings.numberFormat, language: model.settings.language), id: \.self) { line in
+                    Text(verbatim: line)
+                }
+            }
+            .monospacedDigit()
+            .foregroundStyle(.secondary)
+        }
+    }
+
+    private func numberBinding<Value>(_ keyPath: WritableKeyPath<DictationNumberFormat, Value>) -> Binding<Value> {
+        Binding(
+            get: { model.settings.numberFormat[keyPath: keyPath] },
+            set: { model.settings.numberFormat[keyPath: keyPath] = $0; model.saveSettings() }
+        )
     }
 }
 
@@ -319,6 +478,25 @@ struct DiagnosticsSection: View {
                 }
                 exporting = false
             }
+        }
+    }
+}
+
+/// Aide et retours : trois liens vers GitHub, ouverts dans le navigateur, sous une seule ligne d'explication.
+struct HelpSection: View {
+    var body: some View {
+        Section {
+            ForEach(HelpPage.allCases, id: \.self) { page in
+                Button {
+                    page.open()
+                } label: {
+                    Label(page.title, systemImage: page.symbol)
+                }
+                .buttonStyle(.link)
+                .hoverFeedback()
+            }
+        } header: {
+            SectionTitle(title: SettingsPresentation.helpTitle, summary: SettingsPresentation.helpSummary)
         }
     }
 }

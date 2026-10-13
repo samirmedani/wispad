@@ -100,6 +100,12 @@ curseur : messagerie, e-mail, éditeur de code, terminal, navigateur.
   ta place. Sinon, c'est ta transcription qui est collée.
 - **Listes et paragraphes** : trois éléments courts deviennent une liste à puces ; « première puce »,
   « nouveau paragraphe » ou « à la ligne » mettent en page à la voix.
+- **Dates et heures à ton format** : « le vingt-quatre octobre » devient « 24/10 », « 10/24 » ou « 24 octobre »,
+  « à quatorze heures trente » devient « à 14h30 », « à 14 h 30 » ou « à 2:30 PM ». Jamais d'année inventée, et
+  « deux heures de route » reste une durée.
+- **Montants, pourcentages et unités** : « vingt-cinq euros » devient « 25 € », « quinze pour cent » « 15 % »,
+  « cinq kilomètres » « 5 km » ; les grands nombres sont groupés (« 1 500 € ») et les numéros de téléphone
+  écrits par paires (« 06 12 34 56 78 »). Années, codes postaux, références et numéros de version ne bougent pas.
 - **Ton selon l'app** : « Comme dicté », « Soigné » ou « Détendu », par catégorie (e-mails, messageries, documents,
   notes, code et terminal, navigateur). Le registre change, jamais les mots ni le sens.
 - **Réécrire une sélection** : sélectionne un texte et dis « reformule plus poliment », « traduis en anglais » ou
@@ -114,6 +120,8 @@ curseur : messagerie, e-mail, éditeur de code, terminal, navigateur.
   le spectre passe au vert pendant le relais.
 - **Rien n'est perdu** : sans connexion ou en cas d'erreur, l'audio reste dans l'historique pour **Retranscrire** ;
   un collage raté laisse le texte prêt à **Copier**.
+- **La bulle ne cache pas ton champ** : ses messages se placent au-dessus de la zone où tu écris, et chaque bulle se
+  place à la main dans Réglages › Bulle et messages.
 - **Contexte facultatif** : Wispad peut lire la fenêtre active pour bien écrire les noms d'une conversation
   (désactivé par défaut, jamais enregistré).
 
@@ -142,7 +150,8 @@ dans Consommation) et TypeSafe (pour juger les mots appris).
 - 🚫 **Pas de serveur Wispad** : il n'y en a pas. Ta voix va seulement au fournisseur que tu as choisi.
 - 👤 **Pas de compte**, pas d'inscription.
 - 📵 **Pas de télémétrie** : ni statistiques ni journal envoyés. En dehors de tes fournisseurs, Wispad ne contacte
-  que l'API publique de GitHub, pour savoir si ta version est à jour (sans clé ni cookie).
+  que GitHub : son API publique, pour savoir si une nouvelle version est publiée (sans clé ni cookie), et le
+  téléchargement de cette version quand tu cliques sur « Mettre à jour ».
 - 💻 **Historique et audio sur ton Mac**, avec une durée de conservation de l'audio réglable. Les journaux ne
   contiennent jamais ce que tu dictes.
 - 🔑 **Clés lisibles par ton seul compte** : `~/Library/Application Support/Wispad/api-keys.json`, ou ton propre
@@ -156,7 +165,12 @@ dans Consommation) et TypeSafe (pour juger les mots appris).
    plus récent, Mac Intel ou Apple Silicon). L'app est signée et notarisée par Apple.
 2. Ouvre le fichier, glisse Wispad dans Applications, puis lance-le.
 
-Toutes les versions : [Releases](https://github.com/samirmedani/wispad/releases).
+Ensuite, Wispad se met à jour lui-même : quand une version est publiée, la barre latérale affiche « Mettre à jour ».
+Un clic télécharge la nouvelle version, vérifie sa signature, la met à la place de l'ancienne et relance Wispad ;
+réglages, clés, historique et dictionnaire restent.
+
+Toutes les versions : [Releases](https://github.com/samirmedani/wispad/releases) ; ce qui change à chacune :
+[CHANGELOG.md](CHANGELOG.md).
 
 ### Compiler depuis les sources
 
@@ -207,9 +221,11 @@ scripts/test.sh       # tests locaux, sans micro, réseau, clé ni fenêtre
 scripts/build.sh      # build Debug dans build/DerivedData, avec les outils d'aperçu
 scripts/install.sh    # version Release dans /Applications/Wispad.app
 scripts/check.sh      # tests, traductions et compilation Release
+scripts/release.sh    # mainteneur : release GitHub signée et notarisée (voir l'en-tête du script)
 ```
 
-Le projet Xcode se génère avec `xcodegen generate` ; il n'est pas dans Git.
+Le projet Xcode se génère avec `xcodegen generate` ; il n'est pas dans Git. Un build compilé depuis les sources
+affiche son retard sur `main` ; seule une release (construite par `scripts/release.sh`) propose les mises à jour.
 
 - `Sources/WispadCore` : logique pure (transcription, correction, garde-fou, historique, coûts).
 - `Sources/Wispad` : l'app (dictée, bulle, écrans, clés, traductions).

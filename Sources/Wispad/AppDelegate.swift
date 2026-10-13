@@ -45,8 +45,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                 self?.updateIcon()
             }
             installStatusItem()
-            // Retard sur le dépôt public : en arrière-plan, après le démarrage, puis toutes les 6 heures.
+            // Dernière release (ou, pour un build de développement, retard sur le dépôt public) : en arrière-plan, après
+            // le démarrage, puis toutes les 6 heures. Une version plus récente est rappelée une fois dans la bulle.
+            BuildStatus.shared.onAvailable = { [weak model] release in model?.noteAvailableRelease(release) }
             BuildStatus.shared.start()
+            model.isWindowVisible = { [weak self] in self?.window?.isVisible == true }
+            model.updater.removeLeftovers()
+            // Relancé par une mise à jour en un clic : la bulle le confirme, sans prendre le focus.
+            if CommandLine.arguments.contains("--updated") { model.announceUpdated() }
             retentionTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak model] _ in
                 Task { @MainActor in
                     model?.purgeAudio()
@@ -222,6 +228,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         guard AppSection.allCases.indices.contains(sender.tag) else { return }
         show(section: AppSection.allCases[sender.tag])
     }
+
+    /// Menu de la barre et menu Aide : la page GitHub s'ouvre dans le navigateur, sans ouvrir la fenêtre de Wispad.
+    @objc func reportProblem() { HelpPage.reportProblem.open() }
+    @objc func proposeIdea() { HelpPage.proposeIdea.open() }
 
     @objc private func quit() { NSApp.terminate(nil) }
 }

@@ -375,6 +375,8 @@ final class DictationCoordinator {
         }
         let job = FinishJob(capture: current, url: url, duration: duration, previous: jobs.last?.pasted)
         jobs.append(job)
+        // La correction part sur ce qui a déjà été entendu, pendant que le flux finalise son texte.
+        prepareCorrectionAtRelease(current)
         // L'écoute est finie : le son du Mac revient avant le son de fin, pour qu'on l'entende.
         refreshPhase()
         cue(.stop)
@@ -418,7 +420,9 @@ final class DictationCoordinator {
         }
         guard !jobs.isEmpty || retrying else { return }
         generation += 1
-        for job in jobs {
+        // Un collage envoyé ne peut plus être annulé. Sa confirmation doit conserver le vrai statut,
+        // même si Échap arrive pendant la relecture du champ.
+        for job in jobs where !job.pasteSent {
             job.cancelled = true
             job.task?.cancel()
             job.cancelSideWork()
@@ -595,21 +599,44 @@ final class DictationCoordinator {
             // Fichier différent : la correction du flux est déjà payée, on en lance une autre sur le texte retenu
             // sans l'attendre (mesuré le 5 octobre : 1,1 s puis 1,0 s en série). Elle est comptée dès qu'elle finit,
             // même après le collage : la trace l'ajoute alors à la dictée.
-            if let correctionLedger {
-                Task { @MainActor in _ = await correctionLedger.account(model: model, run: current.run) }
-            }
             var correction = await makeCorrectionRequest(
                 transcript: transcript, context: context, field: current.field, window: current.window, model: model
             )
             correction.alternativeTranscript = alternative.map { FranglaisNormalizer.normalize($0) }
             let correctionBegan = KeyboardTap.now()
-            cleaned = await model.dependencies.clean(transcript, correction, speech, model.correctionReachable)
-            if model.settings.cleanupEnabled {
-                current.run.trace.timings.correctionMs = max(0, KeyboardTap.now() - correctionBegan)
+            let reachable = model.correctionReachable
+            let retained = CorrectionLedger(task: Task { @MainActor in
+                let began = Date()
+                let outcome = await model.dependencies.clean(transcript, correction, speech, reachable)
+                return PreparedCorrection(outcome: outcome, milliseconds: Self.milliseconds(since: began))
+            })
+            let otherSideWork = job.cancelSideWork
+            job.cancelSideWork = {
+                otherSideWork()
+                retained.task.cancel()
             }
-            for usage in cleaned.failedUsages { current.run.record(usage) }
-            if let usage = cleaned.usage { current.run.record(usage) }
-            model.recordCleanup(cleaned)
+            // Fichier différent d'un ou deux mots alors que la correction du flux tourne encore (106 dictées sur 179
+            // divergentes, mesuré le 13 octobre 2026) : elle finit souvent avant celle du fichier. La première qui
+            // sert l'emporte ; l'autre est comptée quand elle finit.
+            let stream = alternative.map { FranglaisNormalizer.normalize($0) }
+            if let stream, let correctionLedger, model.settings.cleanupEnabled,
+               CorrectionPatch.isCandidate(stream: stream, file: transcript),
+               await Self.finishesFirst(correctionLedger, before: retained),
+               let patched = await patchPreparedCorrection(correctionLedger, stream: stream, file: transcript, current: current, model: model) {
+                cleaned = patched.outcome
+                current.run.trace.timings.correctionMs = patched.milliseconds
+                current.run.trace.correctionPatched = true
+                if current.earlyReady?.ledger === correctionLedger { current.run.trace.earlyCorrectionUsed = true }
+                Task { @MainActor in _ = await retained.account(model: model, run: current.run) }
+            } else {
+                if let correctionLedger {
+                    Task { @MainActor in _ = await correctionLedger.account(model: model, run: current.run) }
+                }
+                cleaned = await retained.account(model: model, run: current.run).outcome
+                if model.settings.cleanupEnabled {
+                    current.run.trace.timings.correctionMs = max(0, KeyboardTap.now() - correctionBegan)
+                }
+            }
         }
         if let fallback = cleaned.fallback {
             showRelay(fallback)
@@ -672,6 +699,12 @@ final class DictationCoordinator {
         } else {
             status = await model.dependencies.insert(finalText, context, { [weak job] in
                 job.map { !$0.cancelled } ?? false
+            }, { [weak self, weak job] in
+                guard let self, let job, !job.cancelled else { return }
+                job.pasteSent = true
+                job.capture.marks.pasteSent = KeyboardTap.now()
+                self.refreshPhase()
+                self.changed()
             })
         }
         current.marks.pasted = KeyboardTap.now()
@@ -691,11 +724,16 @@ final class DictationCoordinator {
             to: model.supportURL.appendingPathComponent(LatencyLog.fileName)
         )
         if status.delivered {
-            watchCorrections(
-                of: finalText, status: status, pid: context.pid, selectionCommand: commandSelection != nil,
-                writtenByWispad: trial != nil, speech: speech, traceID: current.run.trace.id
-            )
+            // Apprentissage seulement sur un texte vu dans le champ ; un champ illisible ne dit rien de plus.
+            if status == .inserted {
+                watchCorrections(
+                    of: finalText, status: status, pid: context.pid, selectionCommand: commandSelection != nil,
+                    writtenByWispad: trial != nil, speech: speech, traceID: current.run.trace.id
+                )
+            }
             // Collage normal : rien à signaler, la dictée reste de toute façon dans l'historique.
+            // Collage envoyé dans un champ illisible (Codex, apps Electron) : pas de message à chaque dictée ;
+            // « Coller la dernière dictée » et l'historique restent là si le texte manque.
             model.statusBanner = nil
             job.delivered = true
             if let note = job.announcement { pendingAnnouncement = note.message }
@@ -745,21 +783,22 @@ final class DictationCoordinator {
 
     // MARK: - Texte prêt, faute de champ
 
-    /// Message de la bulle quand le texte n'a pu être écrit nulle part : court, toujours suivi de Copier.
+    /// Message de la bulle quand le texte n'a pas pu être écrit : court, toujours suivi de Copier.
     static func readyMessage(for status: InsertionStatus) -> String {
         switch status {
         case .noTarget: return String(localized: "Pas de champ où écrire : le texte est prêt")
         case .refusedSecure: return String(localized: "Champ sécurisé : le texte est prêt")
+        case .failed: return String(localized: "Le texte n'est pas arrivé dans le champ")
         default: return String(localized: "Collage impossible : le texte est prêt")
         }
     }
 
-    /// Aucun chemin d'échec ne finit en silence : le texte est copié (sauf vers un champ sécurisé, où il ne doit
-    /// pas traîner dans le presse-papiers) et la bulle propose Copier et Coller, sans prendre le focus.
+    /// Échec avéré : le texte reste récupérable sans voler le focus. Il est copié, sauf vers un champ sécurisé
+    /// où il ne doit pas traîner dans le presse-papiers.
     private func offerReadyText(_ text: String, status: InsertionStatus, recordID: String?) {
         guard let model else { return }
         if status != .refusedSecure { model.dependencies.copyText(text) }
-        Self.insertionLog.notice("échec du collage : \(status.rawValue, privacy: .public)")
+        Self.insertionLog.notice("récupération du collage : \(status.rawValue, privacy: .public)")
         let message = Self.readyMessage(for: status)
         model.statusBanner = message
         showFailure(message, text: text, recordID: recordID)
@@ -809,10 +848,9 @@ final class DictationCoordinator {
         pastingAgain = true
         defer { pastingAgain = false }
         dismissFailure()
-        await model.dependencies.modifiersReleased()
         guard capture == nil else { return }
         let target = model.dependencies.frontmostApp()
-        let status = await model.dependencies.insert(text, target, { [weak self] in self?.capture == nil })
+        let status = await model.dependencies.insert(text, target, { [weak self] in self?.capture == nil }, {})
         if let record, let updated = PasteLastChoice.updatedStatus(previous: record.insertionStatus, outcome: status) {
             let category = target.appName == nil && target.bundleID == nil
                 ? nil
@@ -828,7 +866,7 @@ final class DictationCoordinator {
         switch status {
         case .inserted, .pasteSent:
             model.statusBanner = nil
-            if let record {
+            if status == .inserted, let record {
                 // Une trace illisible compte comme une consigne : dans le doute, rien n'est appris.
                 let traces = try? model.store.traces(dictationID: record.id)
                 watchCorrections(
@@ -873,7 +911,13 @@ final class DictationCoordinator {
             presentIdleBubble()
         }
         guard let model else { return }
-        if phase != .idle {
+        // Ne pas libérer la file de collage avant la restauration du presse-papiers.
+        // Son attente de confirmation est toutefois invisible ; une autre dictée reste prioritaire.
+        let onlyConfirming = capture == nil && shownFailure == nil && !retrying
+            && !jobs.isEmpty && jobs.allSatisfy(\.pasteSent)
+        if onlyConfirming {
+            model.overlay.hide()
+        } else if phase != .idle {
             model.overlay.show()
         } else if notice == nil {
             model.overlay.hide()
@@ -964,6 +1008,8 @@ final class DictationCoordinator {
             var request = CorrectionRequest(transcript: raw, dictionary: model.dictionary.map(\.term), appName: record.targetApp,
                                             structureDictation: model.settings.structureDictation, language: model.settings.language)
             request.tone = model.tone(bundleID: record.targetBundle, appName: record.targetApp)
+            request.dateFormat = model.settings.dateFormat
+            request.numberFormat = model.settings.numberFormat
             let cleaned = await model.dependencies.clean(
                 raw,
                 request,
@@ -1135,10 +1181,17 @@ final class DictationCoordinator {
 
     /// Mots ajoutés au dictionnaire, à confirmer discrètement.
     private(set) var learnedNotice: [String] = []
-    /// Propositions en attente, une par mot. La bulle n'en montre qu'une à la fois.
+    /// Ajouts en attente, regroupés jusqu’à trois par notification.
     @ObservationIgnored private var learningQueue: [String] = []
-    /// Mot dont la bulle demande confirmation, s'il y en a un à l'écran.
-    @ObservationIgnored private(set) var learningOffer: String?
+    /// Premier terme du groupe affiché, utilisé pour savoir si une notification est ouverte.
+    var learningOffer: String? { learningOfferedTerms.first }
+    private(set) var learningOfferedTerms: [String] = []
+    /// Nouvelle version à rappeler dès que la bulle se libère après une dictée.
+    @ObservationIgnored private(set) var pendingUpdate: ReleaseInfo?
+    /// Nouvelle version dont la bulle affiche le rappel.
+    @ObservationIgnored private(set) var updateOffer: ReleaseInfo?
+    /// Le message de la bulle rappelle une nouvelle version de Wispad (Voir, Ne plus me rappeler).
+    private(set) var noticeOffersUpdate = false
 
     /// Message bref montré dans la bulle quand aucune dictée n'est en cours.
     var notice: String?
@@ -1198,27 +1251,32 @@ extension DictationCoordinator {
 
     func notifyLearned(_ terms: [String]) {
         let incoming = terms.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
-        learnedNotice = incoming
-        learningQueue.append(contentsOf: incoming)
+        var seen = Set((learningQueue + learningOfferedTerms).map { $0.lowercased() })
+        let unique = incoming.filter { seen.insert($0.lowercased()).inserted }
+        learnedNotice = unique
+        learningQueue.append(contentsOf: unique)
         if phase == .idle, notice == nil {
             presentNextLearningOffer()
         }
     }
 
-    /// Oui : le mot reste, le message se ferme.
+    /// Voir : les termes restent, leur confirmation est notée (origine inchangée), le message se ferme.
     func acceptLearning() {
-        guard learningOffer != nil else { return }
-        learningOffer = nil
-        Self.learningLog.notice("Gardés 1, refusés 0")
+        guard !learningOfferedTerms.isEmpty else { return }
+        let terms = learningOfferedTerms
+        learningOfferedTerms = []
+        for term in terms { model?.confirmLearnedTerm(term) }
+        Self.learningLog.notice("Gardés \(terms.count), refusés 0")
         clearNotice()
     }
 
-    /// Non : le mot sort du dictionnaire et ne sera plus proposé.
+    /// Annuler l’ajout : le groupe sort du dictionnaire et ne sera plus proposé.
     func declineLearning() {
-        guard let term = learningOffer else { return }
-        learningOffer = nil
-        model?.refuseLearnedTerm(term)
-        Self.learningLog.notice("Gardés 0, refusés 1")
+        guard !learningOfferedTerms.isEmpty else { return }
+        let terms = learningOfferedTerms
+        learningOfferedTerms = []
+        for term in terms { model?.refuseLearnedTerm(term) }
+        Self.learningLog.notice("Gardés 0, refusés \(terms.count)")
         clearNotice()
     }
 
@@ -1228,13 +1286,44 @@ extension DictationCoordinator {
         job.announcement = (service, message)
     }
 
+    static func updateMessage(_ version: SemanticVersion) -> String {
+        String(localized: "Wispad \(version.description) est disponible")
+    }
+
+    /// Rappel d'une nouvelle version : le temps de lire et de cliquer, en pause au survol.
+    static let updateSeconds = 10.0
+
+    /// Nouvelle version à rappeler. La bulle attend de se libérer après une dictée (ou un autre message) : on est
+    /// alors devant le Mac et on la regarde. Jamais pendant une dictée, jamais au premier plan.
+    func offerUpdate(_ release: ReleaseInfo) {
+        guard updateOffer?.version != release.version else { return }
+        pendingUpdate = release
+    }
+
+    /// « Voir » : la fenêtre s'ouvre sur les notes de version.
+    func openUpdateOffer() {
+        guard let release = updateOffer else { return }
+        clearNotice()
+        model?.showUpdate(release)
+    }
+
+    /// « Ne plus me rappeler » : le message part et cette version ne sera plus rappelée (elle reste proposée dans
+    /// la barre latérale).
+    func declineUpdateOffer() {
+        guard updateOffer != nil else { return }
+        clearNotice()
+    }
+
     /// Message bref dans la bulle, hors dictée.
-    func announce(_ message: String, relay: Bool, confirmsLearning: Bool = false, info: Bool = false, seconds: Double? = nil) {
+    func announce(_ message: String, relay: Bool, confirmsLearning: Bool = false, info: Bool = false,
+                  offersUpdate: Bool = false, seconds: Double? = nil) {
         // Pendant une dictée, la bulle sert à la dictée : le message est ignoré.
         guard phase == .idle, let model else { return }
         noticeIsRelay = relay
         noticeIsInfo = info
         noticeConfirmsLearning = confirmsLearning
+        noticeOffersUpdate = offersUpdate
+        if !offersUpdate { updateOffer = nil }
         notice = message
         model.overlay.show()
         let duration = seconds ?? (confirmsLearning ? Self.learningSeconds : Self.noticeSeconds)
@@ -1244,17 +1333,33 @@ extension DictationCoordinator {
         }
     }
 
-    /// Délai écoulé ou ✕, sans Oui ni Non : un mot proposé reste dans le dictionnaire.
+    /// Réglages › Bulle et messages : un message bref, quelques secondes, à la place choisie pour ce rôle.
+    func previewPlacement(_ role: OverlayRole) {
+        guard phase == .idle, let model else { return }
+        let message: String
+        switch role {
+        case .dictation: message = String(localized: "La bulle de dictée apparaîtra ici")
+        case .alerts: message = String(localized: "Les alertes de collage apparaîtront ici")
+        case .info: message = String(localized: "Les messages apparaîtront ici")
+        }
+        model.overlay.previewRole = role
+        announce(message, relay: false, info: true, seconds: 3)
+        model.overlay.moveToTarget()
+    }
+
+    /// Délai écoulé ou ✕ : les ajouts restent dans le dictionnaire.
     func dismissCurrentNotice() {
         guard notice != nil else { return }
         if noticeConfirmsLearning {
-            learningOffer = nil
-            Self.learningLog.notice("Gardés 1, refusés 0")
+            let count = learningOfferedTerms.count
+            learningOfferedTerms = []
+            Self.learningLog.notice("Gardés \(count), refusés 0")
         }
         clearNotice()
     }
 
-    /// Relais d'abord, puis la prochaine confirmation de mot, quand la bulle ne sert plus à dicter.
+    /// Relais d'abord, puis la prochaine confirmation de mot, puis une nouvelle version, quand la bulle ne sert plus à
+    /// dicter.
     @discardableResult
     private func presentIdleBubble() -> Bool {
         guard phase == .idle, notice == nil else { return false }
@@ -1263,29 +1368,52 @@ extension DictationCoordinator {
             announce(message, relay: true)
             return true
         }
-        return presentNextLearningOffer()
+        if presentNextLearningOffer() { return true }
+        return presentUpdateOffer()
+    }
+
+    /// Rappel d'une nouvelle version, jamais pendant la configuration guidée. Une fois paru, il ne revient plus pour
+    /// cette version, sauf s'il est interrompu par une dictée : il reparaît alors à la fin de celle-ci.
+    @discardableResult
+    private func presentUpdateOffer() -> Bool {
+        guard phase == .idle, notice == nil, learningOffer == nil, let release = pendingUpdate,
+              let model, model.onboarding == nil else { return false }
+        pendingUpdate = nil
+        announce(Self.updateMessage(release.version), relay: false, offersUpdate: true, seconds: Self.updateSeconds)
+        updateOffer = release
+        model.noteUpdateReminded(release.version)
+        return true
     }
 
     @discardableResult
     private func presentNextLearningOffer() -> Bool {
         guard phase == .idle, notice == nil, learningOffer == nil, !learningQueue.isEmpty else { return false }
-        let term = learningQueue.removeFirst()
-        learningOffer = term
-        announce(Self.learningMessage(term), relay: false, confirmsLearning: true, seconds: Self.learningSeconds)
+        let terms = Array(learningQueue.prefix(CorrectionLearner.maxTermsPerDictation))
+        learningQueue.removeFirst(terms.count)
+        learningOfferedTerms = terms
+        let message = terms.count == 1 ? Self.learningMessage(terms[0]) : String(localized: "\(terms.count) ajouts au dictionnaire")
+        announce(message, relay: false, confirmsLearning: true, seconds: Self.learningSeconds)
         return true
     }
 
     private func clearNotice() {
         noticeTimer.cancel()
-        if phase != .idle, let term = learningOffer {
-            learningQueue.insert(term, at: 0)
-            learningOffer = nil
+        model?.overlay.previewRole = nil
+        if phase != .idle, !learningOfferedTerms.isEmpty {
+            learningQueue.insert(contentsOf: learningOfferedTerms, at: 0)
+            learningOfferedTerms = []
         }
+        // Rappel coupé par une dictée : il reparaît à la fin de celle-ci (sauf si une version plus récente l'a remplacé).
+        if phase != .idle, let release = updateOffer, pendingUpdate == nil {
+            pendingUpdate = release
+        }
+        updateOffer = nil
         let hadNotice = notice != nil
         notice = nil
         noticeIsRelay = false
         noticeIsInfo = false
         noticeConfirmsLearning = false
+        noticeOffersUpdate = false
         guard phase == .idle else { return }
         if presentIdleBubble() { return }
         if hadNotice { model?.overlay.hide() }

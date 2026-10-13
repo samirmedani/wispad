@@ -74,7 +74,7 @@ private final class StyleFixture {
         deps.restoreOutput = {}
         deps.watchCorrections = { _, _, _, _ in }
         deps.judgeTerms = { _, _, _ in TermJudgement(kept: []) }
-        deps.insert = { [weak self] text, _, allowed in
+        deps.insert = { [weak self] text, _, allowed, _ in
             guard allowed() else { return .cancelled }
             self?.inserted.append(text)
             return .inserted
@@ -152,6 +152,16 @@ struct DictationStyleAppTests {
         await f.dictate("Traduis en anglais.")
         #expect(f.requests.allSatisfy { $0.commandSelection == nil })
         #expect(f.inserted == ["Traduis en anglais."])
+    }
+
+    @Test func everyCorrectionCarriesTheDateFormat() async throws {
+        let f = try StyleFixture()
+        defer { f.dispose() }
+        let format = DictationDateFormat(order: .iso, clock: .twelveHour)
+        f.model.settings.dateFormat = format
+        await f.dictate("Rendez-vous le 3 novembre à 14 h.")
+        #expect(!f.requests.isEmpty)
+        #expect(f.requests.allSatisfy { $0.dateFormat == format })
     }
 
     @Test func theToneFollowsTheAppCategory() async throws {

@@ -89,7 +89,11 @@ enum PhoneticKey {
     private static func encode(_ segment: String) -> String {
         let parts = segment.lowercased().split { apostrophes.contains($0) }
         let letters = Array(parts.joined().filter { $0.isLetter || $0.isNumber })
+        // « sept » se dit comme « cette » : son p est muet, son t se prononce.
+        if letters == ["s", "e", "p", "t"] { return "set" }
         let end = pronouncedEnd(letters, isEst: parts.last == "est")
+        /// « mille », « ville », « tranquille » : ici « ill » se dit « il ».
+        let plainIll = ["mill", "vill"].contains { letters.starts(with: Array($0)) } || String(letters).contains("tranquill")
         /// Lettre prononcée, avant les finales muettes.
         func at(_ index: Int) -> Character? { index >= 0 && index < end ? letters[index] : nil }
         /// Lettre écrite, même muette : elle décide du son de sa voisine (« place », « aime »).
@@ -123,7 +127,11 @@ enum PhoneticKey {
             }
             if c == "e" || c == "œ", c1 == "u" { emit("E"); index += 2; continue }
             if c == "œ" { emit("E"); index += 1; continue }
-            if c == "i", c1 == "l", c2 == "l" { emit(isVowel(previous) ? "j" : "ij"); index += 3; continue }
+            if c == "i", c1 == "l", c2 == "l" {
+                emit(plainIll ? "il" : isVowel(previous) ? "j" : "ij")
+                index += 3
+                continue
+            }
             // Voyelle nasale : an, en, on, in, un (« ien » se dit « in »).
             if "aeoiuy".contains(c), nasal(index + 1) {
                 let afterI = previous.map { "iyé".contains($0) } ?? false
@@ -186,6 +194,8 @@ enum PhoneticKey {
             end -= 1
             // « faits », « temps », « pieds »
             if "sx".contains(dropped), end >= 2, "tdp".contains(letters[end - 1]) { end -= 1 }
+            // « vingt », « vingts », « doigt », « longs » : g muet devant la finale muette.
+            if end >= 3, letters[end - 1] == "g", letters[end - 2] == "n" || dropped == "t" { end -= 1 }
             return end
         }
         if end >= 3, letters[end - 1] == "g", letters[end - 2] == "n" { return end - 1 }

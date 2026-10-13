@@ -32,6 +32,35 @@ struct SettingsUpgradeTests {
         try JSONDecoder().decode(AppSettings.self, from: Data(json.utf8))
     }
 
+    @Test func dictionaryFiltersPersistAndReadOlderSettings() throws {
+        let old = try decode(#"{"provider": "openai"}"#)
+        #expect(old.dictionaryOriginFilter == .all)
+        #expect(old.dictionaryPeriod == .all)
+        #expect(old.dictionarySort == .newest)
+        #expect(try decode(#"{"dictionarySort":"future"}"#).dictionarySort == .newest)
+        let invalid = try decode(#"{"dictionaryOriginFilter":"future", "dictionaryPeriod":7, "provider":"openai"}"#)
+        #expect(invalid.dictionaryOriginFilter == .all)
+        #expect(invalid.dictionaryPeriod == .all)
+        #expect(invalid.provider == .openAI)
+        let fixture = try Defaults()
+        defer { fixture.dispose() }
+        var settings = old
+        settings.dictionaryOriginFilter = .learned
+        settings.dictionaryPeriod = .days30
+        settings.dictionaryKind = .phrase
+        settings.dictionarySort = .originDescending
+        settings.numberFormat = DictationNumberFormat(thousands: .none, symbols: false)
+        settings.save(to: fixture.defaults)
+        let reloaded = AppSettings.load(from: fixture.defaults)
+        #expect(reloaded.dictionaryOriginFilter == .learned)
+        #expect(reloaded.dictionaryPeriod == .days30)
+        #expect(reloaded.dictionaryKind == .phrase)
+        #expect(reloaded.dictionarySort == .originDescending)
+        #expect(reloaded.numberFormat == DictationNumberFormat(thousands: .none, symbols: false))
+        #expect(old.numberFormat == DictationNumberFormat())
+        #expect(reloaded.provider == .openAI)
+    }
+
     /// Bloc d'une ancienne version : modes et fournisseurs depuis retirés (transcription « Sur ce Mac », serveur
     /// compatible OpenAI, raccourcis vocaux), plus des valeurs inconnues. Les choix encore valables restent.
     @Test func removedValuesKeepEveryOtherChoice() throws {
@@ -102,6 +131,27 @@ struct SettingsUpgradeTests {
         #expect(try fixture.storedObject()["pasteLastShortcut"] != nil)
     }
 
+    /// Format des dates et des heures : absent d'un ancien bloc, celui par défaut ; illisible en entier, celui par défaut
+    /// sans toucher aux autres réglages ; un champ illisible ne remet que lui-même ; un choix survit à un rechargement.
+    @Test func dateFormatIsReadLenientlyAndPersists() throws {
+        #expect(try decode(#"{"provider": "openai"}"#).dateFormat == DictationDateFormat(timeStyle: .compact))
+        let unreadable = try decode(#"{"dateFormat": "JJ/MM/AAAA", "provider": "openai", "keyCode": 61}"#)
+        #expect(unreadable.dateFormat == DictationDateFormat(timeStyle: .compact))
+        #expect(unreadable.provider == .openAI)
+        #expect(unreadable.keyCode == 61)
+        let partial = try decode(#"{"dateFormat": {"order": "iso", "clock": "horloge-retiree", "monthInWords": true}}"#)
+        #expect(partial.dateFormat == DictationDateFormat(order: .iso, monthInWords: true))
+
+        let fixture = try Defaults()
+        defer { fixture.dispose() }
+        var settings = AppSettings.load(from: fixture.defaults)
+        settings.dateFormat = DictationDateFormat(order: .monthDayYear, separator: .dot, fourDigitYear: false, leadingZero: false,
+                                                  monthInWords: true, clock: .twelveHour, timeStyle: .colon)
+        settings.save(to: fixture.defaults)
+        #expect(AppSettings.load(from: fixture.defaults).dateFormat == settings.dateFormat)
+        #expect(try fixture.storedObject()["dateFormat"] != nil)
+    }
+
     /// Fournisseur ou modèle de voix retiré : le fournisseur par défaut, ou le modèle par défaut du même fournisseur.
     @Test func removedProviderOrModelFallsBackToTheClosestValidOne() throws {
         let removedProvider = try decode(#"{"provider": "fournisseur-retire", "cleanupEnabled": false}"#)
@@ -141,6 +191,7 @@ struct SettingsUpgradeTests {
         #expect(settings.retention == defaults.retention)
         #expect(settings.language == .french)
         #expect(settings.onboardingCompleted)
+        #expect(settings.dateFormat == defaults.dateFormat)
     }
 
     /// Un élément illisible d'une liste ou d'un dictionnaire est écarté, ses voisins restent.
@@ -219,6 +270,20 @@ struct SettingsUpgradeTests {
         #expect(stored["provider"] as? String == "openai")
     }
 
+    /// Rappel de mise à jour : absent ou illisible, aucune version n'a été rappelée ; une fois noté, il le reste.
+    @Test func updateReminderIsReadLenientlyAndPersists() throws {
+        #expect(try decode(#"{"provider": "openai"}"#).updateRemindedVersion == "")
+        #expect(try decode(#"{"updateRemindedVersion": 12, "provider": "openai"}"#).updateRemindedVersion == "")
+        #expect(try decode(#"{"updateRemindedVersion": 12, "provider": "openai"}"#).provider == .openAI)
+        let fixture = try Defaults()
+        defer { fixture.dispose() }
+        var settings = AppSettings.load(from: fixture.defaults)
+        #expect(settings.updateRemindedVersion == "")
+        settings.updateRemindedVersion = "0.1.2"
+        settings.save(to: fixture.defaults)
+        #expect(AppSettings.load(from: fixture.defaults).updateRemindedVersion == "0.1.2")
+    }
+
     @Test func everySettingSurvivesASaveAndReload() throws {
         let fixture = try Defaults()
         defer { fixture.dispose() }
@@ -232,6 +297,8 @@ struct SettingsUpgradeTests {
         settings.modifierFlags = 0x100000
         settings.onboardingCompleted = true
         settings.githubStarClicked = true
+        settings.updateRemindedVersion = "0.1.2"
+        settings.dateFormat = DictationDateFormat(order: .iso, clock: .twelveHour)
         settings.save(to: fixture.defaults)
         #expect(AppSettings.load(from: fixture.defaults) == settings)
     }

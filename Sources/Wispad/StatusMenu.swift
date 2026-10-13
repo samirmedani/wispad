@@ -1,8 +1,8 @@
 import AppKit
 import WispadCore
 
-/// Menu de la barre : l'état d'abord, puis l'action utile maintenant, puis les écrans. Les actions sont des
-/// méthodes du délégué de l'app (la cible), nommées ici par leur sélecteur pour que le menu reste testable.
+/// Menu de la barre : l'état d'abord, puis l'action utile maintenant, puis les écrans et les retours. Les actions
+/// sont des méthodes du délégué de l'app (la cible), nommées ici par leur sélecteur pour que le menu reste testable.
 @MainActor
 enum StatusMenu {
     static func items(model: AppModel, target: AnyObject?) -> [NSMenuItem] {
@@ -55,6 +55,9 @@ enum StatusMenu {
         _ = add(String(localized: "Historique"), "openHistory")
         _ = add(String(localized: "Dictionnaire"), "openDictionary")
         _ = add(String(localized: "Réglages…"), "openSettings", key: ",")
+        items.append(.separator())
+        _ = add(HelpPage.reportProblem.title, "reportProblem")
+        _ = add(HelpPage.proposeIdea.title, "proposeIdea")
         items.append(.separator())
         _ = add(String(localized: "Quitter Wispad"), "quit", key: "q")
         return items

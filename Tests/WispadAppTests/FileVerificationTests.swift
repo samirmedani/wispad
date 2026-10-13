@@ -25,9 +25,11 @@ private final class VerifyStream: SpeechStreaming, @unchecked Sendable {
     var text = ""
     var fail = false
     var endingFinalized = true
+    var finishGate: AsyncResult<Void>?
     func start() async throws {}
     func send(_ data: Data) {}
     func finish() async throws -> StreamFinish {
+        try await finishGate?.value()
         if fail { throw URLError(.networkConnectionLost) }
         return StreamFinish(text: text, endingFinalized: endingFinalized)
     }
@@ -57,6 +59,9 @@ private final class VerifyFixture {
     var holdClean = false
     /// Bloque seulement la première correction (celle du flux), jusqu'à `cleanRelease`.
     var holdFirstClean = false
+    /// Bloque seulement la deuxième correction (celle du fichier), jusqu’à `secondCleanRelease`.
+    var holdSecondClean = false
+    var secondCleanRelease = AsyncResult<Void>()
     var model: AppModel!
 
     init() throws {
@@ -98,10 +103,12 @@ private final class VerifyFixture {
         }
         dependencies.clean = { [weak self] text, request, _, enabled in
             let first = self?.cleanTexts.isEmpty == true
+            let second = self?.cleanTexts.count == 1
             self?.cleanTexts.append(text)
             self?.cleanRequests.append(request)
             self?.cleanEntered.resolve(.success(()))
             if self?.holdClean == true || (first && self?.holdFirstClean == true) { try? await self?.cleanRelease.value() }
+            if second, self?.holdSecondClean == true { try? await self?.secondCleanRelease.value() }
             guard enabled else { return CleanupOutcome(text: text) }
             let usage = UsageEvent(api: .deepSeekCleanup, model: CleanupModel.deepSeek, costUSD: 0.00001)
             return CleanupOutcome(text: text, usage: usage)
@@ -111,7 +118,7 @@ private final class VerifyFixture {
         dependencies.restoreOutput = {}
         dependencies.watchCorrections = { _, _, _, _ in }
         dependencies.judgeTerms = { _, _, _ in TermJudgement(kept: []) }
-        dependencies.insert = { [weak self] text, _, allowed in
+        dependencies.insert = { [weak self] text, _, allowed, _ in
             guard allowed() else { return .cancelled }
             self?.inserted.append(text)
             return .inserted
@@ -135,8 +142,10 @@ private final class VerifyFixture {
     }
 
     func dispose() {
+        stream.finishGate?.resolve(.success(()))
         fileRelease.resolve(.success(""))
         cleanRelease.resolve(.success(()))
+        secondCleanRelease.resolve(.success(()))
         model.coordinator.cancel()
         try? FileManager.default.removeItem(at: directory)
     }
@@ -156,6 +165,25 @@ private func finish(within seconds: Double, _ task: Task<Void, Never>) async thr
 @MainActor
 @Suite(.serialized)
 struct FileVerificationTests {
+    @Test func fileReadyBeforeStreamFinishNeedsOnlyTheSelectedCorrection() async throws {
+        let f = try VerifyFixture()
+        defer { f.dispose() }
+        let streamGate = AsyncResult<Void>()
+        f.stream.finishGate = streamGate
+        f.stream.text = "on se voit mardi"
+        f.fileTexts = ["on se voit mercredi"]
+        await f.model.coordinator.begin(.toggle)
+        let task = try #require(f.model.coordinator.endCapture())
+        try await f.fileEntered.value()
+        streamGate.resolve(.success(()))
+        try await finish(within: 2, task)
+        #expect(f.cleanTexts == ["on se voit mercredi"])
+        #expect(f.cleanRequests.first?.alternativeTranscript == "on se voit mardi")
+        #expect(f.inserted == ["on se voit mercredi"])
+        #expect(f.model.usage.filter { $0.api == .deepSeekCleanup }.count == 1)
+        #expect(try f.trace().transcriptChoice == .diverged)
+    }
+
     @Test func equivalentNumbersKeepTheStreamAndASingleCorrection() async throws {
         let stream = "J'ai deux mille six cent soixante-six barrettes."
         let f = try VerifyFixture()
@@ -204,7 +232,12 @@ struct FileVerificationTests {
         defer { f.dispose() }
         f.stream.text = stream
         f.fileTexts = [file]
-        await f.dictate()
+        f.holdFile = true
+        await f.model.coordinator.begin(.toggle)
+        let task = try #require(f.model.coordinator.endCapture())
+        try await f.cleanEntered.value()
+        f.fileRelease.resolve(.success(file))
+        try await finish(within: 3, task)
 
         let record = try #require(f.model.history.first)
         #expect(f.cleanTexts == [stream, file])
@@ -236,9 +269,12 @@ struct FileVerificationTests {
         defer { f.dispose() }
         f.stream.text = stream
         f.fileTexts = [file]
+        f.holdFile = true
         f.holdFirstClean = true
         await f.model.coordinator.begin(.toggle)
         let task = try #require(f.model.coordinator.endCapture())
+        try await f.cleanEntered.value()
+        f.fileRelease.resolve(.success(file))
         // La correction du flux reste bloquée : le texte du fichier est pourtant corrigé et collé.
         let deadline = Date().addingTimeInterval(3)
         while f.inserted.isEmpty, Date() < deadline { try await Task.sleep(nanoseconds: 20_000_000) }
@@ -266,7 +302,12 @@ struct FileVerificationTests {
         defer { f.dispose() }
         f.stream.text = stream
         f.fileTexts = [file]
-        await f.dictate()
+        f.holdFile = true
+        await f.model.coordinator.begin(.toggle)
+        let task = try #require(f.model.coordinator.endCapture())
+        try await f.cleanEntered.value()
+        f.fileRelease.resolve(.success(file))
+        try await finish(within: 3, task)
 
         let record = try #require(f.model.history.first)
         // Une seule correction, celle du flux : le mot du fichier y est reporté.
@@ -281,6 +322,58 @@ struct FileVerificationTests {
         #expect(trace.correctionPatched == true)
     }
 
+    /// La correction du flux finit après le fichier mais avant celle du fichier : le mot y est reporté sans attendre
+    /// la seconde, comptée quand elle finit.
+    @Test func aStreamCorrectionFinishingFirstStillReceivesTheFileWord() async throws {
+        let stream = "on se voit mardi à la réunion"
+        let file = "on se voit mercredi à la réunion"
+        let f = try VerifyFixture()
+        defer { f.dispose() }
+        f.stream.text = stream
+        f.fileTexts = [file]
+        f.holdFile = true
+        f.holdFirstClean = true
+        f.holdSecondClean = true
+        await f.model.coordinator.begin(.toggle)
+        let task = try #require(f.model.coordinator.endCapture())
+        try await f.cleanEntered.value()
+        f.fileRelease.resolve(.success(file))
+        let started = Date().addingTimeInterval(2)
+        while f.cleanTexts.count < 2, Date() < started { try await Task.sleep(nanoseconds: 20_000_000) }
+        #expect(f.cleanTexts == [stream, file])
+        f.cleanRelease.resolve(.success(()))
+        try await finish(within: 2, task)
+        // Collé sans attendre la correction du fichier, toujours bloquée.
+        #expect(f.inserted == [file])
+        #expect(try f.trace().correctionPatched == true)
+        f.secondCleanRelease.resolve(.success(()))
+        let billed = Date().addingTimeInterval(2)
+        while f.model.usage.filter({ $0.api == .deepSeekCleanup }).count < 2, Date() < billed {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        #expect(f.model.usage.filter { $0.api == .deepSeekCleanup }.count == 2)
+    }
+
+    /// Cas réel du 13 octobre 2026 : le fichier ramenait « mètres carrés » dans « 80 m² ». Les mots reportés reprennent
+    /// le format des nombres et des heures.
+    @Test func reportedFileWordsTakeTheNumberAndTimeFormat() async throws {
+        let stream = "Réserve une salle de 80 m carré"
+        let file = "Réserve une salle de 80 mètres carrés"
+        let f = try VerifyFixture()
+        defer { f.dispose() }
+        f.stream.text = stream
+        f.fileTexts = [file]
+        f.holdFile = true
+        await f.model.coordinator.begin(.toggle)
+        let task = try #require(f.model.coordinator.endCapture())
+        try await f.cleanEntered.value()
+        f.fileRelease.resolve(.success(file))
+        try await finish(within: 3, task)
+        #expect(f.cleanTexts == [stream])
+        #expect(f.inserted == ["Réserve une salle de 80\u{00A0}m²"])
+        #expect(try f.trace().correctionPatched == true)
+    }
+
     @Test func slowStreamCorrectionIsNotAwaitedForAReport() async throws {
         let stream = "on se voit mardi à la réunion"
         let file = "on se voit mercredi à la réunion"
@@ -288,9 +381,12 @@ struct FileVerificationTests {
         defer { f.dispose() }
         f.stream.text = stream
         f.fileTexts = [file]
+        f.holdFile = true
         f.holdFirstClean = true
         await f.model.coordinator.begin(.toggle)
         let task = try #require(f.model.coordinator.endCapture())
+        try await f.cleanEntered.value()
+        f.fileRelease.resolve(.success(file))
         // Correction du flux bloquée : au-delà de la borne, le fichier est corrigé en entier et collé.
         let deadline = Date().addingTimeInterval(3)
         while f.inserted.isEmpty, Date() < deadline { try await Task.sleep(nanoseconds: 20_000_000) }

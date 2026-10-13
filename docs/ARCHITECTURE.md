@@ -4,17 +4,45 @@
 
 | Module | Rôle | Dépend de |
 | --- | --- | --- |
-| `WispadCore` | Logique pure et testable : requêtes de transcription et de correction, consigne, garde-fou, comparaison flux/fichier, historique SQLite, coûts, retard de la version sur `main` (`BuildFreshness`), progression du premier lancement guidé (`OnboardingFlow`). Aucun texte d'interface. | — |
+| `WispadCore` | Logique pure et testable : requêtes de transcription et de correction, consigne, garde-fou, format des dates et des heures (`DictationDateFormat`, `DateTimeWriter`), des nombres, montants et unités (`DictationNumberFormat`, `NumberWriter`), comparaison flux/fichier, historique SQLite, coûts, retard de la version sur `main` (`BuildFreshness`), adresses d'aide et de retour (`FeedbackLinks`), releases et mises à jour (`ReleaseUpdate`, `UpdateInstallRules`), progression du premier lancement guidé (`OnboardingFlow`), place de la bulle et zone de saisie à éviter (`OverlayPlacement`, `OverlayGeometry`). Aucun texte d'interface. | — |
 | `Wispad` (app) | Coordinateur de dictée, raccourci, bulle, écrans SwiftUI, clés, traductions. | `WispadCore` |
 
 Le projet Xcode (hors Git) est généré par xcodegen depuis `project.yml`. `Package.swift` décrit les mêmes
 modules pour les tests (`swift test`), sans dépendance externe, l'app y devenant la cible `WispadApp`. La signature
 de l'app se règle dans `Signing.local.xcconfig`, ignoré par Git ; `Signing.xcconfig` garde la signature locale par défaut (voir le README).
 
+## Version et mises à jour
+
 Une phase de compilation (`scripts/build-commit.sh`) grave le commit court du dépôt dans l'Info.plist de l'app
-(clé `WispadBuildCommit`, absente si git ne répond pas). `BuildStatus` l'affiche avec la version dans la barre
-latérale et compare ce commit à `main` sur l'API publique de GitHub, en arrière-plan ; la lecture de la réponse est
-la fonction pure `BuildFreshnessCheck.freshness` (WispadCore, testée).
+(clé `WispadBuildCommit`, absente si git ne répond pas). `scripts/release.sh` ajoute en plus, avant de signer, la clé
+`WispadRelease` (vraie) : c'est elle qui fait une release (`BuildKind`, WispadCore) ; sans elle, l'app est un build de
+développement. Une clé posée par le seul script de release plutôt que l'absence de signature Developer ID : explicite,
+testée (`ReleaseScriptTests`), couverte par la signature de l'app, et indépendante du certificat d'un contributeur.
+
+- **Affichage** : `BuildStatus` (app) lit la version, le commit et `BuildKind`, puis interroge l'API publique de GitHub
+  en arrière-plan : `releases/latest` pour une release, `compare/<commit>...main` pour un build de développement.
+  Lecture des réponses (`ReleaseCheck.result`, `BuildFreshnessCheck.freshness`), délais (`ReleaseCheck.delay`),
+  versions (`SemanticVersion`) et choix de l'affichage (`UpdateDisplay.make`) sont dans WispadCore
+  (`ReleaseUpdate.swift`, `BuildFreshness.swift`), testés par `ReleaseUpdateTests` et `BuildFreshnessTests`. La barre
+  latérale (`ProjectFooter`) montre `BuildStatus.display` ; la lecture réseau est remplaçable (`fetchLatest`).
+- **Rappel** : `BuildStatus.onAvailable` → `AppModel.noteAvailableRelease` (une fois par version : `UpdateReminder`,
+  réglage `updateRemindedVersion`) → `DictationCoordinator.offerUpdate`. Comme une proposition de mot appris, la bulle
+  le montre (`OverlayMode.update`) au prochain moment où elle se libère, jamais pendant une dictée.
+- **Installation** : `UpdateInstaller` (`UpdateInstaller.swift`) enchaîne le téléchargement (`DiskImageDownload`,
+  progression, taille et SHA-256), le montage (`hdiutil -nobrowse`), la vérification de la signature (`CodeSignature`,
+  exigence `UpdateInstallRules.requirement` : Developer ID, même identifiant, même Team ID), la copie cachée à côté de
+  l'app (`ditto`), l'attente de la fin de la dictée, l'échange atomique (`renamex_np`) puis la relance par une aide
+  `/bin/sh`. Toutes ses frontières passent par `UpdateSystem`, remplacé dans `UpdateInstallerTests`. Les règles (qui
+  s'installe en place, signature exigée, chemins, sortie de `hdiutil`) sont dans `UpdateInstallRules` (WispadCore).
+  Fenêtre de mise à jour et notes de version (`ReleaseNotes` découpe le markdown simple) : `UpdateViews.swift`.
+- **Publier** : `scripts/release.sh` (en-tête : variables d'environnement, étapes). Rien de propre au mainteneur
+  (équipe, certificat, clé de notarisation) n'est dans le dépôt.
+
+« Aide et retours » : `HelpPage` (`HelpPages.swift`) donne les trois liens de Réglages (`HelpSection`), dont les
+deux premiers servent aussi au menu de la barre (`StatusMenu`) et au menu Aide (`MainMenu.helpMenu`, actions du
+délégué de l'app) ; chaque page s'ouvre avec `NSWorkspace.shared.open`. L'adresse du ticket de bug prérempli est
+la fonction pure `FeedbackLinks.bugReportURL` (WispadCore, testée) : version et commit de `BuildStatus`, version de
+macOS, rien d'autre, encodés pour l'adresse.
 
 ## Premier lancement guidé
 
@@ -56,24 +84,63 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
 4. `endCapture` ferme le micro ; un `FinishJob` termine la dictée en arrière-plan.
 5. `DictationCoordinator+Transcription` choisit le texte retenu : flux, enregistrement complet
    (`TranscriptEquivalence`, mots du fichier reportés par `CorrectionPatch`) ou relais ; le fichier part chez le
-   fournisseur (`BatchTranscriber`). Sans réponse, l'audio reste dans l'historique pour Retranscrire. Le texte passe par `FranglaisNormalizer` avant et après la correction.
-6. `TextCleaner` corrige (consigne `CorrectionPrompt`, puis `FidelityGuard`, puis `DictationStructure`) ; une
-   consigne sur la sélection passe par `TextCleaner.transform`, sans garde-fou. `FidelityGuard` juge la
-   ressemblance à l'oreille (homophones, lettres épelées) avec `PhoneticKey`. Les raccourcis vocaux
-   (`VoiceSnippets`) s'appliquent ensuite.
+   fournisseur (`BatchTranscriber`). À l'arrêt, `prepareCorrectionAtRelease` lance déjà la correction de ce que le
+   flux a affiché ; la fin de dictée la prend si le texte final est équivalent. `FileLedger.completion` expose le fichier déjà revenu : dans ce cas, le choix
+   précède la correction, sans appel spéculatif devenu inutile. Sans réponse, l'audio reste dans l'historique pour Retranscrire. Le texte passe par `FranglaisNormalizer` avant et après la correction.
+6. `TextCleaner` corrige (consigne `CorrectionPrompt`, puis `FidelityGuard`, puis `DateTimeWriter`, puis
+   `DictationStructure`) ; une consigne sur la sélection passe par `TextCleaner.transform`, sans garde-fou.
+   `FidelityGuard` juge la ressemblance à l'oreille (homophones, lettres épelées, nombres) avec `PhoneticKey`, et
+   reconnaît une date ou une heure réécrite à ses nombres (`MomentReading`) ; il retire une année non dite
+   (`DateTimeWriter.removingUnspokenYears`). Le format choisi (`DictationDateFormat`, dans `CorrectionRequest.dateFormat`)
+   donne ses exemples à la consigne, puis `DateTimeWriter.apply` l'impose aux dates et heures déjà en chiffres du
+   texte retenu ; `NumberWriter.apply` fait de même pour les montants, pourcentages, mesures et téléphones
+   (`CorrectionRequest.numberFormat`). Les raccourcis vocaux (`VoiceSnippets`) s'appliquent ensuite.
 7. La dictée est enregistrée (`HistoryStore`), collée dans l'ordre (`TextInserter`, raccord `SmartJoin`), puis
-   surveillée pour l'apprentissage (`CorrectionWatcher`, tri par `JevJudge` et `TermJudge`). Le statut du collage
-   vient de `FocusedField` (WispadCore) : confirmé, aucun champ (`FocusedFieldKind.notText` avant comme après ⌘V)
-   ou envoyé. Tout statut non livré passe par `DictationCoordinator.offerReadyText` : texte copié, bulle avec
-   Copier et Coller (`readyMessage`). Les messages de la bulle partent seuls (`MessageTimer`, décompte
+   surveillée pour l'apprentissage (`CorrectionWatcher`, tri par `JevJudge` et `TermJudge` ; chaque mot retenu porte
+   son juge, voir « Origine des mots du dictionnaire »). `TextInserter` envoie ⌘V au système (`pasteEvents`) puis
+   relit le champ : confirmé (`inserted`), même champ lisible resté identique (`failed`), aucun champ
+   (`FocusedFieldKind.notText`, `noTarget`) ou champ illisible (`pasteSent`, livré sans carte). Tout statut non
+   livré passe par `DictationCoordinator.offerReadyText` : texte copié, bulle avec Copier et Coller
+   (`readyMessage`). Après l'envoi, `InsertionSystem.locate` lit la zone de saisie (`ContextProbe.inputLocation`,
+   règles `OverlayGeometry.inputZone`) dans `InputZoneTracker` ; `OverlayController.targetFrame` place chaque
+   mode selon son rôle (`OverlayMode.role`, réglage `OverlayPlacement`) et décale les messages hors de cette zone. Les messages de la bulle partent seuls (`MessageTimer`, décompte
    `MessageCountdown` de WispadCore) ; `OverlayController` met ce décompte en pause pendant le survol
    (`DictationCoordinator.holdMessages`) et la ✕ appelle `closeMessage`.
+   Le callback final de `AppDependencies.insert` signale ⌘V avant la relecture d'accessibilité :
+   `FinishJob.pasteSent` retire le spectre lorsque seule la confirmation reste. Le job reste dans la file jusqu'à
+   la restauration du presse-papiers ; une autre dictée en cours garde l'overlay. Un échec reconnu ensuite affiche
+   toujours la récupération du texte. `LatencyMarks.pasteSent` sépare l'envoi du résultat final dans les traces.
 8. Chaque appel facturable devient un `UsageEvent` ; la trace sans texte (`DictationTraceRecorder`) alimente le
    détail et le diagnostic.
    L'écran Consommation compte tous les appels enregistrés, filtrés par la seule période
    (`UsagePresentation.events`) ; les bascules vers un fournisseur de secours sont lues dans ces appels
    (`FallbackSummary`, textes de la carte dans `FallbackPresentation`).
    Une clé devenue inutile dans `app_metadata` est supprimée à l'ouverture de `HistoryStore`, jamais les appels.
+
+## Origine des mots du dictionnaire
+
+- **Données** (WispadCore) : `DictionaryEntry.origin` est un `DictionaryOrigin` : `user` (ajout à la main,
+  `AppModel.addTerm`), `learned(DictionaryJudge)` (mot appris) ou `unknown` (avant le suivi). `DictionaryJudge`
+  garde le type de juge (`jev`, `correctionModel`), le fournisseur et le modèle de l'appel qui a tranché.
+  `confirmedAt` note le « Oui » de la bulle (`DictationCoordinator.acceptLearning` → `AppModel.confirmLearnedTerm`)
+  sans changer l'origine.
+- **Juge par mot** : `TermJudgement.kept` est une liste de `LearnedTerm` (mot et juge). `TermJudge.decide` attribue
+  chaque mot : Jev pour une note nette ou quand le modèle de correction ne répond pas, le modèle de correction pour un
+  cas douteux qu'il approuve. `TermJudge.askModel` rend la route qui a répondu (`ModelAnswer` : fournisseur et
+  modèle de `TextCleaner.Route`) ; Jev, le modèle de son appel (`UsageEvent.model`, annoncé par TypeSafe). Aucune
+  valeur fixe : le juge suit les clés et le fournisseur du moment.
+- **Base** : table `dictionary`, colonnes `origin` (`user`, `jev`, `model` ; NULL : avant le suivi),
+  `judge_provider`, `judge_model`, `confirmed_at`, ajoutées à une ancienne base à l'ouverture de `HistoryStore`.
+  Lecture tolérante : une valeur inconnue ou un juge incomplet donnent `unknown`. `addTerm(_:origin:)` sans origine
+  écrit `unknown`, jamais « ajouté par toi ».
+- **Écran** : `DictionaryRow` / `DictionaryPhraseRow` affichent `OriginBadge` et `DictionaryOriginText`.
+  `DictionaryKind` classe le texte sans changer la base. Section, origine et période sont dans `AppSettings` ;
+  recherche éphémère, filtrage pur dans `DictionaryFilter.matchingEntries`.
+- **Notification** : `DictationCoordinator` regroupe jusqu'à trois ajouts dans `learningOfferedTerms` ;
+  `LearningNoticePill` les annonce avec Voir / Annuler l'ajout. Le panneau reste fixe, assez haut pour cette carte,
+  tandis que les autres messages gardent leur pilule compacte. Une dictée suspend et remet en file le groupe.
+- **Concurrence** : `AppModel.considerLearning` revalide les candidats après l'attente puis `learn` relit les
+  refus et déduplique avant écriture. Couper l'apprentissage pendant le jugement empêche un ajout tardif.
 
 ## Coller la dernière dictée
 
@@ -133,7 +200,8 @@ la sonde de compter les lignes évaluées.
 `LiveSpeechSession`, le fichier dans `BatchTranscriber`, les coûts dans `UsageAPI` et `ProviderCatalog`.
 
 **Un réglage** : une propriété dans `AppSettings` (`AppSettings.swift`) avec sa lecture tolérante dans
-`init(from:)`, puis son contrôle dans l'écran : une rangée `SettingRow` ou `SettingToggle` (`SettingsRows.swift`)
+`init(from:)` (un réglage composé, comme `dateFormat`, lit lui-même ses champs un par un), puis son contrôle dans
+l'écran : une rangée `SettingRow` ou `SettingToggle` (`SettingsRows.swift`)
 dont les textes (libellé, résumé d'une ligne, détails du popover ⓘ) sont dans `SettingsPresentation`, testés par
 `SettingsPresentationTests`. Pas de texte sous la section. Voir « Réglages et mises à jour » ci-dessous.
 
@@ -164,6 +232,10 @@ Une mise à jour ne doit jamais faire perdre à l'utilisateur ses fournisseurs, 
   recopiées.
 - **Bloc illisible en entier** (pas un objet JSON) : copié une fois sous `wispad.settings.v1.illisible` avant toute
   écriture, jamais effacé ; l'app repart des valeurs d'une installation existante.
+- **Base SQLite** (`HistoryStore`) : elle évolue par colonnes ajoutées à l'ouverture (`ALTER TABLE … ADD COLUMN`
+  si `PRAGMA table_info` ne la trouve pas), jamais retirées ni renommées. Les lignes existantes gardent NULL dans les
+  nouvelles colonnes, lu comme « inconnu » (origine d'un mot du dictionnaire : « Avant le suivi »). Ajoutées en fin
+  de table, elles restent invisibles pour une version précédente.
 - Valeur par défaut d'un ancien bloc : la propriété porte celle d'une nouvelle installation ; si une installation
   existante doit garder l'ancien comportement, `init(from:)` donne une autre valeur quand la clé est absente
   (`useWindowContext`, `onboardingCompleted`, `language`).
@@ -183,7 +255,9 @@ fournisseur retiré : `APIKeys.LocalFile` garde les comptes qu'il ne connaît pa
 `SettingsUpgradeTests` avec un bloc qui contient encore l'ancienne valeur.
 
 **Réinstaller** : `scripts/install.sh` ne remplace que le paquet `.app` ; préférences, dossier
-`Application Support/Wispad` et clés restent en place (vérifié par `StorageIdentityTests`).
+`Application Support/Wispad` et clés restent en place (vérifié par `StorageIdentityTests`). La mise à jour en un clic
+(`UpdateInstaller`) aussi : seul le paquet `.app` change, jamais effacé avant que la nouvelle version soit en place
+(`UpdateInstallerTests`).
 
 ## Vérifier
 
@@ -201,7 +275,7 @@ fournisseur retiré : `APIKeys.LocalFile` garde les comptes qu'il ne connaît pa
   moyenne, p95, max, étapes de plus de 16 ms ; évaluations de lignes et lignes distinctes).
 - Tests réseau à la demande, clés de test seulement : `scripts/live-test.sh SelfCorrectionLiveTests`.
 - Banc franglais (audios de `Tests/Fixtures/franglais`, clés de test) : `scripts/franglais-bench.sh <nom> [référence]` ;
-  `BENCH_ONLY=h,r,g,l,e` ne rejoue que les cas de correction seule (champ `transcript` : transcription brute
-  inventée, passée directement à la correction, sans audio ni flux xAI).
+  `BENCH_ONLY=h,r,g,l,e,d,n` ne rejoue que les cas de correction seule (champ `transcript` : transcription brute
+  inventée, passée directement à la correction, sans audio ni flux xAI ; `dateFormat` facultatif).
 - Erreurs signalées depuis l'historique (`ErrorReportArchive`) : `scripts/report-bench.sh <nom>` les rejoue et compte
   les mots faux avant et après un changement de consigne, de garde-fou ou de fournisseur.

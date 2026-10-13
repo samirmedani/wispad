@@ -9,9 +9,6 @@ extension DictationCoordinator {
     static let earlyCorrectionPause = 0.25
     /// Au plus quelques corrections préparées par dictée : une longue dictée ne multiplie pas les appels.
     static let earlyCorrectionLimit = 4
-    /// Attente maximale de la correction du flux pour y reporter les mots du fichier (une correction complète
-    /// prend environ 0,9 s).
-    static let patchWaitLimit = 0.3
 
     func wireEarlyCorrection(_ live: any SpeechStreaming, for current: Capture) {
         live.onPartial = { [weak current] text in
@@ -57,6 +54,32 @@ extension DictationCoordinator {
         }
     }
 
+    /// À l'arrêt, ce que le flux a déjà affiché part aussitôt à la correction, sans attendre son texte final
+    /// (0,3 à 0,5 s sur les dictées courtes, mesuré le 13 octobre 2026). Si le texte final dit la même chose
+    /// (`TranscriptEquivalence`), la fin de dictée prend cette correction ; sinon elle est seulement comptée.
+    /// Hors de la limite des corrections préparées pendant l'écoute : c'est celle qui sert le plus souvent.
+    func prepareCorrectionAtRelease(_ current: Capture) {
+        guard let model, model.settings.cleanupEnabled, !current.cancelled, !current.correctionClaimed,
+              let speech = current.speech else { return }
+        let text = FranglaisNormalizer.normalize(current.latestHeard.trimmingCharacters(in: .whitespacesAndNewlines))
+        guard !text.isEmpty, model.commandSelection(for: text, context: current.context) == nil else { return }
+        // Déjà en préparation sur ce texte (pause juste avant l'arrêt) : rien de plus à lancer.
+        if let ready = current.earlyReady, TranscriptEquivalence.equivalent(ready.text, text) { return }
+        current.earlyText = text
+        let task = Task { @MainActor in
+            let request = await self.makeCorrectionRequest(
+                transcript: text, context: current.context, field: current.field, window: current.window, model: model
+            )
+            let began = Date()
+            let outcome = await model.dependencies.clean(text, request, speech, true)
+            return PreparedCorrection(outcome: outcome, milliseconds: Self.milliseconds(since: began))
+        }
+        let ledger = CorrectionLedger(task: task)
+        current.earlyCorrections.append(ledger)
+        current.earlyReady = (text, ledger)
+        current.run.trace.earlyCorrections = current.earlyCorrections.count
+    }
+
     /// La fin de dictée prend la correction préparée sur ce même texte, s'il y en a une ; plus rien ne se
     /// prépare ensuite. « Même texte » au sens de `TranscriptEquivalence` : la fin du flux réécrit souvent la
     /// ponctuation ou la casse du dernier segment, ce que la correction refait de toute façon (mesuré du 9 au
@@ -81,22 +104,36 @@ extension DictationCoordinator {
         }
     }
 
+    /// Vrai si `ledger` termine avant `other` (ou est déjà prête). Attendre l'une n'annule jamais l'autre.
+    static func finishesFirst(_ ledger: CorrectionLedger, before other: CorrectionLedger) async -> Bool {
+        if ledger.ready != nil { return true }
+        let winner = AsyncResult<Bool>()
+        Task { @MainActor in _ = await ledger.task.value; winner.resolve(.success(true)) }
+        Task { @MainActor in _ = await other.task.value; winner.resolve(.success(false)) }
+        return (try? await winner.value()) ?? false
+    }
+
     /// Le fichier ne change qu'un ou deux mots du flux : la correction du flux (déjà lancée) les reçoit
     /// (`CorrectionPatch`). nil si l'écart ne s'y prête pas ou si cette correction a échoué ; la correction
-    /// complète du fichier prend alors le relais. La correction du flux est partie avant le fichier : elle est
-    /// d'ordinaire prête ; plus lente que `patchWaitLimit`, on ne l'attend pas.
+    /// complète du fichier prend alors le relais. La correction du flux doit déjà être prête : aucun délai
+    /// n'est ajouté à la correction du texte retenu.
     func patchPreparedCorrection(
         _ ledger: CorrectionLedger, stream: String, file: String, current: Capture, model: AppModel
     ) async -> PreparedCorrection? {
-        guard CorrectionPatch.isCandidate(stream: stream, file: file),
-              await Self.value(of: ledger.task, within: Self.patchWaitLimit) != nil else { return nil }
-        let prepared = await ledger.account(model: model, run: current.run)
+        // Ne pas attendre une correction obsolète avant de lancer celle du texte retenu.
+        // Si elle est déjà prête, le report évite toujours un appel supplémentaire.
+        guard let prepared = ledger.ready, CorrectionPatch.isCandidate(stream: stream, file: file) else { return nil }
+        _ = await ledger.account(model: model, run: current.run)
         guard prepared.outcome.usage?.succeeded == true,
               let text = CorrectionPatch.apply(
                   corrected: prepared.outcome.text, stream: stream, file: file, protected: model.dictionary.map(\.term)
               ) else { return nil }
         var patched = prepared
-        patched.outcome.text = text
+        // Les mots du fichier arrivent tels qu'entendus (« mètres carrés », « quatorze heures ») : ils reprennent le
+        // format des dates, des heures et des nombres, comme le reste du texte corrigé.
+        let english = CorrectionPrompt.language(for: CorrectionRequest(transcript: file, language: model.settings.language)) == .english
+        let dated = DateTimeWriter.apply(text, format: model.settings.dateFormat, english: english)
+        patched.outcome.text = NumberWriter.apply(dated, format: model.settings.numberFormat, english: english)
         return patched
     }
 }

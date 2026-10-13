@@ -34,6 +34,9 @@ public struct DictationTimings: Codable, Equatable, Sendable {
     public var correctionMs: Int?
     public var insertionMs: Int?
     public var afterReleaseMs: Int?
+    /// De la fin de l'écoute à l'envoi de ⌘V ; distinct de sa confirmation.
+    public var pasteSentAfterReleaseMs: Int?
+    public var confirmationMs: Int?
 
     public init(
         microphoneMs: Int? = nil,

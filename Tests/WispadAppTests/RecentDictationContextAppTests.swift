@@ -70,7 +70,7 @@ private final class RecentContextFixture {
         dependencies.restoreOutput = {}
         dependencies.watchCorrections = { _, _, _, _ in }
         dependencies.judgeTerms = { _, _, _ in TermJudgement(kept: []) }
-        dependencies.insert = { text, _, allowed in
+        dependencies.insert = { text, _, allowed, _ in
             guard allowed() else { return .cancelled }
             return .inserted
         }

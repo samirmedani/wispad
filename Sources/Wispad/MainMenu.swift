@@ -5,10 +5,12 @@ import WispadCore
 @MainActor @objc protocol MainMenuActions {
     func openSettings()
     func openSectionFromMenu(_ sender: NSMenuItem)
+    func reportProblem()
+    func proposeIdea()
 }
 
-/// Menu principal : sans menu Édition, Cmd+V/C/X/A/Z ne marchent dans aucun champ de l'app. Réglages (⌘,) et
-/// les écrans (⌘1 à ⌘6) passent par la chaîne des répondeurs jusqu'au délégué de l'app.
+/// Menu principal : sans menu Édition, Cmd+V/C/X/A/Z ne marchent dans aucun champ de l'app. Réglages (⌘,), les
+/// écrans (⌘1 à ⌘6) et les retours du menu Aide passent par la chaîne des répondeurs jusqu'au délégué de l'app.
 enum MainMenu {
     @MainActor static func install() {
         let main = NSMenu()
@@ -49,6 +51,20 @@ enum MainMenu {
         windowMenu.addItem(withTitle: String(localized: "Réduire"), action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
         windowItem.submenu = windowMenu
         main.addItem(windowItem)
+        let helpItem = NSMenuItem()
+        let help = helpMenu()
+        helpItem.submenu = help
+        main.addItem(helpItem)
         NSApp.mainMenu = main
+        // Menu Aide déclaré à macOS, qui y ajoute sa recherche dans les menus.
+        NSApp.helpMenu = help
+    }
+
+    /// Menu Aide : les retours sur GitHub, comme dans le menu de la barre.
+    @MainActor static func helpMenu() -> NSMenu {
+        let help = NSMenu(title: String(localized: "Aide"))
+        help.addItem(withTitle: HelpPage.reportProblem.title, action: #selector(MainMenuActions.reportProblem), keyEquivalent: "")
+        help.addItem(withTitle: HelpPage.proposeIdea.title, action: #selector(MainMenuActions.proposeIdea), keyEquivalent: "")
+        return help
     }
 }

@@ -98,11 +98,11 @@ struct AppDependencies {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text, forType: .string)
     }
-    var insert: (String, DictationContext, @escaping @MainActor () -> Bool) async -> InsertionStatus = {
-        await TextInserter.insert($0, context: $1, shouldProceed: $2)
+    /// Le dernier callback signale l'envoi de ⌘V, avant la confirmation d'accessibilité.
+    var insert: (String, DictationContext, @escaping @MainActor () -> Bool, @escaping @MainActor () -> Void) async -> InsertionStatus = {
+        await TextInserter.insert($0, context: $1, shouldProceed: $2, didSendPaste: $3)
     }
     /// « Coller la dernière dictée » : attend que les touches du raccourci soient relâchées avant ⌘V.
-    var modifiersReleased: () async -> Void = { await TextInserter.waitForModifierRelease() }
     /// Raccourcis déclarés par macOS (Réglages Système › Clavier › Raccourcis), pour refuser une combinaison prise.
     var systemShortcuts: () -> [PasteShortcut] = { SystemShortcuts.enabled() }
 }

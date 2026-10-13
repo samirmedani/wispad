@@ -29,6 +29,27 @@ extension FallbackStage {
     }
 }
 
+extension DictionaryFilter {
+    var label: String {
+        switch self {
+        case .all: return String(localized: "Tous")
+        case .addedByUser: return String(localized: "Par toi")
+        case .learned: return String(localized: "Automatique")
+        case .unknown: return String(localized: "Avant le suivi")
+        }
+    }
+}
+
+extension DictionaryPeriod {
+    var label: String {
+        switch self {
+        case .all: return String(localized: "Toute période")
+        case .days7: return String(localized: "7 derniers jours")
+        case .days30: return String(localized: "30 derniers jours")
+        }
+    }
+}
+
 extension OutputMuteMode {
     var label: String {
         switch self {

@@ -60,6 +60,12 @@ private func waitFor(_ condition: () -> Bool, seconds: Double = 2) async -> Bool
     return true
 }
 
+/// Mots retenus par un juge simulé : DeepSeek, comme l'appel compté par le juge du montage.
+private func learnedTerms(_ terms: [String]) -> [LearnedTerm] {
+    let judge = DictionaryJudge(kind: .correctionModel, provider: "DeepSeek", model: CleanupModel.deepSeek)
+    return terms.map { LearnedTerm(term: $0, judge: judge) }
+}
+
 private final class OpenedAt: @unchecked Sendable {
     var date: Date?
 }
@@ -230,15 +236,14 @@ private final class Fixture {
         deps.judgeTerms = { [weak self] candidates, _, _ in
             self?.judged.append(candidates)
             let kept = candidates.map(\.corrected).filter { self?.approved?.contains($0) ?? true }
-            return TermJudgement(kept: kept, usages: [UsageEvent(api: .deepSeekCleanup, model: CleanupModel.deepSeek, costUSD: 0.00001)])
+            return TermJudgement(kept: learnedTerms(kept), usages: [UsageEvent(api: .deepSeekCleanup, model: CleanupModel.deepSeek, costUSD: 0.00001)])
         }
-        deps.insert = { [weak self] text, _, shouldProceed in
+        deps.insert = { [weak self] text, _, shouldProceed, _ in
             guard shouldProceed() else { return .cancelled }
             self?.inserted += 1
             self?.insertedTexts.append(text)
             return .inserted
         }
-        deps.modifiersReleased = {}
         deps.systemShortcuts = { [] }
         configure(&deps)
         model = try AppModel(supportDirectory: directory, settings: AppSettings(), dependencies: deps)
@@ -680,7 +685,7 @@ struct AppRegressionTests {
     @Test func pasteWithoutTextFieldOffersCopyWithCountdown() async throws {
         let box = CopyBox()
         let f = try Fixture {
-            $0.insert = { _, _, _ in .noTarget }
+            $0.insert = { _, _, _, _ in .noTarget }
             $0.copyText = { box.texts.append($0) }
         }
         defer { f.dispose() }
@@ -695,18 +700,24 @@ struct AppRegressionTests {
         #expect(f.model.history.first?.insertionStatus == InsertionStatus.noTarget.rawValue)
     }
 
-    @Test func unconfirmedPasteDoesNotShowFailureOrDeleteRecoveryAudio() async throws {
-        let f = try Fixture { $0.insert = { _, _, _ in .pasteSent } }
+    /// Champ illisible (Codex, apps Electron) : collage envoyé sans carte ni copie, audio gardé pour la reprise.
+    @Test func unconfirmedPasteStaysSilentAndKeepsRecoveryAudio() async throws {
+        let copies = CopyBox()
+        let f = try Fixture {
+            $0.insert = { _, _, _, _ in .pasteSent }
+            $0.copyText = { copies.texts.append($0) }
+        }
         defer { f.dispose() }
         f.model.overlay.displaysPanel = false
         f.model.settings.retention = .deleteOnSuccess
         await f.model.coordinator.begin(.pushToTalk)
         let audio = try #require(f.audio.url)
         await f.model.coordinator.end()
-        // Une app qui cache son champ ne permet de conclure ni à l'échec, ni au succès confirmé.
         #expect(f.model.coordinator.phase == .idle)
         #expect(f.model.coordinator.failureText == nil)
         #expect(f.model.statusBanner == nil)
+        #expect(copies.texts.isEmpty)
+        #expect(f.watches.isEmpty)
         let record = try #require(f.model.history.first)
         #expect(record.insertionStatus == InsertionStatus.pasteSent.rawValue)
         #expect(record.finalText == "Phrase de test.")
@@ -1082,11 +1093,13 @@ struct AppRegressionTests {
             pill.scale = 2
             let image = try #require(pill.nsImage)
             if case .failure = phase {
-                // L'erreur tient sur une ligne, dans le panneau fixe.
+                // Carte lisible sur deux niveaux, toujours contenue dans le panneau fixe.
                 #expect(image.size.width <= OverlayLayout.panelSize.width - 40)
-                #expect(image.size.height <= OverlayLayout.pillHeight + 1)
-                if let failureSize { #expect(image.size == failureSize) }
-                failureSize = image.size
+                #expect(image.size.height <= OverlayLayout.panelSize.height - 20)
+                if name.hasPrefix("erreur") {
+                    if let failureSize { #expect(image.size == failureSize) }
+                    failureSize = image.size
+                }
             } else {
                 // Pilule discrète : ~30 pt de haut, boutons compris en mains libres.
                 #expect(image.size.height <= OverlayLayout.pillHeight + 1)
@@ -1103,6 +1116,41 @@ struct AppRegressionTests {
         }
         coordinator.phase = .idle
         coordinator.failureText = nil
+    }
+
+    @Test func learnedBatchIsAnnouncedOnceAndCanBeUndone() async throws {
+        let f = try Fixture()
+        defer { f.dispose() }
+        f.model.overlay.displaysPanel = false
+        let coordinator = f.model.coordinator
+        f.model.learn(learnedTerms(["Seedance", "OpenRouter", "Seedance"]))
+        #expect(coordinator.learningOfferedTerms == ["Seedance", "OpenRouter"])
+        #expect(f.model.dictionary.count == 2)
+        #expect(coordinator.notice == "2 ajouts au dictionnaire")
+        if let folder = ProcessInfo.processInfo.environment["WISPAD_OVERLAY_SNAPSHOTS"] {
+            f.model.overlay.state.isHovered = true
+            let renderer = ImageRenderer(content: OverlayCluster(mode: .learning(coordinator.notice ?? ""))
+                .environment(f.model).environment(\.colorScheme, .dark).environment(\.overlayGlass, false))
+            renderer.scale = 2
+            let image = try #require(renderer.nsImage)
+            #expect(image.size.height <= OverlayLayout.panelSize.height - 20)
+            #expect(image.size.width <= OverlayLayout.panelSize.width - 40)
+            let tiff = try #require(image.tiffRepresentation)
+            let data = try #require(NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]))
+            try data.write(to: URL(fileURLWithPath: folder).appendingPathComponent("learning-batch.png"))
+        }
+        await coordinator.begin(.pushToTalk)
+        #expect(coordinator.learningOfferedTerms.isEmpty)
+        coordinator.cancel()
+        #expect(coordinator.learningOfferedTerms == ["Seedance", "OpenRouter"])
+        coordinator.declineLearning()
+        #expect(f.model.dictionary.isEmpty)
+        #expect(try f.model.store.hasRefused("Seedance"))
+        #expect(try f.model.store.hasRefused("OpenRouter"))
+        #expect(coordinator.notice == nil)
+        f.model.learn(learnedTerms(["Seedance", "OpenRouter"]))
+        #expect(f.model.dictionary.isEmpty)
+        #expect(coordinator.notice == nil)
     }
 
     @Test func learnedWordIsShownBrieflyAndGivesWayToDictation() async throws {
@@ -1125,7 +1173,8 @@ struct AppRegressionTests {
         coordinator.notifyLearned(["OpenRouter"])
         #expect(coordinator.notice == nil)
         coordinator.cancel()
-        #expect(coordinator.notice == message)
+        #expect(coordinator.learningOfferedTerms == ["Seedance", "OpenRouter"])
+        #expect(coordinator.notice == "2 ajouts au dictionnaire")
         #expect(f.model.dictionary.isEmpty)
     }
 
@@ -1134,7 +1183,8 @@ struct AppRegressionTests {
         defer { f.dispose() }
         f.model.overlay.displaysPanel = false
         let coordinator = f.model.coordinator
-        f.model.learn(["Seedance", "OpenRouter"])
+        f.model.learn(learnedTerms(["Seedance"]))
+        f.model.learn(learnedTerms(["OpenRouter"]))
         #expect(f.model.dictionary.map(\.term) == ["OpenRouter", "Seedance"])
         #expect(coordinator.notice == DictationCoordinator.learningMessage("Seedance"))
         coordinator.acceptLearning()
@@ -1177,7 +1227,7 @@ struct AppRegressionTests {
         f.model.overlay.displaysPanel = false
         let coordinator = f.model.coordinator
         await coordinator.begin(.pushToTalk)
-        f.model.learn(["Seedance"])
+        f.model.learn(learnedTerms(["Seedance"]))
         #expect(coordinator.notice == nil)
         #expect(coordinator.phase != .idle)
         #expect(f.model.dictionary.map(\.term) == ["Seedance"])
@@ -1192,13 +1242,70 @@ struct AppRegressionTests {
         defer { f.dispose() }
         f.model.overlay.displaysPanel = false
         #expect(DictationCoordinator.learningSeconds == 8)
-        f.model.learn(["Seedance"])
+        f.model.learn(learnedTerms(["Seedance"]))
         #expect(f.model.coordinator.notice == DictationCoordinator.learningMessage("Seedance"))
         // Même geste que la minuterie de 8 s : le mot reste, le message part, rien n'est refusé.
         f.model.coordinator.dismissCurrentNotice()
         #expect(f.model.coordinator.notice == nil)
         #expect(f.model.dictionary.map(\.term) == ["Seedance"])
         #expect(try !f.model.store.hasRefused("Seedance"))
+    }
+
+    /// Nouvelle version : rappelée une seule fois, quand la bulle se libère après une dictée (jamais pendant), avec
+    /// Voir et Ne plus me rappeler ; jamais pendant la configuration guidée.
+    @Test func updateReminderComesOnceAfterADictation() async throws {
+        let f = try Fixture()
+        defer { f.dispose() }
+        f.model.overlay.displaysPanel = false
+        let coordinator = f.model.coordinator
+        var release = ReleaseInfo(version: SemanticVersion(major: 0, minor: 1, patch: 2), tag: "v0.1.2", notes: "",
+                                  pageURL: ReleaseCheck.releasesURL, diskImage: nil)
+        let message = DictationCoordinator.updateMessage(release.version)
+        #expect(message == "Wispad 0.1.2 est disponible")
+        // Configuration guidée en cours : aucun rappel.
+        #expect(f.model.onboarding != nil)
+        f.model.noteAvailableRelease(release)
+        #expect(coordinator.pendingUpdate == nil)
+        f.model.completeOnboarding()
+
+        // Rien au repos tant qu'aucune dictée n'a eu lieu : on n'est peut-être pas devant le Mac.
+        f.model.noteAvailableRelease(release)
+        #expect(coordinator.notice == nil)
+        await coordinator.begin(.pushToTalk)
+        #expect(coordinator.notice == nil)
+        coordinator.cancel()
+        #expect(coordinator.notice == message)
+        #expect(coordinator.noticeOffersUpdate)
+        #expect(OverlayMode.resolve(phase: coordinator.phase, notice: coordinator.notice, offersUpdate: true) == .update(message))
+        #expect(OverlayMode.update(message).isInteractive && OverlayMode.update(message).isMessage)
+        #expect(f.model.settings.updateRemindedVersion == "0.1.2")
+        #expect(f.model.updateSheet == nil)
+
+        // Coupé par une dictée, il reparaît à la fin de celle-ci.
+        await coordinator.begin(.pushToTalk)
+        #expect(coordinator.notice == nil)
+        coordinator.cancel()
+        #expect(coordinator.notice == message)
+
+        // Ne plus me rappeler : il part et ne revient plus pour cette version, même à la vérification suivante.
+        coordinator.declineUpdateOffer()
+        #expect(coordinator.notice == nil)
+        f.model.noteAvailableRelease(release)
+        await coordinator.begin(.pushToTalk)
+        coordinator.cancel()
+        #expect(coordinator.notice == nil)
+
+        // Une version plus récente est rappelée à son tour ; Voir ouvre la fenêtre sur ses notes.
+        release.version = SemanticVersion(major: 0, minor: 1, patch: 3)
+        release.tag = "v0.1.3"
+        f.model.noteAvailableRelease(release)
+        await coordinator.begin(.pushToTalk)
+        coordinator.cancel()
+        #expect(coordinator.notice == DictationCoordinator.updateMessage(release.version))
+        coordinator.openUpdateOffer()
+        #expect(coordinator.notice == nil)
+        #expect(f.model.updateSheet == release)
+        #expect(f.model.settings.updateRemindedVersion == "0.1.3")
     }
 
     @Test func hoveringHoldsAMessageAndTheCrossClosesIt() async throws {
@@ -1233,7 +1340,7 @@ struct AppRegressionTests {
         coordinator.holdMessages(false)
 
         // ✕ sur une proposition de mot : le mot reste, comme à la fin du décompte.
-        f.model.learn(["Seedance"])
+        f.model.learn(learnedTerms(["Seedance"]))
         #expect(coordinator.notice == DictationCoordinator.learningMessage("Seedance"))
         coordinator.closeMessage()
         #expect(coordinator.notice == nil)
@@ -1248,14 +1355,15 @@ struct AppRegressionTests {
         for (name, mode) in [("message-appris", OverlayMode.notice("Ajouté au dictionnaire : Seedance")),
                              ("message-confirmation", .learning("« Seedance » ajouté au dictionnaire. Le garder ?")),
                              ("message-erreur", .failure("Insertion impossible. Texte gardé dans l'historique.")),
-                             ("message-relais", .notice("DeepSeek ne répond pas : correction via OpenAI."))] {
+                             ("message-relais", .notice("DeepSeek ne répond pas : correction via OpenAI.")),
+                             ("message-mise-a-jour", .update("Wispad 10.12.3 est disponible"))] {
             let renderer = ImageRenderer(content: OverlayCluster(mode: mode)
                 .environment(f.model)
                 .environment(\.colorScheme, .dark)
                 .environment(\.overlayGlass, false))
             renderer.scale = 2
             let image = try #require(renderer.nsImage)
-            #expect(image.size.height <= OverlayLayout.pillHeight + 1)
+            #expect(image.size.height <= (mode.isLearning ? OverlayLayout.panelSize.height - 20 : OverlayLayout.pillHeight + 1))
             #expect(image.size.width <= OverlayLayout.panelSize.width - 40)
             if let snapshots, let tiff = image.tiffRepresentation,
                let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
@@ -1568,7 +1676,7 @@ struct AppRegressionTests {
     }
 
     @Test func insertionFailureCanRestartWithoutDeletingPreviousAudio() async throws {
-        let f = try Fixture { $0.insert = { _, _, _ in .failed } }
+        let f = try Fixture { $0.insert = { _, _, _, _ in .failed } }
         defer { f.dispose() }
         await f.model.coordinator.begin(.pushToTalk)
         await f.model.coordinator.end()
@@ -1782,7 +1890,7 @@ struct AppRegressionTests {
         let proceed = AsyncResult<Void>()
         var wrote = false
         let f = try Fixture {
-            $0.insert = { _, _, allowed in
+            $0.insert = { _, _, allowed, _ in
                 started.resolve(.success(()))
                 try? await proceed.value()
                 guard allowed() else { return .cancelled }
@@ -1874,6 +1982,84 @@ struct AppRegressionTests {
         #expect(coordinator.phase == .idle)
     }
 
+    @Test(arguments: [InsertionStatus.inserted, .pasteSent, .noTarget, .failed])
+    func sentPasteHidesLoadingBeforeConfirmationAndKeepsFailureRecovery(status: InsertionStatus) async throws {
+        let sent = AsyncResult<Void>()
+        let confirm = AsyncResult<Void>()
+        let f = try Fixture {
+            $0.insert = { _, _, _, didSend in
+                didSend()
+                sent.resolve(.success(()))
+                try? await confirm.value()
+                return status
+            }
+        }
+        defer { confirm.resolve(.success(())); f.dispose() }
+        f.model.overlay.displaysPanel = false
+        f.model.overlay.install(model: f.model)
+        await f.model.coordinator.begin(.toggle)
+        let task = try #require(f.model.coordinator.endCapture())
+        try await sent.value()
+        // Le presse-papiers reste réservé, mais le spectre ne fait plus patienter l'utilisateur.
+        #expect(f.model.coordinator.finishingCount == 1)
+        #expect(!f.model.overlay.state.presented)
+        #expect(f.watches.isEmpty)
+        // Échap ne transforme pas un texte déjà envoyé en dictée annulée.
+        f.model.coordinator.cancel()
+        try await Task.sleep(nanoseconds: 60_000_000)
+        confirm.resolve(.success(()))
+        await task.value
+        if status.delivered {
+            // Champ illisible : collage envoyé sans carte ; l'apprentissage attend un texte vu dans le champ.
+            #expect(f.model.coordinator.phase == .idle)
+            #expect(f.watches.count == (status == .inserted ? 1 : 0))
+        } else {
+            #expect(f.model.coordinator.failureText == "Phrase de test.")
+            #expect(f.model.overlay.state.presented)
+        }
+        let trace = try #require(try f.model.store.recentTraces(limit: 1).first)
+        #expect(try #require(trace.timings.confirmationMs) >= 50)
+        #expect(try #require(trace.timings.pasteSentAfterReleaseMs) < #require(trace.timings.afterReleaseMs))
+    }
+
+    @Test func aSentPasteDoesNotHideTheNextDictationOrReleaseTheClipboardEarly() async throws {
+        let sent = AsyncResult<Void>()
+        let confirm = AsyncResult<Void>()
+        var insertions = 0
+        let f = try Fixture {
+            $0.makeCapture = { FakeAudio() }
+            $0.insert = { _, _, _, didSend in
+                insertions += 1
+                didSend()
+                if insertions == 1 {
+                    sent.resolve(.success(()))
+                    try? await confirm.value()
+                }
+                return .pasteSent
+            }
+        }
+        defer { confirm.resolve(.success(())); f.dispose() }
+        f.model.overlay.displaysPanel = false
+        f.model.overlay.install(model: f.model)
+        await f.model.coordinator.begin(.toggle)
+        let first = try #require(f.model.coordinator.endCapture())
+        try await sent.value()
+        await f.model.coordinator.begin(.toggle)
+        #expect(f.model.coordinator.isListening)
+        #expect(f.model.overlay.state.presented)
+        let second = try #require(f.model.coordinator.endCapture())
+        try await Task.sleep(nanoseconds: 60_000_000)
+        #expect(insertions == 1)
+        #expect(f.model.overlay.state.presented)
+        confirm.resolve(.success(()))
+        await first.value
+        await second.value
+        #expect(insertions == 2)
+        // Deux collages envoyés dans un champ illisible : aucune carte ne reste à l'écran.
+        #expect(f.model.coordinator.phase == .idle)
+        #expect(f.model.coordinator.failureText == nil)
+    }
+
     @Test func slowAppContextDoesNotDelayTheMicrophone() async throws {
         let field = AsyncResult<Void>()
         var nearby: String?
@@ -1945,7 +2131,7 @@ struct AppRegressionTests {
                 try? await gate.value()
                 return "Phrase de test."
             }
-            $0.insert = { _, _, _ in .noTarget }
+            $0.insert = { _, _, _, _ in .noTarget }
         }
         defer { f.dispose() }
         f.model.overlay.displaysPanel = false
@@ -2001,6 +2187,9 @@ struct AppRegressionTests {
         #expect(titles().first?.hasPrefix("● Prêt · double appui sur fn : mains libres") == true)
         #expect(titles().contains("Dicter (mains libres)"))
         #expect(titles().contains("Réglages…"))
+        // Aide et retours juste avant Quitter : pages GitHub dans le navigateur.
+        let bottom = StatusMenu.items(model: f.model, target: nil).suffix(5).map { $0.isSeparatorItem ? "—" : $0.title }
+        #expect(bottom == ["—", "Signaler un problème", "Proposer une idée", "—", "Quitter Wispad"])
         #expect(!titles().contains { $0.hasPrefix("⇄") })
         // Pendant l'écoute : terminer ou annuler.
         await f.model.coordinator.begin(.toggle)
@@ -2013,7 +2202,7 @@ struct AppRegressionTests {
         #expect(titles().contains("⇄ DeepSeek en pause : correction via OpenAI \(CleanupModel.openAIFallback)"))
         #expect(titles().contains("Réessayer les services maintenant"))
         // Mot appris à tort : retiré d'un clic depuis le menu.
-        f.model.learn(["Seedance"])
+        f.model.learn(learnedTerms(["Seedance"]))
         let remove = try #require(StatusMenu.items(model: f.model, target: nil).first { $0.title == "Retirer « Seedance » du dictionnaire" })
         #expect(remove.representedObject as? String == "Seedance")
         f.model.removeTerm(named: "Seedance")
@@ -2053,7 +2242,7 @@ struct AppRegressionTests {
                     ? CleanupOutcome(text: text, usage: relayed, failedUsages: [failed], fallback: "OpenAI")
                     : CleanupOutcome(text: text, usage: fine)
             }
-            $0.insert = { _, _, _ in pasteNext }
+            $0.insert = { _, _, _, _ in pasteNext }
         }
         defer { f.dispose() }
         f.model.overlay.displaysPanel = false
@@ -2198,7 +2387,7 @@ struct InsertionFailureTests {
     @Test func aFailedPasteCopiesTheTextAndStillOffersTheButton() async throws {
         let box = CopyBox()
         let f = try Fixture {
-            $0.insert = { _, _, _ in .failed }
+            $0.insert = { _, _, _, _ in .failed }
             $0.copyText = { box.texts.append($0) }
         }
         defer { f.dispose() }
@@ -2206,14 +2395,14 @@ struct InsertionFailureTests {
         await f.model.coordinator.begin(.pushToTalk)
         await f.model.coordinator.end()
         #expect(box.texts == ["Phrase de test."])
-        #expect(f.model.coordinator.phase == .failure("Collage impossible : le texte est prêt"))
+        #expect(f.model.coordinator.phase == .failure("Le texte n'est pas arrivé dans le champ"))
         #expect(f.model.coordinator.failureText == "Phrase de test.")
     }
 
     @Test func aSecureFieldIsNotCopied() async throws {
         let box = CopyBox()
         let f = try Fixture {
-            $0.insert = { _, _, _ in .refusedSecure }
+            $0.insert = { _, _, _, _ in .refusedSecure }
             $0.copyText = { box.texts.append($0) }
         }
         defer { f.dispose() }
@@ -2229,7 +2418,7 @@ struct InsertionFailureTests {
     @Test func copyConfirmsCopiedThenTheBubbleLeaves() async throws {
         let box = CopyBox()
         let f = try Fixture {
-            $0.insert = { _, _, _ in .noTarget }
+            $0.insert = { _, _, _, _ in .noTarget }
             $0.copyText = { box.texts.append($0) }
         }
         defer { f.dispose() }
@@ -2252,7 +2441,7 @@ struct InsertionFailureTests {
     }
 
     @Test func escapeOrTheCrossClosesTheReadyText() async throws {
-        let f = try Fixture { $0.insert = { _, _, _ in .noTarget } }
+        let f = try Fixture { $0.insert = { _, _, _, _ in .noTarget } }
         defer { f.dispose() }
         f.model.overlay.displaysPanel = false
         let coordinator = f.model.coordinator
@@ -2267,7 +2456,7 @@ struct InsertionFailureTests {
     }
 
     @Test func hoveringHoldsTheReadyTextAndTheCrossClosesIt() async throws {
-        let f = try Fixture { $0.insert = { _, _, _ in .noTarget } }
+        let f = try Fixture { $0.insert = { _, _, _, _ in .noTarget } }
         defer { f.dispose() }
         f.model.overlay.displaysPanel = false
         let coordinator = f.model.coordinator
@@ -2286,8 +2475,8 @@ struct InsertionFailureTests {
         #expect(f.model.history.first?.finalText == "Phrase de test.")
     }
 
-    @Test func readyTextWithItsButtonsFitsOnOneLine() async throws {
-        let f = try Fixture { $0.insert = { _, _, _ in .noTarget } }
+    @Test func readyTextWithReadableButtonsFitsInsideThePanel() async throws {
+        let f = try Fixture { $0.insert = { _, _, _, _ in .noTarget } }
         defer { f.dispose() }
         f.model.overlay.displaysPanel = false
         await f.model.coordinator.begin(.pushToTalk)
@@ -2298,7 +2487,8 @@ struct InsertionFailureTests {
             .environment(\.overlayGlass, false))
         renderer.scale = 2
         let image = try #require(renderer.nsImage)
-        #expect(image.size.height <= OverlayLayout.pillHeight + 1)
+        #expect(image.size.height > OverlayLayout.pillHeight)
+        #expect(image.size.height <= OverlayLayout.panelSize.height - 20)
         #expect(image.size.width <= OverlayLayout.panelSize.width - 40)
     }
 }
@@ -2313,7 +2503,7 @@ struct PasteLastDictationTests {
         var targets: [pid_t?] = []
         let f = try Fixture {
             $0.copyText = { box.texts.append($0) }
-            $0.insert = { text, context, _ in
+            $0.insert = { text, context, _, _ in
                 pasted.append(text)
                 targets.append(context.pid)
                 return next
@@ -2341,7 +2531,7 @@ struct PasteLastDictationTests {
     @Test func aSuccessfulPasteEndsLikeADictation() async throws {
         var next: InsertionStatus = .noTarget
         let f = try Fixture {
-            $0.insert = { _, _, _ in next }
+            $0.insert = { _, _, _, _ in next }
         }
         defer { f.dispose() }
         f.model.overlay.displaysPanel = false
@@ -2364,7 +2554,7 @@ struct PasteLastDictationTests {
     @Test func aPasteLearnsNothingWhenLearningIsOff() async throws {
         var next: InsertionStatus = .noTarget
         let f = try Fixture {
-            $0.insert = { _, _, _ in next }
+            $0.insert = { _, _, _, _ in next }
         }
         defer { f.dispose() }
         f.model.overlay.displaysPanel = false
@@ -2374,7 +2564,10 @@ struct PasteLastDictationTests {
         await coordinator.end()
         next = .pasteSent
         await coordinator.pasteLastDictation()
+        // Collage envoyé sans confirmation possible : bref « Collé », sans apprentissage.
         #expect(coordinator.notice == "Collé")
+        #expect(coordinator.failureText == nil)
+        #expect(coordinator.phase == .idle)
         #expect(f.watches.isEmpty)
         #expect(f.model.history.first?.insertionStatus == InsertionStatus.pasteSent.rawValue)
     }
@@ -2382,7 +2575,7 @@ struct PasteLastDictationTests {
     @Test func withoutAFieldTheShortcutCopiesAndShowsTheSameMessage() async throws {
         let box = CopyBox()
         let f = try Fixture {
-            $0.insert = { _, _, _ in .noTarget }
+            $0.insert = { _, _, _, _ in .noTarget }
             $0.copyText = { box.texts.append($0) }
         }
         defer { f.dispose() }
@@ -2404,7 +2597,7 @@ struct PasteLastDictationTests {
     @Test func aDeliveredDictationIsPastedAgainWithoutLosingItsStatus() async throws {
         var results: [InsertionStatus] = [.inserted, .noTarget]
         let f = try Fixture {
-            $0.insert = { _, _, _ in results.isEmpty ? .inserted : results.removeFirst() }
+            $0.insert = { _, _, _, _ in results.isEmpty ? .inserted : results.removeFirst() }
         }
         defer { f.dispose() }
         f.model.overlay.displaysPanel = false
@@ -2444,7 +2637,7 @@ struct PasteLastDictationTests {
     @Test func thePasteButtonOfTheBubblePastesTheReadyText() async throws {
         var next: InsertionStatus = .noTarget
         let f = try Fixture {
-            $0.insert = { _, _, _ in next }
+            $0.insert = { _, _, _, _ in next }
         }
         defer { f.dispose() }
         f.model.overlay.displaysPanel = false
@@ -2459,6 +2652,7 @@ struct PasteLastDictationTests {
         }
         #expect(f.model.history.first?.insertionStatus == InsertionStatus.pasteSent.rawValue)
         #expect(coordinator.phase == .idle)
+        #expect(coordinator.notice == "Collé")
     }
 }
 

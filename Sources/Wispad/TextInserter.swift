@@ -5,27 +5,34 @@ import Foundation
 import WispadCore
 import os
 
-/// Champ visé au moment du collage, relu hors du fil principal.
-private struct InsertionField: @unchecked Sendable {
+/// État éphémère du champ. Son contenu ne quitte jamais la mémoire de l'insertion.
+struct InsertionField: @unchecked Sendable {
     var element: AXUIElement?
     var isSecure = false
     var value: String?
     var before: String?
-    /// Rôle d'accessibilité et curseur de texte : de quoi reconnaître un focus qui n'est sur aucun champ.
     var role: String?
     var subrole: String?
     var hasTextCursor = false
+    var selection: NSRange?
 
     static func read(pid: pid_t) -> InsertionField {
         guard let element = ContextProbe.focusedElement(pid: pid) else { return InsertionField() }
         guard !ContextProbe.isSecure(element) else { return InsertionField(element: element, isSecure: true) }
+        let selection = ContextProbe.selectedRange(element)
+        let value = ContextProbe.valueForCheck(element)
+        let before: String?
+        if let value, let selection, selection.location <= (value as NSString).length {
+            let start = max(0, selection.location - 32)
+            before = (value as NSString).substring(with: NSRange(location: start, length: selection.location - start))
+        } else {
+            before = ContextProbe.textBeforeCursor(element)
+        }
         return InsertionField(
-            element: element,
-            value: ContextProbe.valueForCheck(element),
-            before: ContextProbe.textBeforeCursor(element),
+            element: element, value: value, before: before,
             role: ContextProbe.string(kAXRoleAttribute, element),
             subrole: ContextProbe.string(kAXSubroleAttribute, element),
-            hasTextCursor: ContextProbe.hasTextCursor(element)
+            hasTextCursor: selection != nil, selection: selection
         )
     }
 
@@ -33,163 +40,226 @@ private struct InsertionField: @unchecked Sendable {
         if isSecure { return .text }
         return FocusedField.kind(role: role, subrole: subrole, hasTextCursor: hasTextCursor, bundleID: bundleID)
     }
+
+    /// Un nouveau nœud AX n'est accepté que s'il contient l'édition attendue, typographie normalisée.
+    /// Un autre champ déjà rempli avec une ancienne dictée ne suffit pas à confirmer.
+    func confirmsReplacement(in after: InsertionField, inserted: String) -> Bool {
+        guard InsertionCheck.matchesReplacement(before: value, selection: selection, after: after.value, inserted: inserted) else { return false }
+        if value != after.value { return true }
+        // Remplacer une sélection par le même texte est un succès si le curseur s'est bien déplacé à sa fin.
+        guard let selection, selection.length > 0 else { return false }
+        return after.selection == NSRange(location: selection.location + (inserted as NSString).length, length: 0)
+    }
+
+    func sameElement(as other: InsertionField) -> Bool {
+        guard let element, let other = other.element else { return false }
+        return CFEqual(element, other)
+    }
+}
+
+/// Frontières macOS remplaçables dans les tests, sans envoyer de touches aux apps de l'utilisateur.
+@MainActor
+struct InsertionSystem {
+    var trusted: () -> Bool = { PermissionCenter.accessibilityTrusted(prompt: false) }
+    var frontmostPID: () -> pid_t? = { NSWorkspace.shared.frontmostApplication?.processIdentifier }
+    var bundleID: (pid_t) -> String? = { NSRunningApplication(processIdentifier: $0)?.bundleIdentifier }
+    var secureInput: () -> Bool = { IsSecureEventInputEnabled() }
+    var modifiersReleased: () async -> Bool = { await TextInserter.waitForModifierRelease() }
+    var read: (pid_t) async -> InsertionField = { pid in
+        let task = Task.detached(priority: .userInitiated) { InsertionField.read(pid: pid) }
+        return await DictationCoordinator.value(of: task, within: TextInserter.fieldReadLimit) ?? InsertionField()
+    }
+    var pasteboard: NSPasteboard = .general
+    var postPaste: (pid_t) async -> Bool = { _ in TextInserter.postCommandV() }
+    /// Zone de saisie lue après l'envoi, pour que les messages de la bulle ne la couvrent pas.
+    var locate: (pid_t) async -> CGRect? = { pid in
+        let task = Task.detached(priority: .utility) { ContextProbe.inputLocation(pid: pid) }
+        guard let location = await DictationCoordinator.value(of: task, within: TextInserter.fieldReadLimit) else { return nil }
+        return location.zone
+    }
+    var confirmationLimit: Double = TextInserter.confirmationLimit
+    var clipboardHold: Double = TextInserter.clipboardHold
+}
+
+/// Dernière zone de saisie connue, par app : les messages de la bulle s'en écartent.
+@MainActor
+enum InputZoneTracker {
+    private static var latest: (zone: CGRect, pid: pid_t, at: Date)?
+    /// Au-delà, la fenêtre a pu bouger : la zone n'est plus fiable.
+    static let lifetime: TimeInterval = 120
+
+    static func note(_ zone: CGRect?, pid: pid_t) {
+        latest = zone.map { ($0, pid, Date()) }
+    }
+
+    /// Zone de l'app au premier plan, si elle a été lue récemment.
+    static func zone(frontmost pid: pid_t?) -> CGRect? {
+        guard let latest, let pid, latest.pid == pid, Date().timeIntervalSince(latest.at) < lifetime else { return nil }
+        return latest.zone
+    }
+
+    static func reset() { latest = nil }
 }
 
 @MainActor
 enum TextInserter {
     private static let log = Logger.wispad("insertion")
-
-    /// Dernier collage de Wispad : raccorde la dictée suivante quand l'app tarde à exposer son texte.
     private struct Memory {
         var pid: pid_t
         var element: AXUIElement?
         var text: String
-        var confirmed: Bool
         var keystrokes: Int
         var at: Date
     }
     private static var last: Memory?
-    /// Lectures d'accessibilité bornées : une app qui construit encore son arbre (Chrome à la première dictée,
-    /// mesuré le 9 octobre : 5,2 s) ne retarde ni le collage ni la dictée suivante. Au-delà, on colle sans.
+    /// Toutes les entrées (dictée, historique, bouton et raccourci) partagent le même presse-papiers.
+    private static var tail: AsyncResult<Void>?
     static let fieldReadLimit = 0.3
-    static let confirmationLimit = 0.7
+    /// Relecture du champ après ⌘V. Elle suit l'envoi : le spectre de traitement a déjà disparu.
+    static let confirmationLimit = 1.0
+    /// Sans confirmation, le texte reste au presse-papiers au moins ce temps après ⌘V : une app occupée
+    /// (page web chargée, Electron) peut lire le presse-papiers tard ; le restaurer avant ferait coller l'ancien contenu.
+    static let clipboardHold = 1.5
 
-    /// Colle le texte dans l'app où la dictée a commencé, comme un Cmd+V de l'utilisateur, précédé d'une espace
-    /// s'il suit directement un mot ou une ponctuation (deux dictées de suite). Le presse-papiers est restauré
-    /// ensuite, sauf si quelqu'un l'a modifié entre-temps.
-    static func insert(_ text: String, context: DictationContext, shouldProceed: @escaping @MainActor () -> Bool = { true }) async -> InsertionStatus {
+    static func insert(
+        _ text: String, context: DictationContext,
+        shouldProceed: @escaping @MainActor () -> Bool = { true },
+        didSendPaste: @escaping @MainActor () -> Void = {},
+        system: InsertionSystem = InsertionSystem()
+    ) async -> InsertionStatus {
+        let previous = tail
+        let done = AsyncResult<Void>()
+        tail = done
+        try? await previous?.value()
+        var releasesLater = false
+        defer { if !releasesLater { finishTurn(done) } }
         guard shouldProceed(), !Task.isCancelled else { return .cancelled }
-        let route = InsertionPlanner.route(
-            isSecureField: context.isSecure,
-            secureInputActive: false,
-            accessibilityTrusted: PermissionCenter.accessibilityTrusted(prompt: false)
-        )
-        switch route {
-        case .refuseSecure: return .refusedSecure
-        case .keepOnly:
-            log.notice("collage impossible : accessibilité non autorisée")
-            return .failed
-        case .paste: break
+        if context.isSecure || system.secureInput() { return .refusedSecure }
+        guard system.trusted() else { return .failed }
+        guard let pid = context.pid ?? system.frontmostPID(), system.frontmostPID() == pid else {
+            // Ne pas réactiver une ancienne app pendant que l'utilisateur écrit ailleurs.
+            log.notice("collage retenu : app cible plus au premier plan")
+            return .noTarget
         }
-        guard let pid = context.pid ?? NSWorkspace.shared.frontmostApplication?.processIdentifier else {
-            log.notice("collage impossible : aucune app cible")
+        guard await system.modifiersReleased() else {
+            log.notice("collage retenu : touches modificatrices encore maintenues")
             return .failed
         }
-        if NSWorkspace.shared.frontmostApplication?.processIdentifier != pid {
-            guard let app = NSRunningApplication(processIdentifier: pid), !app.isTerminated else {
-                log.notice("collage impossible : app cible fermée")
-                return .failed
-            }
-            app.activate()
-            for _ in 0..<12 where NSWorkspace.shared.frontmostApplication?.processIdentifier != pid {
-                try? await Task.sleep(nanoseconds: 40_000_000)
-            }
-        }
+        let bundle = system.bundleID(pid)
+        let field = await system.read(pid)
         guard shouldProceed(), !Task.isCancelled else { return .cancelled }
-        guard NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else {
-            log.notice("collage impossible : app cible pas au premier plan")
-            return .failed
-        }
-        let bundleID = NSRunningApplication(processIdentifier: pid)?.bundleIdentifier
-        // Relu au dernier moment : le focus a pu changer pendant la transcription.
-        let reading = Task.detached(priority: .userInitiated) { InsertionField.read(pid: pid) }
-        let field = await DictationCoordinator.value(of: reading, within: fieldReadLimit) ?? InsertionField()
-        // Nature du focus avant ⌘V, puis à chaque relecture : liste, bouton ou bureau du Finder = aucun champ.
-        var kinds = [field.kind(bundleID: bundleID)]
-        let secure = InsertionPlanner.route(
-            isSecureField: field.isSecure,
-            secureInputActive: IsSecureEventInputEnabled(),
-            accessibilityTrusted: true
-        )
-        guard secure != .refuseSecure else { return .refusedSecure }
-        let memory = previous(pid: pid, element: field.element)
+        guard system.frontmostPID() == pid else { return .noTarget }
+        guard !field.isSecure, !system.secureInput() else { return .refusedSecure }
+        let kind = field.kind(bundleID: bundle)
+        guard kind != .notText else { return .noTarget }
+        let memory = previousMemory(pid: pid, element: field.element)
         let joined = SmartJoin.adjust(text, before: SmartJoin.textBefore(
-            read: field.before,
-            previous: memory?.text,
-            previousConfirmed: memory?.confirmed ?? false
+            read: field.before, previous: memory?.text, previousConfirmed: memory != nil
         ))
-        guard let transaction = PasteboardTransaction(text: joined) else {
+        let keystrokes = KeyboardTap.keystrokes
+        guard let transaction = PasteboardTransaction(text: joined, pasteboard: system.pasteboard) else {
             log.notice("collage impossible : presse-papiers non modifiable")
             return .failed
         }
-        defer { transaction.restoreIfUnchanged() }
-        guard shouldProceed(), !Task.isCancelled else { return .cancelled }
-        // Relevé avant le Cmd+V : une Entrée ou un clic pendant la confirmation invalide le raccord suivant.
-        let keystrokes = KeyboardTap.keystrokes
-        guard postCommandV() else {
-            log.notice("collage impossible : ⌘V non envoyé")
-            return .failed
+        guard shouldProceed(), !Task.isCancelled, system.frontmostPID() == pid, await system.postPaste(pid) else {
+            transaction.restoreIfUnchanged()
+            if !shouldProceed() || Task.isCancelled { return .cancelled }
+            return system.frontmostPID() == pid ? .failed : .noTarget
         }
-        // Laisse l'app lire le presse-papiers (les apps Electron le lisent en différé).
+        let sentAt = Date()
+        didSendPaste()
+        // Où écrit l'utilisateur : lu après l'envoi, sans retarder le texte ni l'apparition de la bulle.
+        let locate = system.locate
+        Task { @MainActor in InputZoneTracker.note(await locate(pid), pid: pid) }
+        let deadline = sentAt.addingTimeInterval(system.confirmationLimit)
+        var unchangedTarget = false
         var confirmed = false
-        var sawValue = false
-        let deadline = Date().addingTimeInterval(confirmationLimit)
-        // Champ non lu avant le collage (Chrome qui construit encore son arbre) : on le relit ici, sans valeur
-        // d'avant ; le texte collé doit alors apparaître dans le champ.
-        let element = UncheckedSendable(field.element)
-        let readFocused = field.element == nil
-        while Date() < deadline {
-            try? await Task.sleep(nanoseconds: 100_000_000)
-            let read = Task.detached(priority: .userInitiated) { () -> UncheckedSendable<(String?, InsertionField?)> in
-                guard readFocused else { return UncheckedSendable((ContextProbe.valueForCheck(element.value), nil)) }
-                let refreshed = InsertionField.read(pid: pid)
-                return UncheckedSendable((refreshed.value, refreshed))
-            }
-            let remaining = deadline.timeIntervalSinceNow
-            guard remaining > 0, let after = await DictationCoordinator.value(of: read, within: remaining) else { break }
-            let (afterValue, refreshed) = after.value
-            if let refreshed { kinds.append(refreshed.kind(bundleID: bundleID)) }
-            if afterValue != nil { sawValue = true }
-            if InsertionCheck.confirms(before: field.value, after: afterValue, inserted: joined) {
+        repeat {
+            // Relire immédiatement : une insertion déjà visible n'attend aucun minuteur.
+            // Chaque lecture système est elle-même bornée à fieldReadLimit.
+            guard system.frontmostPID() == pid else { break }
+            let after = await system.read(pid)
+            guard !after.isSecure else { break }
+            // Un composant web peut recréer son nœud après input : le focus est relu à chaque fois.
+            let sameTarget = field.sameElement(as: after)
+            unchangedTarget = sameTarget && field.value != nil && after.value == field.value
+            if field.confirmsReplacement(in: after, inserted: joined) ||
+                ((sameTarget || field.element == nil) && InsertionCheck.confirms(before: field.value, after: after.value, inserted: joined)) {
                 confirmed = true
                 break
             }
+            try? await Task.sleep(nanoseconds: 40_000_000)
+        } while Date() < deadline
+        // Même champ, toujours lisible et inchangé une seconde après ⌘V : le texte n'est pas arrivé.
+        // Un champ illisible (apps Electron, éditeurs dessinés) ne prouve rien : collage envoyé, sans alerte.
+        let status: InsertionStatus = confirmed ? .inserted : unchangedTarget ? .failed : .pasteSent
+        if !confirmed {
+            log.notice("collage non confirmé : champ_inchangé=\(unchangedTarget, privacy: .public) statut=\(status.rawValue, privacy: .public)")
         }
-        let status = FocusedField.status(confirmed: confirmed, kinds: kinds)
-        if status == .noTarget {
-            // Le focus était sur une liste, un bouton ou le bureau, avant comme après ⌘V : aucun champ où écrire.
-            log.notice("collage non confirmé : aucun champ de texte au focus")
-        } else if !confirmed {
-            // Cause seulement, jamais de texte : de quoi expliquer les collages non confirmés par app.
-            log.notice("collage non confirmé : \(sawValue ? "texte absent du champ" : readFocused ? "champ toujours illisible" : "valeur du champ illisible", privacy: .public)")
+        // Un texte non confirmé ne doit jamais servir à inventer une espace à la dictée suivante.
+        last = confirmed ? Memory(pid: pid, element: field.element, text: joined, keystrokes: keystrokes, at: Date()) : nil
+        if confirmed {
+            transaction.restoreIfUnchanged()
+        } else {
+            // Le statut part tout de suite ; le presse-papiers, lui, n'est rendu qu'après le délai de lecture.
+            releasesLater = true
+            let wait = max(0, system.clipboardHold - Date().timeIntervalSince(sentAt))
+            Task { @MainActor in
+                if wait > 0 { try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000)) }
+                transaction.restoreIfUnchanged()
+                finishTurn(done)
+            }
         }
-        if !confirmed { try? await Task.sleep(nanoseconds: 200_000_000) }
-        // Cmd+V a été envoyé. Un champ illisible ou un conteneur (groupe, zone web, fenêtre) ne prouve pas un
-        // échec : certains éditeurs collent bien sans exposer leur texte. Reste « Collage envoyé ».
-        last = Memory(pid: pid, element: field.element, text: joined, confirmed: confirmed, keystrokes: keystrokes, at: Date())
         return status
     }
 
-    /// Attend que ⌃, ⌥, ⇧ et ⌘ soient relâchés (0,6 s au plus) : un ⌘V envoyé pendant que l'utilisateur tient
-    /// encore ⌃⌥ du raccourci « Coller la dernière dictée » deviendrait ⌃⌥⌘V dans certaines apps.
-    static func waitForModifierRelease(limit: Double = 0.6) async {
-        let held: CGEventFlags = [.maskControl, .maskAlternate, .maskShift, .maskCommand]
-        let deadline = Date().addingTimeInterval(limit)
-        while !CGEventSource.flagsState(.hidSystemState).intersection(held).isEmpty, Date() < deadline {
-            try? await Task.sleep(nanoseconds: 20_000_000)
-        }
+    private static func finishTurn(_ done: AsyncResult<Void>) {
+        done.resolve(.success(()))
+        if tail === done { tail = nil }
     }
 
-    /// Dernier collage, s'il précède sans doute encore le curseur : même app, même champ, moins de 30 s,
-    /// et aucune frappe depuis.
-    private static func previous(pid: pid_t, element: AXUIElement?) -> Memory? {
+    /// Un délai expiré est un échec récupérable, jamais une permission d'envoyer ⌃⌥⌘V.
+    @discardableResult
+    static func waitForModifierRelease(limit: Double = 0.8) async -> Bool {
+        let held: CGEventFlags = [.maskControl, .maskAlternate, .maskShift, .maskCommand, .maskSecondaryFn]
+        let deadline = Date().addingTimeInterval(limit)
+        while !CGEventSource.flagsState(.hidSystemState).intersection(held).isEmpty {
+            guard Date() < deadline, !Task.isCancelled else { return false }
+            try? await Task.sleep(nanoseconds: 20_000_000)
+        }
+        return !Task.isCancelled
+    }
+
+    private static func previousMemory(pid: pid_t, element: AXUIElement?) -> Memory? {
         guard let last, last.pid == pid, Date().timeIntervalSince(last.at) < 30,
               last.keystrokes == KeyboardTap.keystrokes else { return nil }
         if let element, let previous = last.element, !CFEqual(element, previous) { return nil }
         return last
     }
 
-    private static func postCommandV() -> Bool {
+    /// ⌘V comme au clavier : ⌘ enfoncée, V, puis ⌘ relâchée, envoyés au système (l'app au premier plan, vérifiée
+    /// juste avant). Chrome et les apps Electron ignorent parfois un ⌘V adressé à leur processus ou porté par la
+    /// seule touche V (régression du 13 octobre 2026 : texte absent du champ).
+    static func postCommandV() -> Bool {
+        guard let events = pasteEvents() else { return false }
+        for event in events { event.post(tap: .cghidEventTap) }
+        return true
+    }
+
+    /// Marqués : l'écoute du clavier de Wispad les laisse passer sans les prendre pour une frappe.
+    static func pasteEvents() -> [CGEvent]? {
         let source = CGEventSource(stateID: .combinedSessionState)
-        // Marqué : l'écoute du clavier de Wispad le laisse passer sans le prendre pour une frappe.
         source?.userData = KeyboardTap.syntheticMarker
+        let command: CGKeyCode = 0x37
         let key = KeyboardLayout.keyCode(for: "v") ?? 9
-        guard let down = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: true),
-              let up = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: false) else { return false }
+        guard let commandDown = CGEvent(keyboardEventSource: source, virtualKey: command, keyDown: true),
+              let down = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: true),
+              let up = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: false),
+              let commandUp = CGEvent(keyboardEventSource: source, virtualKey: command, keyDown: false) else { return nil }
+        commandDown.flags = .maskCommand
         down.flags = .maskCommand
         up.flags = .maskCommand
-        down.post(tap: .cghidEventTap)
-        up.post(tap: .cghidEventTap)
-        return true
+        commandUp.flags = []
+        return [commandDown, down, up, commandUp]
     }
 }
