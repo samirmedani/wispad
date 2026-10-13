@@ -75,7 +75,12 @@ enum PermissionCenter {
         } catch {
             return
         }
-        NSApp.terminate(nil)
+        // Comme après une mise à jour : une feuille ou une fenêtre modale fait refuser la fermeture par macOS, et
+        // l'aide attendrait sans fin. Wispad s'arrête alors de lui-même, après le rangement habituel.
+        Task { @MainActor in
+            await UpdateTools.quitForRelaunch()
+            UpdateTools.forceQuit()
+        }
     }
 }
 

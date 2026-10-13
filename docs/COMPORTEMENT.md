@@ -175,7 +175,7 @@ réussie. « Plus tard » est proposé seulement pour le micro, la touche et l'e
   fn). « Autoriser » déclenche la demande de macOS ; ensuite, ou après un refus, le bouton ouvre le bon panneau de
   Réglages Système et le chemin exact est affiché. L'état est relu toutes les 0,5 s. Surveillance des entrées
   accordée mais écoute du clavier impossible après 3 s : macOS attend une relance, « Relancer Wispad » rouvre l'app
-  à la même étape.
+  à la même étape (si macOS refuse de la fermer, elle s'arrête d'elle-même après le rangement habituel).
 - **Micro** : choix du micro (celui du système par défaut ; le micro choisi sert ensuite aux dictées tant qu'il est
   branché, sinon celui du système ; Réglages › Général › Micro) et vumètre réel. ✓ quand une vraie voix est
   entendue : au moins 0,6 s au-dessus de −48 dBFS et 10 dB au-dessus du bruit de la pièce (un clic, un souffle ou
@@ -662,7 +662,8 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
   1. téléchargement de `Wispad.dmg` (asset de la release, seulement depuis
      `https://github.com/samirmedani/wispad/releases/download/`), avec sa progression ; taille et empreinte SHA-256
      comparées à celles qu'annonce GitHub ;
-  2. montage en lecture seule, invisible dans le Finder (`hdiutil attach -nobrowse`) ;
+  2. montage en lecture seule, invisible dans le Finder (`hdiutil attach -nobrowse`, sinon `diskutil image attach`,
+     son remplaçant, s'il échoue ou disparaît) ;
   3. vérification de `Wispad.app` dans le disque : version plus récente que celle qui tourne (jamais de retour en
      arrière) ; signature intacte (toutes architectures, code imbriqué, validation stricte), Developer ID d'Apple,
      même identifiant (`com.yatofix.wispad`) et même équipe (Team ID) que l'app qui tourne ;

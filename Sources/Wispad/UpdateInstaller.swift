@@ -297,21 +297,29 @@ enum UpdateTools {
         }
     }
 
-    /// `hdiutil attach` en lecture seule, invisible dans le Finder (`-nobrowse`), sans ouverture automatique, monté
-    /// dans le dossier de travail.
+    /// Disque monté en lecture seule, invisible dans le Finder, sans ouverture automatique, dans le dossier de travail :
+    /// `hdiutil attach` (macOS 14 à 27), sinon `diskutil image attach`, son remplaçant, s'il échoue ou disparaît
+    /// (`hdiutil attach` est signalé obsolète depuis macOS 27). Les deux rendent le même plist.
     static func mount(_ image: URL, under directory: URL) async throws -> URL {
-        let result = await run("/usr/bin/hdiutil", ["attach", "-nobrowse", "-readonly", "-noautoopen", "-plist",
-                                                    "-mountrandom", directory.path, image.path])
-        guard result.status == 0, let point = UpdateInstallRules.mountPoints(fromPlist: result.output).first else {
+        let hdiutil = await run("/usr/bin/hdiutil", ["attach", "-nobrowse", "-readonly", "-noautoopen", "-plist",
+                                                     "-mountrandom", directory.path, image.path])
+        if hdiutil.status == 0, let point = UpdateInstallRules.mountPoints(fromPlist: hdiutil.output).first {
+            return URL(fileURLWithPath: point, isDirectory: true)
+        }
+        let volume = directory.appendingPathComponent("volume", isDirectory: true)
+        let diskutil = await run("/usr/sbin/diskutil", ["image", "attach", "--plist", "--readOnly", "--nobrowse",
+                                                        "--mountPoint", volume.path, image.path])
+        guard diskutil.status == 0, let point = UpdateInstallRules.mountPoints(fromPlist: diskutil.output).first else {
             throw UpdateFailure.diskImage
         }
         return URL(fileURLWithPath: point, isDirectory: true)
     }
 
+    /// `hdiutil detach`, forcé au besoin, sinon `diskutil eject`.
     static func detach(_ mountPoint: URL) async {
-        if await run("/usr/bin/hdiutil", ["detach", mountPoint.path, "-quiet"]).status != 0 {
-            _ = await run("/usr/bin/hdiutil", ["detach", mountPoint.path, "-quiet", "-force"])
-        }
+        if await run("/usr/bin/hdiutil", ["detach", mountPoint.path, "-quiet"]).status == 0 { return }
+        if await run("/usr/bin/hdiutil", ["detach", mountPoint.path, "-quiet", "-force"]).status == 0 { return }
+        _ = await run("/usr/sbin/diskutil", ["eject", mountPoint.path])
     }
 
     /// `ditto` garde tout du paquet : liens, attributs, signature.
