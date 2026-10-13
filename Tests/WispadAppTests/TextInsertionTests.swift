@@ -262,4 +262,22 @@ struct TextInsertionTests {
         }.value
         #expect(nothingRead)
     }
+
+    /// L'app visée ne donne pas son champ (inactive, lente) et Wispad est passé au premier plan entre-temps : fenêtre
+    /// ouverte pendant la surveillance des corrections, la confirmation d'un collage ou la lecture de la zone de saisie.
+    /// Le repli sur l'élément système ne lui pose jamais la question : elle lui serait servie dans son propre
+    /// processus, hors du fil principal, comme lors du plantage du 13 octobre 2026.
+    @Test func systemFallbackNeverAsksWispadItself() async {
+        let own = ProcessInfo.processInfo.processIdentifier
+        let frontmostApps: [pid_t?] = [own, own + 1, nil]
+        let questions = await Task.detached { () -> [Bool] in
+            frontmostApps.map { (frontmost: pid_t?) -> Bool in
+                var asked = false
+                _ = ContextProbe.systemFocusedElement(frontmost: { frontmost }, ask: { asked = true; return nil })
+                return asked
+            }
+        }.value
+        // Wispad au premier plan : rien n'est demandé. Une autre app, ou une app inconnue : la question part, comme avant.
+        #expect(questions == [false, true, true])
+    }
 }

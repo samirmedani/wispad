@@ -309,10 +309,10 @@ pour une nouvelle installation.
   en 300 ms au plus) et dernières dictées livrées dans la même app (cinq, trente minutes, 1 500 caractères).
 - Texte autour du curseur et sélection, pour l'orthographe.
 - Rien de ce contexte n'est enregistré ni journalisé ; il n'ajoute jamais un mot qui n'a pas été dit.
-- Jamais Wispad lui-même : quand sa fenêtre est au premier plan (dictionnaire, recherche…), ni le contexte, ni
-  le champ, ni la zone de saisie, ni le suivi des corrections ne sont lus par l'accessibilité. Ces lectures se
-  feraient dans son propre processus, hors du fil principal, et arrêteraient l'app. Le texte s'y colle sans
-  confirmation, comme dans un champ illisible.
+- Jamais Wispad lui-même : quand sa fenêtre est au premier plan (dictionnaire, recherche…), même si elle y passe
+  pendant la lecture d'une autre app, ni le contexte, ni le champ, ni la zone de saisie, ni le suivi des corrections
+  ne sont lus par l'accessibilité. Ces lectures se feraient dans son propre processus, hors du fil principal, et
+  arrêteraient l'app. Le texte s'y colle sans confirmation, comme dans un champ illisible.
 
 ## Garde-fou de fidélité
 

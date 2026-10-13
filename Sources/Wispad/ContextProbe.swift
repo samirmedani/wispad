@@ -110,10 +110,7 @@ enum ContextProbe {
                 return element
             }
         }
-        let system = AXUIElementCreateSystemWide()
-        guard AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString, &focused) == .success,
-              let focused, CFGetTypeID(focused) == AXUIElementGetTypeID() else { return nil }
-        let element = focused as! AXUIElement
+        guard let element = systemFocusedElement() else { return nil }
         // Le repli système peut appartenir à une autre app si le focus a changé pendant la lecture.
         var owner: pid_t = 0
         let ownerKnown = AXUIElementGetPid(element, &owner) == .success
@@ -133,6 +130,35 @@ enum ContextProbe {
     /// fenêtre n'apporte rien à la dictée, et un collage dans Wispad n'a pas besoin de confirmation.
     static func isOwnProcess(_ pid: pid_t?) -> Bool {
         pid == ownPID
+    }
+
+    /// Repli : champ actif de l'app au premier plan, demandé à l'élément système. Jamais quand c'est Wispad (sa
+    /// fenêtre ouverte pendant la lecture d'une autre app) : la question lui serait servie dans son propre processus,
+    /// sur ce fil, pour une réponse de toute façon écartée (voir `isOwnProcess`). L'app au premier plan est lue
+    /// d'abord, sans rien demander à ses fenêtres.
+    static func systemFocusedElement(frontmost: () -> pid_t? = systemFrontmostPID,
+                                     ask: () -> AXUIElement? = askSystemFocusedElement) -> AXUIElement? {
+        guard !isOwnProcess(frontmost()) else { return nil }
+        return ask()
+    }
+
+    /// App au premier plan selon l'accessibilité : seul son processus est lu.
+    static func systemFrontmostPID() -> pid_t? {
+        var application: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(AXUIElementCreateSystemWide(), kAXFocusedApplicationAttribute as CFString,
+                                            &application) == .success,
+              let application, CFGetTypeID(application) == AXUIElementGetTypeID() else { return nil }
+        var pid: pid_t = 0
+        guard AXUIElementGetPid(application as! AXUIElement, &pid) == .success else { return nil }
+        return pid
+    }
+
+    static func askSystemFocusedElement() -> AXUIElement? {
+        var focused: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(AXUIElementCreateSystemWide(), kAXFocusedUIElementAttribute as CFString,
+                                            &focused) == .success,
+              let focused, CFGetTypeID(focused) == AXUIElementGetTypeID() else { return nil }
+        return focused as! AXUIElement
     }
 
     /// Navigateurs Chromium : ils ignorent AXManualAccessibility (réservé à Electron) et n'exposent le champ d'une
