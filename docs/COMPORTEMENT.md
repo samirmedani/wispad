@@ -557,6 +557,10 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
   dictée se termine normalement.
 - Compteurs de jetons démesurés annoncés par un fournisseur : comptés et affichés plafonnés dans Consommation.
 - Durée ou nombre de mots abîmés dans la base locale : affichés bornés ; une durée illisible compte pour 0.
+- Sélection annoncée par l'app où l'on dicte : illisible, l'extrait autour du curseur part du début du champ, comme
+  sans sélection ; démesurée, il s'arrête à la fin du champ.
+- Commande du coffre de secrets qui se termine sans lire la clé : « Impossible d'enregistrer la clé dans ton coffre
+  de secrets. », et Wispad continue.
 - Identifiant d'équipe xAI qui ne forme pas une adresse : « Facturation » ouvre la console xAI.
 
 ## Signaler une erreur

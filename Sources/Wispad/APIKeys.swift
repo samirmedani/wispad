@@ -149,7 +149,7 @@ enum APIKeys {
             return status == 0
         }
 
-        private static func run(_ arguments: [String], input: String? = nil) async -> (Int32, String) {
+        static func run(_ arguments: [String], input: String? = nil, tool: URL? = Vault.tool) async -> (Int32, String) {
             guard let tool else { return (-1, "") }
             return await withCheckedContinuation { continuation in
                 DispatchQueue.global(qos: .userInitiated).async {
@@ -169,14 +169,21 @@ enum APIKeys {
                     }
                     if let input {
                         // La clé passe par l'entrée standard, jamais en argument de commande.
-                        stdin.fileHandleForWriting.write(Data(input.utf8))
-                        try? stdin.fileHandleForWriting.close()
+                        send(input, to: stdin.fileHandleForWriting)
                     }
                     let data = output.fileHandleForReading.readDataToEndOfFile()
                     process.waitUntilExit()
                     continuation.resume(returning: (process.terminationStatus, String(decoding: data, as: UTF8.self)))
                 }
             }
+        }
+
+        /// Une commande qui se termine sans lire son entrée (coffre qui refuse `put`) ferme le tuyau : l'écriture
+        /// échoue alors sans arrêter Wispad, au lieu du signal SIGPIPE ou de l'exception de `write(_:)`.
+        private static func send(_ input: String, to handle: FileHandle) {
+            _ = fcntl(handle.fileDescriptor, F_SETNOSIGPIPE, 1)
+            try? handle.write(contentsOf: Data(input.utf8))
+            try? handle.close()
         }
     }
 
