@@ -70,7 +70,8 @@ struct InsertionSystem {
         return await DictationCoordinator.value(of: task, within: TextInserter.fieldReadLimit) ?? InsertionField()
     }
     var pasteboard: NSPasteboard = .general
-    var postPaste: (pid_t) async -> Bool = { _ in TextInserter.postCommandV() }
+    /// Sur le fil principal : la touche V se cherche dans la disposition du clavier, que macOS n'autorise que là.
+    var postPaste: @MainActor (pid_t) async -> Bool = { _ in TextInserter.postCommandV() }
     /// Zone de saisie lue après l'envoi, pour que les messages de la bulle ne la couvrent pas.
     var locate: (pid_t) async -> CGRect? = { pid in
         let task = Task.detached(priority: .utility) { ContextProbe.inputLocation(pid: pid) }
@@ -240,14 +241,14 @@ enum TextInserter {
     /// ⌘V comme au clavier : ⌘ enfoncée, V, puis ⌘ relâchée, envoyés au système (l'app au premier plan, vérifiée
     /// juste avant). Chrome et les apps Electron ignorent parfois un ⌘V adressé à leur processus ou porté par la
     /// seule touche V (régression du 13 octobre 2026 : texte absent du champ).
-    static func postCommandV() -> Bool {
+    @MainActor static func postCommandV() -> Bool {
         guard let events = pasteEvents() else { return false }
         for event in events { event.post(tap: .cghidEventTap) }
         return true
     }
 
     /// Marqués : l'écoute du clavier de Wispad les laisse passer sans les prendre pour une frappe.
-    static func pasteEvents() -> [CGEvent]? {
+    @MainActor static func pasteEvents() -> [CGEvent]? {
         let source = CGEventSource(stateID: .combinedSessionState)
         source?.userData = KeyboardTap.syntheticMarker
         let command: CGKeyCode = 0x37

@@ -50,7 +50,7 @@ enum PasteShortcutText {
     }
 
     /// Libellé du raccourci, ou « désactivé ».
-    static func label(_ shortcut: PasteShortcut) -> String {
+    @MainActor static func label(_ shortcut: PasteShortcut) -> String {
         shortcut.enabled ? KeyLabels.describe(shortcut) : String(localized: "désactivé")
     }
 }

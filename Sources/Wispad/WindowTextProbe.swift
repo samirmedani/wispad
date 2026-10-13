@@ -36,7 +36,8 @@ enum WindowTextProbe {
 
     static func read(pid: pid_t, limits: WindowWalkLimits = .windowReading) -> WindowTextSnapshot {
         let start = ContinuousClock.now
-        guard AXIsProcessTrusted(), let access = focusedWindow(pid: pid) else {
+        // Jamais la fenêtre de Wispad lui-même : voir `ContextProbe.isOwnProcess`.
+        guard !ContextProbe.isOwnProcess(pid), AXIsProcessTrusted(), let access = focusedWindow(pid: pid) else {
             return snapshot(fragments: [], nodesVisited: 0, stoppedOnBudget: false, start: start)
         }
         let walked = WindowTreeWalk.collect(

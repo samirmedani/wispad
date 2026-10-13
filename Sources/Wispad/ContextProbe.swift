@@ -94,7 +94,9 @@ enum ContextProbe {
 
     /// Champ actif de l'app au premier plan. Les apps Electron/Chromium n'ouvrent leur arbre
     /// d'accessibilité qu'à la demande : AXManualAccessibility le force, comme le font les outils de dictée.
+    /// Jamais Wispad lui-même (voir `isOwnProcess`).
     static func focusedElement(pid: pid_t?) -> AXUIElement? {
+        guard !isOwnProcess(pid) else { return nil }
         var focused: CFTypeRef?
         if let pid {
             let app = AXUIElementCreateApplication(pid)
@@ -113,12 +115,24 @@ enum ContextProbe {
               let focused, CFGetTypeID(focused) == AXUIElementGetTypeID() else { return nil }
         let element = focused as! AXUIElement
         // Le repli système peut appartenir à une autre app si le focus a changé pendant la lecture.
+        var owner: pid_t = 0
+        let ownerKnown = AXUIElementGetPid(element, &owner) == .success
+        if ownerKnown, isOwnProcess(owner) { return nil }
         if let pid {
-            var owner: pid_t = 0
-            guard AXUIElementGetPid(element, &owner) == .success, owner == pid else { return nil }
+            guard ownerKnown, owner == pid else { return nil }
         }
         AXUIElementSetMessagingTimeout(element, 0.5)
         return element
+    }
+
+    static let ownPID = ProcessInfo.processInfo.processIdentifier
+
+    /// Wispad lui-même (sa fenêtre au premier plan, une dictée dans son dictionnaire…) : jamais lu par
+    /// l'accessibilité. Ces lectures se font alors dans son propre processus, sur le fil qui les demande : hors du
+    /// fil principal, SwiftUI y recalcule l'interface et macOS arrête l'app (plantage du 13 octobre 2026). Sa
+    /// fenêtre n'apporte rien à la dictée, et un collage dans Wispad n'a pas besoin de confirmation.
+    static func isOwnProcess(_ pid: pid_t?) -> Bool {
+        pid == ownPID
     }
 
     /// Navigateurs Chromium : ils ignorent AXManualAccessibility (réservé à Electron) et n'exposent le champ d'une
@@ -166,6 +180,7 @@ enum ContextProbe {
     }
 
     static func inputLocation(pid: pid_t) -> InputLocation {
+        guard !isOwnProcess(pid) else { return InputLocation() }
         // Écran principal (barre des menus) : origine des coordonnées d'accessibilité. Lisible hors du fil principal.
         let primaryHeight = CGDisplayBounds(CGMainDisplayID()).height
         let flip = { (rect: CGRect) in OverlayGeometry.flipped(rect, primaryHeight: primaryHeight) }

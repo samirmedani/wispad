@@ -64,7 +64,7 @@ enum PermissionCenter {
 
     /// Quitte et rouvre Wispad (autorisation que macOS n'applique qu'au lancement suivant). Le chemin de l'app
     /// est passé en argument, jamais dans le texte de la commande.
-    static func relaunch() {
+    @MainActor static func relaunch() {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/sh")
         // Attend que cette instance soit vraiment fermée, sinon `open` ne ferait que la réactiver.

@@ -6,6 +6,7 @@ est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 ## Prochaine version
 
 **Corrigé**
+- Wispad pouvait se fermer brutalement : à la fin d'une dictée juste après son lancement (le texte n'était pas collé), ou en dictant pendant que sa propre fenêtre était au premier plan.
 - Mise à jour en un clic : Wispad restait sur « Relance… », et la dictée ne marchait plus, car macOS refusait de le fermer tant que la fenêtre de mise à jour était ouverte. Il ferme maintenant cette fenêtre, puis se relance tout seul. Depuis la 0.2.0, si la mise à jour reste sur « Relance… », ferme cette fenêtre, puis quitte Wispad et rouvre-le : la nouvelle version est déjà installée.
 - « Mettre à jour » dans la barre latérale ouvre d'abord les notes de version ; l'installation se confirme dans cette fenêtre.
 

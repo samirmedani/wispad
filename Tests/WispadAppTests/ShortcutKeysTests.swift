@@ -4,10 +4,11 @@ import Testing
 @testable import WispadCore
 
 /// Raccourcis dessinés : une touche par touche à enfoncer, symbole et nom comme sur un clavier Mac, et chaque touche
-/// à sa place sur le schéma du clavier de MacBook.
+/// à sa place sur le schéma du clavier de MacBook. Sur le fil principal, comme les noms de touches qu'ils dessinent.
+@MainActor
 struct ShortcutKeysTests {
     /// Noms fixes : les tests ne dépendent pas de la disposition du Mac qui les lance.
-    private let names: (Int) -> String = { [9: "V", 126: "↑", 49: "espace"][$0] ?? "?" }
+    private let names: @MainActor (Int) -> String = { [9: "V", 126: "↑", 49: "espace"][$0] ?? "?" }
 
     @Test func functionAloneIsOneKey() {
         let keys = ShortcutKeys.dictation(keyCode: ChordMatcher.functionKeyCode, modifiers: ModifierMask.function,

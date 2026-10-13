@@ -250,4 +250,16 @@ struct TextInsertionTests {
             #expect(event.getIntegerValueField(.eventSourceUserData) == KeyboardTap.syntheticMarker)
         }
     }
+
+    /// Wispad au premier plan : sa fenêtre n'est jamais lue par l'accessibilité, surtout pas hors du fil principal,
+    /// où ces lectures se font dans son propre processus et font recalculer SwiftUI (plantage du 13 octobre 2026).
+    @Test func ownWindowIsNeverReadByAccessibility() async {
+        let own = ProcessInfo.processInfo.processIdentifier
+        let nothingRead = await Task.detached {
+            ContextProbe.focusedElement(pid: own) == nil
+                && ContextProbe.inputLocation(pid: own).zone == nil
+                && WindowTextProbe.read(pid: own).context == nil
+        }.value
+        #expect(nothingRead)
+    }
 }
