@@ -664,8 +664,12 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
   5. si une dictée est en cours, attente de sa fin (« Après la dictée… ») ; puis remplacement atomique de l'app par
      la copie (échange des deux noms, APFS ; sinon deux renommages, l'ancienne app remise en place si le second
      échoue) ; l'ancienne version est effacée ;
-  6. relance : une petite aide attend la fin de cette instance (60 s au plus), puis ouvre la nouvelle version, qui
-     rouvre la fenêtre si elle était affichée ; la bulle confirme « Wispad 0.1.2 est installé ».
+  6. relance : la fenêtre de mise à jour et toute autre feuille ou fenêtre modale se ferment (sinon macOS refuse,
+     sans rien dire, de fermer l'app), puis Wispad quitte ; une petite aide attend la fin de cette instance (60 s au
+     plus), puis ouvre la nouvelle version, qui rouvre la fenêtre si elle était affichée ; la bulle confirme
+     « Wispad 0.1.2 est installé ». Si macOS refuse quand même de fermer Wispad (trois demandes), l'installation finit
+     sur l'échec de relance au lieu de rester sur « Relance… » : la nouvelle version est déjà en place, il suffit de
+     quitter Wispad et de le rouvrir.
 
   Réglages, clés API, historique, audios et dictionnaire vivent hors de l'app (préférences de `com.yatofix.wispad`,
   `Application Support/Wispad`, coffre de secrets) : la mise à jour n'y touche pas. Une copie cachée laissée par une

@@ -3,6 +3,11 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## Prochaine version
+
+**Corrigé**
+- Mise à jour en un clic : Wispad restait sur « Relance… » quand la fenêtre de mise à jour était ouverte, car macOS refusait de le fermer. Il ferme maintenant cette fenêtre avant de se relancer. Depuis la 0.2.0, si la mise à jour reste sur « Relance… », ferme la fenêtre de mise à jour, puis quitte Wispad et rouvre-le : la nouvelle version est déjà installée.
+
 ## 0.2.0 — 13 octobre 2026
 
 Wispad colle plus vite et plus sûrement, se met à jour tout seul et écrit tes nombres comme il faut.

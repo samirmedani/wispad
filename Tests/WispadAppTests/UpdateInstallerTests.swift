@@ -13,6 +13,8 @@ struct UpdateInstallerTests {
         var removed: [URL] = []
         var relaunched: [String]?
         var terminated = false
+        /// Étape affichée au moment où la fermeture est demandée.
+        var phaseAtTerminate: UpdateInstaller.Phase?
         var downloadError: Error?
         var signatureValid = true
         var diskVersion: String? = "0.1.2"
@@ -59,7 +61,11 @@ struct UpdateInstallerTests {
             journal.relaunched = arguments
             return true
         }
-        system.terminate = { journal.terminated = true }
+        // Le vrai NSApp.terminate ne rend la main que si macOS refuse de fermer l'app : ici, il la rend toujours.
+        system.terminate = { [weak installer] in
+            journal.phaseAtTerminate = installer?.phase
+            journal.terminated = true
+        }
         system.open = { journal.opened.append($0) }
         installer.system = system
         return installer
@@ -92,11 +98,24 @@ struct UpdateInstallerTests {
         #expect(journal.steps == ["download", "mount", "verify Wispad.app", "copy .Wispad.nouveau.app",
                                   "verify .Wispad.nouveau.app", "detach", "swap .Wispad.nouveau.app Wispad.app"])
         #expect(journal.relaunched == ["--updated", "--section", "home"])
-        #expect(installer.phase == .relaunching)
+        #expect(journal.phaseAtTerminate == .relaunching)
         // L'ancienne version (dans la copie cachée après l'échange) est effacée ; l'app elle-même jamais.
         #expect(journal.removed.contains(Self.staged))
         #expect(!journal.removed.contains(Self.app))
         #expect(journal.opened.isEmpty)
+    }
+
+    /// Fermeture refusée par macOS (feuille ou fenêtre modale restée ouverte) : la fenêtre le dit, au lieu de rester
+    /// sur « Relance… » sans fin. La nouvelle version est déjà en place.
+    @Test func refusedQuitEndsOnARelaunchFailure() async throws {
+        let journal = Journal()
+        let installer = makeInstaller(journal)
+        install(installer, journal)
+        try await waitUntil { !installer.isBusy }
+        #expect(journal.terminated)
+        #expect(journal.steps.last == "swap .Wispad.nouveau.app Wispad.app")
+        #expect(installer.phase == .failed(.relaunch))
+        #expect(!installer.canCancel)
     }
 
     /// Dossier non modifiable, app sans signature Developer ID ou build de développement : la page de la release.

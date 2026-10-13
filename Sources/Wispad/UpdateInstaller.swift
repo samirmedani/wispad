@@ -58,7 +58,8 @@ struct UpdateSystem {
     var remove: (URL) -> Void = { _ = try? FileManager.default.removeItem(at: $0) }
     /// Lance l'aide qui attend la fin de cette instance puis ouvre la nouvelle ; faux si elle n'a pas démarré.
     var relaunch: (URL, [String]) -> Bool = { UpdateTools.relaunch($0, arguments: $1) }
-    var terminate: @MainActor () -> Void = { NSApp.terminate(nil) }
+    /// Ferme cette instance pour la relance. Ne rend la main que si macOS a refusé de la fermer.
+    var terminate: @MainActor () async -> Void = { await UpdateTools.quitForRelaunch() }
     var open: @MainActor (URL) -> Void = { _ = NSWorkspace.shared.open($0) }
 }
 
@@ -216,7 +217,10 @@ final class UpdateInstaller {
         set(.relaunching, attempt: current)
         Self.log.notice("nouvelle version installée : relance")
         guard system.relaunch(app, relaunchArguments()) else { return finish(current, .failed(.relaunch)) }
-        system.terminate()
+        await system.terminate()
+        // Toujours là : macOS a refusé de fermer Wispad. La nouvelle version est en place ; la fenêtre le dit au lieu de
+        // rester sur « Relance… », et l'aide l'ouvre dès que Wispad est quitté (dans les 60 s).
+        finish(current, .failed(.relaunch))
     }
 
     /// Vérifie la nouvelle version dans le disque, la copie à côté de l'app, puis revérifie la copie (c'est elle qui
@@ -368,6 +372,38 @@ enum UpdateTools {
         done
         exit 1
         """
+
+    /// Ferme Wispad pour la relance. Une feuille ouverte (la fenêtre de mise à jour elle-même) ou une fenêtre modale
+    /// fait refuser la fermeture par macOS, sans erreur : elles sont refermées d'abord, puis la fermeture est
+    /// redemandée jusqu'à trois fois. Ne rend la main que si elle a été refusée chaque fois.
+    @MainActor
+    static func quitForRelaunch() async {
+        for attempt in 0..<3 {
+            closeSheetsAndModals()
+            // Le temps que les feuilles se retirent de l'écran.
+            try? await Task.sleep(for: .milliseconds(attempt == 0 ? 300 : 700))
+            NSApp.terminate(nil)
+        }
+    }
+
+    /// Referme les fenêtres modales et les feuilles de toutes les fenêtres, la plus profonde d'abord, chacune une fois.
+    @MainActor
+    static func closeSheetsAndModals() {
+        if NSApp.modalWindow != nil { NSApp.abortModal() }
+        var ended = Set<ObjectIdentifier>()
+        for _ in 0..<4 {
+            let innermost = NSApp.windows.compactMap { window -> (NSWindow, NSWindow)? in
+                guard let sheet = window.attachedSheet, sheet.attachedSheet == nil,
+                      !ended.contains(ObjectIdentifier(sheet)) else { return nil }
+                return (window, sheet)
+            }
+            guard !innermost.isEmpty else { return }
+            for (window, sheet) in innermost {
+                ended.insert(ObjectIdentifier(sheet))
+                window.endSheet(sheet)
+            }
+        }
+    }
 
     /// Lance un outil du système et attend sa fin, hors du fil principal : code de sortie et sortie standard.
     static func run(_ tool: String, _ arguments: [String]) async -> (status: Int32, output: Data) {
