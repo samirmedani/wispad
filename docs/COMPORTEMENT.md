@@ -621,8 +621,10 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
   par la signature de l'app, et un contributeur qui signe son build avec son propre certificat Developer ID reste un
   build de développement.
 - **Release** : la version seule (« Wispad 0.1.1 »), puis « À jour », ou « Wispad 0.1.2 est disponible » (un clic
-  ouvre la fenêtre de mise à jour) et le bouton « Mettre à jour ». Le tag de la dernière release (« v0.1.2 ») et la
-  version de l'app (`CFBundleShortVersionString`) se comparent en semver : X.Y.Z, une pré-version avant la version
+  ouvre la fenêtre de mise à jour) et le bouton « Mettre à jour », qui ouvre aussi cette fenêtre : l'installation
+  ne démarre qu'après lecture des notes, avec son bouton « Mettre à jour ». Le tag de la dernière release
+  (« v0.1.2 ») et la version de l'app (`CFBundleShortVersionString`) se comparent en semver : X.Y.Z, une pré-version
+  avant la version
   finale. Une app plus récente que la dernière release (release retirée) reste « À jour ».
 - **Build de développement** : la version et le commit court gravé à la compilation (« Wispad 0.1.0 · abc1234 »),
   puis « À jour » ou « N commits de retard » (« 1 commit de retard ») sur la branche `main` du dépôt public, comme
@@ -651,8 +653,8 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
   et `code` dans la ligne ; texte sélectionnable), « Voir sur GitHub », « Plus tard » et « Mettre à jour ». Pendant
   l'installation : l'étape et sa progression, et « Annuler » tant que rien n'est remplacé. En cas d'échec : la
   raison, « Ouvrir la page de la release » et « Réessayer ».
-- **Installation en un clic** (« Mettre à jour », dans la barre latérale ou la fenêtre de mise à jour, qui s'ouvre
-  pour suivre l'avancement ; la barre latérale le résume) :
+- **Installation en un clic** (« Mettre à jour » de la fenêtre de mise à jour, qui reste ouverte pour suivre
+  l'avancement ; la barre latérale le résume) :
   1. téléchargement de `Wispad.dmg` (asset de la release, seulement depuis
      `https://github.com/samirmedani/wispad/releases/download/`), avec sa progression ; taille et empreinte SHA-256
      comparées à celles qu'annonce GitHub ;
@@ -664,12 +666,13 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
   5. si une dictée est en cours, attente de sa fin (« Après la dictée… ») ; puis remplacement atomique de l'app par
      la copie (échange des deux noms, APFS ; sinon deux renommages, l'ancienne app remise en place si le second
      échoue) ; l'ancienne version est effacée ;
-  6. relance : la fenêtre de mise à jour et toute autre feuille ou fenêtre modale se ferment (sinon macOS refuse,
-     sans rien dire, de fermer l'app), puis Wispad quitte ; une petite aide attend la fin de cette instance (60 s au
+  6. relance : la fenêtre de mise à jour se ferme (affichée en feuille, elle fait refuser, sans rien dire, la
+     fermeture de l'app par macOS), puis Wispad quitte ; une petite aide attend la fin de cette instance (60 s au
      plus), puis ouvre la nouvelle version, qui rouvre la fenêtre si elle était affichée ; la bulle confirme
-     « Wispad 0.1.2 est installé ». Si macOS refuse quand même de fermer Wispad (trois demandes), l'installation finit
-     sur l'échec de relance au lieu de rester sur « Relance… » : la nouvelle version est déjà en place, il suffit de
-     quitter Wispad et de le rouvrir.
+     « Wispad 0.1.2 est installé ». Si macOS refuse quand même de fermer Wispad (trois demandes, par exemple une
+     autre feuille ouverte), Wispad s'arrête de force après avoir rangé comme à une fermeture normale (son du Mac
+     rétabli, réglages écrits) : une fois ses fichiers remplacés, l'ancienne instance n'a plus accès au micro ni à
+     l'accessibilité et ne peut plus dicter. L'aide ouvre alors la nouvelle version.
 
   Réglages, clés API, historique, audios et dictionnaire vivent hors de l'app (préférences de `com.yatofix.wispad`,
   `Application Support/Wispad`, coffre de secrets) : la mise à jour n'y touche pas. Une copie cachée laissée par une

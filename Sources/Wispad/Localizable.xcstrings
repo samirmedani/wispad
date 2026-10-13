@@ -71,6 +71,16 @@
         }
       }
     },
+    "Voir les notes de version, puis confirmer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "See the release notes, then confirm"
+          }
+        }
+      }
+    },
     "Voir" : {
       "localizations" : {
         "en" : {

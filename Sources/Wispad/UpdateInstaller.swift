@@ -60,6 +60,8 @@ struct UpdateSystem {
     var relaunch: (URL, [String]) -> Bool = { UpdateTools.relaunch($0, arguments: $1) }
     /// Ferme cette instance pour la relance. Ne rend la main que si macOS a refusé de la fermer.
     var terminate: @MainActor () async -> Void = { await UpdateTools.quitForRelaunch() }
+    /// Arrêt forcé, quand macOS refuse de fermer l'app après le remplacement. Ne rend jamais la main hors des tests.
+    var forceQuit: @MainActor () -> Void = { UpdateTools.forceQuit() }
     var open: @MainActor (URL) -> Void = { _ = NSWorkspace.shared.open($0) }
 }
 
@@ -116,11 +118,13 @@ final class UpdateInstaller {
 
     /// Lance l'installation en place. Si elle ne peut pas se faire ici (build de développement, dossier non
     /// modifiable, release sans disque, app sans signature Developer ID), la page de la release s'ouvre à la place.
-    /// Vrai si l'installation démarre.
+    /// `beforeQuit` referme les fenêtres de l'app (la fenêtre de mise à jour, affichée en feuille, fait refuser la
+    /// fermeture par macOS) juste avant la relance. Vrai si l'installation démarre.
     @discardableResult
     func install(_ release: ReleaseInfo, kind: BuildKind, installed: String,
                  isIdle: @escaping @MainActor () -> Bool,
-                 relaunchArguments: @escaping @MainActor () -> [String]) -> Bool {
+                 relaunchArguments: @escaping @MainActor () -> [String],
+                 beforeQuit: @escaping @MainActor () -> Void = {}) -> Bool {
         guard !isBusy else { return false }
         if let blocker = obstacle(for: release, kind: kind) {
             Self.log.notice("installation en place impossible (\(String(describing: blocker), privacy: .public)) : page de la release")
@@ -138,7 +142,7 @@ final class UpdateInstaller {
         work = Task { [weak self] in
             await previous?.value
             await self?.run(attempt: current, asset: asset, teamID: team, app: app, installed: installed,
-                            isIdle: isIdle, relaunchArguments: relaunchArguments)
+                            isIdle: isIdle, relaunchArguments: relaunchArguments, beforeQuit: beforeQuit)
         }
         return true
     }
@@ -164,7 +168,8 @@ final class UpdateInstaller {
     }
 
     private func run(attempt current: Int, asset: DiskImageAsset, teamID: String, app: URL, installed: String,
-                     isIdle: @MainActor () -> Bool, relaunchArguments: @MainActor () -> [String]) async {
+                     isIdle: @MainActor () -> Bool, relaunchArguments: @MainActor () -> [String],
+                     beforeQuit: @MainActor () -> Void) async {
         let system = self.system
         guard !Task.isCancelled else { return finish(current, .idle) }
         guard let workspace = try? system.makeWorkspace() else { return finish(current, .failed(.download)) }
@@ -217,9 +222,12 @@ final class UpdateInstaller {
         set(.relaunching, attempt: current)
         Self.log.notice("nouvelle version installée : relance")
         guard system.relaunch(app, relaunchArguments()) else { return finish(current, .failed(.relaunch)) }
+        beforeQuit()
         await system.terminate()
-        // Toujours là : macOS a refusé de fermer Wispad. La nouvelle version est en place ; la fenêtre le dit au lieu de
-        // rester sur « Relance… », et l'aide l'ouvre dès que Wispad est quitté (dans les 60 s).
+        // Toujours là : macOS a refusé de fermer Wispad. Cette instance ne peut plus dicter (ses fichiers ont été
+        // remplacés : macOS lui retire micro et accessibilité) ; arrêt forcé, l'aide ouvre la nouvelle version.
+        Self.log.error("fermeture refusée : arrêt forcé")
+        system.forceQuit()
         finish(current, .failed(.relaunch))
     }
 
@@ -373,36 +381,24 @@ enum UpdateTools {
         exit 1
         """
 
-    /// Ferme Wispad pour la relance. Une feuille ouverte (la fenêtre de mise à jour elle-même) ou une fenêtre modale
-    /// fait refuser la fermeture par macOS, sans erreur : elles sont refermées d'abord, puis la fermeture est
-    /// redemandée jusqu'à trois fois. Ne rend la main que si elle a été refusée chaque fois.
+    /// Ferme Wispad pour la relance, une fois les feuilles retirées de l'écran ; la fermeture est redemandée jusqu'à
+    /// trois fois. Ne rend la main que si elle a été refusée chaque fois (feuille ou fenêtre modale restée ouverte).
     @MainActor
     static func quitForRelaunch() async {
         for attempt in 0..<3 {
-            closeSheetsAndModals()
-            // Le temps que les feuilles se retirent de l'écran.
-            try? await Task.sleep(for: .milliseconds(attempt == 0 ? 300 : 700))
+            if NSApp.modalWindow != nil { NSApp.abortModal() }
+            try? await Task.sleep(for: .milliseconds(attempt == 0 ? 400 : 700))
             NSApp.terminate(nil)
         }
     }
 
-    /// Referme les fenêtres modales et les feuilles de toutes les fenêtres, la plus profonde d'abord, chacune une fois.
+    /// Arrêt sans la fermeture d'AppKit, que macOS a refusée : le délégué range comme à une fermeture normale (son du
+    /// Mac rétabli, dictée annulée), les réglages sont écrits, puis le processus s'arrête.
     @MainActor
-    static func closeSheetsAndModals() {
-        if NSApp.modalWindow != nil { NSApp.abortModal() }
-        var ended = Set<ObjectIdentifier>()
-        for _ in 0..<4 {
-            let innermost = NSApp.windows.compactMap { window -> (NSWindow, NSWindow)? in
-                guard let sheet = window.attachedSheet, sheet.attachedSheet == nil,
-                      !ended.contains(ObjectIdentifier(sheet)) else { return nil }
-                return (window, sheet)
-            }
-            guard !innermost.isEmpty else { return }
-            for (window, sheet) in innermost {
-                ended.insert(ObjectIdentifier(sheet))
-                window.endSheet(sheet)
-            }
-        }
+    static func forceQuit() {
+        NotificationCenter.default.post(name: NSApplication.willTerminateNotification, object: NSApp)
+        UserDefaults.standard.synchronize()
+        exit(0)
     }
 
     /// Lance un outil du système et attend sa fin, hors du fil principal : code de sortie et sortie standard.

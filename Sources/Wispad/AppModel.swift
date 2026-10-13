@@ -542,7 +542,9 @@ final class AppModel {
         let started = updater.install(
             release, kind: status.kind, installed: version,
             isIdle: { [weak self] in self?.coordinator.phase == .idle },
-            relaunchArguments: { [weak self] in self?.relaunchArguments() ?? ["--updated"] }
+            relaunchArguments: { [weak self] in self?.relaunchArguments() ?? ["--updated"] },
+            // Fenêtre de mise à jour fermée par son état SwiftUI : macOS refuse de quitter tant qu'elle est en feuille.
+            beforeQuit: { [weak self] in self?.updateSheet = nil }
         )
         if started { updateSheet = release }
     }
