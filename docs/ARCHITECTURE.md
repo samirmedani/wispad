@@ -58,8 +58,9 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
 - **Bulle de l'accueil** : `BubbleDemo` reprend `SpectrumBars` et le verre de la bulle ; ses niveaux viennent de
   `SimulatedVoice` (WispadCore, fonction pure du temps, testée par `SimulatedVoiceTests`).
 - **État vivant** : `OnboardingController` lit macOS par `OnboardingSystem` (autorisations sans demande, Réglages
-  Système, relance, micros, vumètre), sondé toutes les 0,5 s pendant l'affichage ; les tests le remplacent
-  (`OnboardingControllerTests`). Écrans dans `OnboardingView.swift`.
+  Système, relance, micros, vumètre), sondé toutes les 0,5 s pendant l'affichage (`poll`, arrêté par `suspend` quand
+  la fenêtre se ferme, relancé par `resume`) ; les tests le remplacent (`OnboardingControllerTests`). Écrans dans
+  `OnboardingView.swift`.
 - **Micro** : `MicrophoneMeter` ne sort que des niveaux (rien d'écrit ni d'envoyé) ; le micro choisi
   (`microphoneUID`, `AudioInputDevices`) sert ensuite à `AudioCapture`, sans toucher au micro du système.
 - **Touche** : pendant l'étape, `AppModel.shortcutProbe` reçoit les appuis à la place du coordinateur
