@@ -116,7 +116,7 @@ public enum StatsCalculator {
 
 public enum DurationFormat {
     public static func audio(_ seconds: Double) -> String {
-        let total = max(0, Int(seconds.rounded()))
+        let total = wholeSeconds(seconds)
         let hours = total / 3600
         let minutes = (total % 3600) / 60
         let secs = total % 60
@@ -126,11 +126,19 @@ public enum DurationFormat {
     }
 
     public static func saved(_ seconds: Double) -> String {
-        let total = max(0, Int(seconds.rounded()))
+        let total = wholeSeconds(seconds)
         let hours = total / 3600
         let minutes = (total % 3600) / 60
         if hours > 0 { return "\(hours)h \(minutes)m" }
         return "\(minutes)m"
+    }
+
+    /// Secondes entières, jamais négatives. Une durée lue d'une base abîmée ne fait pas planter la conversion en
+    /// `Int` : NaN compte pour 0, une durée infinie ou démesurée s'arrête au plus grand nombre convertible.
+    static func wholeSeconds(_ seconds: Double) -> Int {
+        let rounded = seconds.rounded()
+        guard rounded > 0 else { return 0 }
+        return Int(min(rounded, Double(Int.max).nextDown))
     }
 }
 

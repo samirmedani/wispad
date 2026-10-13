@@ -752,7 +752,7 @@ enum MomentReading {
         }
         for value in shown {
             if take(value) { continue }
-            if value >= 1000, let index = pool.indices.dropLast().first(where: { (10...99).contains(pool[$0]) && pool[$0] * 100 + pool[$0 + 1] == value }) {
+            if value >= 1000, let index = pool.indices.dropLast().first(where: { formsYear(pool[$0], pool[$0 + 1], value) }) {
                 pool.removeSubrange(index...(index + 1))
                 continue
             }
@@ -776,9 +776,15 @@ enum MomentReading {
         if pool.contains(year) { return true }
         if year >= 1000 {
             if pool.contains(year % 100) { return true }
-            return zip(pool, pool.dropFirst()).contains { (10...99).contains($0) && $0 * 100 + $1 == year }
+            return zip(pool, pool.dropFirst()).contains { formsYear($0, $1, year) }
         }
         return pool.contains { $0 >= 1000 && $0 % 100 == year }
+    }
+
+    /// Deux nombres dits qui forment une année en deux morceaux (« twenty twenty-six » → 2026). Comparés par
+    /// soustraction : un nombre dit démesuré (« cent cent cent… ») ne fait rien déborder.
+    static func formsYear(_ century: Int, _ rest: Int, _ year: Int) -> Bool {
+        (10...99).contains(century) && year - century * 100 == rest
     }
 
     /// Un mot qui a la forme d'une date ou d'une heure : « 03/11 », « 14h30 », « h », « 2:30 », « PM », « 1er », « novembre ».

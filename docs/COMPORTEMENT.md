@@ -553,6 +553,17 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
   lecteur d'écran : le champ d'une page devient lisible (confirmation du collage, contexte, apprentissage).
 - Les audios expirés sont purgés chaque minute et au lancement.
 
+## Données inattendues
+
+Ce qui vient de l'extérieur (fournisseurs, base locale, app où l'on dicte, coffre de secrets) n'arrête jamais
+Wispad ; les cas ordinaires gardent exactement leur résultat.
+
+- Nombre dit démesuré (« cent » répété, dit ou mal transcrit) : lu par morceaux qui tiennent dans un entier, et la
+  dictée se termine normalement.
+- Compteurs de jetons démesurés annoncés par un fournisseur : comptés et affichés plafonnés dans Consommation.
+- Durée ou nombre de mots abîmés dans la base locale : affichés bornés ; une durée illisible compte pour 0.
+- Identifiant d'équipe xAI qui ne forme pas une adresse : « Facturation » ouvre la console xAI.
+
 ## Signaler une erreur
 
 - Détail d'une dictée › **Signaler une erreur** : on corrige le texte mot pour mot (ce qui a vraiment été dit).

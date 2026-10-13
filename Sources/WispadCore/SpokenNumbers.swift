@@ -19,6 +19,8 @@ enum SpokenNumbers {
     ]
 
     /// Valeur du nombre qui commence à `start` et indice du premier mot qui le suit.
+    /// Une suite démesurée (« cent cent cent… », dite ou mal transcrite) s'arrête avant le mot qui ferait déborder
+    /// sa valeur : ce mot commence le nombre suivant, au lieu d'arrêter l'app.
     static func parse(_ tokens: [String], from start: Int) -> (value: Int, next: Int)? {
         var total = 0
         var current = 0
@@ -30,8 +32,8 @@ enum SpokenNumbers {
             // « vingt et un », « soixante et onze » : « et » relie seulement une unité à une dizaine.
             if token == "et" {
                 guard consumed, index + 1 < tokens.count, let small = units[tokens[index + 1]], small < 20,
-                      isTens(current % 100) else { break }
-                current += small
+                      isTens(current % 100), let next = sum(current, small), sum(total, next) != nil else { break }
+                current = next
                 index += 2
                 afterMultiplier = false
                 continue
@@ -44,8 +46,8 @@ enum SpokenNumbers {
                 continue
             }
             if token == "mille" || token == "thousand" {
-                if current == 0 { current = 1 }
-                total += current * 1_000
+                guard let scaled = product(max(current, 1), 1_000), let next = sum(total, scaled) else { break }
+                total = next
                 current = 0
                 consumed = true
                 afterMultiplier = true
@@ -53,8 +55,8 @@ enum SpokenNumbers {
                 continue
             }
             if token == "cent" || token == "cents" || token == "hundred" {
-                if current == 0 { current = 1 }
-                current *= 100
+                guard let next = product(max(current, 1), 100), sum(total, next) != nil else { break }
+                current = next
                 consumed = true
                 afterMultiplier = true
                 index += 1
@@ -62,20 +64,34 @@ enum SpokenNumbers {
             }
             // « quatre-vingt » : le « quatre » déjà lu vaut 80, pas 4 + 20.
             if (token == "vingt" || token == "vingts"), current % 100 == 4 {
-                current += 76
+                guard let next = sum(current, 76), sum(total, next) != nil else { break }
+                current = next
                 consumed = true
                 afterMultiplier = false
                 index += 1
                 continue
             }
-            guard let value = units[token], canFollow(current % 100, with: value) else { break }
-            current += value
+            guard let value = units[token], canFollow(current % 100, with: value),
+                  let next = sum(current, value), sum(total, next) != nil else { break }
+            current = next
             consumed = true
             afterMultiplier = false
             index += 1
         }
         guard consumed else { return nil }
         return (total + current, index)
+    }
+
+    /// `a + b`, ou nil s'il déborde d'un `Int`.
+    private static func sum(_ a: Int, _ b: Int) -> Int? {
+        let (value, overflow) = a.addingReportingOverflow(b)
+        return overflow ? nil : value
+    }
+
+    /// `a × b`, ou nil s'il déborde d'un `Int`.
+    private static func product(_ a: Int, _ b: Int) -> Int? {
+        let (value, overflow) = a.multipliedReportingOverflow(by: b)
+        return overflow ? nil : value
     }
 
     /// Une dizaine seule (vingt à quatre-vingt-dix) : « et » peut y joindre une unité.
