@@ -171,16 +171,21 @@ public enum FidelityGuard {
     /// le modèle a recopié le contexte.
     static func copiesContext(written: [String], heard: [String], context: String?, additional: [String] = []) -> Bool {
         let sources = [context].compactMap { $0?.isEmpty == false ? $0 : nil } + additional.filter { !$0.isEmpty }
-        return sources.contains { copiesOneContext(written: written, heard: heard, context: $0) }
+        // Ce qui est écrit et entendu ne dépend pas de la source : calculé une fois. Moins de huit mots écrits,
+        // aucune copie possible : le contexte (jusqu'à 3 500 caractères) n'est pas découpé pour rien.
+        let keys = written.map(CorrectionLearner.key).filter { !$0.isEmpty }
+        guard keys.count >= copiedSpan, !sources.isEmpty else { return false }
+        let said = Set(heard.map(CorrectionLearner.key))
+        return sources.contains { copiesOneContext(keys: keys, said: said, context: $0) }
     }
 
-    private static func copiesOneContext(written: [String], heard: [String], context: String) -> Bool {
+    private static let copiedSpan = 8
+
+    private static func copiesOneContext(keys: [String], said: Set<String>, context: String) -> Bool {
         guard !context.isEmpty else { return false }
         // Des guillemets ou un deux-points ajoutés ne cachent pas une copie : seuls les mots se comparent.
         let around = locatedWords(in: context).map { CorrectionLearner.key($0.text) }.filter { !$0.isEmpty }
-        let said = Set(heard.map(CorrectionLearner.key))
-        let keys = written.map(CorrectionLearner.key).filter { !$0.isEmpty }
-        let span = 8
+        let span = copiedSpan
         guard keys.count >= span, around.count >= span else { return false }
         let windows = Set((0...(around.count - span)).map { around[$0..<($0 + span)].joined(separator: " ") })
         for start in 0...(keys.count - span) {
@@ -217,7 +222,15 @@ public enum FidelityGuard {
         let said = heard.map(strip).filter { !$0.isEmpty }
         let hunks = CorrectionLearner.replacements(spokenWritten.map(strip), said)
         guard !hunks.isEmpty else { return corrected }
-        let known = groundingKeys(transcript: heard.joined(separator: " "), dictionary: dictionary, context: context, previous: previousDictations)
+        // Clés de ce qui peut justifier un nom, dictionnaire entier compris (20 ms pour 2 000 termes, mesuré sous
+        // Linux) : calculées une fois, et seulement quand un mot d'allure inventée doit y être cherché.
+        var grounding: Set<String>?
+        func known() -> Set<String> {
+            if let grounding { return grounding }
+            let keys = groundingKeys(transcript: heard.joined(separator: " "), dictionary: dictionary, context: context, previous: previousDictations)
+            grounding = keys
+            return keys
+        }
         let otherKeys = Set(alsoHeard.map { CorrectionLearner.key(strip($0)) }).subtracting([""])
         let output = NSMutableString(string: corrected)
         for hunk in hunks.reversed() {
@@ -371,13 +384,13 @@ public enum FidelityGuard {
         return words[index - 1].contains { ".!?".contains($0) }
     }
 
-    private static func hasUngroundedCoinage(_ hunk: CorrectionLearner.Hunk, written: [String], known: Set<String>) -> Bool {
+    private static func hasUngroundedCoinage(_ hunk: CorrectionLearner.Hunk, written: [String], known: () -> Set<String>) -> Bool {
         guard (1...3).contains(hunk.oldWords.count), (1...12).contains(hunk.newWords.count) else { return false }
         for offset in hunk.oldWords.indices {
             let absolute = hunk.oldStart + offset
             let raw = absolute < written.count ? written[absolute] : hunk.oldWords[offset]
             guard looksCoined(raw, sentenceStart: isSentenceStart(absolute, words: written)) else { continue }
-            if !known.contains(CorrectionLearner.key(strip(raw))) { return true }
+            if !known().contains(CorrectionLearner.key(strip(raw))) { return true }
         }
         return false
     }
