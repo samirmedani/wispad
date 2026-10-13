@@ -13,6 +13,12 @@ public final class SpectrumAnalyzer: @unchecked Sendable {
     private let setup: FFTSetup
     private var window = [Float](repeating: 0, count: SpectrumAnalyzer.size)
     private var samples: [Float] = []
+    /// Tampons du calcul, entièrement réécrits à chaque tranche : la boucle audio (une tranche toutes les 16 ms)
+    /// n'alloue plus quatre tableaux par tranche.
+    private var windowed = [Float](repeating: 0, count: SpectrumAnalyzer.size)
+    private var real = [Float](repeating: 0, count: SpectrumAnalyzer.size / 2)
+    private var imaginary = [Float](repeating: 0, count: SpectrumAnalyzer.size / 2)
+    private var magnitudes = [Float](repeating: 0, count: SpectrumAnalyzer.size / 2)
     /// Moins d'un hop, reporté au paquet suivant pour ne pas allonger artificiellement le spectre.
     private var frameRemainder = Data()
     private let edges: [Int]
@@ -36,7 +42,7 @@ public final class SpectrumAnalyzer: @unchecked Sendable {
     public func bands(pcm16 data: Data) -> [Float] {
         data.withUnsafeBytes { raw in
             let values = raw.bindMemory(to: Int16.self)
-            samples.append(contentsOf: values.map { Float($0) / 32_768 })
+            samples.append(contentsOf: values.lazy.map { Float($0) / 32_768 })
         }
         if samples.count > Self.size {
             samples.removeFirst(samples.count - Self.size)
@@ -45,11 +51,7 @@ public final class SpectrumAnalyzer: @unchecked Sendable {
             return Array(repeating: 0, count: Self.bandCount)
         }
         let half = Self.size / 2
-        var windowed = [Float](repeating: 0, count: Self.size)
         vDSP_vmul(samples, 1, window, 1, &windowed, 1, vDSP_Length(Self.size))
-        var real = [Float](repeating: 0, count: half)
-        var imaginary = [Float](repeating: 0, count: half)
-        var magnitudes = [Float](repeating: 0, count: half)
         real.withUnsafeMutableBufferPointer { realPointer in
             imaginary.withUnsafeMutableBufferPointer { imaginaryPointer in
                 var split = DSPSplitComplex(realp: realPointer.baseAddress!, imagp: imaginaryPointer.baseAddress!)
