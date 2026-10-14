@@ -578,7 +578,10 @@ Wispad relit ces autorisations sans jamais les redemander : une demande de macOS
 - **Surveillance des entrées ou accessibilité** : l'écoute du clavier (raccourci, Échap, « Coller la dernière
   dictée ») voit passer et peut avaler chaque frappe de toutes les apps. Elle n'est jamais réarmée sans les
   autorisations qu'elle avait à son installation : réarmée sans elles, elle pourrait retenir le clavier de tout le
-  Mac. Dès que macOS la coupe, ou au plus tard à la vérification suivante (3 s), elle est retirée, et remplacée par
+  Mac. Accessibilité retirée : vu à la vérification suivante (3 s), même si macOS laisse l'écoute active.
+  Surveillance des entrées retirée : vu dès que macOS coupe ou invalide l'écoute ; tant qu'elle reste active,
+  l'accessibilité lui suffit, et cette question au démon des autorisations de macOS (une dizaine de millisecondes)
+  n'est jamais posée pendant que chaque frappe du Mac attend l'écoute. L'écoute est alors retirée, et remplacée par
   une écoute neuve si macOS en accepte encore une ; sinon le raccourci se tait. Une dictée en cours s'arrête alors
   comme si on l'avait terminée (ce qui a été dit est transcrit et collé ; un micro encore en démarrage se referme
   sans rien enregistrer) et la bulle affiche « Surveillance des entrées retirée : dictée arrêtée » ou
@@ -586,15 +589,16 @@ Wispad relit ces autorisations sans jamais les redemander : une demande de macOS
   premier appui compte, et Échap n'est jamais avalé à tort. Une autorisation donnée après l'installation de l'écoute
   n'est pas exigée ensuite.
 - **Micro** : macOS peut laisser tourner le micro d'une dictée en cours en ne lui livrant plus que du silence.
-  Pendant l'écoute seulement, l'accès est relu chaque seconde (s'il était accordé au départ) : retiré, la dictée
-  s'arrête comme si on l'avait terminée et la bulle affiche « Accès au micro retiré : dictée arrêtée ». Au repos,
-  comme avant, la dictée suivante ne s'ouvre pas et Réglages s'affiche (« Le microphone n'est pas autorisé. »).
+  Pendant l'écoute seulement, l'accès est relu chaque seconde hors du fil principal (s'il était accordé au départ) :
+  retiré, la dictée s'arrête comme si on l'avait terminée et la bulle affiche « Accès au micro retiré : dictée
+  arrêtée ». Au repos, comme avant, la dictée suivante ne s'ouvre pas et Réglages s'affiche (« Le microphone n'est
+  pas autorisé. »).
 - **Accessibilité au moment du collage** : ni ⌘V ni lecture du champ ; le texte est copié et la bulle affiche
   « Accessibilité non autorisée : le texte est prêt » (voir « Reprise après erreur »). Même chose pour **Coller** et
   « Coller la dernière dictée ».
 - **Affichage** : Réglages › Autorisations et l'alerte de la barre latérale sont relus à chaque retour dans Wispad
-  (par exemple depuis Réglages Système), plus seulement à l'ouverture de l'écran. Le premier lancement guidé les
-  relit toutes les 0,5 s.
+  (par exemple depuis Réglages Système), hors du fil principal, plus seulement à l'ouverture de l'écran. Le premier
+  lancement guidé les relit toutes les 0,5 s.
 - Insertion par ⌘V comme au clavier, dans toutes les apps : ⌘ enfoncée (changement de modificateur), V, puis ⌘
   relâchée, envoyés au système une fois l'app cible vérifiée au premier plan et les modificateurs relâchés. Le
   13 octobre 2026, l'écriture par `AXSelectedText` dans Chrome et un ⌘V adressé au seul processus cible laissaient

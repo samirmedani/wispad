@@ -15,6 +15,8 @@ import Testing
 /// événement), coupures et réarmements.
 private final class FakeTapSystem: @unchecked Sendable {
     @Guarded var permissions = KeyboardPermissions(listen: true, accessibility: true)
+    /// Lectures complètes, surveillance des entrées comprise : une question au démon des autorisations de macOS.
+    @Guarded var fullReads = 0
     /// macOS accepte de créer une écoute.
     @Guarded var creatable = true
     @Guarded var creations = 0
@@ -24,7 +26,11 @@ private final class FakeTapSystem: @unchecked Sendable {
 
     var system: KeyboardTapSystem {
         var system = KeyboardTapSystem()
-        system.permissions = { [self] in permissions }
+        system.permissions = { [self] in
+            fullReads += 1
+            return permissions
+        }
+        system.accessibilityTrusted = { [self] in permissions.accessibility }
         system.create = { [self] _ in
             creations += 1
             guard creatable else { return nil }
@@ -112,14 +118,21 @@ struct KeyboardTapPermissionTests {
         #expect(fake.creations == 2)
     }
 
-    @Test func aTapStillActiveOrInvalidatedWhenItsPermissionIsWithdrawnIsRemovedAtTheNextCheck() throws {
+    @Test func aTapStillActiveAfterInputMonitoringIsWithdrawnIsRemovedOnceMacOSCutsOrInvalidatesIt() throws {
         let fake = FakeTapSystem()
         let outputs = TapOutputs()
         let tap = makeTap(fake, outputs)
         tap.reinstall()
         let first = try #require(fake.ports.first)
-        // macOS ne dit rien et ne coupe pas l'écoute : la surveillance la retire quand même.
+        // Surveillance des entrées retirée, écoute laissée active par macOS (l'accessibilité lui suffit) : pendant
+        // qu'elle retient les frappes, la surveillance ne pose pas la question lente à macOS, l'écoute continue.
         fake.permissions = noListen
+        tap.checkTap()
+        #expect(CFMachPortIsValid(first))
+        #expect(tap.diagnosticState.listening == .enabled)
+        #expect(outputs.lost.isEmpty)
+        // macOS la coupe : elle est retirée à la vérification suivante, sans être réarmée.
+        fake.cut(first)
         tap.checkTap()
         #expect(!CFMachPortIsValid(first))
         #expect(tap.diagnosticState.listening == .unavailable)
@@ -136,6 +149,36 @@ struct KeyboardTapPermissionTests {
         #expect(fake.creations == 2)
         #expect(tap.diagnosticState.listening == .unavailable)
         #expect(outputs.lost == [noListen, noListen])
+    }
+
+    @Test func anActiveTapIsCheckedWithoutAskingMacOSTheSlowQuestion() throws {
+        let fake = FakeTapSystem()
+        let outputs = TapOutputs()
+        let tap = makeTap(fake, outputs)
+        tap.reinstall()
+        let port = try #require(fake.ports.first)
+        let reads = fake.fullReads
+        // Une heure de surveillance toutes les 3 s, écoute active : chaque frappe du Mac attend ce fil, aucune
+        // question au démon des autorisations (une dizaine de millisecondes chacune).
+        for _ in 0..<1_200 { tap.checkTap() }
+        #expect(fake.fullReads == reads)
+        #expect(fake.creations == 1)
+        #expect(tap.diagnosticState.listening == .enabled)
+        // Accessibilité retirée : vue sans lecture lente, l'écoute est refaite après une seule lecture complète.
+        fake.permissions = noAccessibility
+        tap.checkTap()
+        #expect(!CFMachPortIsValid(port))
+        #expect(fake.creations == 2)
+        #expect(fake.fullReads == reads + 1)
+        // Coupée par macOS, elle ne retient plus rien : la lecture complète reprend, puis elle est réarmée.
+        fake.permissions = all
+        let second = try #require(fake.ports.last)
+        fake.cut(second)
+        tap.checkTap()
+        #expect(fake.fullReads == reads + 2)
+        #expect(tap.diagnosticState.listening == .enabled)
+        #expect(CFMachPortIsValid(second))
+        #expect(outputs.lost.isEmpty)
     }
 
     @Test func cutsByMacOSAreStillRearmedWhileThePermissionsStay() throws {
@@ -216,11 +259,14 @@ struct KeyboardTapPermissionTests {
         let outputs = TapOutputs()
         let tap = makeTap(fake, outputs)
         tap.reinstall()
+        let first = try #require(fake.ports.first)
         // fn enfoncée : l'appui est vu.
         _ = tap.handle(.flagsChanged, try fnEvent(down: true))
         #expect(outputs.delivered.filter { $0.pressedAt != nil }.count == 1)
-        // Autorisation retirée, puis fn relâchée sans que rien ne soit vu, puis autorisation rendue.
+        // Autorisation retirée (macOS coupe l'écoute), puis fn relâchée sans que rien ne soit vu, puis autorisation
+        // rendue.
         fake.permissions = noListen
+        fake.cut(first)
         tap.checkTap()
         #expect(outputs.lost == [noListen])
         fake.permissions = all
@@ -428,6 +474,9 @@ struct DictationPermissionTests {
         let coordinator = f.model.coordinator
         await coordinator.begin(.toggle)
         #expect(coordinator.phase == .listening(.toggle))
+        // Surveillance armée : la première lecture (hors du fil principal) a vu l'accès accordé, la suivante est faite.
+        let armed = await waitFor { f.access.reads >= 2 }
+        #expect(armed)
         // macOS ne coupe pas le moteur : il ne livre plus que du silence. La relecture de l'accès arrête la dictée.
         f.access.granted = false
         let stopped = await waitFor { coordinator.phase == .failure(DictationCoordinator.microphoneRevokedMessage) }
@@ -457,12 +506,18 @@ struct DictationPermissionTests {
         #expect(coordinator.phase == .listening(.toggle))
         await coordinator.end()
         #expect(f.inserted == ["Phrase de test."])
+        // Une lecture partie juste avant l'arrêt (hors du fil principal) peut encore se terminer : ensuite, plus rien.
+        try await Task.sleep(nanoseconds: 50_000_000)
         let reads = f.access.reads
         try await Task.sleep(nanoseconds: 150_000_000)
         #expect(f.access.reads == reads)
-        // Accès jamais accordé au départ (lecture refusée par macOS) : rien n'est surveillé.
+        // Accès jamais accordé au départ (lecture refusée par macOS) : une seule lecture, hors du fil principal, puis
+        // rien n'est surveillé.
         f.access.granted = false
+        let before = f.access.reads
         await coordinator.begin(.toggle)
+        let checked = await waitFor { f.access.reads == before + 1 }
+        #expect(checked)
         let unwatched = f.access.reads
         try await Task.sleep(nanoseconds: 150_000_000)
         #expect(f.access.reads == unwatched)

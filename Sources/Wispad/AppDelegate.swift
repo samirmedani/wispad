@@ -133,8 +133,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
 
     func applicationDidBecomeActive(_ notification: Notification) {
         // Retour de Réglages Système : une autorisation a pu y être retirée ou rendue. Réglages › Autorisations et la
-        // barre latérale le montrent aussitôt, sans attendre qu'on rouvre l'écran.
-        model?.refreshPermissions()
+        // barre latérale le montrent aussitôt, sans attendre qu'on rouvre l'écran ; lu hors du fil principal.
+        model?.refreshPermissionsInBackground()
         guard pendingReopen else { return }
         pendingReopen = false
         show(section: model?.selectedSection ?? .home)

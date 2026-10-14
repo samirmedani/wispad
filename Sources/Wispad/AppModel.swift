@@ -895,14 +895,23 @@ final class AppModel {
 
     /// Relue aussi à chaque retour dans Wispad : seule une valeur qui change touche à l'interface.
     func refreshPermissions() {
-        let microphone = PermissionCenter.microphoneStatus()
-        if microphoneStatus != microphone { microphoneStatus = microphone }
-        let accessibility = PermissionCenter.accessibilityTrusted(prompt: false)
-        if accessibilityTrusted != accessibility { accessibilityTrusted = accessibility }
-        let inputMonitoring = PermissionCenter.inputMonitoringTrusted()
-        if inputMonitoringTrusted != inputMonitoring { inputMonitoringTrusted = inputMonitoring }
-        let launchAtLogin = LoginItemController.isEnabled
-        if settings.launchAtLogin != launchAtLogin { settings.launchAtLogin = launchAtLogin }
+        apply(PermissionReading.read())
+    }
+
+    /// Retour dans Wispad : les mêmes lectures, faites hors du fil principal (la plupart interrogent macOS, une
+    /// dizaine de millisecondes chacune), puis appliquées. Rien ne fige la fenêtre qui revient au premier plan.
+    func refreshPermissionsInBackground() {
+        Task { [weak self] in
+            let reading = await Task.detached(priority: .userInitiated) { PermissionReading.read() }.value
+            self?.apply(reading)
+        }
+    }
+
+    private func apply(_ reading: PermissionReading) {
+        if microphoneStatus != reading.microphone { microphoneStatus = reading.microphone }
+        if accessibilityTrusted != reading.accessibility { accessibilityTrusted = reading.accessibility }
+        if inputMonitoringTrusted != reading.inputMonitoring { inputMonitoringTrusted = reading.inputMonitoring }
+        if settings.launchAtLogin != reading.launchAtLogin { settings.launchAtLogin = reading.launchAtLogin }
     }
 
     func purgeAudio() {

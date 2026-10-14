@@ -16,11 +16,16 @@ struct KeyboardDiagnosticState: Codable, Equatable, Sendable {
 
 /// Frontières macOS de l'écoute du clavier, remplacées dans les tests : aucune vraie écoute, aucune frappe lue.
 struct KeyboardTapSystem {
-    /// Autorisations dont dépend l'écoute, lues sans rien demander.
+    /// Autorisations dont dépend l'écoute, lues sans rien demander. La surveillance des entrées est une question au
+    /// démon des autorisations de macOS (une dizaine de millisecondes, davantage s'il est occupé) : jamais posée
+    /// pendant que l'écoute retient les frappes, voir `accessibilityTrusted`.
     var permissions: () -> KeyboardPermissions = {
         KeyboardPermissions(listen: PermissionCenter.inputMonitoringTrusted(),
                             accessibility: PermissionCenter.accessibilityTrusted(prompt: false))
     }
+    /// Accessibilité seule, que macOS garde en mémoire dans le processus (lecture d'une microseconde) : la seule
+    /// autorisation relue toutes les 3 s pendant que l'écoute est active, car chaque frappe du Mac attend ce fil.
+    var accessibilityTrusted: () -> Bool = { PermissionCenter.accessibilityTrusted(prompt: false) }
     /// Écoute active en tête de la session : elle voit passer, et peut avaler, chaque frappe de toutes les apps.
     var create: (KeyboardTap) -> CFMachPort? = { tap in
         let mask = (1 << CGEventType.keyDown.rawValue)
@@ -82,6 +87,8 @@ final class KeyboardTap: @unchecked Sendable {
     // Le reste n'est touché que sur le fil de l'écoute.
     private var logic = HotkeyLogic()
     private var watch = KeyboardTapWatch()
+    /// Surveillance des entrées à la dernière lecture complète des autorisations.
+    private var lastListen = true
     private var tap: CFMachPort?
     private var source: CFRunLoopSource?
     private var wake: CFRunLoopTimer?
@@ -159,11 +166,13 @@ final class KeyboardTap: @unchecked Sendable {
         CFRunLoopRun()
     }
 
-    private func install(reportFailure: Bool) {
-        let permissions = system.permissions()
+    /// `known` : autorisations que l'appelant vient de lire en entier, pour ne pas reposer la question à macOS.
+    private func install(reportFailure: Bool, permissions known: KeyboardPermissions? = nil) {
         if let tap {
             if CFMachPortIsValid(tap) {
                 // Installée avec une autorisation retirée depuis : jamais réarmée (voir `KeyboardTapWatch`).
+                // Lecture complète : demande explicite (premier lancement, bouton des Réglages), jamais répétée.
+                let permissions = known ?? readPermissions()
                 guard watch.withdrawn(permissions) else {
                     system.enable(tap)
                     diagnostics.withLock { $0.listening = .enabled }
@@ -175,6 +184,7 @@ final class KeyboardTap: @unchecked Sendable {
             }
             remove()
         }
+        let permissions = known ?? readPermissions()
         guard let created = system.create(self) else {
             diagnostics.withLock { $0.listening = .unavailable }
             if reportFailure { unavailable() }
@@ -200,12 +210,13 @@ final class KeyboardTap: @unchecked Sendable {
     /// Surveillance de 3 s (fil de l'écoute ; tout de suite dans les tests, sans fil) : écoute coupée, invalidée,
     /// privée d'une autorisation, ou absente alors que ses autorisations sont revenues.
     func checkTap() {
-        let permissions = system.permissions()
         guard let tap else {
-            if watch.missingTap(permissions) == .install { install(reportFailure: false) }
+            let permissions = readPermissions()
+            if watch.missingTap(permissions) == .install { install(reportFailure: false, permissions: permissions) }
             return
         }
         if !CFMachPortIsValid(tap) {
+            let permissions = readPermissions()
             guard !watch.withdrawn(permissions) else {
                 withdraw(permissions)
                 return
@@ -214,12 +225,17 @@ final class KeyboardTap: @unchecked Sendable {
             hotkeyLog.notice("Écoute du clavier invalidée : recréée")
             remove()
             resync()
-            install(reportFailure: false)
+            install(reportFailure: false, permissions: permissions)
             return
         }
-        switch watch.installedTap(enabled: system.isEnabled(tap), permissions: permissions) {
+        // Écoute active : chaque frappe du Mac attend ce fil, seule l'accessibilité (lue en mémoire) est relue ; un
+        // retrait de la surveillance des entrées se voit dès que macOS coupe ou invalide l'écoute. Coupée, elle ne
+        // retient plus rien : la lecture complète est sans risque.
+        let enabled = system.isEnabled(tap)
+        let permissions = enabled ? quickPermissions() : readPermissions()
+        switch watch.installedTap(enabled: enabled, permissions: permissions) {
         case .remove:
-            withdraw(permissions)
+            withdraw(enabled ? nil : permissions)
         case .reenable:
             diagnostics.withLock { $0.recoveries += 1 }
             hotkeyLog.notice("Écoute du clavier désactivée : réactivée")
@@ -239,10 +255,12 @@ final class KeyboardTap: @unchecked Sendable {
     /// active en tête de la session, elle pourrait retenir les frappes de tout le Mac. Une écoute neuve est tentée
     /// si les autorisations restantes le permettent ; sinon le geste en cours est oublié, et l'app arrête la dictée
     /// qu'il tenait en disant pourquoi. La surveillance de 3 s la réinstallera quand l'autorisation reviendra.
-    private func withdraw(_ permissions: KeyboardPermissions) {
+    /// `known` : lecture complète déjà faite ; sinon, elle est faite une fois l'écoute retirée.
+    private func withdraw(_ known: KeyboardPermissions? = nil) {
         hotkeyLog.notice("Autorisation retirée : écoute du clavier retirée")
         remove()
-        if watch.missingTap(permissions) == .install { install(reportFailure: false) }
+        let permissions = known ?? readPermissions()
+        if watch.missingTap(permissions) == .install { install(reportFailure: false, permissions: permissions) }
         guard tap == nil else {
             resync()
             return
@@ -251,6 +269,19 @@ final class KeyboardTap: @unchecked Sendable {
         logic.listeningLost()
         diagnostics.withLock { $0.listening = .unavailable }
         lost(permissions)
+    }
+
+    /// Lecture complète des autorisations, quand l'écoute ne retient aucune frappe (absente, coupée, invalidée) ou à
+    /// une installation.
+    private func readPermissions() -> KeyboardPermissions {
+        let permissions = system.permissions()
+        lastListen = permissions.listen
+        return permissions
+    }
+
+    /// Écoute active : l'accessibilité relue, la surveillance des entrées gardée de la dernière lecture complète.
+    private func quickPermissions() -> KeyboardPermissions {
+        KeyboardPermissions(listen: lastListen, accessibility: system.accessibilityTrusted())
     }
 
     /// Des frappes ont pu se perdre pendant la coupure : l'état du raccourci est recalé sur la touche réelle.
@@ -264,7 +295,8 @@ final class KeyboardTap: @unchecked Sendable {
         switch type {
         case .tapDisabledByTimeout, .tapDisabledByUserInput:
             diagnostics.withLock { $0.listening = .disabled }
-            guard !watch.withdrawn(system.permissions()) else {
+            // Coupée, l'écoute ne retient plus aucune frappe : la lecture complète est sans risque.
+            guard !watch.withdrawn(readPermissions()) else {
                 // Coupée parce qu'une autorisation a été retirée : jamais réarmée. Retirée juste après ce rappel,
                 // comme par la surveillance de 3 s, plutôt que pendant le service de sa propre source.
                 perform { $0.checkTap() }

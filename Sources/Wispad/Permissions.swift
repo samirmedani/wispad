@@ -89,6 +89,21 @@ enum PermissionCenter {
     }
 }
 
+/// Autorisations et ouverture à la connexion, lues ensemble sans rien demander (depuis n'importe quel fil).
+struct PermissionReading: Sendable {
+    var microphone: AVAuthorizationStatus
+    var accessibility: Bool
+    var inputMonitoring: Bool
+    var launchAtLogin: Bool
+
+    static func read() -> PermissionReading {
+        PermissionReading(microphone: PermissionCenter.microphoneStatus(),
+                          accessibility: PermissionCenter.accessibilityTrusted(prompt: false),
+                          inputMonitoring: PermissionCenter.inputMonitoringTrusted(),
+                          launchAtLogin: LoginItemController.isEnabled)
+    }
+}
+
 enum LoginItemController {
     static var isEnabled: Bool {
         SMAppService.mainApp.status == .enabled
