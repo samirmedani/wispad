@@ -1199,7 +1199,7 @@ final class DictationCoordinator {
         let ticker = FrameTicker { [weak self] elapsed in
             self?.pushLevel(elapsed: elapsed)
         }
-        ticker.start(on: NSScreen.screens.first { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) } ?? NSScreen.main)
+        ticker.start { NSScreen.screens.first { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) } ?? NSScreen.main }
         meter = ticker
     }
 

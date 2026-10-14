@@ -114,8 +114,8 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
    mode selon son rôle (`OverlayMode.role`, réglage `OverlayPlacement`), sur l'écran que choisit
    `OverlayGeometry.screen` (`OverlayScreen`, lu de `NSScreen`), et décale les messages hors de cette zone. Écrans
    changés (`NSApplication.didChangeScreenParametersNotification`) : `OverlayController.screensDidChange` oublie
-   la zone et replace la bulle affichée sur son écran (retenu par son numéro). Les messages de la bulle partent
-   seuls (`MessageTimer`, décompte
+   la zone et replace la bulle affichée sur son écran (retenu par son numéro) ; `FrameTicker` refait le lien
+   d'affichage du spectre si son écran a disparu. Les messages de la bulle partent seuls (`MessageTimer`, décompte
    `MessageCountdown` de WispadCore) ; `OverlayController` met ce décompte en pause pendant le survol
    (`DictationCoordinator.holdMessages`) et la ✕ appelle `closeMessage`.
    Le callback final de `AppDependencies.insert` signale ⌘V avant la relecture d'accessibilité :

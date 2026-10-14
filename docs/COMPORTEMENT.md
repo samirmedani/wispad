@@ -124,7 +124,7 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   change pas d'écran tant que le sien est branché. Toujours entière sur un écran existant, jamais sur un écran
   disparu ; sans aucun écran, elle attend son retour. La place choisie, gardée en fractions de l'écran, ne change
   pas : la bulle la retrouve quand son écran revient. Le Dock ou la barre des menus seuls ne la déplacent pas, elle
-  reste entière.
+  reste entière. Le spectre continue, à la cadence d'un autre écran, quand le sien est débranché.
 - Deux notes montantes signalent le premier audio réellement reçu, une seule fois ; d'autres sons marquent la fin
   et l'annulation. Tous se coupent dans Réglages.
 - Une app passée en plein écran après la première bulle reçoit une bulle neuve : macOS ne rattache une fenêtre de

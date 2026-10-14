@@ -68,7 +68,7 @@ enum OverlayDemo {
                 coordinator.spectrum = DictationCoordinator.smoothed(coordinator.spectrum, toward: voice.next(), elapsed: elapsed)
             }
         }
-        ticker.start(on: NSScreen.main)
+        ticker.start { NSScreen.main }
         // Cadre de la pilule à chaque image où il change : une transition animée avance pas à pas,
         // un saut n'y laisse qu'une ligne.
         let followMouse = model.overlay.state.onPillFrameChange
