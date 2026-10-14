@@ -201,7 +201,7 @@ enum APIKeys {
                 return accounts.map { account in
                     let value = (file.keys[account] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
                     let key = value?.isEmpty == false ? value : nil
-                    // Fichier abîmé : une clé absente de sa partie intacte est illisible, pas absente.
+                    // Fichier abîmé : un compte hors de sa partie intacte est dit illisible, pas absent.
                     return (account, key, key != nil || file.intact)
                 }
             }.value
