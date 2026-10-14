@@ -151,6 +151,10 @@ struct CorrectionPromptPropertyTests {
             if let bad = kept.first(where: { $0.count > 50 || $0.contains("<") || $0.contains(">") || $0.contains("\n") || $0.contains("\r") || $0.isEmpty }) {
                 return "terme « \(bad) »"
             }
+            // Ni retour à la ligne caché derrière un accent combinant, ni caractère de contrôle.
+            if let bad = kept.first(where: { $0.unicodeScalars.contains { $0.properties.generalCategory == .control || CharacterSet.newlines.contains($0) } }) {
+                return "caractère de contrôle dans « \(bad.debugDescription) »"
+            }
             if Set(kept.map { $0.lowercased() }).count != kept.count { return "doublon dans \(kept)" }
             return nil
         }

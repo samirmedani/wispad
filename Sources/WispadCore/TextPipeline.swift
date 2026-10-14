@@ -32,12 +32,7 @@ public enum KeytermList {
         var seen = Set<String>()
         var result: [String] = []
         for raw in terms {
-            var term = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-            term = term.replacingOccurrences(of: "\n", with: " ")
-            term = term.replacingOccurrences(of: "\r", with: " ")
-            term = term.replacingOccurrences(of: "<", with: "")
-            term = term.replacingOccurrences(of: ">", with: "")
-            term = term.trimmingCharacters(in: .whitespacesAndNewlines)
+            var term = cleaned(raw).trimmingCharacters(in: .whitespacesAndNewlines)
             if term.count > maxCharacters {
                 term = String(term.prefix(maxCharacters)).trimmingCharacters(in: .whitespacesAndNewlines)
             }
@@ -48,6 +43,18 @@ public enum KeytermList {
             if result.count >= limit { break }
         }
         return result
+    }
+
+    /// Point de code par point de code : un retour à la ligne suivi d'un accent combinant forme un seul caractère, que
+    /// la recherche de « \n » laissait passer. Retours à la ligne et caractères de contrôle deviennent des espaces,
+    /// les chevrons disparaissent ; les caractères de format (liant des emojis, marques de sens d'écriture) restent.
+    static func cleaned(_ raw: String) -> String {
+        var scalars = String.UnicodeScalarView()
+        for scalar in raw.unicodeScalars where scalar != "<" && scalar != ">" {
+            let breaks = scalar.properties.generalCategory == .control || CharacterSet.newlines.contains(scalar)
+            scalars.append(breaks ? " " : scalar)
+        }
+        return String(scalars)
     }
 }
 
