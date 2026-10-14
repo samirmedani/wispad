@@ -74,21 +74,19 @@ struct HistoryStoreConcurrencyTests {
         }
     }
 
-    /// Verrou d'écriture tenu un instant par une autre connexion : la dictée attend son tour (`busy_timeout`) puis
-    /// s'écrit, et l'écriture de l'autre connexion est gardée aussi.
+    /// Verrou d'écriture tenu un instant par une autre connexion : la dictée attend son tour (`busy_timeout`), sans
+    /// erreur, puis s'écrit dès le verrou rendu ; l'écriture de l'autre connexion est gardée aussi.
     @Test func aDictationWaitsForABriefLockThenIsSaved() throws {
         try HistoryStoreFixture.withDatabase { path in
             let store = try HistoryStore(path: path)
             let other = try SQLiteFile(path)
             #expect(other.execute("BEGIN IMMEDIATE;") == SQLITE_OK)
             #expect(other.execute("INSERT INTO dictionary (id, term, created_at) VALUES ('autre', 'Autre', 0);") == SQLITE_OK)
-            let released = DispatchSemaphore(value: 0)
-            DispatchQueue.global().asyncAfter(deadline: .now() + .milliseconds(200)) {
-                other.execute("COMMIT;")
-                released.signal()
-            }
-            try store.insert(HistoryStoreFixture.record("attendue"))
-            released.wait()
+            let write = BackgroundWrite { try store.insert(HistoryStoreFixture.record("attendue")) }
+            Thread.sleep(forTimeInterval: 0.2)
+            #expect(!write.isFinished)
+            #expect(other.execute("COMMIT;") == SQLITE_OK)
+            #expect(write.waitForFailure() == nil)
             #expect(try store.dictations().map(\.id) == ["attendue"])
             #expect(try store.dictionary().map(\.term) == ["Autre"])
         }

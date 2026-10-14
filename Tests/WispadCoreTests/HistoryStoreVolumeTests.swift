@@ -8,42 +8,43 @@ import Testing
 struct HistoryStoreVolumeTests {
     private static let count = 5_000
 
-    /// Requêtes de `HistoryStore`, à l'identique : lectures des écrans et écritures de chaque dictée.
-    private static let frequentQueries: [(name: String, sql: String)] = [
-        ("dictations()", "SELECT * FROM dictations ORDER BY created_at DESC;"),
-        ("usageEvents()", """
+    /// Requêtes de `HistoryStore`, à l'identique : lectures des écrans et écritures de chaque dictée. `fullRead` : la
+    /// requête lit toute sa table, dans l'ordre d'un index ; les autres ne lisent que les lignes visées.
+    private static let frequentQueries: [(name: String, fullRead: Bool, sql: String)] = [
+        ("dictations()", true, "SELECT * FROM dictations ORDER BY created_at DESC;"),
+        ("usageEvents()", true, """
             SELECT id, created_at, api, model, audio_seconds, input_tokens, cached_tokens,
                 output_tokens, cost_usd, latency_ms, succeeded,
                 fallback_from_api, fallback_stage, fallback_reason
             FROM api_usage ORDER BY created_at DESC;
             """),
-        ("traces(dictationID:)", "SELECT payload FROM dictation_traces WHERE dictation_id = ? ORDER BY created_at DESC, id DESC;"),
-        ("trace(id:)", "SELECT payload FROM dictation_traces WHERE id = ?;"),
-        ("recentTraces(limit:)", "SELECT payload FROM dictation_traces ORDER BY created_at DESC, id DESC LIMIT ?;"),
-        ("saveTrace (borne)", """
+        ("traces(dictationID:)", false, "SELECT payload FROM dictation_traces WHERE dictation_id = ? ORDER BY created_at DESC, id DESC;"),
+        ("trace(id:)", false, "SELECT payload FROM dictation_traces WHERE id = ?;"),
+        ("recentTraces(limit:)", true, "SELECT payload FROM dictation_traces ORDER BY created_at DESC, id DESC LIMIT ?;"),
+        ("saveTrace (borne)", false, """
             DELETE FROM dictation_traces WHERE dictation_id IS NULL AND id NOT IN (
                 SELECT id FROM dictation_traces WHERE dictation_id IS NULL
                 ORDER BY created_at DESC, id DESC LIMIT 100
             );
             """),
-        ("updateTranscript", "UPDATE dictations SET final_text = ?, raw_text = ?, word_count = ? WHERE id = ?;"),
-        ("updateStatus", "UPDATE dictations SET insertion_status = ? WHERE id = ?;"),
-        ("updateDelivery", """
+        ("updateTranscript", false, "UPDATE dictations SET final_text = ?, raw_text = ?, word_count = ? WHERE id = ?;"),
+        ("updateStatus", false, "UPDATE dictations SET insertion_status = ? WHERE id = ?;"),
+        ("updateDelivery", false, """
             UPDATE dictations SET insertion_status = ?, target_app = COALESCE(?, target_app),
                 target_bundle = COALESCE(?, target_bundle), usage_category = COALESCE(?, usage_category)
             WHERE id = ?;
             """),
-        ("updateAudio", "UPDATE dictations SET audio_path = ?, audio_expires_at = ? WHERE id = ?;"),
-        ("deleteDictation", "DELETE FROM dictations WHERE id = ?;"),
-        ("dictionary()", """
+        ("updateAudio", false, "UPDATE dictations SET audio_path = ?, audio_expires_at = ? WHERE id = ?;"),
+        ("deleteDictation", false, "DELETE FROM dictations WHERE id = ?;"),
+        ("dictionary()", true, """
             SELECT id, term, created_at, origin, judge_provider, judge_model, confirmed_at
             FROM dictionary ORDER BY term COLLATE NOCASE;
             """),
-        ("confirmLearnedTerm", """
+        ("confirmLearnedTerm", false, """
             UPDATE dictionary SET confirmed_at = ?
             WHERE term = ? AND origin IN ('jev', 'model') AND confirmed_at IS NULL;
             """),
-        ("deleteTerm", "DELETE FROM dictionary WHERE id = ?;"),
+        ("deleteTerm", false, "DELETE FROM dictionary WHERE id = ?;"),
     ]
 
     /// Chaque requête courante passe par un index, même sur 5 000 dictées : jamais une table lue en entier ni un tri
@@ -53,7 +54,7 @@ struct HistoryStoreVolumeTests {
             #expect(file.execute("PRAGMA foreign_keys = ON;") == SQLITE_OK)
             for query in Self.frequentQueries {
                 let plan = try #require(file.plan(query.sql))
-                #expect(Self.usesIndexesOnly(plan), "\(query.name) : \(plan)")
+                #expect(Self.usesIndexes(plan, fullRead: query.fullRead), "\(query.name) : \(plan)")
             }
             // Tout supprimer parcourt les dictées (c'est le but) ; leurs traces, elles, se trouvent par l'index.
             let deleteAll = try #require(file.plan("DELETE FROM dictations;"))
@@ -89,12 +90,12 @@ struct HistoryStoreVolumeTests {
         }
     }
 
-    /// Une étape lit par un index (SEARCH, ou SCAN dans l'ordre d'un index) ou matérialise une petite sous-requête ;
-    /// jamais une table parcourue en entier ni un tri en mémoire (USE TEMP B-TREE).
-    private static func usesIndexesOnly(_ plan: [String]) -> Bool {
-        !plan.isEmpty && plan.allSatisfy { step in
-            step.hasPrefix("SEARCH ") || step.hasPrefix("LIST SUBQUERY")
-                || (step.hasPrefix("SCAN ") && step.contains(" INDEX "))
+    /// Jamais de tri en mémoire (« USE TEMP B-TREE »). Une lecture complète parcourt sa table dans l'ordre d'un index ;
+    /// les autres requêtes n'en parcourent aucune (SEARCH seulement). Les autres étapes restent permises, selon la
+    /// version de SQLite : sous-requête matérialisée (LIST SUBQUERY), filtre de Bloom (CREATE BLOOM FILTER).
+    private static func usesIndexes(_ plan: [String], fullRead: Bool) -> Bool {
+        !plan.isEmpty && !plan.contains { step in
+            step.contains("TEMP B-TREE") || (step.hasPrefix("SCAN ") && (!fullRead || !step.contains(" INDEX ")))
         }
     }
 
