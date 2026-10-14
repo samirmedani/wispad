@@ -1,4 +1,5 @@
 import Foundation
+import SQLite3
 import Testing
 @testable import WispadApp
 @testable import WispadCore
@@ -183,6 +184,36 @@ struct HistoryAudioIntegrationTests {
         #expect(fixture.log.active?.isPlaying == true)
         #expect(!FileManager.default.fileExists(atPath: try #require(expired.audioPath)))
         #expect(FileManager.default.fileExists(atPath: try #require(selected.audioPath)))
+    }
+
+    /// Base tenue en écriture par un autre programme (autre Wispad ouvert, outil qui l'inspecte) : le ménage de
+    /// plusieurs audios expirés n'attend qu'une fois que la base se libère (2 s) sur le fil principal, comme une seule
+    /// écriture, au lieu d'une fois par audio. Rien n'est écrit ; le ménage suivant, base libre, termine le travail.
+    @Test func purgingSeveralAudiosWaitsForABusyDatabaseOnlyOnce() throws {
+        let fixture = try HistoryAudioIntegrationFixture()
+        defer { fixture.dispose() }
+        let expired = Date().addingTimeInterval(-60)
+        let records = try (0..<4).map { try fixture.record(id: "expiree-\($0)", expiresAt: expired) }
+        var other: OpaquePointer?
+        #expect(sqlite3_open(fixture.directory.appendingPathComponent(AppIdentity.databaseName).path, &other) == SQLITE_OK)
+        defer { sqlite3_close(other) }
+        #expect(sqlite3_exec(other, "BEGIN IMMEDIATE;", nil, nil, nil) == SQLITE_OK)
+
+        let clock = ContinuousClock()
+        let oneWrite = clock.measure {
+            _ = try? fixture.model.store.updateStatus(id: records[0].id, status: InsertionStatus.inserted.rawValue)
+        }
+        let purge = clock.measure { fixture.model.purgeAudio() }
+        #expect(purge < oneWrite * 2)
+        #expect(try fixture.model.store.dictations().allSatisfy { $0.audioPath != nil })
+
+        #expect(sqlite3_exec(other, "COMMIT;", nil, nil, nil) == SQLITE_OK)
+        fixture.model.purgeAudio()
+        #expect(fixture.model.history.count == records.count)
+        #expect(fixture.model.history.allSatisfy { $0.audioPath == nil && $0.audioExpiresAt == nil })
+        for record in records {
+            #expect(!FileManager.default.fileExists(atPath: try #require(record.audioPath)))
+        }
     }
 
     @Test func startingDictationClosesPlaybackAndPreventsReplayUntilTheMicIsFree() throws {
