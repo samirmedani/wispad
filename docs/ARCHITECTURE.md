@@ -59,10 +59,13 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
   `SimulatedVoice` (WispadCore, fonction pure du temps, testée par `SimulatedVoiceTests`).
 - **État vivant** : `OnboardingController` lit macOS par `OnboardingSystem` (autorisations sans demande, Réglages
   Système, relance, micros, vumètre), sondé toutes les 0,5 s pendant l'affichage (`poll`, arrêté par `suspend` quand
-  la fenêtre se ferme, relancé par `resume`) ; les tests le remplacent (`OnboardingControllerTests`). Écrans dans
-  `OnboardingView.swift`.
-- **Micro** : `MicrophoneMeter` ne sort que des niveaux (rien d'écrit ni d'envoyé) ; le micro choisi
-  (`microphoneUID`, `AudioInputDevices`) sert ensuite à `AudioCapture`, sans toucher au micro du système.
+  la fenêtre se ferme, relancé par `resume`, qui garde une étape déjà réussie) ; à l'étape Fournisseur, le sondage
+  revérifie aussi une clé enregistrée restée sans résultat. Les tests le remplacent (`OnboardingControllerTests`,
+  et `OnboardingDeadEndTests` : chaque étape sans issue possible). Écrans dans `OnboardingView.swift`.
+- **Micro** : `MicrophoneMeter` ne sort que des niveaux (rien d'écrit ni d'envoyé) ; son arrêt passe par sa file
+  sans l'attendre, pour qu'un démarrage bloqué ne fige jamais le fil principal. Le délai sans voix se compte à
+  l'horloge depuis l'ouverture du test (`MicrophoneCheck.status`, `listening`), même sans aucun son reçu. Le micro
+  choisi (`microphoneUID`, `AudioInputDevices`) sert ensuite à `AudioCapture`, sans toucher au micro du système.
 - **Touche** : pendant l'étape, `AppModel.shortcutProbe` reçoit les appuis à la place du coordinateur
   (`HotkeyMonitor` → `AppModel.shortcutReceived`) : aucune dictée ne démarre. Hors de l'étape « Touche », un test
   resté actif est rendu, et l'entrée dans l'essai l'arrête toujours.
@@ -71,7 +74,7 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
   le texte final directement dans le champ (`OnboardingController.receiveDictation`) au lieu de `TextInserter`.
   Geste reçu sans écoute (`TrialCheck.startGrace`) ou dictée bloquée (`TrialCheck.stallLimit`) : échec expliqué.
 - **Relance** : l'étape courante est gardée dans `onboardingResume` ; `OnboardingFlow.resumeStep` la relit de façon
-  tolérante.
+  tolérante. La fin atteinte marque la configuration comme faite (`onboardingCompleted`), même sans « Terminer ».
 
 ## Parcours d'une dictée
 

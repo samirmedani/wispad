@@ -206,18 +206,25 @@ réussie. « Plus tard » est proposé seulement pour le micro, la touche et l'e
 - **Micro** : choix du micro (celui du système par défaut ; le micro choisi sert ensuite aux dictées tant qu'il est
   branché, sinon celui du système ; Réglages › Général › Micro) et vumètre réel. ✓ quand une vraie voix est
   entendue : au moins 0,6 s au-dessus de −48 dBFS et 10 dB au-dessus du bruit de la pièce (un clic, un souffle ou
-  un ventilateur ne suffisent pas). Sans voix après 12 s, l'écran dit quoi vérifier. Seul le niveau est lu :
-  l'audio n'est ni enregistré, ni gardé, ni envoyé. Accès au micro retiré dans Réglages Système pendant l'écran :
-  le test rend le micro ; rendu, le test repart seul.
+  un ventilateur ne suffisent pas). Sans voix après 12 s, l'écran dit quoi vérifier, avec « Réessayer » : aussi
+  quand le micro ne livre aucun son, ou que son ouverture ne rend pas la main (« Le micro n'a pas pu s'ouvrir ») ;
+  quitter l'étape ne l'attend pas. Seul le niveau est lu : l'audio n'est ni enregistré, ni gardé, ni envoyé.
+  Accès au micro retiré dans Réglages Système pendant l'écran : le test rend le micro ; rendu, le test repart seul.
 - **Fournisseur** : xAI ou OpenAI, clé collée puis vérifiée chez le fournisseur avant d'être enregistrée (même
-  vérification que Fournisseurs) ; une clé déjà enregistrée est revérifiée sans être réécrite. ✓ seulement avec une
+  vérification que Fournisseurs) ; une clé déjà enregistrée est revérifiée sans être réécrite, et de nouveau avec
+  « Réessayer » ou en revenant sur l'étape si sa vérification n'a pas abouti (réseau, réponse inattendue), sans la
+  recoller. Clé refusée (HTTP 400 ou 401 ; xAI répond 400 à une clé fausse) : à recopier ; reconnue mais refusée
+  (HTTP 403) : crédit épuisé, plafond de dépenses atteint, clé désactivée ou limitée, à voir dans la console du
+  fournisseur. « Vérification… » ne s'affiche que pendant une vraie vérification. ✓ seulement avec une
   clé acceptée. Lien vers la page de création de clé de chaque fournisseur. Correction facultative (DeepSeek, relais
   OpenAI) avec la même vérification, et les réglages « Comprendre le sujet grâce à la fenêtre active » et
   « Apprendre de mes corrections ».
 - **Touche** : maintien et double appui expliqués, avec les touches du raccourci dessinées et le schéma du clavier
   de MacBook où elles sont en couleur (elles passent au vert dès qu'un appui est reçu) ; pendant cette étape, chaque appui est seulement constaté
   (« Touche détectée », gestes reconnus allumés) et aucune dictée ne démarre. Rien reçu en 10 s : rappel de la
-  surveillance des entrées, et du réglage macOS « Touche fn/🌐 : Ne rien faire » s'il lance autre chose.
+  surveillance des entrées, avec « Ouvrir Réglages Système » et « Relancer Wispad » (reprise à cette étape), et du
+  réglage macOS « Touche fn/🌐 : Ne rien faire » s'il lance autre chose ; clavier sans touche fn, ou raccourci
+  personnalisé que macOS ou une autre app garde : « Plus tard », puis Réglages › Raccourci.
 - **Essai** : vraie dictée avec la touche dans un champ de l'écran, phrase suggérée. Le test de la touche est
   toujours rendu en arrivant ici (un test resté actif hors de l'étape « Touche » est abandonné) : le raccourci
   dicte pour de vrai. Dictée faite dans la fenêtre de Wispad : son texte final s'écrit directement dans le champ
@@ -226,12 +233,14 @@ réussie. « Plus tard » est proposé seulement pour le micro, la touche et l'e
   n'est infinie : geste reçu sans écoute ouverte en 4 s, ou micro qui s'ouvre / dictée qui se termine sans aboutir
   en 45 s, et l'essai passe en échec avec sa cause. En cas d'échec, la cause : micro, clé, réseau, fournisseur,
   rien entendu, collage, annulation, dictée non démarrée ou délai dépassé, avec « Réessayer » et l'étape à revoir.
-- **Fin** : rappel des deux gestes, lien vers Réglages, « Terminer ».
+- **Fin** : rappel des deux gestes, lien vers Réglages, « Terminer ». Une fois la fin atteinte, la configuration est
+  faite : Wispad quitté (ou le Mac redémarré) avant « Terminer », elle ne revient pas au lancement suivant.
 
 Une installation existante (réglages sans ce champ) ne refait pas la configuration après une mise à jour.
 Réglages › Général › « Revoir la configuration » la rejoue sans rien effacer ; on peut la quitter à tout moment.
 Fenêtre fermée pendant la configuration : le test du micro s'arrête, la touche dicte de nouveau normalement et
-l'état n'est plus relu jusqu'à la réouverture.
+l'état n'est plus relu jusqu'à la réouverture. Rouverte, une étape déjà réussie le reste (voix entendue, appuis de la
+touche, essai) ; une dictée arrivée dans le champ d'essai pendant la fermeture compte.
 
 ## Transcription
 
@@ -685,7 +694,9 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
   10 s au plus : un coffre qui ne répond plus est dit injoignable, sans ouvrir le micro, et le raccourci reste libre.
   La relecture continue seule ; l'appui suivant la rejoint au lieu d'en lancer une autre.
 - Chaque clé de voix ou de correction (xAI, OpenAI, DeepSeek) est vérifiée chez le fournisseur avant d'être
-  enregistrée ; les clés de gestion xAI et TypeSafe sont enregistrées sans vérification.
+  enregistrée ; les clés de gestion xAI et TypeSafe sont enregistrées sans vérification. Une réponse 400, 401 ou 403
+  est un refus (« Clé refusée ») ; une autre réponse ou l'absence de réseau laisse la clé non vérifiée. Dans les deux
+  cas, rien n'est enregistré.
 - Fichier de clés : une entrée d'un autre type (ajoutée par une version plus récente, ou abîmée) ne cache aucune autre
   clé et reste telle quelle quand on en enregistre une. Un fichier abîmé (tronqué, invalide) n'est jamais réécrit :
   les clés de sa partie intacte servent, les autres sont dites illisibles.

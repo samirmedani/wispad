@@ -45,6 +45,8 @@ private final class TrialFixture {
     var targetPID: pid_t = ProcessInfo.processInfo.processIdentifier
     var pasted: [String] = []
     var streams: [TrialStream] = []
+    /// Ce que le fournisseur entend (flux et fichier) ; vide : l'utilisateur n'a rien dit.
+    var heard = spoken
     var clock = Date(timeIntervalSince1970: 2_000_000)
     var model: AppModel!
 
@@ -66,11 +68,11 @@ private final class TrialFixture {
         }
         dependencies.makeCapture = { TrialAudio() }
         dependencies.makeSession = { [unowned self] _ in
-            let stream = TrialStream(text: spoken)
+            let stream = TrialStream(text: self.heard)
             self.streams.append(stream)
             return stream
         }
-        dependencies.transcribe = { _, _ in spoken }
+        dependencies.transcribe = { [unowned self] _, _ in self.heard }
         dependencies.clean = { text, _, _, _ in CleanupOutcome(text: text) }
         dependencies.playCue = { _ in }
         dependencies.muteOutput = { _, _ in }
@@ -203,5 +205,95 @@ struct OnboardingTrialTests {
         f.clock.addTimeInterval(TrialCheck.startGrace + 0.5)
         guide.tick()
         #expect(guide.currentStatus == .todo)
+    }
+
+    // MARK: Essai sans impasse
+
+    /// L'utilisateur ne dit rien : l'essai le dit (« Rien entendu ») avec Réessayer, puis une vraie phrase réussit.
+    @Test func trialWhereNothingIsSaidCanBeRetried() async throws {
+        let f = try TrialFixture()
+        defer { f.dispose() }
+        f.heard = ""
+        let guide = f.guide(at: .trial)
+        try await f.dictate()
+        guide.tick()
+        #expect(guide.currentStatus == .failed(.trial(.noSpeech)))
+        #expect(guide.trialText.isEmpty)
+        guide.retryTrial()
+        #expect(guide.currentStatus == .todo)
+        f.heard = spoken
+        try await f.dictate()
+        guide.noteTrialProgress()
+        #expect(guide.currentStatus == .succeeded)
+        #expect(guide.trialText == spoken)
+    }
+
+    /// Très longue dictée : l'écoute n'a pas de limite, l'essai attend sans échec tant qu'on parle (vingt minutes,
+    /// relues toutes les demi-secondes comme le fait l'écran), puis le texte arrive et l'essai réussit.
+    @Test func veryLongTrialDictationIsWaitedFor() async throws {
+        let f = try TrialFixture()
+        defer { f.dispose() }
+        let guide = f.guide(at: .trial)
+        await f.model.coordinator.begin(.toggle)
+        #expect(f.model.coordinator.isListening)
+        guide.dictationStarted()
+        for _ in 0..<2_400 {
+            f.clock.addTimeInterval(0.5)
+            guide.tick()
+        }
+        #expect(guide.currentStatus == .inProgress)
+        if let stream = f.streams.last { try await stream.ready.value() }
+        await f.model.coordinator.end()
+        guide.noteTrialProgress()
+        #expect(guide.currentStatus == .succeeded)
+        #expect(guide.trialText == spoken)
+    }
+
+    /// Changer d'app pendant l'essai : une dictée commencée dans la fenêtre de Wispad y écrit son texte même si une
+    /// autre app passe devant entre-temps ; commencée dans une autre app, elle s'y colle, et l'essai dit pourquoi son
+    /// champ est resté vide, avec Réessayer.
+    @Test func switchingAppsDuringTheTrialNeverStrandsIt() async throws {
+        let f = try TrialFixture()
+        defer { f.dispose() }
+        let guide = f.guide(at: .trial)
+        await f.model.coordinator.begin(.toggle)
+        f.targetPID = 4_242
+        if let stream = f.streams.last { try await stream.ready.value() }
+        await f.model.coordinator.end()
+        guide.noteTrialProgress()
+        #expect(guide.currentStatus == .succeeded)
+        #expect(f.pasted.isEmpty)
+        guide.retryTrial()
+        try await f.dictate()
+        #expect(f.pasted == [spoken])
+        guide.tick()
+        #expect(guide.currentStatus == .inProgress)
+        f.clock.addTimeInterval(TrialCheck.pasteGrace)
+        guide.tick()
+        #expect(guide.currentStatus == .failed(.trial(.paste)))
+        guide.retryTrial()
+        #expect(guide.currentStatus == .todo)
+    }
+
+    /// Régression : fenêtre fermée puis rouverte sur un essai réussi, l'essai repartait de zéro (« Continuer » de
+    /// nouveau grisé) ; il reste réussi. Une dictée arrivée dans le champ pendant la fermeture compte aussi.
+    @Test func reopeningTheWindowKeepsASuccessfulTrial() async throws {
+        let f = try TrialFixture()
+        defer { f.dispose() }
+        let guide = f.guide(at: .trial)
+        try await f.dictate()
+        guide.noteTrialProgress()
+        #expect(guide.currentStatus == .succeeded)
+        guide.suspend()
+        guide.resume()
+        #expect(guide.currentStatus == .succeeded)
+        #expect(guide.canContinue)
+        #expect(f.model.shortcutProbe == nil)
+        guide.retryTrial()
+        guide.suspend()
+        try await f.dictate()
+        guide.resume()
+        #expect(guide.currentStatus == .succeeded)
+        #expect(guide.trialText == spoken + " " + spoken)
     }
 }

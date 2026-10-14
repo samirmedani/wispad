@@ -149,6 +149,32 @@ struct OnboardingFlowTests {
         #expect(MicrophoneCheck.status(permission: .granted, hasInputDevice: true, meterFailed: false, detector: detector) == .succeeded)
     }
 
+    /// Régression : un micro qui ne livre aucun son (aucun paquet), ou dont l'ouverture ne rend jamais la main,
+    /// laissait « Dis quelques mots… » sans fin : le délai ne comptait que l'audio reçu.
+    @Test func microphoneThatDeliversNothingEndsInAnExplainedFailure() {
+        let nothing = VoiceDetector()
+        let almost = MicrophoneCheck.silenceTimeout - 0.5
+        #expect(MicrophoneCheck.status(permission: .granted, hasInputDevice: true, meterFailed: false, detector: nothing,
+                                       listening: almost, meterStarted: true) == .todo)
+        #expect(MicrophoneCheck.status(permission: .granted, hasInputDevice: true, meterFailed: false, detector: nothing,
+                                       listening: MicrophoneCheck.silenceTimeout, meterStarted: true) == .failed(.silence))
+        #expect(MicrophoneCheck.status(permission: .granted, hasInputDevice: true, meterFailed: false, detector: nothing,
+                                       listening: MicrophoneCheck.silenceTimeout, meterStarted: false) == .failed(.microphoneUnavailable))
+        // Un paquet reçu prouve que le micro s'est ouvert ; une voix entendue l'emporte toujours.
+        var heard = VoiceDetector()
+        heard.add(level: -70, seconds: 1)
+        #expect(MicrophoneCheck.status(permission: .granted, hasInputDevice: true, meterFailed: false, detector: heard,
+                                       listening: MicrophoneCheck.silenceTimeout, meterStarted: false) == .failed(.silence))
+        heard.add(level: -25, seconds: 1)
+        #expect(MicrophoneCheck.status(permission: .granted, hasInputDevice: true, meterFailed: false, detector: heard,
+                                       listening: 600, meterStarted: true) == .succeeded)
+        // Sans autorisation ni micro, ces problèmes-là passent d'abord.
+        #expect(MicrophoneCheck.status(permission: .denied, hasInputDevice: true, meterFailed: false, detector: nothing,
+                                       listening: 600) == .failed(.permission(.microphone, .denied)))
+        #expect(MicrophoneCheck.status(permission: .granted, hasInputDevice: false, meterFailed: false, detector: nothing,
+                                       listening: 600) == .failed(.noInputDevice))
+    }
+
     @Test func unpluggedMicrophoneFallsBackToTheSystemOne() {
         #expect(InputDeviceChoice.effectiveUID(saved: "usb-mic", available: ["builtin", "usb-mic"]) == "usb-mic")
         #expect(InputDeviceChoice.effectiveUID(saved: "usb-mic", available: ["builtin"]) == nil)
@@ -162,6 +188,17 @@ struct OnboardingFlowTests {
         #expect(KeyCheck.from(httpStatus: 401) == .rejected(401))
         #expect(KeyCheck.from(httpStatus: 403) == .rejected(403))
         #expect(KeyCheck.from(httpStatus: 500) == .unverified(500))
+    }
+
+    /// Régression : xAI répond 400 à une clé fausse (« Incorrect API key provided ») ; elle était dite « non vérifiée »
+    /// avec « Réessaie dans un instant », et l'utilisateur réessayait sans fin la même clé.
+    @Test func wrongXAIKeyIsRefusedNotLeftUnverified() {
+        #expect(KeyCheck.from(httpStatus: 400) == .rejected(400))
+        #expect(ProviderCheck.status(voice: .from(httpStatus: 400)) == .failed(.key(.rejected(400))))
+        // Une limite ou une panne passagère reste « non vérifiée » : réessayer plus tard a du sens.
+        for status in [429, 500, 502, 503] {
+            #expect(KeyCheck.from(httpStatus: status) == .unverified(status))
+        }
     }
 
     @Test func providerStepNeedsAValidVoiceKey() {

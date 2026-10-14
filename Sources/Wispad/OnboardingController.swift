@@ -75,6 +75,11 @@ final class OnboardingController {
     /// Dernier niveau entendu (dBFS), pour le vumètre.
     private(set) var level = SignalLevel.silence
     private(set) var meterFailed = false
+    /// L'ouverture du micro du test a rendu la main.
+    private(set) var meterOpened = false
+    /// Ouverture du test en cours, à l'horloge : sans voix au bout de `MicrophoneCheck.silenceTimeout`, même sans
+    /// aucun son reçu, l'écran dit quoi vérifier. Nil quand le test ne tourne pas.
+    @ObservationIgnored private var meterStartedAt: Date?
     @ObservationIgnored private var meter: (any MicrophoneMetering)?
     @ObservationIgnored private var meterGeneration = 0
 
@@ -126,7 +131,9 @@ final class OnboardingController {
         case .microphone:
             return MicrophoneCheck.status(permission: permissions[.microphone] ?? .notRequested,
                                           hasInputDevice: !devices.isEmpty || systemInput != nil,
-                                          meterFailed: meterFailed, detector: detector)
+                                          meterFailed: meterFailed, detector: detector,
+                                          listening: meterStartedAt.map { max(0, now.timeIntervalSince($0)) } ?? 0,
+                                          meterStarted: meterOpened)
         case .provider:
             return ProviderCheck.status(voice: voiceKeyCheck)
         case .shortcut:
@@ -164,7 +171,15 @@ final class OnboardingController {
         leave(step)
         step = next
         if !replay, !isPreview {
-            model.settings.onboardingResume = next.rawValue
+            if next == .finish {
+                // Fin atteinte : autorisations et clé sont réussies, les autres étapes faites ou laissées pour plus
+                // tard, et « Retour » n'est plus proposé. La configuration est faite, même si Wispad est quitté
+                // avant « Terminer » : elle ne revient pas depuis Bienvenue au lancement suivant.
+                model.settings.onboardingCompleted = true
+                model.settings.onboardingResume = ""
+            } else {
+                model.settings.onboardingResume = next.rawValue
+            }
             model.saveSettings()
         }
         enter(next)
@@ -182,11 +197,12 @@ final class OnboardingController {
         leave(step)
     }
 
-    /// Fenêtre (ré)affichée : l'étape courante reprend ses contrôles, et la vue son sondage.
+    /// Fenêtre (ré)affichée : l'étape courante reprend ses contrôles, et la vue son sondage. Une étape déjà réussie
+    /// le reste : voix entendue au micro, essai réussi (les appuis du test de la touche sont déjà gardés).
     func resume() {
         isSuspended = false
         activation += 1
-        enter(step)
+        enter(step, resuming: true)
     }
 
     /// Sondage de la vue : `tick` toutes les 0,5 s tant que la fenêtre est affichée. Il s'arrête dès la suspension
@@ -207,6 +223,9 @@ final class OnboardingController {
         followMicrophonePermission(from: microphone)
         noteStall()
         noteTrialProgress()
+        // Clé enregistrée restée sans résultat (vérification écartée, clé relue) : vérifiée, jamais « Vérification… »
+        // affichée sans vérification en cours.
+        if step == .provider { checkStoredKeys(retryingInconclusive: false) }
     }
 
     /// Étape « Micro » : accès retiré dans Réglages Système pendant l'écran, le test rend le micro (il n'entendrait
@@ -222,18 +241,22 @@ final class OnboardingController {
         }
     }
 
-    private func enter(_ step: OnboardingStep) {
+    private func enter(_ step: OnboardingStep, resuming: Bool = false) {
         guard !isPreview else { return }
         now = system.now()
         refreshPermissions()
         switch step {
-        case .microphone: startMicrophoneTest()
+        case .microphone: startMicrophoneTest(keepingVoice: resuming)
         case .provider: checkStoredKeys()
         case .shortcut: startShortcutProbe()
         case .trial:
             // Le test de la touche ne doit jamais survivre à son étape : sinon fn ne dicterait plus.
             stopShortcutProbe()
-            beginTrial()
+            if resuming {
+                // Une dictée arrivée dans le champ pendant que la fenêtre était fermée compte aussi.
+                noteTrialProgress()
+            }
+            if !resuming || trialSummary == nil { beginTrial() }
         case .welcome, .permissions, .finish: break
         }
     }
@@ -326,19 +349,22 @@ final class OnboardingController {
     }
 
     /// Ouvre le micro choisi pour le vumètre. Seul le niveau en sort : rien n'est enregistré ni envoyé.
-    func startMicrophoneTest() {
+    /// `keepingVoice` : fenêtre rouverte, une voix déjà entendue reste acquise ; le vumètre repart quand même.
+    func startMicrophoneTest(keepingVoice: Bool = false) {
         guard !isPreview else { return }
         stopMicrophoneTest()
         devices = system.inputDevices()
         systemInput = system.systemInput()
-        detector = VoiceDetector()
+        if !keepingVoice || !detector.detected { detector = VoiceDetector() }
         level = SignalLevel.silence
         meterFailed = false
+        meterOpened = false
         guard permissions[.microphone] == .granted, !devices.isEmpty || systemInput != nil else { return }
         let meter = system.makeMeter()
         self.meter = meter
         meterGeneration += 1
         let generation = meterGeneration
+        meterStartedAt = system.now()
         let uid = effectiveMicrophoneUID
         Task { [weak self] in
             do {
@@ -347,7 +373,11 @@ final class OnboardingController {
                     self.level = level
                     self.detector.add(level: level, seconds: seconds)
                 }
-                if self?.meterGeneration != generation { meter.stop() }
+                guard let self, self.meterGeneration == generation else {
+                    meter.stop()
+                    return
+                }
+                self.meterOpened = true
             } catch {
                 guard let self, self.meterGeneration == generation else { return }
                 self.meterFailed = true
@@ -359,6 +389,7 @@ final class OnboardingController {
         meterGeneration += 1
         meter?.stop()
         meter = nil
+        meterStartedAt = nil
     }
 
     /// Autre micro : retenu pour les dictées, et le test recommence avec lui.
@@ -381,13 +412,35 @@ final class OnboardingController {
         return model.hasKey(account: account) ? .verifying : .missing
     }
 
-    /// Les clés déjà enregistrées sont revérifiées chez leur fournisseur, sans être réécrites.
-    func checkStoredKeys() {
+    /// Les clés déjà enregistrées sont revérifiées chez leur fournisseur, sans être réécrites : celles qui n'ont pas de
+    /// résultat et, sauf `retryingInconclusive` faux (sondage), celles dont la vérification n'a pas abouti (pas de
+    /// réseau, réponse inattendue). Un résultat net (valide, refusée) est gardé.
+    func checkStoredKeys(retryingInconclusive: Bool = true) {
         guard !isPreview else { return }
         for account in [voiceAccount, CleanupModel.deepSeekAccount, ProviderID.openAI.rawValue]
-        where model.keyChecks[account] == nil && model.hasKey(account: account) {
-            Task { await model.recheckStoredKey(account) }
+        where model.hasKey(account: account) {
+            let due: Bool
+            switch model.keyChecks[account] {
+            case nil: due = true
+            case .offline?, .unverified?: due = retryingInconclusive
+            case .missing?, .verifying?, .valid?, .rejected?, .notSaved?: due = false
+            }
+            if due { Task { await model.recheckStoredKey(account) } }
         }
+    }
+
+    /// « Réessayer » sur un problème de clé : utile quand la clé de voix est déjà enregistrée et qu'aucune autre n'est
+    /// en cours de saisie. Sans lui, il faudrait la recoller pour la vérifier de nouveau (réseau revenu, crédit ajouté).
+    var retriesStoredVoiceKey: Bool {
+        let draft = (model.keyDrafts[voiceAccount] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        return draft.isEmpty && model.hasKey(account: voiceAccount)
+    }
+
+    /// La clé de voix enregistrée est revérifiée chez son fournisseur, quel que soit le dernier résultat.
+    func retryVoiceKey() {
+        guard !isPreview else { return }
+        let account = voiceAccount
+        Task { await model.recheckStoredKey(account) }
     }
 
     // MARK: - Touche

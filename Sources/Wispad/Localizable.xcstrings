@@ -6141,6 +6141,16 @@
         }
       }
     },
+    "Le fournisseur reconnaît la clé mais la refuse : crédit épuisé, plafond de dépenses atteint, clé désactivée ou sans les droits nécessaires. Vérifie dans sa console, puis réessaie." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The provider recognizes the key but refuses it: credit used up, spending limit reached, key disabled or missing permissions. Check its console, then try again."
+          }
+        }
+      }
+    },
     "Corriger le texte" : {
       "localizations" : {
         "en" : {
@@ -7077,6 +7087,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Check that Wispad is turned on in System Settings › Privacy & Security › Input Monitoring. If you just turned it on, relaunch Wispad."
+          }
+        }
+      }
+    },
+    "Clavier sans touche fn ? Continue avec « Plus tard », puis choisis une autre touche dans Réglages › Raccourci." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keyboard without an fn key? Continue with “Later”, then choose another key in Settings › Shortcut."
+          }
+        }
+      }
+    },
+    "Ce raccourci sert peut-être déjà à macOS ou à une autre app : continue avec « Plus tard », puis choisis-en un autre dans Réglages › Raccourci." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This shortcut may already be used by macOS or another app: continue with “Later”, then choose another one in Settings › Shortcut."
           }
         }
       }
