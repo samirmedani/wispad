@@ -378,10 +378,10 @@ final class DictationCoordinator {
         changed()
     }
 
-    /// Relais pris d'emblée : voix chez l'autre fournisseur si le principal est en panne, correction par OpenAI
-    /// si DeepSeek l'est.
+    /// Relais pris d'emblée : voix chez l'autre fournisseur si le principal est en panne (jamais hors connexion, où
+    /// la bascule échouerait de même), correction par OpenAI si DeepSeek l'est.
     private func routed(_ speech: SpeechRequest, model: AppModel) -> (speech: SpeechRequest, relay: String?) {
-        if model.health.isDown(ServiceHealth.voice(speech.provider)), let fallback = model.voiceFallback(for: speech) {
+        if model.health.isDown(ServiceHealth.voice(speech.provider)), let fallback = model.voiceRelay(for: speech) {
             return (fallback, fallback.provider.displayName)
         }
         if speech.cleanupPrimaryDown, model.settings.cleanupEnabled, !(speech.fallbackKey ?? "").isEmpty {
@@ -565,7 +565,7 @@ final class DictationCoordinator {
         }
         let streamed = !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         if current.session != nil, liveBroke || streamed {
-            model.health.record(ServiceHealth.voice(speech.provider), succeeded: !liveBroke)
+            model.recordHealth(ServiceHealth.voice(speech.provider), succeeded: !liveBroke)
             if !liveBroke { announcedRelays.remove(ServiceHealth.voice(speech.provider)) }
         }
         var correctionLedger: CorrectionLedger?

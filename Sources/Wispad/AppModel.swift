@@ -760,17 +760,32 @@ final class AppModel {
         return fallback
     }
 
-    /// Contrôle en arrière-plan des services mis de côté (appelé toutes les minutes).
+    /// Relais d'une dictée dont le fournisseur de voix n'a pas répondu. Jamais hors connexion : il échouerait de
+    /// même, et compterait une bascule ratée ; l'audio reste dans l'historique pour Retranscrire.
+    func voiceRelay(for speech: SpeechRequest) -> SpeechRequest? {
+        dependencies.isOnline() ? voiceFallback(for: speech) : nil
+    }
+
+    /// Réussite ou échec d'un service distant. Hors connexion, un échec ne dit rien du service : il n'est pas compté,
+    /// sinon la dictée suivante, connexion revenue, partirait chez le relais sans raison.
+    func recordHealth(_ service: String, succeeded: Bool) {
+        guard succeeded || dependencies.isOnline() else { return }
+        health.record(service, succeeded: succeeded)
+    }
+
+    /// Contrôle en arrière-plan des services mis de côté (appelé toutes les minutes). Hors connexion, aucun contrôle :
+    /// il échouerait sans rien dire du service, et chaque essai raté s'ajouterait à Consommation.
     func checkDownServices() async {
+        guard dependencies.isOnline() else { return }
         for service in health.downServices() {
             if service == ServiceHealth.deepSeek, let key = dependencies.loadKey(CleanupModel.deepSeekAccount), !key.isEmpty {
-                if let usage = await HealthProbe.deepSeek(key: key) {
+                if let usage = await dependencies.probeDeepSeek(key) {
                     recordUsage(usage)
-                    health.record(service, succeeded: usage.succeeded)
+                    recordHealth(service, succeeded: usage.succeeded)
                 }
             } else if let provider = ProviderID.allCases.first(where: { ServiceHealth.voice($0) == service }),
                       let key = dependencies.loadKey(provider.rawValue), !key.isEmpty,
-                      await HealthProbe.voice(provider, key: key) {
+                      await dependencies.probeVoice(provider, key) {
                 health.record(service, succeeded: true)
             }
         }
@@ -780,7 +795,7 @@ final class AppModel {
     func recordCleanup(_ outcome: CleanupOutcome) {
         for usage in outcome.failedUsages + [outcome.usage].compactMap({ $0 }) {
             recordUsage(usage)
-            if usage.api == .deepSeekCleanup { health.record(ServiceHealth.deepSeek, succeeded: usage.succeeded) }
+            if usage.api == .deepSeekCleanup { recordHealth(ServiceHealth.deepSeek, succeeded: usage.succeeded) }
         }
     }
 

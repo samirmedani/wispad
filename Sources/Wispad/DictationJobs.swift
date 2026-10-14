@@ -128,7 +128,7 @@ final class FileLedger {
         )
         run.adopt(event, model: model)
         model.recordUsage(event)
-        model.health.record(ServiceHealth.voice(speech.provider), succeeded: !attempt.failed)
+        model.recordHealth(ServiceHealth.voice(speech.provider), succeeded: !attempt.failed)
     }
 }
 

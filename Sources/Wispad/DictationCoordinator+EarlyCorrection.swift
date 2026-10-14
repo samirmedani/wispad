@@ -24,15 +24,17 @@ extension DictationCoordinator {
     }
 
     private func scheduleEarlyCorrection(_ heard: String, for current: Capture) {
-        guard let model, model.settings.cleanupEnabled, isCapturing(current), !current.correctionClaimed,
+        // Hors connexion, rien n'est préparé : l'appel échouerait et compterait un échec du service.
+        guard let model, model.correctionReachable, isCapturing(current), !current.correctionClaimed,
               let speech = current.speech,
               current.earlyCorrections.count < Self.earlyCorrectionLimit else { return }
         let text = FranglaisNormalizer.normalize(heard.trimmingCharacters(in: .whitespacesAndNewlines))
         guard !text.isEmpty, text != current.earlyText, model.commandSelection(for: text, context: current.context) == nil else { return }
         Task { @MainActor [weak self, weak current] in
             try? await Task.sleep(nanoseconds: UInt64(Self.earlyCorrectionPause * 1_000_000_000))
+            // La connexion a pu se perdre pendant la pause : même règle qu'au moment de la pause.
             guard let self, let current, self.isCapturing(current), !current.correctionClaimed,
-                  current.earlyCorrections.count < Self.earlyCorrectionLimit else { return }
+                  current.earlyCorrections.count < Self.earlyCorrectionLimit, model.correctionReachable else { return }
             // La parole a repris pendant la pause : on attend la prochaine.
             guard current.latestHeard.trimmingCharacters(in: .whitespacesAndNewlines) == heard.trimmingCharacters(in: .whitespacesAndNewlines),
                   text != current.earlyText else { return }
@@ -58,8 +60,9 @@ extension DictationCoordinator {
     /// (0,3 à 0,5 s sur les dictées courtes, mesuré le 13 octobre 2026). Si le texte final dit la même chose
     /// (`TranscriptEquivalence`), la fin de dictée prend cette correction ; sinon elle est seulement comptée.
     /// Hors de la limite des corrections préparées pendant l'écoute : c'est celle qui sert le plus souvent.
+    /// Hors connexion, rien n'est lancé : la fin de dictée corrigera si la connexion est revenue.
     func prepareCorrectionAtRelease(_ current: Capture) {
-        guard let model, model.settings.cleanupEnabled, !current.cancelled, !current.correctionClaimed,
+        guard let model, model.correctionReachable, !current.cancelled, !current.correctionClaimed,
               let speech = current.speech else { return }
         let text = FranglaisNormalizer.normalize(current.latestHeard.trimmingCharacters(in: .whitespacesAndNewlines))
         guard !text.isEmpty, model.commandSelection(for: text, context: current.context) == nil else { return }
