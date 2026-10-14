@@ -32,6 +32,254 @@ struct SettingsUpgradeTests {
         try JSONDecoder().decode(AppSettings.self, from: Data(json.utf8))
     }
 
+    /// Réglages tels qu'ils s'écrivent dans le bloc, clé par clé.
+    private func encoded(_ settings: AppSettings) throws -> [String: Any] {
+        try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(settings)) as? [String: Any])
+    }
+
+    /// Valeur d'un autre type que celle enregistrée : illisible pour cette version, quel que soit le réglage.
+    private func unreadable(insteadOf value: Any?) -> Any {
+        value is [String: Any] ? "valeur d'un autre type" : ["valeur": "d'un autre type"]
+    }
+
+    /// Chaque réglage à une valeur différente de celle d'une installation existante sans réglage lisible : un réglage
+    /// remis à sa valeur par défaut se voit forcément.
+    private static var customized: AppSettings {
+        var settings = AppSettings()
+        settings.provider = .openAI
+        settings.xaiModel = "grok-voice-transcribe-1.0"
+        settings.openAIModel = "gpt-4o-mini-transcribe"
+        settings.language = .english
+        settings.cleanupEnabled = false
+        settings.verifyWithFile = false
+        settings.tones = ["email": .polished, "notes": .casual]
+        settings.selectionCommands = false
+        settings.structureDictation = false
+        settings.dateFormat = DictationDateFormat(order: .monthDayYear, separator: .dot, fourDigitYear: false, leadingZero: false,
+                                                  monthInWords: true, clock: .twelveHour, timeStyle: .colon)
+        settings.numberFormat = DictationNumberFormat(thousands: .none, symbols: false)
+        settings.useWindowContext = false
+        settings.onboardingCompleted = false
+        settings.onboardingResume = OnboardingStep.permissions.rawValue
+        settings.microphoneUID = "fixture-usb-mic"
+        settings.retention = .keepWithHistory
+        settings.temporaryHours = 72
+        settings.maxStorageMB = 400
+        settings.launchAtLogin = true
+        settings.keyCode = 61
+        settings.modifierFlags = 0x80000
+        settings.pasteLastShortcut = PasteShortcut(keyCode: 11, modifiers: ModifierMask.control | ModifierMask.option, enabled: false)
+        settings.typingWPM = 52.5
+        settings.soundsEnabled = false
+        settings.learnCorrections = false
+        settings.blurRecentDictations = true
+        settings.muteWhileDictating = false
+        settings.muteMode = .always
+        settings.githubStarClicked = true
+        settings.updateRemindedVersion = "0.1.2"
+        settings.homePeriod = .days30
+        settings.usagePeriod = .all
+        settings.lastSection = .dictionary
+        settings.showsOptionalKeys = true
+        settings.dictionaryOriginFilter = .learned
+        settings.dictionaryPeriod = .days30
+        settings.dictionaryKind = .phrase
+        settings.dictionarySort = .originDescending
+        settings.overlayPlacement.avoidsInput = false
+        settings.overlayPlacement.setAnchor(OverlayAnchor(x: 0.25, y: 0.75), for: .info)
+        return settings
+    }
+
+    /// La fixture couvre tous les réglages, y compris ceux ajoutés plus tard.
+    @Test func customizedFixtureChangesEverySetting() throws {
+        let customized = try encoded(Self.customized)
+        let defaults = try encoded(AppSettings.existingInstallDefaults)
+        #expect(Set(customized.keys) == Set(defaults.keys))
+        for (key, value) in customized {
+            #expect(!StoredJSON.same(value, try #require(defaults[key])), "\(key) : donne-lui dans `customized` une autre valeur que son défaut")
+        }
+        #expect(try decode(String(decoding: JSONEncoder().encode(Self.customized), as: UTF8.self)) == Self.customized)
+    }
+
+    /// Chaque réglage, rendu illisible à son tour (autre type) : lui seul prend sa valeur par défaut, tous les autres
+    /// sont lus tels quels. Un réglage ajouté plus tard est couvert d'office : la liste vient de l'encodage.
+    @Test func onlyTheUnreadableSettingTakesItsDefault() throws {
+        let original = try encoded(Self.customized)
+        let defaults = try encoded(AppSettings.existingInstallDefaults)
+        for key in original.keys {
+            var block = original
+            block[key] = unreadable(insteadOf: original[key])
+            let read = try encoded(JSONDecoder().decode(AppSettings.self, from: JSONSerialization.data(withJSONObject: block)))
+            for (other, value) in original {
+                let expected = try #require(other == key ? defaults[other] : Optional(value))
+                #expect(StoredJSON.same(try #require(read[other]), expected), "\(other) quand \(key) est illisible")
+            }
+        }
+    }
+
+    /// Retour en arrière : chaque réglage tient à son tour une valeur que cette version ne sait pas lire (écrite par une
+    /// version plus récente). Lu, réenregistré tel quel puis après un autre changement, le bloc garde cette valeur.
+    @Test func olderVersionNeverReplacesAValueItCannotRead() throws {
+        let fixture = try Defaults()
+        defer { fixture.dispose() }
+        let original = try encoded(Self.customized)
+        for key in original.keys {
+            var block = original
+            let newer = unreadable(insteadOf: original[key])
+            block[key] = newer
+            fixture.defaults.set(try JSONSerialization.data(withJSONObject: block), forKey: AppSettings.defaultsKey)
+
+            var settings = AppSettings.load(from: fixture.defaults)
+            settings.save(to: fixture.defaults)
+            #expect(StoredJSON.same(try #require(try fixture.storedObject()[key]), newer), "\(key) réenregistré tel quel")
+            if key == "blurRecentDictations" { settings.soundsEnabled.toggle() } else { settings.blurRecentDictations.toggle() }
+            settings.save(to: fixture.defaults)
+            #expect(StoredJSON.same(try #require(try fixture.storedObject()[key]), newer), "\(key) après un autre changement")
+            #expect(AppSettings.load(from: fixture.defaults) == settings, "\(key)")
+        }
+    }
+
+    /// Retour en arrière, cas concret : une version plus récente a enregistré un fournisseur, un modèle, une langue, un
+    /// mode, une durée, un format de date (ordre et champ nouveaux), une place de bulle (rôle nouveau) et un ton que
+    /// cette version ne connaît pas. Elle les lit à leur valeur par défaut, on change de section : rien n'est perdu.
+    @Test func choicesOfANewerVersionSurviveAnOlderOne() throws {
+        let fixture = try Defaults()
+        defer { fixture.dispose() }
+        fixture.store(#"""
+        {"provider": "fournisseur-futur", "xaiModel": "grok-voice-transcribe-9.0", "openAIModel": "gpt-live-transcribe",
+         "language": "de", "muteMode": "mode-futur", "temporaryHours": 2000, "lastSection": "history",
+         "dateFormat": {"order": "ordre-futur", "separator": "dot", "champFutur": "court"},
+         "overlayPlacement": {"avoidsInput": false, "anchors": {"roleFutur": {"x": 0.1, "y": 0.2}, "info": {"x": 0.3, "y": 0.4}}},
+         "tones": {"email": "ton-futur", "notes": "casual"}, "reglageFutur": {"actif": true}}
+        """#)
+        let before = try fixture.storedObject()
+
+        var settings = AppSettings.load(from: fixture.defaults)
+        #expect(settings.provider == AppSettings().provider)
+        #expect(settings.xaiModel == ProviderID.xai.defaultLiveModel)
+        #expect(settings.openAIModel == "gpt-live-transcribe")
+        #expect(settings.language == .french)
+        #expect(settings.muteMode == AppSettings().muteMode)
+        #expect(settings.temporaryHours == AppSettings().temporaryHours)
+        #expect(settings.dateFormat.order == .dayMonthYear)
+        #expect(settings.dateFormat.separator == .dot)
+        #expect(settings.overlayPlacement.anchors == ["info": OverlayAnchor(x: 0.3, y: 0.4)])
+        #expect(settings.tones == ["notes": .casual])
+
+        settings.lastSection = .usage
+        settings.save(to: fixture.defaults)
+
+        let after = try fixture.storedObject()
+        for (key, value) in before where key != "lastSection" {
+            #expect(StoredJSON.same(try #require(after[key]), value), "\(key)")
+        }
+        #expect(after["lastSection"] as? String == "usage")
+        #expect(AppSettings.load(from: fixture.defaults) == settings)
+    }
+
+    /// Réglage changé dans cette version : la nouvelle valeur remplace celle qu'elle ne lisait pas ; un réglage composé
+    /// garde ses champs inconnus et ses champs inchangés ; une entrée retirée d'une table disparaît.
+    @Test func changedSettingIsWrittenAndKeepsWhatThisVersionDoesNotKnow() throws {
+        let fixture = try Defaults()
+        defer { fixture.dispose() }
+        fixture.store(#"""
+        {"provider": "fournisseur-futur", "xaiModel": "grok-voice-transcribe-9.0",
+         "dateFormat": {"order": "ordre-futur", "separator": "dot", "champFutur": "court"},
+         "overlayPlacement": {"anchors": {"roleFutur": {"x": 0.1, "y": 0.2}}},
+         "tones": {"email": "ton-futur", "notes": "casual"}}
+        """#)
+        var settings = AppSettings.load(from: fixture.defaults)
+        settings.provider = .openAI
+        settings.xaiModel = "grok-voice-transcribe-1.0"
+        settings.dateFormat.separator = .hyphen
+        settings.overlayPlacement.setAnchor(OverlayAnchor(x: 0.9, y: 0.9), for: .info)
+        settings.tones["notes"] = nil
+        settings.save(to: fixture.defaults)
+
+        let stored = try fixture.storedObject()
+        #expect(stored["provider"] as? String == "openai")
+        #expect(stored["xaiModel"] as? String == "grok-voice-transcribe-1.0")
+        let format = try #require(stored["dateFormat"] as? [String: Any])
+        #expect(format["order"] as? String == "ordre-futur")
+        #expect(format["separator"] as? String == "hyphen")
+        #expect(format["champFutur"] as? String == "court")
+        let anchors = try #require((stored["overlayPlacement"] as? [String: Any])?["anchors"] as? [String: Any])
+        #expect(Set(anchors.keys) == ["roleFutur", "info"])
+        #expect(StoredJSON.same(try #require(stored["tones"]), ["email": "ton-futur"]))
+        #expect(AppSettings.load(from: fixture.defaults) == settings)
+    }
+
+    /// Champs liés (touche et modificateurs d'un raccourci, validés ensemble) : un nouveau raccourci est écrit en entier,
+    /// jamais mêlé aux restes illisibles de l'ancien.
+    @Test func linkedFieldsAreWrittenTogether() throws {
+        let fixture = try Defaults()
+        defer { fixture.dispose() }
+        // Combinaison sans modificateur, invalide : relue comme ⌃⌥V, désactivé.
+        fixture.store(#"{"pasteLastShortcut": {"keyCode": 9, "modifiers": 0, "enabled": false}}"#)
+        var settings = AppSettings.load(from: fixture.defaults)
+        #expect(settings.pasteLastShortcut == PasteShortcut(keyCode: 9, modifiers: PasteShortcut.standard.modifiers, enabled: false))
+        settings.pasteLastShortcut = PasteShortcut(keyCode: 11, modifiers: ModifierMask.control | ModifierMask.option)
+        settings.save(to: fixture.defaults)
+        #expect(AppSettings.load(from: fixture.defaults).pasteLastShortcut == settings.pasteLastShortcut)
+    }
+
+    /// Bloc tronqué, coupé à chaque octet : chaque réglage écrit en entier avant la coupure garde sa valeur, les autres
+    /// prennent celle d'une installation existante. Le bloc est mis de côté et n'est pas réécrit par la lecture.
+    @Test func truncatedBlockKeepsEveryCompleteSetting() throws {
+        let fixture = try Defaults()
+        defer { fixture.dispose() }
+        let original = try encoded(Self.customized)
+        let defaults = try encoded(AppSettings.existingInstallDefaults)
+        var text = "{"
+        var ends: [(key: String, end: Int)] = []
+        for key in original.keys.sorted() {
+            let pair = try JSONSerialization.data(withJSONObject: [key: try #require(original[key])], options: .sortedKeys)
+            text += (text == "{" ? "" : ",") + String(decoding: pair.dropFirst().dropLast(), as: UTF8.self)
+            // Un nombre ou un booléen n'est entier que suivi de son séparateur.
+            let closed = text.hasSuffix("\"") || text.hasSuffix("}") || text.hasSuffix("]")
+            ends.append((key, text.utf8.count + (closed ? 0 : 1)))
+        }
+        text += "}"
+        let bytes = Array(text.utf8)
+        #expect(try decode(text) == Self.customized)
+
+        for cut in 1..<bytes.count {
+            let block = Data(bytes[..<cut])
+            fixture.defaults.removeObject(forKey: AppSettings.unreadableBackupKey)
+            fixture.defaults.set(block, forKey: AppSettings.defaultsKey)
+            let read = try encoded(AppSettings.load(from: fixture.defaults))
+            for (key, end) in ends {
+                let expected = try #require(cut >= end ? original[key] : defaults[key])
+                #expect(StoredJSON.same(try #require(read[key]), expected), "\(key) coupé à \(cut)")
+            }
+            #expect(fixture.defaults.data(forKey: AppSettings.defaultsKey) == block)
+            #expect(fixture.defaults.data(forKey: AppSettings.unreadableBackupKey) == block)
+        }
+    }
+
+    /// Octet abîmé au milieu du bloc : seul le réglage qui le contient prend sa valeur par défaut. La lecture ne
+    /// réécrit pas le bloc ; un enregistrement le met de côté avant d'écrire un bloc lisible.
+    @Test func damagedByteOnlyResetsItsSetting() throws {
+        let fixture = try Defaults()
+        defer { fixture.dispose() }
+        var bytes = Array(try JSONSerialization.data(withJSONObject: encoded(Self.customized), options: .sortedKeys))
+        let uid = Array("fixture-usb-mic".utf8)
+        let start = try #require(bytes.indices.first { bytes[$0...].starts(with: uid) })
+        bytes[start + 3] = 0xFF
+        fixture.defaults.set(Data(bytes), forKey: AppSettings.defaultsKey)
+
+        var settings = AppSettings.load(from: fixture.defaults)
+        var expected = Self.customized
+        expected.microphoneUID = AppSettings().microphoneUID
+        #expect(settings == expected)
+        #expect(fixture.defaults.data(forKey: AppSettings.defaultsKey) == Data(bytes))
+
+        settings.microphoneUID = "fixture-usb-mic"
+        settings.save(to: fixture.defaults)
+        #expect(AppSettings.load(from: fixture.defaults) == Self.customized)
+        #expect(fixture.defaults.data(forKey: AppSettings.unreadableBackupKey) == Data(bytes))
+    }
+
     @Test func dictionaryFiltersPersistAndReadOlderSettings() throws {
         let old = try decode(#"{"provider": "openai"}"#)
         #expect(old.dictionaryOriginFilter == .all)
@@ -361,4 +609,5 @@ struct APIKeysUpgradeTests {
             "fournisseur-retire": "valeur-de-test-retiree",
         ])
     }
+
 }

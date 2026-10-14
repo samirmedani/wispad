@@ -648,8 +648,13 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
 - Un réglage inconnu (retiré, ou venu d'une version plus récente) est ignoré mais gardé à l'enregistrement : revenir à
   une version précédente retrouve ses choix. Seuls les réglages retirés des raccourcis vocaux, de la transcription
   sur le Mac et du serveur de correction compatible OpenAI sont effacés au lancement. Lire les réglages ne les réécrit jamais.
-- Bloc de réglages illisible en entier : une copie est gardée de côté, jamais effacée, et l'app repart sans refaire
-  le premier lancement guidé.
+- Retour en arrière : une valeur qu'une version ne sait pas lire (fournisseur, modèle, mode ou champ ajouté par une
+  version plus récente) prend chez elle la valeur par défaut de ce seul réglage, mais reste enregistrée telle quelle
+  tant qu'on ne change pas ce réglage ; la version plus récente la retrouve ensuite. Un réglage changé est écrit, et
+  un réglage composé (format des dates, place de la bulle, ton selon l'app) garde ses champs inconnus.
+- Bloc de réglages abîmé (tronqué, octet invalide, ou illisible en entier) : une copie est gardée de côté, jamais
+  effacée ; chaque réglage encore entier garde sa valeur, seuls le réglage abîmé et ceux d'après une coupure prennent
+  leur valeur par défaut, et l'app repart sans refaire le premier lancement guidé.
 - Les clés API d'un fournisseur retiré restent dans le fichier de clés.
 - Reprise depuis OpenFlow (une seule fois) : réglages, base, audios, journaux et fichier de clés, sans rien écraser
   de Wispad ; ce qui n'est pas repris reste en place.

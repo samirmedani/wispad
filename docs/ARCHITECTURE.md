@@ -4,7 +4,7 @@
 
 | Module | Rôle | Dépend de |
 | --- | --- | --- |
-| `WispadCore` | Logique pure et testable : requêtes de transcription et de correction, consigne, garde-fou, format des dates et des heures (`DictationDateFormat`, `DateTimeWriter`), des nombres, montants et unités (`DictationNumberFormat`, `NumberWriter`), comparaison flux/fichier, historique SQLite, coûts, retard de la version sur `main` (`BuildFreshness`), adresses d'aide et de retour (`FeedbackLinks`), releases et mises à jour (`ReleaseUpdate`, `UpdateInstallRules`), progression du premier lancement guidé (`OnboardingFlow`), place de la bulle et zone de saisie à éviter (`OverlayPlacement`, `OverlayGeometry`). Aucun texte d'interface. | — |
+| `WispadCore` | Logique pure et testable : requêtes de transcription et de correction, consigne, garde-fou, format des dates et des heures (`DictationDateFormat`, `DateTimeWriter`), des nombres, montants et unités (`DictationNumberFormat`, `NumberWriter`), comparaison flux/fichier, historique SQLite, coûts, retard de la version sur `main` (`BuildFreshness`), adresses d'aide et de retour (`FeedbackLinks`), releases et mises à jour (`ReleaseUpdate`, `UpdateInstallRules`), progression du premier lancement guidé (`OnboardingFlow`), place de la bulle et zone de saisie à éviter (`OverlayPlacement`, `OverlayGeometry`), lecture d'un bloc JSON enregistré même abîmé et réécriture sans perte (`StoredJSON`). Aucun texte d'interface. | — |
 | `Wispad` (app) | Coordinateur de dictée, raccourci, bulle, écrans SwiftUI, clés, traductions. | `WispadCore` |
 
 Le projet Xcode (hors Git) est généré par xcodegen depuis `project.yml`. `Package.swift` décrit les mêmes
@@ -233,13 +233,19 @@ Une mise à jour ne doit jamais faire perdre à l'utilisateur ses fournisseurs, 
   illisible, d'un mauvais type, hors limites ou retirée : valeur par défaut de ce seul réglage, ou la plus proche
   valide (fournisseur retiré → fournisseur par défaut du même rôle, modèle retiré → modèle par défaut du même
   fournisseur). Un élément illisible d'une liste ou d'un dictionnaire est écarté seul (`Lenient`). Clé inconnue : ignorée.
-- **Écriture par fusion** : `save` remplace les clés connues de cette version et garde les autres (réglage retiré ou
-  ajouté par une version plus récente), pour qu'un retour en arrière retrouve ses choix. Lire ne réécrit jamais le bloc.
-  Exception : les clés de `AppSettings.retiredKeys` (raccourcis vocaux, transcription sur le Mac, serveur de
-  correction compatible OpenAI), retirées volontairement, sont effacées au lancement (`removeRetiredKeys`) et jamais
-  recopiées.
-- **Bloc illisible en entier** (pas un objet JSON) : copié une fois sous `wispad.settings.v1.illisible` avant toute
-  écriture, jamais effacé ; l'app repart des valeurs d'une installation existante.
+- **Écriture par fusion** : `save` relit le bloc et compare chaque réglage à ce que cette version en lit
+  (`StoredJSON.merged`, WispadCore). Inchangé, il garde sa valeur enregistrée telle quelle, même illisible ici
+  (fournisseur, modèle, mode ou champ d'une version plus récente) ; changé, la nouvelle valeur est écrite, un objet
+  gardant ses champs inconnus (une entrée retirée d'une table disparaît). Les clés inconnues restent aussi (réglage
+  retiré ou ajouté par une version plus récente) : un retour en arrière ne fait perdre aucun choix. Garde-fou : un
+  réglage que cette version relirait autrement qu'en mémoire (champs liés, comme la touche et les modificateurs d'un
+  raccourci) est écrit tel quel. Lire ne réécrit jamais le bloc. Exception : les clés de `AppSettings.retiredKeys`
+  (raccourcis vocaux, transcription sur le Mac, serveur de correction compatible OpenAI), retirées volontairement,
+  sont effacées au lancement (`removeRetiredKeys`) et jamais recopiées.
+- **Bloc abîmé** (tronqué, octet invalide, pas un objet JSON) : copié une fois sous `wispad.settings.v1.illisible`
+  avant d'être réécrit, jamais effacé. `StoredJSON.object` en garde les paires complètes, chacune vérifiée seule,
+  jusqu'au premier endroit où sa structure se perd ; les réglages manquants prennent les valeurs d'une installation
+  existante.
 - **Base SQLite** (`HistoryStore`) : elle évolue par colonnes ajoutées à l'ouverture (`ALTER TABLE … ADD COLUMN`
   si `PRAGMA table_info` ne la trouve pas), jamais retirées ni renommées. Les lignes existantes gardent NULL dans les
   nouvelles colonnes, lu comme « inconnu » (origine d'un mot du dictionnaire : « Avant le suivi »). Ajoutées en fin
@@ -253,7 +259,9 @@ partie dépliée) sont des réglages comme les autres, écrits au changement par
 s'ils changent). Une recherche ou une saisie en cours reste un `@State` éphémère.
 
 **Ajouter un réglage** : nouvelle clé, jamais le nom d'une clé retirée ; sa lecture avec `value(...)` (ou `table`,
-`number` avec ses bornes) ; un test qui décode un ancien bloc sans la clé.
+`number` avec ses bornes) ; un test qui décode un ancien bloc sans la clé ; une valeur différente de son défaut dans
+la fixture `customized` de `SettingsUpgradeTests`, que les tests de lecture, de bloc tronqué et de retour en arrière
+parcourent réglage par réglage.
 
 **Retirer un réglage, un mode ou un fournisseur** : supprimer la propriété ou le cas de l'énumération suffit, la
 lecture tolérante fait le reste ; ne pas réutiliser son nom. Pour effacer ses anciennes valeurs (données
