@@ -138,12 +138,13 @@ final class DictationCoordinator {
     /// Dictées en cours de transcription, de correction ou de collage.
     var finishingCount: Int { jobs.count }
 
+    /// Début ou fin d'une dictée, dans l'ordre des gestes. Chaque geste en file est joué, même après un Échap pris
+    /// avant lui (fil principal occupé) : l'écoute du clavier l'a déjà compté. Jeté, un début en mains libres la
+    /// laissait attendre une fin, et l'appui suivant ne servait qu'à arrêter une dictée jamais commencée.
     func enqueue(_ work: @escaping @MainActor () async -> Void) {
         let previous = operation
-        let token = generation
         operation = Task { @MainActor in
             await previous?.value
-            guard self.generation == token, !Task.isCancelled else { return }
             await work()
         }
     }

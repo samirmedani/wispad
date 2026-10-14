@@ -17,6 +17,9 @@ Raccourci par défaut : fn seule. Wispad intercepte la touche fn pour que macOS 
 - Moins de 0,3 s d'audio : rien n'est envoyé.
 - Une nouvelle dictée peut commencer pendant que la précédente se termine : les textes se collent dans l'ordre
   où ils ont été dits, séparés par une espace, sans changer de majuscule.
+- Un double appui ou un maintien reconnu démarre toujours sa dictée, même quand Wispad, occupé, traite d'abord un
+  Échap pressé juste après : Échap annule alors seulement ce qui se terminait. Aucun appui suivant ne se perd à
+  arrêter une dictée jamais démarrée.
 - Jamais mort ni bloqué : une touche relâchée sans que l'écoute du clavier le voie (écoute coupée par macOS, champ
   de mot de passe, écran verrouillé, autre session, veille) arrête la dictée en maintien au plus tard à la
   vérification suivante de l'écoute (voir « Réactivité ») ; le raccourci répond ensuite normalement. Échap n'est
