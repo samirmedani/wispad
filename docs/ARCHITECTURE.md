@@ -265,7 +265,8 @@ parcourent réglage par réglage.
 lecture tolérante fait le reste ; ne pas réutiliser son nom. Pour effacer ses anciennes valeurs (données
 personnelles sans usage), ajouter sa clé à `retiredKeys`. Si l'ancienne valeur doit se convertir (un mode retiré
 vers le plus proche), le faire dans `init(from:)`, à partir de la valeur brute. Ne jamais supprimer la clé API d'un
-fournisseur retiré : `APIKeys.LocalFile` garde les comptes qu'il ne connaît pas. Ajouter un test de
+fournisseur retiré : `APIKeys.LocalFile` garde les comptes qu'il ne connaît pas et les entrées d'un autre type, et
+ne réécrit jamais un fichier abîmé (les clés de sa partie intacte servent). Ajouter un test de
 `SettingsUpgradeTests` avec un bloc qui contient encore l'ancienne valeur.
 
 **Réinstaller** : `scripts/install.sh` ne remplace que le paquet `.app` ; préférences, dossier
