@@ -28,6 +28,8 @@ dictée, raccourci, réglages, réseau et mémoire.
 - Wispad démarre même quand un autre programme tient la base de l'historique plus de 2 s (elle s'ouvre sans rien écrire), et le ménage des audios se fait en une seule écriture.
 - Une mise à jour ne peut plus laisser Wispad à moitié remplacé : deux Wispad ouverts n'installent jamais en même temps, et les restes d'une installation interrompue sont effacés.
 - Des réponses inattendues (nombre dit démesuré, compteurs de fournisseur énormes, sélection illisible) ne peuvent plus fermer Wispad.
+- Écran externe branché ou débranché, autre résolution : la bulle, dictée en cours comprise, reprend aussitôt sa place, toujours entière sur un écran existant, et retrouve la place choisie quand son écran revient.
+- Autorisation retirée dans Réglages Système pendant que Wispad tourne : rien ne reste bloqué, une dictée en cours s'arrête en collant ce qui a déjà été dit, et la bulle dit laquelle manque. Rendue, tout repart sans relancer Wispad.
 
 **Plus rapide et plus sobre**
 - Le traitement local du texte (franglais, garde-fou, contexte de la fenêtre, suivi des corrections) est environ 2,4 fois plus rapide.
