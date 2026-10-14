@@ -1,3 +1,4 @@
+import ApplicationServices
 import CoreGraphics
 import Foundation
 import WispadCore
@@ -11,6 +12,38 @@ struct KeyboardDiagnosticState: Codable, Equatable, Sendable {
     var capturing = false
     var pending = false
     var recordingShortcut = false
+}
+
+/// Frontières macOS de l'écoute du clavier, remplacées dans les tests : aucune vraie écoute, aucune frappe lue.
+struct KeyboardTapSystem {
+    /// Autorisations dont dépend l'écoute, lues sans rien demander.
+    var permissions: () -> KeyboardPermissions = {
+        KeyboardPermissions(listen: PermissionCenter.inputMonitoringTrusted(),
+                            accessibility: PermissionCenter.accessibilityTrusted(prompt: false))
+    }
+    /// Écoute active en tête de la session : elle voit passer, et peut avaler, chaque frappe de toutes les apps.
+    var create: (KeyboardTap) -> CFMachPort? = { tap in
+        let mask = (1 << CGEventType.keyDown.rawValue)
+            | (1 << CGEventType.keyUp.rawValue)
+            | (1 << CGEventType.flagsChanged.rawValue)
+        return CGEvent.tapCreate(
+            tap: .cgSessionEventTap,
+            place: .headInsertEventTap,
+            options: .defaultTap,
+            eventsOfInterest: CGEventMask(mask),
+            callback: keyboardTapCallback,
+            userInfo: Unmanaged.passUnretained(tap).toOpaque()
+        )
+    }
+    var isEnabled: (CFMachPort) -> Bool = { CGEvent.tapIsEnabled(tap: $0) }
+    var enable: (CFMachPort) -> Void = { CGEvent.tapEnable(tap: $0, enable: true) }
+    /// État physique d'une touche, lu au clavier lui-même (état matériel) et non dans la file des événements.
+    var keyIsDown: (Int) -> Bool = { keyCode in
+        if keyCode == ChordMatcher.functionKeyCode {
+            return CGEventSource.flagsState(.hidSystemState).contains(.maskSecondaryFn)
+        }
+        return CGEventSource.keyState(.hidSystemState, key: CGKeyCode(keyCode))
+    }
 }
 
 /// Écoute du clavier sur son propre fil, avec sa propre boucle d'événements : le clavier du Mac n'attend jamais
@@ -37,6 +70,9 @@ final class KeyboardTap: @unchecked Sendable {
 
     private let deliver: @Sendable (HotkeyOutput) -> Void
     private let unavailable: @Sendable () -> Void
+    /// L'écoute a été retirée faute d'une autorisation, sans pouvoir être refaite : plus aucune frappe n'est vue.
+    private let lost: @Sendable (KeyboardPermissions) -> Void
+    private let system: KeyboardTapSystem
     private let config = OSAllocatedUnfairLock(initialState: HotkeyConfig())
     private let diagnostics = OSAllocatedUnfairLock(initialState: KeyboardDiagnosticState())
     private let ready = DispatchSemaphore(value: 0)
@@ -45,6 +81,7 @@ final class KeyboardTap: @unchecked Sendable {
 
     // Le reste n'est touché que sur le fil de l'écoute.
     private var logic = HotkeyLogic()
+    private var watch = KeyboardTapWatch()
     private var tap: CFMachPort?
     private var source: CFRunLoopSource?
     private var wake: CFRunLoopTimer?
@@ -54,9 +91,12 @@ final class KeyboardTap: @unchecked Sendable {
     /// Au-delà, l'appui est arrivé en retard : la touche a pu être relâchée entre-temps, l'état ne prouve rien.
     private static let promptPressMilliseconds = 30
 
-    init(deliver: @escaping @Sendable (HotkeyOutput) -> Void, unavailable: @escaping @Sendable () -> Void) {
+    init(deliver: @escaping @Sendable (HotkeyOutput) -> Void, unavailable: @escaping @Sendable () -> Void,
+         lost: @escaping @Sendable (KeyboardPermissions) -> Void = { _ in }, system: KeyboardTapSystem = KeyboardTapSystem()) {
         self.deliver = deliver
         self.unavailable = unavailable
+        self.lost = lost
+        self.system = system
     }
 
     func start() {
@@ -95,8 +135,12 @@ final class KeyboardTap: @unchecked Sendable {
         perform { $0.install(reportFailure: true) }
     }
 
+    /// Sur le fil de l'écoute. Sans fil (écoute jamais démarrée, comme dans les tests), tout de suite.
     private func perform(_ work: @escaping (KeyboardTap) -> Void) {
-        guard let runLoop else { return }
+        guard let runLoop else {
+            work(self)
+            return
+        }
         CFRunLoopPerformBlock(runLoop, CFRunLoopMode.commonModes.rawValue) { [self] in work(self) }
         CFRunLoopWakeUp(runLoop)
     }
@@ -116,25 +160,22 @@ final class KeyboardTap: @unchecked Sendable {
     }
 
     private func install(reportFailure: Bool) {
+        let permissions = system.permissions()
         if let tap {
             if CFMachPortIsValid(tap) {
-                CGEvent.tapEnable(tap: tap, enable: true)
-                diagnostics.withLock { $0.listening = .enabled }
+                // Installée avec une autorisation retirée depuis : jamais réarmée (voir `KeyboardTapWatch`).
+                guard watch.withdrawn(permissions) else {
+                    system.enable(tap)
+                    diagnostics.withLock { $0.listening = .enabled }
+                    return
+                }
+                withdraw(permissions)
+                if self.tap == nil, reportFailure { unavailable() }
                 return
             }
             remove()
         }
-        let mask = (1 << CGEventType.keyDown.rawValue)
-            | (1 << CGEventType.keyUp.rawValue)
-            | (1 << CGEventType.flagsChanged.rawValue)
-        guard let created = CGEvent.tapCreate(
-            tap: .cgSessionEventTap,
-            place: .headInsertEventTap,
-            options: .defaultTap,
-            eventsOfInterest: CGEventMask(mask),
-            callback: keyboardTapCallback,
-            userInfo: Unmanaged.passUnretained(self).toOpaque()
-        ) else {
+        guard let created = system.create(self) else {
             diagnostics.withLock { $0.listening = .unavailable }
             if reportFailure { unavailable() }
             return
@@ -143,8 +184,9 @@ final class KeyboardTap: @unchecked Sendable {
         let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, created, 0)
         self.source = source
         CFRunLoopAddSource(CFRunLoopGetCurrent(), source, .commonModes)
-        CGEvent.tapEnable(tap: created, enable: true)
+        system.enable(created)
         diagnostics.withLock { $0.listening = .enabled }
+        watch.installed(with: permissions)
     }
 
     private func remove() {
@@ -155,28 +197,60 @@ final class KeyboardTap: @unchecked Sendable {
         diagnostics.withLock { $0.listening = .notStarted }
     }
 
-    private func checkTap() {
+    /// Surveillance de 3 s (fil de l'écoute ; tout de suite dans les tests, sans fil) : écoute coupée, invalidée,
+    /// privée d'une autorisation, ou absente alors que ses autorisations sont revenues.
+    func checkTap() {
+        let permissions = system.permissions()
         guard let tap else {
-            if CGPreflightListenEventAccess() { install(reportFailure: false) }
+            if watch.missingTap(permissions) == .install { install(reportFailure: false) }
             return
         }
         if !CFMachPortIsValid(tap) {
+            guard !watch.withdrawn(permissions) else {
+                withdraw(permissions)
+                return
+            }
             diagnostics.withLock { $0.listening = .disabled; $0.recoveries += 1 }
             hotkeyLog.notice("Écoute du clavier invalidée : recréée")
             remove()
             resync()
             install(reportFailure: false)
-        } else if !CGEvent.tapIsEnabled(tap: tap) {
+            return
+        }
+        switch watch.installedTap(enabled: system.isEnabled(tap), permissions: permissions) {
+        case .remove:
+            withdraw(permissions)
+        case .reenable:
             diagnostics.withLock { $0.recoveries += 1 }
             hotkeyLog.notice("Écoute du clavier désactivée : réactivée")
             resync()
-            CGEvent.tapEnable(tap: tap, enable: true)
+            system.enable(tap)
             diagnostics.withLock { $0.listening = .enabled }
-        } else if logic.chordDown, physicalStateReliable {
-            // Écoute active mais qui a pu ne rien recevoir (saisie sécurisée, écran verrouillé, autre session,
-            // veille) : un relâchement qu'elle n'a pas vu ne laisse ni dictée ouverte, ni raccourci bloqué.
-            apply(logic.reconcile(keyPhysicallyDown: keyIsDown(), at: Self.now()))
+        case .keep, .install:
+            if logic.chordDown, physicalStateReliable {
+                // Écoute active mais qui a pu ne rien recevoir (saisie sécurisée, écran verrouillé, autre session,
+                // veille) : un relâchement qu'elle n'a pas vu ne laisse ni dictée ouverte, ni raccourci bloqué.
+                apply(logic.reconcile(keyPhysicallyDown: keyIsDown(), at: Self.now()))
+            }
         }
+    }
+
+    /// Une autorisation dont dépendait l'écoute a été retirée dans Réglages Système. Elle n'est jamais réarmée :
+    /// active en tête de la session, elle pourrait retenir les frappes de tout le Mac. Une écoute neuve est tentée
+    /// si les autorisations restantes le permettent ; sinon le geste en cours est oublié, et l'app arrête la dictée
+    /// qu'il tenait en disant pourquoi. La surveillance de 3 s la réinstallera quand l'autorisation reviendra.
+    private func withdraw(_ permissions: KeyboardPermissions) {
+        hotkeyLog.notice("Autorisation retirée : écoute du clavier retirée")
+        remove()
+        if watch.missingTap(permissions) == .install { install(reportFailure: false) }
+        guard tap == nil else {
+            resync()
+            return
+        }
+        schedule(nil)
+        logic.listeningLost()
+        diagnostics.withLock { $0.listening = .unavailable }
+        lost(permissions)
     }
 
     /// Des frappes ont pu se perdre pendant la coupure : l'état du raccourci est recalé sur la touche réelle.
@@ -184,14 +258,22 @@ final class KeyboardTap: @unchecked Sendable {
         apply(logic.resync(keyPhysicallyDown: physicalStateReliable ? keyIsDown() : logic.chordDown, at: Self.now()))
     }
 
-    fileprivate func handle(_ type: CGEventType, _ event: CGEvent) -> Unmanaged<CGEvent>? {
+    /// Rappel de l'écoute (fil de l'écoute ; appelé directement par les tests, sans fil).
+    func handle(_ type: CGEventType, _ event: CGEvent) -> Unmanaged<CGEvent>? {
         let phase: KeyPhase
         switch type {
         case .tapDisabledByTimeout, .tapDisabledByUserInput:
-            diagnostics.withLock { $0.listening = .disabled; $0.recoveries += 1 }
+            diagnostics.withLock { $0.listening = .disabled }
+            guard !watch.withdrawn(system.permissions()) else {
+                // Coupée parce qu'une autorisation a été retirée : jamais réarmée. Retirée juste après ce rappel,
+                // comme par la surveillance de 3 s, plutôt que pendant le service de sa propre source.
+                perform { $0.checkTap() }
+                return Unmanaged.passUnretained(event)
+            }
+            diagnostics.withLock { $0.recoveries += 1 }
             hotkeyLog.notice("Écoute du clavier coupée par macOS (\(type == .tapDisabledByTimeout ? "lenteur" : "saisie sécurisée", privacy: .public)) : réactivée")
             if let tap {
-                CGEvent.tapEnable(tap: tap, enable: true)
+                system.enable(tap)
                 diagnostics.withLock { $0.listening = .enabled }
             }
             resync()
@@ -243,11 +325,7 @@ final class KeyboardTap: @unchecked Sendable {
 
     /// État physique du raccourci, lu au clavier lui-même (état matériel) et non dans la file des événements.
     private func keyIsDown() -> Bool {
-        let keyCode = config.withLock { $0.keyCode }
-        if keyCode == ChordMatcher.functionKeyCode {
-            return CGEventSource.flagsState(.hidSystemState).contains(.maskSecondaryFn)
-        }
-        return CGEventSource.keyState(.hidSystemState, key: CGKeyCode(keyCode))
+        system.keyIsDown(config.withLock { $0.keyCode })
     }
 
     private static let timebase: mach_timebase_info_data_t = {

@@ -111,6 +111,24 @@ struct TextInsertionTests {
         #expect(f.board.string(forType: .string) == "Copie conservée")
     }
 
+    /// Accessibilité retirée dans Réglages Système : ni ⌘V ni lecture du champ, le presse-papiers reste tel quel, et
+    /// la cause est notée pour que la bulle la dise.
+    @Test func withoutAccessibilityNothingIsSentAndTheCauseIsKept() async {
+        let f = InsertionFixture(); defer { f.dispose() }
+        var system = f.system
+        system.trusted = { false }
+        #expect(await f.insert(system: system) == .failed)
+        #expect(f.keys == 0 && f.reads == 0 && f.sent == 0)
+        #expect(f.context.accessibilityRefused)
+        #expect(f.board.string(forType: .string) == "Copie conservée")
+        // Rendue : le collage repart normalement.
+        let context = DictationContext()
+        context.pid = f.pid
+        #expect(await TextInserter.insert("Bonjour.", context: context, system: f.system) == .inserted)
+        #expect(!context.accessibilityRefused)
+        #expect(f.keys == 1)
+    }
+
     @Test func changingAppsOrEnteringASecureFieldNeverWrites() async {
         let f = InsertionFixture(); defer { f.dispose() }
         f.pid = 42_425

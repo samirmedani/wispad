@@ -4,7 +4,7 @@
 
 | Module | Rôle | Dépend de |
 | --- | --- | --- |
-| `WispadCore` | Logique pure et testable : requêtes de transcription et de correction, consigne, garde-fou, format des dates et des heures (`DictationDateFormat`, `DateTimeWriter`), des nombres, montants et unités (`DictationNumberFormat`, `NumberWriter`), comparaison flux/fichier, historique SQLite, coûts, retard de la version sur `main` (`BuildFreshness`), adresses d'aide et de retour (`FeedbackLinks`), releases et mises à jour (`ReleaseUpdate`, `UpdateInstallRules`), progression du premier lancement guidé (`OnboardingFlow`), place de la bulle et zone de saisie à éviter (`OverlayPlacement`, `OverlayGeometry`), lecture d'un bloc JSON enregistré même abîmé et réécriture sans perte (`StoredJSON`). Aucun texte d'interface. | — |
+| `WispadCore` | Logique pure et testable : requêtes de transcription et de correction, consigne, garde-fou, format des dates et des heures (`DictationDateFormat`, `DateTimeWriter`), des nombres, montants et unités (`DictationNumberFormat`, `NumberWriter`), comparaison flux/fichier, historique SQLite, coûts, retard de la version sur `main` (`BuildFreshness`), adresses d'aide et de retour (`FeedbackLinks`), releases et mises à jour (`ReleaseUpdate`, `UpdateInstallRules`), progression du premier lancement guidé (`OnboardingFlow`), place de la bulle et zone de saisie à éviter (`OverlayPlacement`, `OverlayGeometry`), garde de l'écoute du clavier selon les autorisations (`KeyboardTapWatch`), lecture d'un bloc JSON enregistré même abîmé et réécriture sans perte (`StoredJSON`). Aucun texte d'interface. | — |
 | `Wispad` (app) | Coordinateur de dictée, raccourci, bulle, écrans SwiftUI, clés, traductions. | `WispadCore` |
 
 Le projet Xcode (hors Git) est généré par xcodegen depuis `project.yml`. `Package.swift` décrit les mêmes
@@ -78,7 +78,12 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
 1. `KeyboardTap` (fil dédié) reconnaît maintien, double appui ou Échap (`HotkeyLogic`) ; `HotkeyMonitor`, sur
    le fil principal, transmet ces effets au coordinateur. Quand macOS rend l'écoute qu'il avait coupée,
    `HotkeyLogic.resync` recale le raccourci sur la touche réelle ; la surveillance de 3 s fait de même pour une
-   écoute restée active (`reconcile`). Scénarios de fiabilité : `HotkeyReliabilityTests`.
+   écoute restée active (`reconcile`). Scénarios de fiabilité : `HotkeyReliabilityTests`. L'écoute n'est jamais
+   réarmée sans les autorisations de son installation (`KeyboardTapWatch`, WispadCore) : une autorisation retirée
+   la fait retirer, le geste en cours est oublié (`HotkeyLogic.listeningLost`) et `HotkeyMonitor` arrête la dictée
+   en cours (`DictationCoordinator.keyboardLost`) ; elle revient avec l'autorisation. Ses frontières macOS
+   (création, coupure, autorisations, état des touches) passent par `KeyboardTapSystem`, remplacé dans
+   `KeyboardTapPermissionTests`.
 2. `DictationCoordinator.begin` vérifie la clé du fournisseur de voix, lit l'app au premier plan et lance en
    parallèle la lecture du champ actif (`ContextProbe`) et, si la correction et le réglage le permettent, de la
    conversation visible (`WindowTextProbe`). Puis il affiche la bulle et ouvre le micro (`AudioCapture`).
@@ -86,7 +91,9 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
    neuf (même délai), puis abandon expliqué dans la bulle (règle `MicrophoneStartWatch`, WispadCore). `AudioCapture`
    relance aussi son moteur sur `AVAudioEngineConfigurationChange`, referme seul un démarrage ou un redémarrage
    abandonné (`abandonStart`, dans l'ordre de sa file) et signale une écoute qui ne peut plus repartir
-   (`onInterruption`) : le coordinateur termine alors la dictée avec l'audio déjà reçu.
+   (`onInterruption`) : le coordinateur termine alors la dictée avec l'audio déjà reçu. Il en fait autant si l'accès
+   au micro est retiré pendant l'écoute (`AppDependencies.microphoneAuthorized`, relu chaque seconde pendant
+   l'écoute seulement). Autorisations retirées ou rendues : `PermissionRevocationTests`.
 3. Le flux en direct (`LiveSpeechSession`) reçoit l'audio dès que le champ actif est lu (150 ms au plus), et
    l'audio est aussi enregistré ; à chaque pause, une correction est préparée (`DictationCoordinator+EarlyCorrection`).
 4. `endCapture` ferme le micro ; un `FinishJob` termine la dictée en arrière-plan.

@@ -100,6 +100,63 @@ struct HotkeyReliabilityTests {
         #expect(keyboard.pastes == 1)
     }
 
+    // MARK: - Écoute retirée (autorisation retirée dans Réglages Système), puis rendue
+
+    @Test func aHoldWhoseListeningIsWithdrawnIsForgottenAndTheShortcutWorksOnceItComesBack() {
+        var keyboard = Keyboard()
+        keyboard.press(fnDown(1_000))
+        keyboard.advance(to: 1_200)
+        #expect(keyboard.effects == [.startPushToTalk])
+        // Autorisation retirée, fn encore tenue : plus rien ne sera vu. Le geste est oublié sans effet, l'app arrête
+        // la dictée elle-même et dit pourquoi.
+        keyboard.lose()
+        #expect(keyboard.effects == [.startPushToTalk])
+        #expect(!keyboard.logic.chordDown)
+        #expect(keyboard.logic.engine.isIdle)
+        // Autorisation rendue : maintien comme double appui répondent dès le premier appui.
+        keyboard.held = false
+        keyboard.press(fnDown(30_000))
+        keyboard.advance(to: 30_200)
+        keyboard.release(fnUp(30_500))
+        keyboard.press(fnDown(31_000))
+        keyboard.release(fnUp(31_050))
+        keyboard.press(fnDown(31_150))
+        #expect(keyboard.effects == [.startPushToTalk, .startPushToTalk, .stopPushToTalk, .startToggle])
+    }
+
+    @Test func aWithdrawnListeningNeverStartsAPendingPressOrKeepsHandsFreeLatched() {
+        var keyboard = Keyboard()
+        // Premier appui en attente de son maintien quand l'écoute est retirée : il ne démarrera jamais.
+        keyboard.press(fnDown(1_000))
+        keyboard.lose()
+        keyboard.advance(to: 2_000)
+        #expect(keyboard.effects.isEmpty)
+        // Mains libres retiré : l'appui suivant, écoute rendue, commence un nouveau geste au lieu d'arrêter.
+        keyboard.held = false
+        keyboard.press(fnDown(3_000))
+        keyboard.release(fnUp(3_050))
+        keyboard.press(fnDown(3_150))
+        #expect(keyboard.effects == [.startToggle])
+        keyboard.lose()
+        keyboard.release(fnUp(3_200))
+        keyboard.press(fnDown(5_000))
+        keyboard.advance(to: 5_200)
+        #expect(keyboard.effects == [.startToggle, .startPushToTalk])
+    }
+
+    @Test func escapeAndPasteSwallowedWhenTheListeningIsWithdrawnAreNeverSwallowedAfterward() {
+        var keyboard = Keyboard(HotkeyConfig(capturing: true, paste: .standard))
+        #expect(keyboard.see(key(.down, escape, at: 1_000)).swallow)
+        #expect(keyboard.see(key(.down, PasteShortcut.vKeyCode, ModifierMask.control | option, at: 1_100)).swallow)
+        keyboard.lose()
+        keyboard.config = HotkeyConfig(paste: .standard)
+        #expect(!keyboard.see(key(.up, escape, at: 2_000)).swallow)
+        #expect(!keyboard.see(key(.up, PasteShortcut.vKeyCode, at: 2_050)).swallow)
+        #expect(!keyboard.see(key(.down, escape, at: 2_100)).swallow)
+        #expect(keyboard.cancels == 1)
+        #expect(keyboard.pastes == 1)
+    }
+
     // MARK: - Relâchement jamais vu, écoute restée active (veille, écran verrouillé, autre session, saisie sécurisée)
 
     @Test func aHoldReleasedWhileListeningSawNothingStopsAtTheNextCheck() {
@@ -601,6 +658,12 @@ private struct Keyboard {
     mutating func check(at time: Int) {
         advance(to: time)
         apply(logic.reconcile(keyPhysicallyDown: held, at: now))
+    }
+
+    /// Autorisation retirée : l'écoute est retirée, son réveil annulé et le geste oublié, comme dans KeyboardTap.
+    mutating func lose() {
+        wake = nil
+        logic.listeningLost()
     }
 
     @discardableResult

@@ -74,6 +74,8 @@ struct AppDependencies {
         return (response as? HTTPURLResponse)?.statusCode ?? 0
     }
     var requestMicrophone: () async -> Bool = { await PermissionCenter.requestMicrophone() }
+    /// Accès au micro, relu sans rien demander pendant l'écoute : retiré dans Réglages Système, la dictée s'arrête.
+    var microphoneAuthorized: () -> Bool = { PermissionCenter.microphoneAuthorized() }
     /// App au premier plan tout de suite, champ actif lu en parallèle : le micro n'attend pas une app lente.
     var captureContext: () -> (DictationContext, Task<FieldSnapshot?, Never>) = { ContextProbe.begin() }
     /// App au premier plan, sans lire son champ : cible de « Coller la dernière dictée ».

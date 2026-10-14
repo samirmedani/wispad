@@ -10,6 +10,11 @@ enum PermissionCenter {
         AVCaptureDevice.authorizationStatus(for: .audio)
     }
 
+    /// Accès au micro accordé, lu sans rien demander.
+    static func microphoneAuthorized() -> Bool {
+        microphoneStatus() == .authorized
+    }
+
     static func requestMicrophone() async -> Bool {
         switch microphoneStatus() {
         case .authorized:

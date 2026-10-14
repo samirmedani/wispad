@@ -136,7 +136,12 @@ enum TextInserter {
         defer { if !releasesLater { finishTurn(done) } }
         guard shouldProceed(), !Task.isCancelled else { return .cancelled }
         if context.isSecure || system.secureInput() { return .refusedSecure }
-        guard system.trusted() else { return .failed }
+        guard system.trusted() else {
+            // Accessibilité retirée (ou jamais donnée) : ni ⌘V ni lecture du champ, le texte reste à copier.
+            log.notice("collage retenu : accessibilité non autorisée")
+            context.accessibilityRefused = true
+            return .failed
+        }
         guard let pid = context.pid ?? system.frontmostPID(), system.frontmostPID() == pid else {
             // Ne pas réactiver une ancienne app pendant que l'utilisateur écrit ailleurs.
             log.notice("collage retenu : app cible plus au premier plan")

@@ -58,8 +58,9 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 ## Réactivité
 
 - L'écoute du clavier tourne sur son propre fil : le clavier n'attend jamais l'app. Elle est vérifiée toutes les
-  3 s et rétablie si macOS l'a coupée ; restée active, elle est recalée sur la touche réelle du raccourci, au cas où
-  elle n'aurait rien reçu sans être coupée.
+  3 s et rétablie si macOS l'a coupée, jamais sans les autorisations qu'elle avait à son installation (voir
+  « Autorisations retirées ou rendues ») ; restée active, elle est recalée sur la touche réelle du raccourci, au cas
+  où elle n'aurait rien reçu sans être coupée.
 - L'audio s'initialise sur une file dédiée, la bulle s'affiche tout de suite ; le moteur arrêté est réutilisé.
 - Démarrage du micro surveillé, première dictée après un lancement comprise : si macOS reconfigure l'entrée
   (micro Bluetooth qui change de profil, autre fréquence, micro débranché), le moteur repart aussitôt, dans le même
@@ -197,7 +198,8 @@ réussie. « Plus tard » est proposé seulement pour le micro, la touche et l'e
   branché, sinon celui du système ; Réglages › Général › Micro) et vumètre réel. ✓ quand une vraie voix est
   entendue : au moins 0,6 s au-dessus de −48 dBFS et 10 dB au-dessus du bruit de la pièce (un clic, un souffle ou
   un ventilateur ne suffisent pas). Sans voix après 12 s, l'écran dit quoi vérifier. Seul le niveau est lu :
-  l'audio n'est ni enregistré, ni gardé, ni envoyé.
+  l'audio n'est ni enregistré, ni gardé, ni envoyé. Accès au micro retiré dans Réglages Système pendant l'écran :
+  le test rend le micro ; rendu, le test repart seul.
 - **Fournisseur** : xAI ou OpenAI, clé collée puis vérifiée chez le fournisseur avant d'être enregistrée (même
   vérification que Fournisseurs) ; une clé déjà enregistrée est revérifiée sans être réécrite. ✓ seulement avec une
   clé acceptée. Lien vers la page de création de clé de chaque fournisseur. Correction facultative (DeepSeek, relais
@@ -545,9 +547,10 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
   une explication de 12 points et des boutons de 30 points sur une ligne séparée, avec **Copier** en évidence et
   **Coller** : « Pas de champ où écrire : le texte est prêt » (focus sur une liste, un bouton, un menu, ou le bureau
   et les fenêtres du Finder, avant l'envoi), « Le texte n'est pas arrivé dans le champ » (champ lisible resté
-  identique 1 s après ⌘V), « Collage impossible : le texte est prêt » (accessibilité refusée, app cible fermée ou
-  qui a perdu le premier plan, presse-papiers non modifiable, ⌘V non envoyé), « Champ sécurisé : le texte est
-  prêt ». Le texte est déjà copié, sauf pour un champ sécurisé. 12 s, avec une barre qui se vide (en pause au
+  identique 1 s après ⌘V), « Accessibilité non autorisée : le texte est prêt » (accessibilité retirée dans Réglages
+  Système, ou jamais donnée : ni ⌘V ni lecture du champ), « Collage impossible : le texte est prêt » (app cible
+  fermée ou qui a perdu le premier plan, presse-papiers non modifiable, ⌘V non envoyé), « Champ sécurisé : le texte
+  est prêt ». Le texte est déjà copié, sauf pour un champ sécurisé. 12 s, avec une barre qui se vide (en pause au
   survol) ; ✕ au survol ou Échap la ferment. Elle ne prend jamais le focus : **Copier** remet le texte au
   presse-papiers et confirme « Copié » (1,5 s), **Coller** le colle dans le champ de l'app active (même collage que
   « Coller la dernière dictée »). Le collage garde tous les formats du presse-papiers précédent et refuse les champs
@@ -556,6 +559,33 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
   prouve un échec. Le statut reste « Collage envoyé », sans carte ni copie : la bulle ne revient pas à chaque dictée.
   Si le texte manque, « Coller la dernière dictée » et l'historique le gardent. Aucun apprentissage sur une
   insertion non confirmée ; « Coller la dernière dictée » dit « Collé » dans les deux cas.
+
+## Autorisations retirées ou rendues
+
+Micro, accessibilité et surveillance des entrées peuvent être retirés dans Réglages Système puis rendus, Wispad
+ouvert, au repos comme en pleine dictée : rien ne plante, rien ne reste bloqué, et Wispad n'a pas à être relancé.
+Wispad relit ces autorisations sans jamais les redemander : une demande de macOS ne paraît qu'après un clic.
+
+- **Surveillance des entrées ou accessibilité** : l'écoute du clavier (raccourci, Échap, « Coller la dernière
+  dictée ») voit passer et peut avaler chaque frappe de toutes les apps. Elle n'est jamais réarmée sans les
+  autorisations qu'elle avait à son installation : réarmée sans elles, elle pourrait retenir le clavier de tout le
+  Mac. Dès que macOS la coupe, ou au plus tard à la vérification suivante (3 s), elle est retirée, et remplacée par
+  une écoute neuve si macOS en accepte encore une ; sinon le raccourci se tait. Une dictée en cours s'arrête alors
+  comme si on l'avait terminée (ce qui a été dit est transcrit et collé ; un micro encore en démarrage se referme
+  sans rien enregistrer) et la bulle affiche « Surveillance des entrées retirée : dictée arrêtée » ou
+  « Accessibilité retirée : dictée arrêtée ». Autorisation rendue, l'écoute revient à la vérification suivante : le
+  premier appui compte, et Échap n'est jamais avalé à tort. Une autorisation donnée après l'installation de l'écoute
+  n'est pas exigée ensuite.
+- **Micro** : macOS peut laisser tourner le micro d'une dictée en cours en ne lui livrant plus que du silence.
+  Pendant l'écoute seulement, l'accès est relu chaque seconde (s'il était accordé au départ) : retiré, la dictée
+  s'arrête comme si on l'avait terminée et la bulle affiche « Accès au micro retiré : dictée arrêtée ». Au repos,
+  comme avant, la dictée suivante ne s'ouvre pas et Réglages s'affiche (« Le microphone n'est pas autorisé. »).
+- **Accessibilité au moment du collage** : ni ⌘V ni lecture du champ ; le texte est copié et la bulle affiche
+  « Accessibilité non autorisée : le texte est prêt » (voir « Reprise après erreur »). Même chose pour **Coller** et
+  « Coller la dernière dictée ».
+- **Affichage** : Réglages › Autorisations et l'alerte de la barre latérale sont relus à chaque retour dans Wispad
+  (par exemple depuis Réglages Système), plus seulement à l'ouverture de l'écran. Le premier lancement guidé les
+  relit toutes les 0,5 s.
 - Insertion par ⌘V comme au clavier, dans toutes les apps : ⌘ enfoncée (changement de modificateur), V, puis ⌘
   relâchée, envoyés au système une fois l'app cible vérifiée au premier plan et les modificateurs relâchés. Le
   13 octobre 2026, l'écriture par `AXSelectedText` dans Chrome et un ⌘V adressé au seul processus cible laissaient
