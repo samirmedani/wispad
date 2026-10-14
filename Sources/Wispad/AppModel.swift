@@ -11,7 +11,10 @@ final class AppModel {
         // L'écoute du clavier, sur son propre fil, lit une copie du raccourci.
         didSet { hotkeys?.refreshConfig() }
     }
-    var history: [DictationRecord] = []
+    var history: [DictationRecord] = [] {
+        // Le cache des lignes ne garde ni dictée supprimée ni copie de l'historique relu.
+        didSet { HistoryRowCache.shared.follow(history, previous: oldValue) }
+    }
     var dictionary: [DictionaryEntry] = []
     /// Appels API, du plus récent au plus ancien.
     var usage: [UsageEvent] = []

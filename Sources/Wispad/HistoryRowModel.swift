@@ -32,7 +32,8 @@ struct HistoryRowItem: Equatable {
 
 /// Mémoire des lignes déjà vues : modèle de ligne et troncature mesurée, par dictée.
 /// Une ligne qui revient à l'écran (défilement, retour sur l'écran) n'est ni reformatée ni remesurée.
-/// Rien n'est écrit sur disque ; la mémoire est vidée d'un coup si elle dépasse `limit` dictées.
+/// Rien n'est écrit sur disque ; la mémoire suit l'historique (`follow`) et se vide d'un coup si elle dépasse
+/// `limit` dictées.
 @MainActor
 final class HistoryRowCache {
     static let shared = HistoryRowCache()
@@ -81,8 +82,61 @@ final class HistoryRowCache {
         overflowByID[id] = overflow
     }
 
+    /// Une ligne de cette dictée est gardée (modèle ou mesure).
+    func contains(id: String) -> Bool {
+        items[id] != nil || overflowByID[id] != nil
+    }
+
+    /// Suit l'historique de l'app, relu après chaque dictée : une dictée supprimée quitte la mémoire avec sa mesure,
+    /// une dictée modifiée sera recalculée, et une dictée relue à l'identique prend la place de sa copie. Ni texte
+    /// supprimé ni seconde copie de l'historique ne restent ici pendant les jours où l'app reste ouverte.
+    func follow(_ history: [DictationRecord], previous: [DictationRecord]) {
+        guard !items.isEmpty || !overflowByID.isEmpty else { return }
+        var present = Set<String>(minimumCapacity: history.count)
+        for record in history {
+            present.insert(record.id)
+            if let cached = items[record.id] {
+                if cached.record == record {
+                    items[record.id] = (record, cached.item.sharing(record))
+                } else {
+                    items[record.id] = nil
+                }
+            }
+            if let overflow = overflowByID[record.id] {
+                if overflow.text == record.finalText {
+                    overflowByID[record.id] = overflow.sharing(record.finalText)
+                } else {
+                    overflowByID[record.id] = nil
+                }
+            }
+        }
+        for record in previous where !present.contains(record.id) {
+            items[record.id] = nil
+            overflowByID[record.id] = nil
+        }
+    }
+
     func removeAll() {
         items.removeAll()
         overflowByID.removeAll()
+    }
+}
+
+private extension HistoryRowItem {
+    /// La même ligne, avec les textes de cette version de la dictée (égale à celle qui l'a calculée).
+    func sharing(_ record: DictationRecord) -> HistoryRowItem {
+        var item = self
+        item.id = record.id
+        item.text = record.finalText
+        item.targetBundle = record.targetBundle
+        return item
+    }
+}
+
+private extension HistoryRowCache.Overflow {
+    func sharing(_ text: String) -> HistoryRowCache.Overflow {
+        var overflow = self
+        overflow.text = text
+        return overflow
     }
 }
