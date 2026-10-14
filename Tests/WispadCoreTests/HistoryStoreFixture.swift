@@ -91,6 +91,39 @@ final class SQLiteFile: @unchecked Sendable {
     }
 }
 
+/// Écriture lancée sur un fil à elle, pas sur une file de GCD qu'un test voisin peut occuper toute entière
+/// (`concurrentPerform`) : le test sait si elle est finie et ce qu'elle a levé.
+final class BackgroundWrite: @unchecked Sendable {
+    private let lock = NSLock()
+    private let done = DispatchSemaphore(value: 0)
+    private var finished = false
+    private var failure: String?
+
+    init(_ work: @escaping @Sendable () throws -> Void) {
+        Thread.detachNewThread { [self] in
+            var message: String?
+            do {
+                try work()
+            } catch {
+                message = String(describing: error)
+            }
+            lock.withLock {
+                finished = true
+                failure = message
+            }
+            done.signal()
+        }
+    }
+
+    var isFinished: Bool { lock.withLock { finished } }
+
+    /// Attend la fin de l'écriture : son erreur, nil si elle a réussi.
+    func waitForFailure() -> String? {
+        done.wait()
+        return lock.withLock { failure }
+    }
+}
+
 /// Erreurs relevées par plusieurs fils à la fois.
 final class StoreFailures: @unchecked Sendable {
     private let lock = NSLock()

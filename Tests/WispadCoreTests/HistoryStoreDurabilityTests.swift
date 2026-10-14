@@ -66,31 +66,32 @@ struct HistoryStoreDurabilityTests {
         }
     }
 
-    /// État laissé sur le disque par un Wispad tué en pleine transaction, des pages déjà parties dans le journal WAL
-    /// sans validation : la base se rouvre avec tout ce qui était validé et rien de la transaction perdue, intègre, et
-    /// accepte la dictée suivante.
-    @Test func aDatabaseLeftByAKilledWriterReopensWithCommittedDataOnly() throws {
+    /// Wispad tué pendant qu'il écrivait une transaction dans le journal WAL : toutes ses pages y sont, sauf la dernière
+    /// trame, celle qui la valide. La base se rouvre avec tout ce qui était validé avant et rien de cette transaction,
+    /// intègre, et accepte la dictée suivante.
+    @Test func aTransactionCutBeforeItsCommitFrameLeavesNothingBehind() throws {
         try HistoryStoreFixture.withDatabase { path in
             let left = URL(fileURLWithPath: path).deletingLastPathComponent().appendingPathComponent("laissee.sqlite").path
             let store = try HistoryStore(path: path)
             try store.insert(HistoryStoreFixture.record("validee"))
-            let committedJournal = HistoryStoreFixture.size(path + "-wal")
             let writer = try SQLiteFile(path)
-            // Petit cache : les pages de la transaction partent dans le journal avant toute validation.
-            #expect(writer.execute("PRAGMA cache_size = 2;") == SQLITE_OK)
-            #expect(writer.execute("BEGIN IMMEDIATE;") == SQLITE_OK)
             #expect(writer.execute("""
+                BEGIN IMMEDIATE;
                 INSERT INTO dictations (id, created_at, final_text, raw_text, duration_seconds, word_count, provider,
                     model, insertion_status) VALUES ('perdue', 1791028900, 'Perdue.', 'perdue', 1, 1, 'xai', 'm', 'pending');
                 CREATE TABLE remplissage (x TEXT);
                 WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 400)
                 INSERT INTO remplissage SELECT hex(randomblob(1000)) FROM n;
+                COMMIT;
                 """) == SQLITE_OK)
-            #expect(HistoryStoreFixture.size(path + "-wal") > committedJournal)
-            // Wispad tué à cet instant : la base et son journal restent tels quels sur le disque.
+            // Journal WAL : un en-tête de 32 octets, puis une trame par page écrite (la page et 24 octets d'en-tête) ;
+            // la dernière valide la transaction. Copie de la base et du journal sans cette trame.
+            let frame = try #require(writer.strings("PRAGMA page_size;")?.first.flatMap { Int($0) }) + 24
+            let journal = try Data(contentsOf: URL(fileURLWithPath: path + "-wal"))
+            #expect((journal.count - 32) % frame == 0)
+            #expect(journal.count > 32 + 100 * frame)
             try FileManager.default.copyItem(atPath: path, toPath: left)
-            try FileManager.default.copyItem(atPath: path + "-wal", toPath: left + "-wal")
-            #expect(writer.execute("ROLLBACK;") == SQLITE_OK)
+            try journal.prefix(journal.count - frame).write(to: URL(fileURLWithPath: left + "-wal"))
 
             let reopened = try HistoryStore(path: left)
             #expect(try reopened.dictations().map(\.id) == ["validee"])
