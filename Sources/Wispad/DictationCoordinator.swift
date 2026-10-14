@@ -68,6 +68,8 @@ final class DictationCoordinator {
 
     @ObservationIgnored private var generation = 0
     @ObservationIgnored private var operation: Task<Void, Never>?
+    /// Gestes en file, pas encore joués : l'écoute du clavier les a déjà comptés.
+    @ObservationIgnored private var queuedGestures = 0
     /// Dictée en cours d'écoute.
     @ObservationIgnored private var capture: Capture?
     /// Dictées qui se terminent, dans l'ordre où elles ont été dites.
@@ -143,16 +145,26 @@ final class DictationCoordinator {
     /// laissait attendre une fin, et l'appui suivant ne servait qu'à arrêter une dictée jamais commencée.
     func enqueue(_ work: @escaping @MainActor () async -> Void) {
         let previous = operation
+        queuedGestures += 1
         operation = Task { @MainActor in
             await previous?.value
+            self.queuedGestures -= 1
             await work()
         }
+    }
+
+    /// La dictée s'arrête sans son geste (annulée, échouée, micro perdu) : l'écoute du clavier oublie le geste qui la
+    /// tenait, pour que l'appui suivant en démarre une autre. Un geste encore en file vient après lui (relâchement,
+    /// nouveau départ) : le clavier en est déjà là, et le remettre au repos effacerait la dictée suivante.
+    private func endGesture() {
+        guard queuedGestures == 0 else { return }
+        model?.hotkeys?.sessionEnded()
     }
 
     func begin(_ mode: ListenMode, pressedAt: Int? = nil) async {
         guard capture == nil, let model else { return }
         guard !retrying else {
-            model.hotkeys?.sessionEnded()
+            endGesture()
             return
         }
         let latencyMarks = LatencyMarks(pressed: pressedAt)
@@ -163,7 +175,7 @@ final class DictationCoordinator {
             run.complete(problem.outcome, model: model)
             model.statusBanner = problem.message
             model.open(.providers)
-            model.hotkeys?.sessionEnded()
+            endGesture()
             return
         }
         // La bulle d'abord, puis le micro. L'app au premier plan est lue tout de suite ; son champ actif (lent
@@ -393,7 +405,7 @@ final class DictationCoordinator {
     /// dit est transcrit et collé), le raccourci est libre et la bulle dit pourquoi.
     private func stopListening(_ current: Capture, message: String) {
         guard isCapturing(current) else { return }
-        model?.hotkeys?.sessionEnded()
+        endGesture()
         endCapture()
         model?.statusBanner = message
         shownFailure = ShownFailure(message: message, text: nil, offersHistory: false)
@@ -557,7 +569,7 @@ final class DictationCoordinator {
             accountEarlyCorrections(current, model: model, cancel: true)
             current.run.complete(.cancelled, model: model)
         }
-        model?.hotkeys?.sessionEnded()
+        endGesture()
         refreshPhase()
         cue(.cancel)
         changed()
@@ -592,7 +604,7 @@ final class DictationCoordinator {
         current.session?.cancel()
         delete(stopped?.url ?? current.audioURL)
         if let model { current.run.complete(outcome, model: model) }
-        model?.hotkeys?.sessionEnded()
+        endGesture()
         refreshPhase()
         changed()
     }
