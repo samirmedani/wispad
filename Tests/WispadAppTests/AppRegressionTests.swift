@@ -2176,7 +2176,19 @@ struct AppRegressionTests {
         #expect(f.model.coordinator.failureText == nil)
     }
 
+    /// Délai mural : sur une machine de CI chargée, un essai isolé a dépassé la seconde (1,5 s) sans que le micro
+    /// attende le champ. Le meilleur de trois essais doit rester sous la seconde : une vraie attente du champ les
+    /// ralentirait tous.
     @Test func slowAppContextDoesNotDelayTheMicrophone() async throws {
+        var best = Double.infinity
+        for _ in 0..<3 where best >= 1 {
+            best = min(best, try await microphoneOpeningWithSlowAppContext())
+        }
+        #expect(best < 1)
+    }
+
+    /// Une dictée dont le champ actif tarde à se lire : délai d'ouverture du micro, en secondes.
+    private func microphoneOpeningWithSlowAppContext() async throws -> Double {
         let field = AsyncResult<Void>()
         var nearby: String?
         let f = try Fixture {
@@ -2206,12 +2218,12 @@ struct AppRegressionTests {
         let micOpened = try #require(opened.date).timeIntervalSince(started)
         #expect(f.audio.starts == 1)
         #expect(f.model.coordinator.isListening)
-        #expect(micOpened < 1)
         field.resolve(.success(()))
         await f.model.coordinator.end()
         // Lu après coup, le champ sert quand même à la correction.
         #expect(nearby == "Texte autour du curseur.")
         #expect(f.inserted == 1)
+        return micOpened
     }
 
     @Test func escapeWhileListeningLeavesThePreviousDictationFinishing() async throws {
