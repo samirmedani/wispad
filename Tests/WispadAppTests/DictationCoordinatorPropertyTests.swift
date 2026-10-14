@@ -1727,7 +1727,7 @@ struct DictationCoordinatorPropertyTests {
     @Test func randomSequencesKeepEveryInvariant() async {
         let seed: UInt64 = 0x00D1_C7A7_10A5
         var random = ModelRandom(seed: seed)
-        let sequences = (0..<modelRuns(800)).map { _ in ModelSequence.draw(&random) }
+        let sequences = (0..<800).map { _ in ModelSequence.draw(&random) }
         var start = 0
         while start < sequences.count {
             let batch = start..<min(start + Self.concurrentSequences, sequences.count)
