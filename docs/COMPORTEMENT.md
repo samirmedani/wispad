@@ -115,7 +115,16 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   ligne du curseur ; pour un champ invisible à l'accessibilité (Codex, apps Electron), les 22 % du bas de la fenêtre
   active (90 à 200 points). Les messages qui couvriraient cette zone se placent 12 points au-dessus, sinon en
   dessous ; la bulle de dictée garde sa place. Cette lecture suit l'envoi du texte (au plus 0,3 s, hors du fil
-  principal) : ni la bulle ni le collage ne l'attendent. Elle vaut pour cette app pendant 2 minutes.
+  principal) : ni la bulle ni le collage ne l'attendent. Elle vaut pour cette app pendant 2 minutes, tant que les
+  écrans ne changent pas (branché, débranché, autre résolution). Une zone illisible (coordonnées infinies, NaN ou
+  démesurées) est ignorée.
+- **Écrans qui changent** (écran externe branché ou débranché, autre résolution ou échelle, autre écran principal) :
+  la bulle affichée, dictée en cours comprise, reprend aussitôt sa place sur son écran, retrouvé même quand les
+  coordonnées de tous les écrans changent, ou sur celui du pointeur si le sien a disparu. Pendant une dictée, elle ne
+  change pas d'écran tant que le sien est branché. Toujours entière sur un écran existant, jamais sur un écran
+  disparu ; sans aucun écran, elle attend son retour. La place choisie, gardée en fractions de l'écran, ne change
+  pas : la bulle la retrouve quand son écran revient. Le Dock ou la barre des menus seuls ne la déplacent pas, elle
+  reste entière.
 - Deux notes montantes signalent le premier audio réellement reçu, une seule fois ; d'autres sons marquent la fin
   et l'annulation. Tous se coupent dans Réglages.
 - Une app passée en plein écran après la première bulle reçoit une bulle neuve : macOS ne rattache une fenêtre de

@@ -4,7 +4,7 @@
 
 | Module | Rôle | Dépend de |
 | --- | --- | --- |
-| `WispadCore` | Logique pure et testable : requêtes de transcription et de correction, consigne, garde-fou, format des dates et des heures (`DictationDateFormat`, `DateTimeWriter`), des nombres, montants et unités (`DictationNumberFormat`, `NumberWriter`), comparaison flux/fichier, historique SQLite, coûts, retard de la version sur `main` (`BuildFreshness`), adresses d'aide et de retour (`FeedbackLinks`), releases et mises à jour (`ReleaseUpdate`, `UpdateInstallRules`), progression du premier lancement guidé (`OnboardingFlow`), place de la bulle et zone de saisie à éviter (`OverlayPlacement`, `OverlayGeometry`), lecture d'un bloc JSON enregistré même abîmé et réécriture sans perte (`StoredJSON`). Aucun texte d'interface. | — |
+| `WispadCore` | Logique pure et testable : requêtes de transcription et de correction, consigne, garde-fou, format des dates et des heures (`DictationDateFormat`, `DateTimeWriter`), des nombres, montants et unités (`DictationNumberFormat`, `NumberWriter`), comparaison flux/fichier, historique SQLite, coûts, retard de la version sur `main` (`BuildFreshness`), adresses d'aide et de retour (`FeedbackLinks`), releases et mises à jour (`ReleaseUpdate`, `UpdateInstallRules`), progression du premier lancement guidé (`OnboardingFlow`), place de la bulle, écrans et zone de saisie à éviter (`OverlayPlacement`, `OverlayScreen`, `OverlayGeometry`), lecture d'un bloc JSON enregistré même abîmé et réécriture sans perte (`StoredJSON`). Aucun texte d'interface. | — |
 | `Wispad` (app) | Coordinateur de dictée, raccourci, bulle, écrans SwiftUI, clés, traductions. | `WispadCore` |
 
 Le projet Xcode (hors Git) est généré par xcodegen depuis `project.yml`. `Package.swift` décrit les mêmes
@@ -111,7 +111,11 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
    livré passe par `DictationCoordinator.offerReadyText` : texte copié, bulle avec Copier et Coller
    (`readyMessage`). Après l'envoi, `InsertionSystem.locate` lit la zone de saisie (`ContextProbe.inputLocation`,
    règles `OverlayGeometry.inputZone`) dans `InputZoneTracker` ; `OverlayController.targetFrame` place chaque
-   mode selon son rôle (`OverlayMode.role`, réglage `OverlayPlacement`) et décale les messages hors de cette zone. Les messages de la bulle partent seuls (`MessageTimer`, décompte
+   mode selon son rôle (`OverlayMode.role`, réglage `OverlayPlacement`), sur l'écran que choisit
+   `OverlayGeometry.screen` (`OverlayScreen`, lu de `NSScreen`), et décale les messages hors de cette zone. Écrans
+   changés (`NSApplication.didChangeScreenParametersNotification`) : `OverlayController.screensDidChange` oublie
+   la zone et replace la bulle affichée sur son écran (retenu par son numéro). Les messages de la bulle partent
+   seuls (`MessageTimer`, décompte
    `MessageCountdown` de WispadCore) ; `OverlayController` met ce décompte en pause pendant le survol
    (`DictationCoordinator.holdMessages`) et la ✕ appelle `closeMessage`.
    Le callback final de `AppDependencies.insert` signale ⌘V avant la relecture d'accessibilité :
