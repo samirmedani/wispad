@@ -88,6 +88,8 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 - La recherche filtre dès que l'on cesse de taper (150 ms) ; l'effacer réaffiche tout aussitôt.
 - Le défilement reste fluide avec des milliers de dictées : seules les lignes visibles sont construites, et une
   ligne déjà vue n'est ni reformatée ni remesurée.
+- Supprimer une dictée, ou tout l'historique, l'efface aussi de la mémoire de Wispad, même ouvert depuis des jours ;
+  l'historique relu après chaque dictée n'y est jamais gardé en double.
 - Un texte enregistré (dictée, transcription, autre écoute, app, mot du dictionnaire, refus) se relit en entier, même
   avec un caractère de contrôle : un caractère nul ne le coupe plus.
 

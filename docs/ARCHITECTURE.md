@@ -196,8 +196,11 @@ le défilement fait passer à l'écran ne doit être recalculé :
 - **Survol** : état local de la ligne ; pas de masque par ligne, le fond de carte et le fond de survol ont sa forme.
 - **Recherche** : appliquée 150 ms après la dernière frappe (`appliedQuery`), tout de suite quand on l'efface.
 
-Ces caches sont en mémoire seulement, bornés, et vidés avec l'app. `HistoryRenderingObserver` permet aux tests et à
-la sonde de compter les lignes évaluées.
+Ces caches sont en mémoire seulement, bornés, et vidés avec l'app. Ils suivent `AppModel.history`
+(`HistoryRowCache.follow`, à chaque changement) : une dictée supprimée en sort, une dictée modifiée y sera recalculée,
+et une dictée relue à l'identique (l'historique est relu après chaque dictée) y remplace sa copie. Ni texte supprimé
+ni seconde copie de l'historique n'y restent. `HistoryRenderingObserver` permet aux tests et à la sonde de compter
+les lignes évaluées.
 
 ## Ajouter…
 
