@@ -54,6 +54,12 @@ enum WindowTextProbe {
         )
     }
 
+    /// Conversation visible pendant une dictée, lue hors du fil principal. `reader` : la lecture, remplacée dans les tests.
+    static func context(pid: pid_t,
+                        reader: @escaping @Sendable (pid_t) -> WindowTextSnapshot = { WindowTextProbe.read(pid: $0) }) async -> String? {
+        await Task.detached(priority: .userInitiated) { reader(pid).context }.value
+    }
+
     #if DEBUG
     /// `--window-context-probe <bundle-id>` : nombres seuls, sans fenêtre, sans Dock, sans activer l'app.
     @MainActor static func runDiagnostic(arguments: [String]) -> Never {

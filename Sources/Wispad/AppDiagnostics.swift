@@ -121,6 +121,8 @@ struct DiagnosticReport: Codable, Equatable, Sendable {
 
 enum AppDiagnostics {
     static let traceLimit = 50
+    /// File de l'export : lecture de la base et écriture du rapport.
+    static let exports = BlockingQueue(label: "wispad.diagnostic", qos: .utility)
 
     @MainActor
     static func snapshot(model: AppModel, at date: Date = Date(), bundle: Bundle = .main) -> DiagnosticSnapshot {

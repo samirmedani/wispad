@@ -15,8 +15,9 @@ enum PermissionCenter {
         microphoneStatus() == .authorized
     }
 
-    static func requestMicrophone() async -> Bool {
-        switch microphoneStatus() {
+    /// `status` : la lecture de l'accès, remplacée dans les tests.
+    static func requestMicrophone(status: @escaping @Sendable () -> AVAuthorizationStatus = { PermissionCenter.microphoneStatus() }) async -> Bool {
+        switch status() {
         case .authorized:
             return true
         case .denied, .restricted:

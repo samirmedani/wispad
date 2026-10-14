@@ -51,14 +51,21 @@ func offMain<Input, Output>(_ input: Input, _ work: @escaping @Sendable (Input) 
 enum ContextProbe {
     /// App au premier plan, lue tout de suite (c'est là que le texte sera collé), puis le champ actif et le texte
     /// autour du curseur, lus en parallèle hors du fil principal : le micro s'ouvre sans attendre une app lente.
-    @MainActor static func begin() -> (DictationContext, Task<FieldSnapshot?, Never>) {
+    /// `read` : la lecture du champ, remplacée dans les tests.
+    @MainActor static func begin(read: @escaping @Sendable (pid_t?) -> FieldSnapshot? = { ContextProbe.trustedField(pid: $0) })
+        -> (DictationContext, Task<FieldSnapshot?, Never>) {
         let context = frontmost()
         let pid = context.pid
         let field = Task.detached(priority: .userInitiated) { () -> FieldSnapshot? in
-            guard PermissionCenter.accessibilityTrusted(prompt: false) else { return nil }
-            return readField(pid: pid)
+            read(pid)
         }
         return (context, field)
+    }
+
+    /// Champ actif et texte autour du curseur, si l'accessibilité est autorisée.
+    static func trustedField(pid: pid_t?) -> FieldSnapshot? {
+        guard PermissionCenter.accessibilityTrusted(prompt: false) else { return nil }
+        return readField(pid: pid)
     }
 
     /// Lecture complète et immédiate (autotest d'insertion).
@@ -215,6 +222,16 @@ enum ContextProbe {
         var caret: CGRect?
         var window: CGRect?
         var zone: CGRect? { OverlayGeometry.inputZone(field: field, caret: caret, window: window) }
+    }
+
+    /// Zone de saisie de l'app, lue après l'envoi du texte, `seconds` au plus ; nil sans réponse à temps. `reader` : la
+    /// lecture, remplacée dans les tests.
+    @MainActor static func inputZone(pid: pid_t, within seconds: Double,
+                                     reader: @escaping @Sendable (pid_t) -> InputLocation = { ContextProbe.inputLocation(pid: $0) })
+        async -> CGRect? {
+        let task = Task.detached(priority: .utility) { reader(pid) }
+        guard let location = await DictationCoordinator.value(of: task, within: seconds) else { return nil }
+        return location.zone
     }
 
     static func inputLocation(pid: pid_t) -> InputLocation {

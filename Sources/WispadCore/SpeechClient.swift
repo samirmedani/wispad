@@ -543,17 +543,20 @@ public enum BatchTranscriber {
         try await transcribe(fileURL: fileURL, request: request, transport: TextCleaner.httpTransport)
     }
 
-    /// Transport substituable dans les tests, comme pour la correction : aucune clé ni requête réelle.
-    static func transcribe(fileURL: URL, request: SpeechRequest, transport: TextCleaner.HTTPTransport) async throws -> String {
+    /// Transport substituable dans les tests, comme pour la correction : aucune clé ni requête réelle. `readFile` : la
+    /// lecture de l'audio, remplacée dans les tests.
+    static func transcribe(fileURL: URL, request: SpeechRequest, transport: TextCleaner.HTTPTransport,
+                           readFile: @escaping @Sendable (URL) throws -> Data = { try Data(contentsOf: $0) }) async throws -> String {
         switch request.provider {
         case .xai:
-            return try await xai(fileURL: fileURL, request: request, transport: transport)
+            return try await xai(fileURL: fileURL, request: request, transport: transport, readFile: readFile)
         case .openAI:
-            return try await openAI(fileURL: fileURL, request: request, transport: transport)
+            return try await openAI(fileURL: fileURL, request: request, transport: transport, readFile: readFile)
         }
     }
 
-    private static func xai(fileURL: URL, request: SpeechRequest, transport: TextCleaner.HTTPTransport) async throws -> String {
+    private static func xai(fileURL: URL, request: SpeechRequest, transport: TextCleaner.HTTPTransport,
+                            readFile: @escaping @Sendable (URL) throws -> Data) async throws -> String {
         var fields: [(String, String)] = [
             ("model", request.fileModel),
             ("filler_words", "false")
@@ -565,7 +568,7 @@ public enum BatchTranscriber {
         for term in request.keyterms {
             fields.append(("keyterm", term))
         }
-        let (body, contentType) = try multipart(fields: fields, fileURL: fileURL)
+        let (body, contentType) = try multipart(fields: fields, fileURL: fileURL, readFile: readFile)
         var http = URLRequest(url: URL(string: "https://api.x.ai/v1/stt")!)
         http.httpMethod = "POST"
         http.setValue("Bearer \(request.apiKey)", forHTTPHeaderField: "Authorization")
@@ -575,7 +578,8 @@ public enum BatchTranscriber {
         return try await textResponse(http, transport: transport)
     }
 
-    private static func openAI(fileURL: URL, request: SpeechRequest, transport: TextCleaner.HTTPTransport) async throws -> String {
+    private static func openAI(fileURL: URL, request: SpeechRequest, transport: TextCleaner.HTTPTransport,
+                               readFile: @escaping @Sendable (URL) throws -> Data) async throws -> String {
         var fields = [
             ("model", request.fileModel),
             ("prompt", String(request.prompt.prefix(800)))
@@ -583,7 +587,7 @@ public enum BatchTranscriber {
         if let language = request.language.openAICodes.first, request.language != .auto {
             fields.append(("language", language))
         }
-        let (body, contentType) = try multipart(fields: fields, fileURL: fileURL)
+        let (body, contentType) = try multipart(fields: fields, fileURL: fileURL, readFile: readFile)
         var http = URLRequest(url: URL(string: "https://api.openai.com/v1/audio/transcriptions")!)
         http.httpMethod = "POST"
         http.setValue("Bearer \(request.apiKey)", forHTTPHeaderField: "Authorization")
@@ -604,7 +608,8 @@ public enum BatchTranscriber {
         return text
     }
 
-    private static func multipart(fields: [(String, String)], fileURL: URL) throws -> (Data, String) {
+    private static func multipart(fields: [(String, String)], fileURL: URL,
+                                  readFile: (URL) throws -> Data) throws -> (Data, String) {
         let boundary = "WispadBoundary\(UUID().uuidString.replacingOccurrences(of: "-", with: ""))"
         var body = Data()
         for (name, value) in fields {
@@ -612,7 +617,7 @@ public enum BatchTranscriber {
             body.appendUTF8("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n")
             body.appendUTF8("\(value)\r\n")
         }
-        let file = try Data(contentsOf: fileURL)
+        let file = try readFile(fileURL)
         body.appendUTF8("--\(boundary)\r\n")
         body.appendUTF8("Content-Disposition: form-data; name=\"file\"; filename=\"dictation.wav\"\r\n")
         body.appendUTF8("Content-Type: audio/wav\r\n\r\n")

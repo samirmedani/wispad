@@ -190,6 +190,9 @@ enum APIKeys {
     // MARK: - Fichier local
 
     enum LocalFile {
+        /// File des lectures et écritures du fichier des clés.
+        static let queue = BlockingQueue(label: "wispad.cles")
+
         static var defaultURL: URL {
             ((try? AppPaths.supportDirectory()) ?? FileManager.default.temporaryDirectory)
                 .appendingPathComponent("api-keys.json")

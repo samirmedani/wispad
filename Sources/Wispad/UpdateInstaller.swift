@@ -285,6 +285,9 @@ final class UpdateInstaller {
 
 /// Outils système de l'installation, hors du fil principal.
 enum UpdateTools {
+    /// File des appels qui attendent pendant l'installation (disque relu, signature, outils du système).
+    static let queue = BlockingQueue(label: "wispad.mise-a-jour")
+
     static func makeWorkspace() throws -> URL {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("WispadUpdate-" + UUID().uuidString, isDirectory: true)
@@ -294,8 +297,13 @@ enum UpdateTools {
 
     static func download(_ asset: DiskImageAsset, to destination: URL, progress: @escaping @Sendable (Double?) -> Void) async throws {
         try await DiskImageDownload(destination: destination, progress: progress).run(asset.url)
+        try await check(destination, asset: asset)
+    }
+
+    /// `checkDownload` hors du fil principal : le disque reçu est lu en entier.
+    static func check(_ file: URL, asset: DiskImageAsset) async throws {
         try await Task.detached(priority: .userInitiated) {
-            try UpdateTools.checkDownload(destination, asset: asset)
+            try UpdateTools.checkDownload(file, asset: asset)
         }.value
     }
 

@@ -83,9 +83,7 @@ struct AppDependencies {
     var frontmostApp: () -> DictationContext = { ContextProbe.frontmost() }
     /// Conversation visible dans la fenêtre de l'app où l'on dicte, lue hors du fil principal (300 ms au plus).
     /// Elle reste en mémoire le temps de la correction : jamais journalisée ni enregistrée.
-    var readWindow: (pid_t) async -> String? = { pid in
-        await Task.detached(priority: .userInitiated) { WindowTextProbe.read(pid: pid).context }.value
-    }
+    var readWindow: (pid_t) async -> String? = { pid in await WindowTextProbe.context(pid: pid) }
     var makeCapture: () -> any AudioRecording = { AudioCapture.shared }
     var makeSession: (SpeechRequest) -> any SpeechStreaming = { LiveSpeechSession(request: $0) }
     /// Transcription d'un fichier chez le fournisseur.

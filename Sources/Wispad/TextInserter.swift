@@ -55,6 +55,15 @@ struct InsertionField: @unchecked Sendable {
         guard let element, let other = other.element else { return false }
         return CFEqual(element, other)
     }
+
+    /// Champ actif de l'app, `seconds` au plus ; un champ vide sans réponse à temps. `reader` : la lecture, remplacée
+    /// dans les tests.
+    @MainActor static func read(pid: pid_t, within seconds: Double,
+                                reader: @escaping @Sendable (pid_t) -> InsertionField = { InsertionField.read(pid: $0) })
+        async -> InsertionField {
+        let task = Task.detached(priority: .userInitiated) { reader(pid) }
+        return await DictationCoordinator.value(of: task, within: seconds) ?? InsertionField()
+    }
 }
 
 /// Frontières macOS remplaçables dans les tests, sans envoyer de touches aux apps de l'utilisateur.
@@ -66,17 +75,14 @@ struct InsertionSystem {
     var secureInput: () -> Bool = { IsSecureEventInputEnabled() }
     var modifiersReleased: () async -> Bool = { await TextInserter.waitForModifierRelease() }
     var read: (pid_t) async -> InsertionField = { pid in
-        let task = Task.detached(priority: .userInitiated) { InsertionField.read(pid: pid) }
-        return await DictationCoordinator.value(of: task, within: TextInserter.fieldReadLimit) ?? InsertionField()
+        await InsertionField.read(pid: pid, within: TextInserter.fieldReadLimit)
     }
     var pasteboard: NSPasteboard = .general
     /// Sur le fil principal : la touche V se cherche dans la disposition du clavier, que macOS n'autorise que là.
     var postPaste: @MainActor (pid_t) async -> Bool = { _ in TextInserter.postCommandV() }
     /// Zone de saisie lue après l'envoi, pour que les messages de la bulle ne la couvrent pas.
     var locate: (pid_t) async -> CGRect? = { pid in
-        let task = Task.detached(priority: .utility) { ContextProbe.inputLocation(pid: pid) }
-        guard let location = await DictationCoordinator.value(of: task, within: TextInserter.fieldReadLimit) else { return nil }
-        return location.zone
+        await ContextProbe.inputZone(pid: pid, within: TextInserter.fieldReadLimit)
     }
     var confirmationLimit: Double = TextInserter.confirmationLimit
     var clipboardHold: Double = TextInserter.clipboardHold
