@@ -349,13 +349,14 @@ final class OnboardingController {
     }
 
     /// Ouvre le micro choisi pour le vumètre. Seul le niveau en sort : rien n'est enregistré ni envoyé.
-    /// `keepingVoice` : fenêtre rouverte, une voix déjà entendue reste acquise ; le vumètre repart quand même.
+    /// `keepingVoice` : fenêtre rouverte, une voix déjà entendue reste acquise tant que l'accès au micro est accordé ;
+    /// le vumètre repart quand même.
     func startMicrophoneTest(keepingVoice: Bool = false) {
         guard !isPreview else { return }
         stopMicrophoneTest()
         devices = system.inputDevices()
         systemInput = system.systemInput()
-        if !keepingVoice || !detector.detected { detector = VoiceDetector() }
+        if !keepingVoice || !detector.detected || permissions[.microphone] != .granted { detector = VoiceDetector() }
         level = SignalLevel.silence
         meterFailed = false
         meterOpened = false

@@ -239,8 +239,9 @@ réussie. « Plus tard » est proposé seulement pour le micro, la touche et l'e
 Une installation existante (réglages sans ce champ) ne refait pas la configuration après une mise à jour.
 Réglages › Général › « Revoir la configuration » la rejoue sans rien effacer ; on peut la quitter à tout moment.
 Fenêtre fermée pendant la configuration : le test du micro s'arrête, la touche dicte de nouveau normalement et
-l'état n'est plus relu jusqu'à la réouverture. Rouverte, une étape déjà réussie le reste (voix entendue, appuis de la
-touche, essai) ; une dictée arrivée dans le champ d'essai pendant la fermeture compte.
+l'état n'est plus relu jusqu'à la réouverture. Rouverte, une étape déjà réussie le reste (voix entendue, tant que
+l'accès au micro est accordé ; appuis de la touche ; essai) ; une dictée arrivée dans le champ d'essai pendant la
+fermeture compte.
 
 ## Transcription
 

@@ -608,7 +608,8 @@ struct OnboardingDeadEndTests {
         defer { f.dispose() }
         f.fake.grantAll()
         let guide = f.controller(at: .microphone)
-        #expect(await settles { guide.meterOpened })
+        let opened = await settles { guide.meterOpened }
+        #expect(opened)
         f.fake.clock.addTimeInterval(MicrophoneCheck.silenceTimeout - 1)
         guide.tick()
         #expect(guide.currentStatus == .todo)
@@ -618,7 +619,8 @@ struct OnboardingDeadEndTests {
         // « Réessayer » rouvre le micro et laisse de nouveau le temps de parler ; une voix arrive, l'étape réussit.
         guide.startMicrophoneTest()
         #expect(guide.currentStatus == .todo)
-        #expect(await settles { guide.meterOpened })
+        let reopened = await settles { guide.meterOpened }
+        #expect(reopened)
         let deliver = try #require(f.fake.meter.onLevel)
         for _ in 0..<20 { deliver(-62, 0.05) }
         for _ in 0..<16 { deliver(-26, 0.05) }
@@ -636,7 +638,8 @@ struct OnboardingDeadEndTests {
         f.fake.grantAll()
         f.fake.meterInUse = stuck
         let guide = f.controller(at: .microphone)
-        #expect(await settles { stuck.starts == 1 })
+        let starting = await settles { stuck.starts == 1 }
+        #expect(starting)
         f.fake.clock.addTimeInterval(MicrophoneCheck.silenceTimeout)
         guide.tick()
         #expect(guide.currentStatus == .failed(.microphoneUnavailable))
@@ -691,20 +694,23 @@ struct OnboardingDeadEndTests {
         f.keys["xai"] = "fixture-stored"
         f.online = false
         let guide = f.controller(at: .provider)
-        #expect(await settles { f.model.keyChecks["xai"] == .offline })
+        let checkedOffline = await settles { f.model.keyChecks["xai"] == .offline }
+        #expect(checkedOffline)
         #expect(guide.currentStatus == .failed(.key(.offline)))
         #expect(guide.retriesStoredVoiceKey)
         // Réseau revenu : « Réessayer » revérifie la clé enregistrée, sans la réécrire.
         f.online = true
         guide.retryVoiceKey()
-        #expect(await settles { guide.currentStatus == .succeeded })
+        let retried = await settles { guide.currentStatus == .succeeded }
+        #expect(retried)
         #expect(f.keys["xai"] == "fixture-stored")
         // En revenant sur l'étape, une vérification restée sans réponse est refaite…
         f.model.keyChecks["xai"] = .offline
         let requests = f.keyRequests
         guide.go(to: .microphone)
         guide.go(to: .provider)
-        #expect(await settles { f.model.keyChecks["xai"] == .valid })
+        let rechecked = await settles { f.model.keyChecks["xai"] == .valid }
+        #expect(rechecked)
         #expect(f.keyRequests == requests + 1)
         // … un résultat net, lui, est gardé (laisse passer une vérification qui serait partie).
         guide.go(to: .microphone)
@@ -724,14 +730,16 @@ struct OnboardingDeadEndTests {
         f.fake.grantAll()
         f.keys["xai"] = "fixture-stored"
         let guide = f.controller(at: .provider)
-        #expect(await settles { guide.currentStatus == .succeeded })
+        let checked = await settles { guide.currentStatus == .succeeded }
+        #expect(checked)
         // « Remplacer la clé » : une nouvelle clé est collée, sa vérification tarde…
         let gate = AsyncResult<Void>()
         f.keyGate = gate
         f.model.keyDrafts["xai"] = "fixture-new"
         let requests = f.keyRequests
         let checking = Task { await f.model.verifyAndStoreKey("xai") }
-        #expect(await settles { f.keyRequests == requests + 1 })
+        let sent = await settles { f.keyRequests == requests + 1 }
+        #expect(sent)
         #expect(guide.currentStatus == .inProgress)
         // … et la clé est retouchée avant la réponse : ce résultat ne la concerne plus, rien n'est enregistré.
         f.model.keyDrafts["xai"] = "fixture-new-edited"
@@ -741,7 +749,8 @@ struct OnboardingDeadEndTests {
         #expect(f.keys["xai"] == "fixture-stored")
         // Le sondage revérifie la clé enregistrée au lieu de laisser « Vérification… » sans fin.
         guide.tick()
-        #expect(await settles { guide.currentStatus == .succeeded })
+        let recovered = await settles { guide.currentStatus == .succeeded }
+        #expect(recovered)
         #expect(f.model.keyDrafts["xai"] == "fixture-new-edited")
     }
 
@@ -756,7 +765,8 @@ struct OnboardingDeadEndTests {
         f.keyGate = gate
         f.model.keyDrafts["xai"] = "fixture-key"
         let checking = Task { await f.model.verifyAndStoreKey("xai") }
-        #expect(await settles { f.keyRequests == 1 })
+        let sent = await settles { f.keyRequests == 1 }
+        #expect(sent)
         #expect(guide.currentStatus == .inProgress)
         gate.resolve(.failure(URLError(.timedOut)))
         await checking.value
@@ -865,7 +875,8 @@ struct OnboardingDeadEndTests {
         defer { f.dispose() }
         f.fake.grantAll()
         let guide = f.controller(at: .microphone)
-        #expect(await settles { guide.meterOpened })
+        let opened = await settles { guide.meterOpened }
+        #expect(opened)
         let deliver = try #require(f.fake.meter.onLevel)
         for _ in 0..<20 { deliver(-62, 0.05) }
         for _ in 0..<16 { deliver(-26, 0.05) }
@@ -876,7 +887,8 @@ struct OnboardingDeadEndTests {
         guide.resume()
         #expect(guide.currentStatus == .succeeded)
         #expect(guide.canContinue)
-        #expect(await settles { guide.meterOpened })
+        let reopened = await settles { guide.meterOpened }
+        #expect(reopened)
         // Un autre micro choisi se teste de nouveau.
         guide.selectMicrophone("fixture-builtin")
         #expect(guide.currentStatus == .todo)
@@ -888,6 +900,27 @@ struct OnboardingDeadEndTests {
         guide.resume()
         #expect(f.model.shortcutProbe != nil)
         #expect(guide.currentStatus == .succeeded)
+    }
+
+    /// Fenêtre rouverte après un retrait de l'accès au micro : la voix entendue avant ne compte plus, l'écran dit quoi
+    /// régler, comme si l'étape recommençait.
+    @Test func reopeningAfterMicrophoneAccessWasWithdrawnSaysSo() async throws {
+        let f = try GuideFixture()
+        defer { f.dispose() }
+        f.fake.grantAll()
+        let guide = f.controller(at: .microphone)
+        let opened = await settles { guide.meterOpened }
+        #expect(opened)
+        let deliver = try #require(f.fake.meter.onLevel)
+        for _ in 0..<20 { deliver(-62, 0.05) }
+        for _ in 0..<16 { deliver(-26, 0.05) }
+        #expect(guide.currentStatus == .succeeded)
+        guide.suspend()
+        f.fake.snapshot.microphoneGranted = false
+        f.fake.snapshot.microphoneDenied = true
+        guide.resume()
+        #expect(guide.currentStatus == .failed(.permission(.microphone, .denied)))
+        #expect(!guide.canContinue)
     }
 
     /// Wispad quitté au milieu puis relancé : la configuration reprend à l'étape quittée, avec le micro, le fournisseur,
@@ -924,7 +957,8 @@ struct OnboardingDeadEndTests {
         let resumed = next.controller(at: step)
         resumed.back()
         #expect(resumed.step == .provider)
-        #expect(await settles { resumed.currentStatus == .succeeded })
+        let rechecked = await settles { resumed.currentStatus == .succeeded }
+        #expect(rechecked)
         #expect(next.keys["openai"] == "fixture-openai")
         resumed.advance()
         #expect(resumed.step == .shortcut)
