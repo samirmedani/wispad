@@ -92,6 +92,10 @@ struct AppDependencies {
     var clean: (String, CorrectionRequest, SpeechRequest, Bool) async -> CleanupOutcome = {
         await TextCleaner.clean(transcript: $0, request: $1, speech: $2, enabled: $3)
     }
+    /// Contrôles d'un service mis de côté : complétion d'un jeton chez DeepSeek, liste des modèles (gratuite) chez
+    /// un fournisseur de voix.
+    var probeDeepSeek: (String) async -> UsageEvent? = { await HealthProbe.deepSeek(key: $0) }
+    var probeVoice: (ProviderID, String) async -> Bool = { await HealthProbe.voice($0, key: $1) }
     var playCue: (DictationCue) -> Void = { SoundCues.play($0) }
     /// Son du Mac coupé pendant la dictée, puis rétabli. Simulé dans les tests : jamais de vrai son touché.
     var muteOutput: (Bool, OutputMuteMode) -> Void = { OutputMuter.mute(enabled: $0, mode: $1) }

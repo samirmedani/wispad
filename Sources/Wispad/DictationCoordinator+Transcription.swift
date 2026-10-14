@@ -84,8 +84,9 @@ extension DictationCoordinator {
             }
             return decision
         }
-        // Une consigne sur la sélection n'a pas de correction du flux à préparer.
-        if model.settings.cleanupEnabled, !job.cancelled, model.commandSelection(for: streamText, context: context) == nil {
+        // Une consigne sur la sélection n'a pas de correction du flux à préparer. Hors connexion non plus : l'appel
+        // échouerait, et la fin de dictée décide avec la connexion du moment.
+        if model.correctionReachable, !job.cancelled, model.commandSelection(for: streamText, context: context) == nil {
             let normalized = FranglaisNormalizer.normalize(streamText)
             if let early = claimEarlyCorrection(for: normalized, current: current, model: model) {
                 // Correction déjà lancée pendant l'écoute, sur ce même texte : elle tient lieu de correction du flux.
@@ -188,7 +189,7 @@ extension DictationCoordinator {
         if !attempt.failed { return .text(attempt.text, attempt.latencyMs) }
         guard let url = job.url else { return .stop }
         let service = ServiceHealth.voice(speech.provider)
-        if let fallback = model.voiceFallback(for: speech),
+        if let fallback = model.voiceRelay(for: speech),
            let text = try? await transcribeFile(url, speech: fallback, seconds: job.duration, run: job.capture.run, fallback: APIFallback(
                fromAPI: .transcription(speech.provider, streaming: false),
                stage: .transcription, reason: .requestFailed
@@ -260,7 +261,7 @@ extension DictationCoordinator {
                     delete(url)
                     return nil
                 }
-                model.health.record(ServiceHealth.voice(speech.provider), succeeded: true)
+                model.recordHealth(ServiceHealth.voice(speech.provider), succeeded: true)
             } catch {
                 fileMs = Self.milliseconds(since: fileClock)
                 guard !job.cancelled else {
@@ -268,8 +269,8 @@ extension DictationCoordinator {
                     return nil
                 }
                 let service = ServiceHealth.voice(speech.provider)
-                model.health.record(service, succeeded: false)
-                if let fallback = model.voiceFallback(for: speech),
+                model.recordHealth(service, succeeded: false)
+                if let fallback = model.voiceRelay(for: speech),
                    let recovered = try? await transcribeFile(url, speech: fallback, seconds: job.duration, run: current.run, fallback: APIFallback(
                        fromAPI: .transcription(speech.provider, streaming: false),
                        stage: .transcription, reason: .requestFailed

@@ -242,10 +242,13 @@ retenue part à la correction. Une correction déjà préparée sur ce même tex
 correction du flux continue à se préparer en parallèle du fichier. La vérification audio n'est pas sautée,
 même pour une dictée de quelques mots.
 
-**Sans connexion** : rien n'est transcrit sur le Mac. Si la connexion manque ou se perd pendant la dictée (flux,
-fichier, puis le relais de voix s'il a une clé, en échec), l'audio reste dans l'historique pour **Retranscrire** une
-fois la connexion revenue. La correction par un fournisseur est sautée hors connexion (seules les commandes de mise
-en page s'appliquent).
+**Sans connexion** : rien n'est transcrit sur le Mac. Si la connexion manque ou se perd pendant la dictée (flux et
+fichier en échec, puis le relais de voix s'il a une clé et que la connexion est revenue), l'audio reste dans
+l'historique pour **Retranscrire** une fois la connexion revenue. Hors connexion, le relais n'est pas tenté : il
+échouerait de même et compterait une bascule ratée. Un échec hors connexion ne dit rien du fournisseur : il n'est pas
+compté pour le mettre de côté, et la dictée suivante, connexion revenue, repart chez lui sans bascule. La correction
+par un fournisseur est sautée hors connexion, celle préparée pendant l'écoute ou à l'arrêt comprise (seules les
+commandes de mise en page s'appliquent).
 
 Une installation qui transcrivait « Sur ce Mac » (fonction retirée) repasse sur le cloud au lancement ; les modèles
 téléchargés par Wispad et les réglages devenus inutiles sont effacés.
@@ -308,11 +311,12 @@ et fichier, l'usage de la correction préparée pendant l'écoute et le report d
   nouveau mot), le texte entendu part déjà à la correction. Si l'on arrête sans rien ajouter (même texte à la
   ponctuation, la casse ou l'écriture des nombres près), cette correction sert telle quelle et le texte se colle sans
   attendre un nouvel appel. Si la parole reprend, elle est comptée (coût réel)
-  et la suivante la remplace ; quatre au plus par dictée. Jamais si la correction est coupée.
+  et la suivante la remplace ; quatre au plus par dictée. Jamais si la correction est coupée, ni hors connexion.
 - **Correction lancée à l'arrêt** : dès l'arrêt, ce que le flux a déjà affiché part à la correction, sans attendre
   son texte final (0,3 à 0,5 s sur les dictées courtes, mesuré le 13 octobre 2026). Si le texte final dit la même
   chose, cette correction sert ; sinon elle est comptée et une correction du texte final la remplace. Rien de plus
-  n'est lancé si une correction préparée à une pause porte déjà sur ce texte.
+  n'est lancé si une correction préparée à une pause porte déjà sur ce texte, ni hors connexion : la fin de dictée
+  corrige alors si la connexion est revenue.
 - Expressions mal entendues malgré les mots-clés, réécrites avant et après la correction : « services functions »
   → « serverless functions », « day inference » → « AI inference ».
 
@@ -528,6 +532,8 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
   échecs, la dictée démarre directement chez l'autre fournisseur.
 - Correction : après deux échecs, DeepSeek passe après le relais. Un service mis de côté est contrôlé chaque
   minute et repris dès qu'il répond, au plus tard après 30 minutes.
+- Hors connexion, aucun échec n'est compté, aucun service mis de côté n'est contrôlé et aucune bascule n'est tentée :
+  un service n'est mis de côté que pour ses propres échecs, et un relais ne travaille que s'il peut répondre.
 - Le spectre passe au vert quand un relais travaille ; la première bascule d'une panne est annoncée.
 
 ## Reprise après erreur
