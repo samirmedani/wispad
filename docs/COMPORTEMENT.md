@@ -607,7 +607,9 @@ Wispad relit ces autorisations sans jamais les redemander : une demande de macOS
   une écoute neuve si macOS en accepte encore une ; sinon le raccourci se tait. Une dictée en cours s'arrête alors
   comme si on l'avait terminée (ce qui a été dit est transcrit et collé ; un micro encore en démarrage se referme
   sans rien enregistrer) et la bulle affiche « Surveillance des entrées retirée : dictée arrêtée » ou
-  « Accessibilité retirée : dictée arrêtée ». Autorisation rendue, l'écoute revient à la vérification suivante : le
+  « Accessibilité retirée : dictée arrêtée ». Un geste compté juste avant le retrait, dont la dictée n'a pas encore
+  démarré (départ en file, clé encore en lecture), est oublié avec l'écoute : sa dictée ne démarre pas, puisque ni le
+  raccourci ni Échap ne pourraient l'arrêter. Autorisation rendue, l'écoute revient à la vérification suivante : le
   premier appui compte, et Échap n'est jamais avalé à tort. Une autorisation donnée après l'installation de l'écoute
   n'est pas exigée ensuite.
 - **Micro** : macOS peut laisser tourner le micro d'une dictée en cours en ne lui livrant plus que du silence.

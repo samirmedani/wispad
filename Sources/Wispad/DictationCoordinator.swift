@@ -70,6 +70,8 @@ final class DictationCoordinator {
     @ObservationIgnored private var operation: Task<Void, Never>?
     /// Gestes en file, pas encore joués : l'écoute du clavier les a déjà comptés.
     @ObservationIgnored private var queuedGestures = 0
+    /// Retraits de l'écoute du clavier (`keyboardLost`) : un geste compté avant l'un d'eux a été oublié avec elle.
+    @ObservationIgnored private var keyboardLosses = 0
     /// Dictée en cours d'écoute.
     @ObservationIgnored private var capture: Capture?
     /// Dictées qui se terminent, dans l'ordre où elles ont été dites.
@@ -143,12 +145,15 @@ final class DictationCoordinator {
     /// Début ou fin d'une dictée, dans l'ordre des gestes. Chaque geste en file est joué, même après un Échap pris
     /// avant lui (fil principal occupé) : l'écoute du clavier l'a déjà compté. Jeté, un début en mains libres la
     /// laissait attendre une fin, et l'appui suivant ne servait qu'à arrêter une dictée jamais commencée.
+    /// Seule exception : l'écoute du clavier retirée depuis l'a oublié avec le geste en cours (`keyboardLost`).
     func enqueue(_ work: @escaping @MainActor () async -> Void) {
         let previous = operation
+        let losses = keyboardLosses
         queuedGestures += 1
         operation = Task { @MainActor in
             await previous?.value
             self.queuedGestures -= 1
+            guard self.keyboardLosses == losses else { return }
             await work()
         }
     }
@@ -169,8 +174,10 @@ final class DictationCoordinator {
         }
         let latencyMarks = LatencyMarks(pressed: pressedAt)
         let run = DictationTraceRecorder(origin: mode == .toggle ? .toggle : .hold, pressedAt: pressedAt, marks: latencyMarks)
+        let losses = keyboardLosses
         let problem = await model.voiceProblem()
-        guard capture == nil, !retrying else { return }
+        // Écoute du clavier retirée pendant la lecture de la clé : elle a oublié ce geste (`keyboardLost`).
+        guard capture == nil, !retrying, keyboardLosses == losses else { return }
         if let problem {
             run.complete(problem.outcome, model: model)
             model.statusBanner = problem.message
@@ -439,8 +446,10 @@ final class DictationCoordinator {
 
     /// L'écoute du clavier a été retirée faute d'une autorisation (`KeyboardTap`) : ni le raccourci ni Échap
     /// n'atteindraient plus la dictée en cours. Elle s'arrête là, comme si on l'avait terminée, et la bulle dit
-    /// pourquoi ; un micro encore en démarrage est abandonné (rien n'a été dit).
+    /// pourquoi ; un micro encore en démarrage est abandonné (rien n'a été dit). Les gestes encore en file ou en
+    /// attente de la clé sont oubliés avec elle (`HotkeyLogic.listeningLost`) : leur dictée ne démarre pas.
     func keyboardLost(_ permissions: KeyboardPermissions) {
+        keyboardLosses += 1
         guard let current = capture, !current.cancelled else { return }
         let message = Self.keyboardLostMessage(permissions)
         hotkeyLog.notice("écoute du clavier retirée pendant la dictée : dictée terminée")
