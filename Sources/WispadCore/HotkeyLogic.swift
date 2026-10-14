@@ -78,6 +78,8 @@ public struct HotkeyLogic: Equatable, Sendable {
     public static let escapeKeyCode = 53
     public private(set) var engine: GestureEngine
     public private(set) var chordDown = false
+    /// Raccourci avec lequel l'accord a été enfoncé.
+    private var chordShortcut: Shortcut?
     /// Échap avalé à l'enfoncement : sa répétition et son relâchement sont avalés aussi.
     private var escapeSwallowed = false
     /// Touche de « Coller la dernière dictée » avalée à l'enfoncement : répétition et relâchement aussi.
@@ -94,6 +96,11 @@ public struct HotkeyLogic: Equatable, Sendable {
         if let output = pasteShortcut(event, config: config) {
             return output
         }
+        var output = HotkeyOutput()
+        // Raccourci remplacé dans Réglages pendant qu'il était tenu : son relâchement ne serait plus reconnu.
+        if chordDown, chordShortcut != Shortcut(config) {
+            releaseChord(at: event.time, into: &output)
+        }
         let transition = ChordMatcher.step(
             phase: event.phase,
             keyCode: event.keyCode,
@@ -105,7 +112,11 @@ public struct HotkeyLogic: Equatable, Sendable {
             recording: config.recording
         )
         chordDown = transition.chordIsDown
-        var output = HotkeyOutput()
+        if !chordDown {
+            chordShortcut = nil
+        } else if transition.edge == .down {
+            chordShortcut = Shortcut(config)
+        }
         output.swallow = transition.swallow
         output.capturedKeyCode = transition.capturedKeyCode
         output.capturedFlags = transition.capturedFlags
@@ -125,6 +136,11 @@ public struct HotkeyLogic: Equatable, Sendable {
     public mutating func tick(at time: Int, keyStillDown: Bool) -> HotkeyOutput {
         var output = HotkeyOutput()
         output.merge(engine.tick(at: time, keyStillDown: keyStillDown))
+        // Relâchement jamais reçu, abandonné par le geste : la touche est levée, l'appui suivant compte.
+        if chordDown, !keyStillDown, engine.isIdle {
+            chordDown = false
+            chordShortcut = nil
+        }
         return output
     }
 
@@ -144,10 +160,28 @@ public struct HotkeyLogic: Equatable, Sendable {
         escapeSwallowed = false
         pasteKeyDown = nil
         if chordDown, !keyPhysicallyDown {
-            chordDown = false
-            output.merge(engine.releaseLost(at: time))
+            releaseChord(at: time, into: &output)
         }
         return output
+    }
+
+    /// Surveillance de l'écoute restée active : elle a pu ne rien recevoir sans que macOS la coupe (saisie
+    /// sécurisée, écran verrouillé, autre session, veille). Un accord que la touche réelle ne tient plus est rendu
+    /// comme un relâchement perdu. Un appui en attente est laissé à son réveil, qui lit déjà la touche ; Échap et
+    /// « Coller la dernière dictée » gardent leurs règles.
+    public mutating func reconcile(keyPhysicallyDown: Bool, at time: Int) -> HotkeyOutput {
+        var output = HotkeyOutput()
+        if chordDown, !keyPhysicallyDown, !engine.isPressPending {
+            releaseChord(at: time, into: &output)
+        }
+        return output
+    }
+
+    /// Accord rendu sans son relâchement : un maintien s'arrête, un appui en attente est oublié sans rien démarrer.
+    private mutating func releaseChord(at time: Int, into output: inout HotkeyOutput) {
+        chordDown = false
+        chordShortcut = nil
+        output.merge(engine.releaseLost(at: time))
     }
 
     /// « Coller la dernière dictée » : touche et modificateurs exacts, une seule fois par enfoncement, jamais
@@ -188,8 +222,12 @@ public struct HotkeyLogic: Equatable, Sendable {
         switch event.phase {
         case .down:
             if escapeSwallowed {
-                output.swallow = true
-                return output
+                if event.autorepeat {
+                    output.swallow = true
+                    return output
+                }
+                // Relâchement perdu : un nouvel enfoncement repart de zéro, Échap n'est jamais avalé à tort.
+                escapeSwallowed = false
             }
             let modifiers = event.flags & (ModifierMask.command | ModifierMask.option | ModifierMask.control | ModifierMask.shift)
             guard config.capturing || config.pending, !config.recording, !event.autorepeat, modifiers == 0 else { return nil }
@@ -206,6 +244,17 @@ public struct HotkeyLogic: Equatable, Sendable {
             return output
         case .flags:
             return nil
+        }
+    }
+
+    /// Touche et modificateurs du raccourci de dictée, comparés comme ChordMatcher les lit.
+    private struct Shortcut: Equatable, Sendable {
+        var keyCode: Int
+        var modifierFlags: UInt64
+
+        init(_ config: HotkeyConfig) {
+            keyCode = config.keyCode
+            modifierFlags = config.modifierFlags & ModifierMask.relevant
         }
     }
 }

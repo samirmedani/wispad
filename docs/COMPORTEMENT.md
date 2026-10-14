@@ -17,6 +17,12 @@ Raccourci par défaut : fn seule. Wispad intercepte la touche fn pour que macOS 
 - Moins de 0,3 s d'audio : rien n'est envoyé.
 - Une nouvelle dictée peut commencer pendant que la précédente se termine : les textes se collent dans l'ordre
   où ils ont été dits, séparés par une espace, sans changer de majuscule.
+- Jamais mort ni bloqué : une touche relâchée sans que l'écoute du clavier le voie (écoute coupée par macOS, champ
+  de mot de passe, écran verrouillé, autre session, veille) arrête la dictée en maintien au plus tard à la
+  vérification suivante (voir « Réactivité »), et l'appui suivant compte. Échap n'est jamais avalé à tort ensuite.
+- Réglages › Raccourci › Modifier : la touche essayée, fn comprise, ne démarre ni n'arrête aucune dictée ; une
+  dictée en maintien déjà en cours s'arrête quand on relâche sa touche. Un raccourci remplacé pendant qu'on le tient
+  arrête sa dictée à son relâchement ; le nouveau répond dès son premier appui.
 
 ### Coller la dernière dictée
 
@@ -51,7 +57,8 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 ## Réactivité
 
 - L'écoute du clavier tourne sur son propre fil : le clavier n'attend jamais l'app. Elle est vérifiée toutes les
-  3 s et rétablie si macOS l'a coupée.
+  3 s et rétablie si macOS l'a coupée ; restée active, elle est recalée sur la touche réelle du raccourci, au cas où
+  elle n'aurait rien reçu sans être coupée.
 - L'audio s'initialise sur une file dédiée, la bulle s'affiche tout de suite ; le moteur arrêté est réutilisé.
 - Démarrage du micro surveillé, première dictée après un lancement comprise : si macOS reconfigure l'entrée
   (micro Bluetooth qui change de profil, autre fréquence, micro débranché), le moteur repart aussitôt, dans le même

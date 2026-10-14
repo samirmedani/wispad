@@ -172,6 +172,10 @@ final class KeyboardTap: @unchecked Sendable {
             resync()
             CGEvent.tapEnable(tap: tap, enable: true)
             diagnostics.withLock { $0.listening = .enabled }
+        } else if logic.chordDown, physicalStateReliable {
+            // Écoute active mais qui a pu ne rien recevoir (saisie sécurisée, écran verrouillé, autre session,
+            // veille) : un relâchement qu'elle n'a pas vu ne laisse ni dictée ouverte, ni raccourci bloqué.
+            apply(logic.reconcile(keyPhysicallyDown: keyIsDown(), at: Self.now()))
         }
     }
 

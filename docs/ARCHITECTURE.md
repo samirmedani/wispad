@@ -76,7 +76,9 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
 ## Parcours d'une dictée
 
 1. `KeyboardTap` (fil dédié) reconnaît maintien, double appui ou Échap (`HotkeyLogic`) ; `HotkeyMonitor`, sur
-   le fil principal, transmet ces effets au coordinateur.
+   le fil principal, transmet ces effets au coordinateur. Quand macOS rend l'écoute qu'il avait coupée,
+   `HotkeyLogic.resync` recale le raccourci sur la touche réelle ; la surveillance de 3 s fait de même pour une
+   écoute restée active (`reconcile`). Scénarios de fiabilité : `HotkeyReliabilityTests`.
 2. `DictationCoordinator.begin` vérifie la clé du fournisseur de voix, lit l'app au premier plan et lance en
    parallèle la lecture du champ actif (`ContextProbe`) et, si la correction et le réglage le permettent, de la
    conversation visible (`WindowTextProbe`). Puis il affiche la bulle et ouvre le micro (`AudioCapture`).
