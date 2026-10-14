@@ -19,10 +19,11 @@ Raccourci par défaut : fn seule. Wispad intercepte la touche fn pour que macOS 
   où ils ont été dits, séparés par une espace, sans changer de majuscule.
 - Jamais mort ni bloqué : une touche relâchée sans que l'écoute du clavier le voie (écoute coupée par macOS, champ
   de mot de passe, écran verrouillé, autre session, veille) arrête la dictée en maintien au plus tard à la
-  vérification suivante (voir « Réactivité »), et l'appui suivant compte. Échap n'est jamais avalé à tort ensuite.
+  vérification suivante de l'écoute (voir « Réactivité ») ; le raccourci répond ensuite normalement. Échap n'est
+  jamais avalé à tort ensuite.
 - Réglages › Raccourci › Modifier : la touche essayée, fn comprise, ne démarre ni n'arrête aucune dictée ; une
   dictée en maintien déjà en cours s'arrête quand on relâche sa touche. Un raccourci remplacé pendant qu'on le tient
-  arrête sa dictée à son relâchement ; le nouveau répond dès son premier appui.
+  arrête sa dictée dès la frappe suivante, au plus tard à son relâchement ; le nouveau répond dès son premier appui.
 
 ### Coller la dernière dictée
 
