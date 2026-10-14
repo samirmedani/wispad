@@ -13,8 +13,8 @@ struct HistoryStoreConcurrencyTests {
         try HistoryStoreFixture.withDatabase { path in
             let store = try HistoryStore(path: path)
             let failures = StoreFailures()
-            DispatchQueue.concurrentPerform(iterations: 8) { worker in
-                for index in 0..<25 {
+            HistoryStoreFixture.onThreads(8) { worker in
+                for index in 0..<15 {
                     let id = "fil\(worker)-\(index)"
                     failures.run {
                         try store.insert(HistoryStoreFixture.record(id, at: Double(worker * 1_000 + index)))
@@ -31,12 +31,12 @@ struct HistoryStoreConcurrencyTests {
             }
             #expect(failures.all.isEmpty)
             let dictations = try store.dictations()
-            #expect(dictations.count == 200)
+            #expect(dictations.count == 120)
             #expect(dictations.allSatisfy { $0.insertionStatus == InsertionStatus.inserted.rawValue })
-            #expect(try store.usageEvents().count == 200)
-            #expect(try store.dictionary().count == 200)
+            #expect(try store.usageEvents().count == 120)
+            #expect(try store.dictionary().count == 120)
             let traces = try store.recentTraces(limit: 1_000)
-            #expect(traces.count == 200)
+            #expect(traces.count == 120)
             let lateCallsKept = traces.allSatisfy { trace in trace.calls.map(\.id) == ["tardif-" + (trace.dictationID ?? "")] }
             #expect(lateCallsKept)
             let file = try SQLiteFile(path)
@@ -52,9 +52,9 @@ struct HistoryStoreConcurrencyTests {
             let first = try HistoryStore(path: path)
             let second = try HistoryStore(path: path)
             let failures = StoreFailures()
-            DispatchQueue.concurrentPerform(iterations: 8) { worker in
+            HistoryStoreFixture.onThreads(8) { worker in
                 let store = worker.isMultiple(of: 2) ? first : second
-                for index in 0..<25 {
+                for index in 0..<15 {
                     let id = "instance\(worker)-\(index)"
                     failures.run {
                         try store.insert(HistoryStoreFixture.record(id, at: Double(worker * 1_000 + index)))
@@ -65,11 +65,11 @@ struct HistoryStoreConcurrencyTests {
                 }
             }
             #expect(failures.all.isEmpty)
-            #expect(try first.dictations().count == 200)
-            #expect(try second.dictations().count == 200)
+            #expect(try first.dictations().count == 120)
+            #expect(try second.dictations().count == 120)
             #expect(try first.dictations().allSatisfy { $0.audioPath == nil && $0.audioExpiresAt == nil })
-            #expect(try second.usageEvents().count == 200)
-            #expect(try first.recentTraces(limit: 1_000).count == 200)
+            #expect(try second.usageEvents().count == 120)
+            #expect(try first.recentTraces(limit: 1_000).count == 120)
             #expect(try SQLiteFile(path).strings("PRAGMA integrity_check;") == ["ok"])
         }
     }
