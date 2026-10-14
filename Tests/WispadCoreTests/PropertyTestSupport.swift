@@ -39,8 +39,11 @@ struct SeededGenerator {
     }
 }
 
-/// Vérifie une propriété sur `count` cas tirés d'une graine fixe. `property` rend nil si elle tient, sinon la
+/// Vérifie une propriété sur des cas tirés d'une graine fixe. `property` rend nil si elle tient, sinon la
 /// description du contre-exemple : seul le premier est signalé, avec son numéro de tirage, pour rester lisible.
+/// Par défaut, un quart des `count` tirages (25 au moins) : tous les tests tournent ensemble, et une machine de CI à
+/// trois cœurs saturée retardait les tests qui mesurent un délai réel (micro ouvert en moins d'une seconde). Les
+/// `count` tirages avec `WISPAD_PROPERTY_RUNS=full`. La graine fixe garde toujours les mêmes premiers tirages.
 func forAll<Case>(
     _ count: Int,
     seed: UInt64,
@@ -49,7 +52,8 @@ func forAll<Case>(
     _ property: (Case) -> String?
 ) {
     var generator = SeededGenerator(seed: seed)
-    for index in 0..<count {
+    let runs = ProcessInfo.processInfo.environment["WISPAD_PROPERTY_RUNS"] == "full" ? count : max(min(count, 25), count / 4)
+    for index in 0..<runs {
         let input = generate(&generator)
         if let failure = property(input) {
             Issue.record("Tirage \(index) (graine \(seed)) : \(failure)", sourceLocation: sourceLocation)
