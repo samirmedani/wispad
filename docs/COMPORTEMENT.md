@@ -660,7 +660,7 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
   leur valeur par défaut, et l'app repart sans refaire le premier lancement guidé.
 - Les clés API d'un fournisseur retiré restent dans le fichier de clés.
 - Reprise depuis OpenFlow (une seule fois) : réglages, base, audios, journaux et fichier de clés, sans rien écraser
-  de Wispad ; ce qui n'est pas repris reste en place.
+  de Wispad, pas même un bloc de réglages abîmé ; ce qui n'est pas repris reste en place.
 
 ## Version et mises à jour
 

@@ -55,7 +55,9 @@ enum LegacyMigration {
         let legacy = supportRoot.appendingPathComponent(legacyFolderName, isDirectory: true)
         let current = supportRoot.appendingPathComponent(AppIdentity.supportFolderName, isDirectory: true)
 
-        if let legacyDefaults, defaults.data(forKey: AppSettings.defaultsKey) == nil,
+        // Un bloc Wispad présent, même abîmé ou d'un autre type, n'est jamais remplacé : `AppSettings.load` le met
+        // de côté.
+        if let legacyDefaults, defaults.object(forKey: AppSettings.defaultsKey) == nil,
            let settings = legacyDefaults.data(forKey: legacySettingsKey) {
             defaults.set(settings, forKey: AppSettings.defaultsKey)
             report.copiedSettings = true

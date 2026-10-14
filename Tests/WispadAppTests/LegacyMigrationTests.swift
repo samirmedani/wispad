@@ -147,6 +147,22 @@ struct LegacyMigrationTests {
         #expect(fixture.legacyDefaults.data(forKey: LegacyMigration.legacySettingsKey) != nil)
     }
 
+    /// Bloc Wispad présent mais d'un autre type (abîmé) : il était pris pour absent et remplacé par les réglages
+    /// OpenFlow, sans copie. Il reste en place, et la lecture des réglages le met de côté.
+    @Test func aWispadBlockOfAnotherTypeIsNeverReplaced() throws {
+        let fixture = try Fixture()
+        defer { fixture.dispose() }
+        fixture.defaults.set("bloc d'un autre type", forKey: AppSettings.defaultsKey)
+        fixture.legacyDefaults.set(try JSONEncoder().encode(AppSettings()), forKey: LegacyMigration.legacySettingsKey)
+
+        let report = LegacyMigration.run(supportRoot: fixture.root, defaults: fixture.defaults, legacyDefaults: fixture.legacyDefaults)
+
+        #expect(!report.copiedSettings)
+        #expect(fixture.defaults.string(forKey: AppSettings.defaultsKey) == "bloc d'un autre type")
+        #expect(AppSettings.load(from: fixture.defaults) == AppSettings.existingInstallDefaults)
+        #expect(fixture.defaults.string(forKey: AppSettings.unreadableBackupKey) == "bloc d'un autre type")
+    }
+
     /// Fichier de clés OpenFlow : repris si Wispad n'en a pas, laissé en place (jamais écrasé) sinon.
     @Test func legacyKeyFileMovesOnlyWhenWispadHasNone() throws {
         let keys = Data(#"{"xai": "valeur-de-test-ancienne"}"#.utf8)
