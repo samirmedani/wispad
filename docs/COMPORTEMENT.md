@@ -583,9 +583,10 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
 - Compteurs de jetons démesurés annoncés par un fournisseur : comptés et affichés plafonnés dans Consommation.
 - Durée ou nombre de mots abîmés dans la base locale : affichés bornés ; une durée illisible compte pour 0.
 - Base locale tenue en écriture par un autre programme (autre Wispad ouvert, outil qui l'inspecte) : Wispad démarre
-  quand même et affiche l'historique, sans attendre, tant que la base est à jour (seul le premier lancement d'une
-  version qui la fait évoluer doit y écrire). Une écriture (dictée, mot, appel) attend jusqu'à 2 s que la base se
-  libère ; deux Wispad ouverts écrivent ainsi chacun leur tour, sans rien perdre.
+  quand même et affiche l'historique ; une base à jour s'ouvre sans rien y écrire (seul le premier lancement d'une
+  version qui la fait évoluer doit y écrire). Une écriture (dictée, mot, appel, ménage des audios expirés, fait d'un
+  seul bloc) attend jusqu'à 2 s que la base se libère ; deux Wispad ouverts écrivent ainsi chacun leur tour, sans
+  rien perdre.
 - Sélection annoncée par l'app où l'on dicte : illisible, l'extrait autour du curseur part du début du champ, comme
   sans sélection ; démesurée, il s'arrête à la fin du champ.
 - Commande du coffre de secrets qui se termine sans lire la clé : « Impossible d'enregistrer la clé dans ton coffre

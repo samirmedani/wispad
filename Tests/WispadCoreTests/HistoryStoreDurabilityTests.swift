@@ -103,6 +103,34 @@ struct HistoryStoreDurabilityTests {
         }
     }
 
+    /// Ménage des audios d'un bloc : seules les dictées visées perdent leur audio (chemin et échéance), le reste est
+    /// intact. Une écriture refusée en route (ici par la base, sur la deuxième dictée) n'en laisse aucune modifiée.
+    @Test func clearingAudiosChangesOnlyTheGivenDictationsAllOrNothing() throws {
+        try HistoryStoreFixture.withDatabase { path in
+            let store = try HistoryStore(path: path)
+            for id in ["a", "b", "c"] { try store.insert(HistoryStoreFixture.record(id)) }
+            let file = try SQLiteFile(path)
+            #expect(file.execute("""
+                CREATE TRIGGER refuse BEFORE UPDATE ON dictations WHEN OLD.id = 'c'
+                BEGIN SELECT RAISE(ABORT, 'refusée'); END;
+                """) == SQLITE_OK)
+            #expect(throws: (any Error).self) { try store.clearAudio(ids: ["a", "c"]) }
+            #expect(try store.dictations().allSatisfy { $0.audioPath != nil && $0.audioExpiresAt != nil })
+
+            #expect(file.execute("DROP TRIGGER refuse;") == SQLITE_OK)
+            try store.clearAudio(ids: ["a", "c", "inconnue"])
+            try store.clearAudio(ids: [])
+            var cleared = HistoryStoreFixture.record("a")
+            cleared.audioPath = nil
+            cleared.audioExpiresAt = nil
+            let byID = Dictionary(uniqueKeysWithValues: try store.dictations().map { ($0.id, $0) })
+            #expect(byID["a"] == cleared)
+            #expect(byID["b"] == HistoryStoreFixture.record("b"))
+            #expect(byID["c"]?.audioPath == nil)
+            #expect(byID.count == 3)
+        }
+    }
+
     /// Migrations rejouées sur une base déjà migrée : rien ne change, lancement après lancement (schéma, marqueurs,
     /// données, date de début du suivi des bascules).
     @Test func reopeningAMigratedDatabaseChangesNothing() throws {

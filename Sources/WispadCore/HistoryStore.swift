@@ -392,6 +392,19 @@ public final class HistoryStore: @unchecked Sendable {
         }
     }
 
+    /// Purge : oublie l'audio de plusieurs dictées en une seule transaction, sans toucher au reste. Une écriture par
+    /// audio attendait chaque fois une base occupée (jusqu'à 2 s), sur le fil principal. Tout ou rien.
+    public func clearAudio(ids: [String]) throws {
+        guard !ids.isEmpty else { return }
+        try transaction {
+            for id in ids {
+                try runOnQueue("UPDATE dictations SET audio_path = NULL, audio_expires_at = NULL WHERE id = ?;") { statement in
+                    bind(id, at: 1, statement)
+                }
+            }
+        }
+    }
+
     public func deleteDictation(id: String) throws {
         // La clé étrangère supprime aussi les traces, dans la même opération SQLite.
         try run("DELETE FROM dictations WHERE id = ?;") { statement in

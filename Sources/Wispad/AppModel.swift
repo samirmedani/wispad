@@ -906,8 +906,9 @@ final class AppModel {
             if let path = audioPaths[id] ?? nil {
                 try? FileManager.default.removeItem(atPath: path)
             }
-            persist("purge d'un audio") { try store.updateAudio(id: id, path: nil, expiresAt: nil) }
         }
+        // Une seule écriture pour tous : une par audio attendait chaque fois une base occupée (2 s), sur ce fil.
+        persist("purge des audios") { try store.clearAudio(ids: victims) }
         reloadHistory()
     }
 
