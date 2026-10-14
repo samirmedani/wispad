@@ -193,7 +193,16 @@ gauche ; ⓘ (popover avec le schéma), touches et boutons à droite, sur une li
 boutons, puis les touches, plutôt que de passer à la ligne.
 
 Toutes les frontières du système (micro, réseau, clés, collage, son) passent par
-`AppDependencies` : les tests les remplacent et n'ouvrent jamais le vrai micro ni le vrai réseau.
+`AppDependencies` : les tests les remplacent et n'ouvrent jamais le vrai micro ni le vrai réseau. Ce que la dictée
+dit à l'écoute du clavier (phase, fin d'un geste) passe par `AppModel.hotkeys` (`HotkeyControl`) : `HotkeyMonitor`
+dans l'app, un clavier simulé dans les tests.
+
+Filet du coordinateur : `DictationCoordinatorPropertyTests` joue des séquences tirées d'une graine fixe sur ces faux
+(gestes passés par `HotkeyLogic`, bulle, menu, micro, fournisseurs, correction, collage, « Coller la dernière
+dictée », réseau, autorisations) et vérifie après chaque événement et en fin de séquence les invariants du
+coordinateur : retour au repos borné, un seul collage par dictée et jamais après une annulation, micro et spectre
+fermés hors de l'écoute, historique cohérent, raccourci libre, aucun objet de dictée gardé. Une séquence qui a révélé
+un défaut reste en test fixe (`DictationSequenceRegressionTests`).
 
 ## Appels qui attendent
 

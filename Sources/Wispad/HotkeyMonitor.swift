@@ -6,10 +6,22 @@ import os
 /// Journal système du raccourci : seulement l'état de l'écoute du clavier, jamais les touches.
 let hotkeyLog = Logger.wispad("raccourci")
 
+/// Ce que la dictée et l'interface disent à l'écoute du clavier (`AppModel.hotkeys`) : `HotkeyMonitor` dans l'app,
+/// un clavier simulé dans les tests, qui suit ainsi le geste en cours sans écoute réelle.
+@MainActor
+protocol HotkeyControl: AnyObject {
+    var diagnosticState: KeyboardDiagnosticState { get }
+    func refreshConfig()
+    func setDictationState(capturing: Bool, pending: Bool)
+    func installTap()
+    func sessionEnded()
+    func externalToggleStarted()
+}
+
 /// Côté fil principal du raccourci : recopie les réglages vers l'écoute du clavier (KeyboardTap, sur son
 /// propre fil) et transmet ses effets à la dictée.
 @MainActor
-final class HotkeyMonitor {
+final class HotkeyMonitor: HotkeyControl {
     private weak var model: AppModel?
     private var tap: KeyboardTap?
     private var clickMonitor: Any?
