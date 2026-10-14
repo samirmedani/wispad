@@ -587,6 +587,38 @@ private final class FuzzHardware: @unchecked Sendable {
     }
 }
 
+/// Clés de l'app lues tard (coffre de secrets lent) : aucune clé tant que la relecture n'a pas rendu la main.
+private final class LateKeys: @unchecked Sendable {
+    private let lock = NSLock()
+    private var loaded = false
+    private var waiters: [AsyncResult<Void>] = []
+
+    var isLoaded: Bool { lock.withLock { loaded } }
+
+    /// Une relecture attend les clés.
+    var isReading: Bool { lock.withLock { !waiters.isEmpty } }
+
+    func refresh() async {
+        let waiter: AsyncResult<Void>? = lock.withLock {
+            guard !loaded else { return nil }
+            let waiter = AsyncResult<Void>()
+            waiters.append(waiter)
+            return waiter
+        }
+        if let waiter { try? await waiter.value() }
+    }
+
+    func load() {
+        let released: [AsyncResult<Void>] = lock.withLock {
+            loaded = true
+            let released = waiters
+            waiters.removeAll()
+            return released
+        }
+        for waiter in released { waiter.resolve(.success(())) }
+    }
+}
+
 /// Micro d'une dictée, sur le micro simulé partagé.
 private final class FuzzMicrophone: AudioRecording, @unchecked Sendable {
     let number: Int
@@ -931,8 +963,8 @@ private final class ModelWorld {
     private var ordinary = false
 
     /// `startLimit` : délai de démarrage du micro, court pour qu'un micro bloqué coûte peu ; `hangSeconds` : durée
-    /// d'un démarrage ou d'un redémarrage qui ne rend pas la main à temps.
-    init(_ sequence: ModelSequence, startLimit: Double = 0.3, hangSeconds: Double = 0.45) throws {
+    /// d'un démarrage ou d'un redémarrage qui ne rend pas la main à temps ; `keys` : clés lues tard.
+    init(_ sequence: ModelSequence, startLimit: Double = 0.3, hangSeconds: Double = 0.45, keys: LateKeys? = nil) throws {
         self.sequence = sequence
         self.startLimit = startLimit
         self.hangSeconds = hangSeconds
@@ -940,10 +972,18 @@ private final class ModelWorld {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let hardware = self.hardware
         var deps = AppDependencies()
-        deps.loadKey = { "fixture-" + $0 }
+        if let keys {
+            deps.loadKey = { keys.isLoaded ? "fixture-" + $0 : nil }
+            deps.refreshKeys = {
+                await keys.refresh()
+                return true
+            }
+        } else {
+            deps.loadKey = { "fixture-" + $0 }
+            deps.refreshKeys = { true }
+        }
         deps.saveKey = { _, _ in true }
         deps.deleteKey = { _ in true }
-        deps.refreshKeys = { true }
         deps.validateKey = { _ in 200 }
         deps.requestMicrophone = { [weak self] in self?.microphoneAllowed() ?? false }
         deps.microphoneAuthorized = { hardware.microphoneAuthorized }
@@ -1534,7 +1574,7 @@ private final class ModelWorld {
                     break
                 }
             }
-            try? await Task.sleep(nanoseconds: 20_000_000)
+            try? await Task.sleep(nanoseconds: 5_000_000)
         }
         checkStep()
         guard rested else {
@@ -1561,7 +1601,7 @@ private final class ModelWorld {
     }
 
     /// La file des gestes est vide : un geste ajouté maintenant passe tout de suite.
-    private func queueDrained() async -> Bool {
+    func queueDrained() async -> Bool {
         let before = probesRun
         model.coordinator.enqueue { [weak self] in self?.probesRun += 1 }
         return await eventually(seconds: 1) { self.probesRun > before }
@@ -1669,7 +1709,7 @@ private func eventually(seconds: Double = 15, _ condition: () -> Bool) async -> 
     let deadline = Date().addingTimeInterval(seconds)
     while !condition() {
         if Date() > deadline { return false }
-        try? await Task.sleep(nanoseconds: 10_000_000)
+        try? await Task.sleep(nanoseconds: 2_000_000)
     }
     return true
 }
@@ -1680,21 +1720,48 @@ private func eventually(seconds: Double = 15, _ condition: () -> Bool) async -> 
 @MainActor
 @Suite(.serialized)
 struct DictationCoordinatorPropertyTests {
-    @Test func randomSequencesKeepEveryInvariant() async throws {
+    /// Séquences jouées ensemble, par lots : chacune a son app, ses faux et son clavier ; seul le fil principal est
+    /// commun, et il est le plus souvent libre (délais simulés). Les tirages, eux, restent dans l'ordre de la graine.
+    static let concurrentSequences = 4
+
+    @Test func randomSequencesKeepEveryInvariant() async {
         let seed: UInt64 = 0x00D1_C7A7_10A5
         var random = ModelRandom(seed: seed)
-        for index in 0..<modelRuns(800) {
-            let sequence = ModelSequence.draw(&random)
-            let world = try ModelWorld(sequence)
-            let failure = await world.play()
-            world.dispose()
+        let sequences = (0..<modelRuns(800)).map { _ in ModelSequence.draw(&random) }
+        var start = 0
+        while start < sequences.count {
+            let batch = start..<min(start + Self.concurrentSequences, sequences.count)
+            var plays: [Task<String?, Never>] = []
+            for index in batch {
+                let sequence = sequences[index]
+                plays.append(Task { @MainActor in await Self.play(sequence) })
+            }
+            // Tout le lot finit ; la première violation, dans l'ordre des tirages, est rapportée.
+            var failure: (index: Int, text: String)?
+            for (index, play) in zip(batch, plays) {
+                if let text = await play.value, failure == nil { failure = (index, text) }
+            }
             if let failure {
                 // Une ligne, valeur comprise : scripts/check.sh ne garde que les lignes ✘ du journal.
-                let violation: String? = "séquence \(index), graine \(seed) : \(failure)"
+                let violation: String? = "séquence \(failure.index), graine \(seed) : \(failure.text)"
                 #expect(violation == nil)
                 return
             }
+            start = batch.upperBound
         }
+    }
+
+    /// Une séquence sur une app neuve ; rend sa première violation.
+    private static func play(_ sequence: ModelSequence) async -> String? {
+        let world: ModelWorld
+        do {
+            world = try ModelWorld(sequence)
+        } catch {
+            return "app de test impossible à créer : \(error)"
+        }
+        let failure = await world.play()
+        world.dispose()
+        return failure
     }
 }
 
@@ -1752,6 +1819,44 @@ struct DictationSequenceRegressionTests {
         #expect(failure == nil)
         #expect(world.tracks[1]?.ended == false)
         #expect(world.tracks[2]?.pasted == true)
+    }
+
+    /// Double appui, puis écoute du clavier retirée (autorisation retirée) avant que son départ en file ait joué.
+    /// L'écoute oublie alors le geste en cours ; le départ en file ouvrait pourtant une dictée en mains libres que ni
+    /// le raccourci ni Échap n'atteignaient, et qu'un appui n'arrêtait pas l'écoute rendue.
+    @Test func keyboardWithdrawnBeforeAQueuedDoubleTapStartsNothing() async throws {
+        let sequence = ModelSequence.scripted([], plans: [DictationPlan()])
+        let world = try ModelWorld(sequence, startLimit: MicrophoneStartWatch.startLimit)
+        defer { world.dispose() }
+        // Dans le même tour du fil principal : le départ du double appui attend encore son tour.
+        await world.perform(.doubleTap)
+        await world.perform(.keyboardWithdrawn)
+        let drained = await world.queueDrained()
+        #expect(drained)
+        #expect(world.latest == 0)
+        #expect(world.model.coordinator.phase == .idle)
+        let failure = await world.finishAndCheck()
+        #expect(failure == nil)
+    }
+
+    /// Même retrait pendant que le départ du double appui attend la clé (coffre de secrets lent) : la clé arrivée, il
+    /// ouvrait aussi une dictée hors d'atteinte du clavier.
+    @Test func keyboardWithdrawnWhileTheKeyIsReadStartsNothing() async throws {
+        let keys = LateKeys()
+        let sequence = ModelSequence.scripted([], plans: [DictationPlan()])
+        let world = try ModelWorld(sequence, startLimit: MicrophoneStartWatch.startLimit, keys: keys)
+        defer { world.dispose() }
+        await world.perform(.doubleTap)
+        let reading = await eventually { keys.isReading }
+        #expect(reading)
+        await world.perform(.keyboardWithdrawn)
+        keys.load()
+        let drained = await world.queueDrained()
+        #expect(drained)
+        #expect(world.latest == 0)
+        #expect(world.model.coordinator.phase == .idle)
+        let failure = await world.finishAndCheck()
+        #expect(failure == nil)
     }
 
     /// Micro muet, redémarré sur un moteur neuf qui tarde ; on relâche la touche pendant ce redémarrage. `stop()`
