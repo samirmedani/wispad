@@ -20,6 +20,9 @@ Raccourci par défaut : fn seule. Wispad intercepte la touche fn pour que macOS 
 - Un double appui ou un maintien reconnu démarre toujours sa dictée, même quand Wispad, occupé, traite d'abord un
   Échap pressé juste après : Échap annule alors seulement ce qui se terminait. Aucun appui suivant ne se perd à
   arrêter une dictée jamais démarrée.
+- Une dictée arrêtée sans son geste (Échap, ✕, micro en échec ou perdu) pendant que d'autres gestes attendent leur
+  tour ne remet pas le raccourci au repos : il en est déjà à ces gestes, et la dictée qu'ils démarrent s'arrête au
+  raccourci comme d'habitude (un appui en mains libres, le relâchement en maintien).
 - Jamais mort ni bloqué : une touche relâchée sans que l'écoute du clavier le voie (écoute coupée par macOS, champ
   de mot de passe, écran verrouillé, autre session, veille) arrête la dictée en maintien au plus tard à la
   vérification suivante de l'écoute (voir « Réactivité ») ; le raccourci répond ensuite normalement. Échap n'est
