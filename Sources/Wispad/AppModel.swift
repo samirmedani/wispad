@@ -71,7 +71,7 @@ final class AppModel {
     let historyPlayer: HistoryAudioPlayer
     let overlay = OverlayController()
     let supportURL: URL
-    weak var hotkeys: HotkeyMonitor?
+    weak var hotkeys: (any HotkeyControl)?
     var onOpenWindow: ((AppSection) -> Void)?
 
     var audioDirectory: URL {
