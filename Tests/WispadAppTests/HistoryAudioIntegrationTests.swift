@@ -186,34 +186,41 @@ struct HistoryAudioIntegrationTests {
         #expect(FileManager.default.fileExists(atPath: try #require(selected.audioPath)))
     }
 
-    /// Base tenue en écriture par un autre programme (autre Wispad ouvert, outil qui l'inspecte) : le ménage de
-    /// plusieurs audios expirés n'attend qu'une fois que la base se libère (2 s) sur le fil principal, comme une seule
-    /// écriture, au lieu d'une fois par audio. Rien n'est écrit ; le ménage suivant, base libre, termine le travail.
-    @Test func purgingSeveralAudiosWaitsForABusyDatabaseOnlyOnce() throws {
+    /// Ménage de nombreux audios expirés (plafond abaissé, Wispad resté fermé) : une seule écriture dans la base, pas
+    /// une par audio. Base tenue par un autre programme (autre Wispad ouvert, outil qui l'inspecte), chaque écriture
+    /// attend sur le fil principal (busy_timeout de 2 s, 4,6 s mesurées sur le Mac de la vérification) : une par audio
+    /// figeait l'app autant de fois, au lancement puis chaque minute. Chaque écriture validée ajoute au moins une trame
+    /// au journal WAL : 40 audios en 40 écritures en ajoutent au moins 40, en une seule quelques-unes.
+    @Test func purgingManyAudiosWritesTheDatabaseOnce() throws {
         let fixture = try HistoryAudioIntegrationFixture()
         defer { fixture.dispose() }
         let expired = Date().addingTimeInterval(-60)
-        let records = try (0..<4).map { try fixture.record(id: "expiree-\($0)", expiresAt: expired) }
-        var other: OpaquePointer?
-        #expect(sqlite3_open(fixture.directory.appendingPathComponent(AppIdentity.databaseName).path, &other) == SQLITE_OK)
-        defer { sqlite3_close(other) }
-        #expect(sqlite3_exec(other, "BEGIN IMMEDIATE;", nil, nil, nil) == SQLITE_OK)
+        let records = try (0..<40).map { try fixture.record(id: "expiree-\($0)", expiresAt: expired) }
+        let path = fixture.directory.appendingPathComponent(AppIdentity.databaseName).path
+        var connection: OpaquePointer?
+        #expect(sqlite3_open(path, &connection) == SQLITE_OK)
+        defer { sqlite3_close(connection) }
+        var statement: OpaquePointer?
+        #expect(sqlite3_prepare_v2(connection, "PRAGMA page_size;", -1, &statement, nil) == SQLITE_OK)
+        #expect(sqlite3_step(statement) == SQLITE_ROW)
+        let frame = Int(sqlite3_column_int(statement, 0)) + 24
+        sqlite3_finalize(statement)
+        // Journal reversé dans la base et vidé : tout ce qui s'y ajoute ensuite vient du ménage.
+        #expect(sqlite3_exec(connection, "PRAGMA wal_checkpoint(TRUNCATE);", nil, nil, nil) == SQLITE_OK)
+        // Taille relue sur le disque à chaque fois (attributesOfItem ne garde rien en cache).
+        let journalSize = { ((try? FileManager.default.attributesOfItem(atPath: path + "-wal"))?[.size] as? NSNumber)?.intValue }
+        #expect(journalSize() == 0)
 
-        let clock = ContinuousClock()
-        let oneWrite = clock.measure {
-            _ = try? fixture.model.store.updateStatus(id: records[0].id, status: InsertionStatus.inserted.rawValue)
-        }
-        let purge = clock.measure { fixture.model.purgeAudio() }
-        #expect(purge < oneWrite * 2)
-        #expect(try fixture.model.store.dictations().allSatisfy { $0.audioPath != nil })
-
-        #expect(sqlite3_exec(other, "COMMIT;", nil, nil, nil) == SQLITE_OK)
         fixture.model.purgeAudio()
+
         #expect(fixture.model.history.count == records.count)
         #expect(fixture.model.history.allSatisfy { $0.audioPath == nil && $0.audioExpiresAt == nil })
         for record in records {
             #expect(!FileManager.default.fileExists(atPath: try #require(record.audioPath)))
         }
+        let written = try #require(journalSize())
+        #expect(written > 32)
+        #expect((written - 32) / frame < records.count / 4)
     }
 
     @Test func startingDictationClosesPlaybackAndPreventsReplayUntilTheMicIsFree() throws {
