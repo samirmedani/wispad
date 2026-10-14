@@ -198,9 +198,17 @@ public final class HistoryStore: @unchecked Sendable {
             );
             """
         )
-        try execute("INSERT OR IGNORE INTO app_metadata (key, value) VALUES ('learning_refusals_v1', '1');")
-        try run("INSERT OR IGNORE INTO app_metadata (key, value) VALUES ('fallback_tracking_started_at', ?);") { statement in
-            sqlite3_bind_double(statement, 1, fallbackTrackingStartedAt.timeIntervalSince1970)
+        // Une base déjà à jour s'ouvre sans rien écrire, donc sans attendre le verrou d'écriture : un autre Wispad ou
+        // un outil qui le tient plus de 2 s n'empêche pas le lancement. Chaque écriture ci-dessous n'a lieu que si
+        // son marqueur manque ; les migrations le relisent dans leur transaction, au cas où une autre instance passe.
+        let metadata = Set(try query("SELECT key FROM app_metadata;") { column(0, $0) })
+        if !metadata.contains("learning_refusals_v1") {
+            try execute("INSERT OR IGNORE INTO app_metadata (key, value) VALUES ('learning_refusals_v1', '1');")
+        }
+        if !metadata.contains("fallback_tracking_started_at") {
+            try run("INSERT OR IGNORE INTO app_metadata (key, value) VALUES ('fallback_tracking_started_at', ?);") { statement in
+                sqlite3_bind_double(statement, 1, fallbackTrackingStartedAt.timeIntervalSince1970)
+            }
         }
         let trackingDates = try query("SELECT value FROM app_metadata WHERE key = 'fallback_tracking_started_at';") {
             Date(timeIntervalSince1970: sqlite3_column_double($0, 0))
@@ -208,9 +216,11 @@ public final class HistoryStore: @unchecked Sendable {
         if let date = trackingDates.first { fallbackTrackingStartedAt = date }
         // Ancienne date de début du suivi financier, sans usage depuis la fin de la séparation
         // Utilisation / Développement. Les appels eux-mêmes restent intacts.
-        try execute("DELETE FROM app_metadata WHERE key = 'financial_tracking_started_at';")
-        try migrateUsageAccuracy()
-        try forgetRetiredValues()
+        if metadata.contains("financial_tracking_started_at") {
+            try execute("DELETE FROM app_metadata WHERE key = 'financial_tracking_started_at';")
+        }
+        if !metadata.contains("usage_accuracy_v1") { try migrateUsageAccuracy() }
+        if !metadata.contains("retired_values_v1") { try forgetRetiredValues() }
     }
 
     /// Répare une seule fois les estimations anciennes, sans reconstruire de jetons perdus.

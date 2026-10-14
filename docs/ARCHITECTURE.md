@@ -241,7 +241,9 @@ Une mise à jour ne doit jamais faire perdre à l'utilisateur ses fournisseurs, 
 - **Base SQLite** (`HistoryStore`) : elle évolue par colonnes ajoutées à l'ouverture (`ALTER TABLE … ADD COLUMN`
   si `PRAGMA table_info` ne la trouve pas), jamais retirées ni renommées. Les lignes existantes gardent NULL dans les
   nouvelles colonnes, lu comme « inconnu » (origine d'un mot du dictionnaire : « Avant le suivi »). Ajoutées en fin
-  de table, elles restent invisibles pour une version précédente.
+  de table, elles restent invisibles pour une version précédente. Une reprise ponctuelle des données (prix des appels,
+  valeurs retirées) se fait dans une transaction avec son marqueur (`app_metadata`) ; les marqueurs sont lus d'abord,
+  si bien qu'une base à jour s'ouvre sans rien écrire, même quand une autre connexion tient le verrou d'écriture.
 - Valeur par défaut d'un ancien bloc : la propriété porte celle d'une nouvelle installation ; si une installation
   existante doit garder l'ancien comportement, `init(from:)` donne une autre valeur quand la clé est absente
   (`useWindowContext`, `onboardingCompleted`, `language`).
