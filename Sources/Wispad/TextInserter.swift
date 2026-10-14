@@ -56,12 +56,15 @@ struct InsertionField: @unchecked Sendable {
         return CFEqual(element, other)
     }
 
-    /// Champ actif de l'app, `seconds` au plus ; un champ vide sans réponse à temps. `reader` : la lecture, remplacée
-    /// dans les tests.
+    /// Champ actif de l'app, `seconds` au plus ; un champ vide sans réponse à temps. Chaque lecture a sa file, jamais un
+    /// fil de Swift concurrency : relancée pendant qu'une précédente attend encore une app lente, elle ne l'attend pas.
+    /// `reader` : la lecture, remplacée dans les tests.
     @MainActor static func read(pid: pid_t, within seconds: Double,
                                 reader: @escaping @Sendable (pid_t) -> InsertionField = { InsertionField.read(pid: $0) })
         async -> InsertionField {
-        let task = Task.detached(priority: .userInitiated) { reader(pid) }
+        let task = Task.detached(priority: .userInitiated) {
+            await BlockingQueue.run(label: "wispad.insertion") { reader(pid) }
+        }
         return await DictationCoordinator.value(of: task, within: seconds) ?? InsertionField()
     }
 }

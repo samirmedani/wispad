@@ -27,6 +27,9 @@ final class CorrectionWatcher {
         task?.cancel()
         let reader = self.reader
         // Les lectures du champ se font hors du fil principal : une app lente ne retarde ni le raccourci ni la bulle.
+        // Chacune attend l'app jusqu'à 0,5 s par question : sur la file de cette surveillance, jamais sur un fil de Swift
+        // concurrency (les minuteries de la dictée suivante en dépendent).
+        let reads = BlockingQueue(label: "wispad.apprentissage", qos: .utility)
         task = Task.detached(priority: .utility) {
             Self.log.notice("Surveillance démarrée")
             var watch = CorrectionWatch(inserted: inserted, known: known)
@@ -34,14 +37,14 @@ final class CorrectionWatcher {
             var element: AXUIElement?
             var outcome: CorrectionWatch.Outcome?
             if !Task.isCancelled {
-                let read = reader(pid, element)
+                let read = await Self.sample(pid: pid, previous: element, with: reader, on: reads)
                 outcome = Self.advance(&watch, read: read, element: &element)
             }
             if outcome == nil {
                 for _ in 0..<CorrectionWatch.pollCount {
                     try? await Task.sleep(nanoseconds: CorrectionWatch.pollIntervalNanoseconds)
                     if Task.isCancelled { break }
-                    let read = reader(pid, element)
+                    let read = await Self.sample(pid: pid, previous: element, with: reader, on: reads)
                     if let stopped = Self.advance(&watch, read: read, element: &element) {
                         outcome = stopped
                         break
@@ -54,6 +57,13 @@ final class CorrectionWatcher {
                 await MainActor.run { corrected(result.candidates) }
             }
         }
+    }
+
+    /// Une lecture sur la file de la surveillance ; l'élément précédent n'y est lu que par elle.
+    private nonisolated static func sample(pid: pid_t, previous: AXUIElement?, with reader: @escaping Reader,
+                                           on reads: BlockingQueue) async -> Read {
+        let previous = UncheckedSendable(previous)
+        return await reads.run { reader(pid, previous.value) }
     }
 
     private nonisolated static func advance(_ watch: inout CorrectionWatch, read: Read, element: inout AXUIElement?) -> CorrectionWatch.Outcome? {

@@ -121,7 +121,8 @@ struct DiagnosticReport: Codable, Equatable, Sendable {
 
 enum AppDiagnostics {
     static let traceLimit = 50
-    /// File de l'export : lecture de la base et écriture du rapport.
+    /// File de l'export : lecture de la base (jusqu'à 2 s si un autre programme la tient) et écriture du rapport, jamais
+    /// sur un fil de Swift concurrency.
     static let exports = BlockingQueue(label: "wispad.diagnostic", qos: .utility)
 
     @MainActor
@@ -186,10 +187,10 @@ enum AppDiagnostics {
 
     /// La lecture SQLite et l'écriture du rapport ne bloquent ni le micro ni la fenêtre.
     static func export(snapshot: DiagnosticSnapshot, store: HistoryStore, to url: URL) async throws {
-        try await Task.detached(priority: .utility) {
+        try await exports.run {
             let traces = try? store.recentTraces(limit: traceLimit)
             let report = report(snapshot: snapshot, traces: traces ?? [], traceReadSucceeded: traces != nil)
             try encodedData(report).write(to: url, options: .atomic)
-        }.value
+        }
     }
 }

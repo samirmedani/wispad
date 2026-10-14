@@ -110,8 +110,9 @@ struct UpdateToolsTests {
     @Test func theRelaunchHelperWaitsForWispadToEndBeforeOpeningIt() async throws {
         let folder = try SwapFolder()
         // Wispad simulé : un processus d'une demi-seconde, détaché par un shell intermédiaire. Rattaché à launchd, il
-        // disparaît dès sa fin (un enfant du test resterait zombie, et `kill -0` le dirait encore là).
-        let output = await Task.detached { () -> String in
+        // disparaît dès sa fin (un enfant du test resterait zombie, et `kill -0` le dirait encore là). Attendu sur une
+        // file à lui, jamais sur un fil de Swift concurrency que les autres tests partagent.
+        let output = await BlockingQueue.run(label: "wispad.tests.outil") { () -> String in
             let process = Process()
             process.executableURL = URL(fileURLWithPath: "/bin/sh")
             process.arguments = ["-c", "/bin/sleep 0.5 >/dev/null 2>&1 & echo $!"]
@@ -125,7 +126,7 @@ struct UpdateToolsTests {
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
             process.waitUntilExit()
             return String(decoding: data, as: UTF8.self)
-        }.value
+        }
         let pid = try #require(Int32(output.trimmingCharacters(in: .whitespacesAndNewlines)))
         let command = UpdateTools.relaunchCommand(pid: pid, app: folder.app, arguments: ["--updated"])
         let status = try await runHelper(
@@ -150,8 +151,8 @@ struct UpdateToolsTests {
             + command.dropFirst(2)
         let directory = folder.root
         let variables = ProcessInfo.processInfo.environment.merging(environment) { $1 }
-        // Comme `UpdateTools.run` : lancé, puis attendu, hors du fil du test.
-        return await Task.detached { () -> Int32 in
+        // Comme `UpdateTools.run` : lancé, puis attendu sur une file GCD, jamais sur un fil de Swift concurrency.
+        return await BlockingQueue.run(label: "wispad.tests.outil") { () -> Int32 in
             let process = Process()
             process.executableURL = URL(fileURLWithPath: "/bin/sh")
             process.arguments = arguments
@@ -164,7 +165,7 @@ struct UpdateToolsTests {
             }
             process.waitUntilExit()
             return process.terminationStatus
-        }.value
+        }
     }
 }
 

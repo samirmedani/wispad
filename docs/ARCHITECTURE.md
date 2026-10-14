@@ -4,7 +4,7 @@
 
 | Module | Rôle | Dépend de |
 | --- | --- | --- |
-| `WispadCore` | Logique pure et testable : requêtes de transcription et de correction, consigne, garde-fou, format des dates et des heures (`DictationDateFormat`, `DateTimeWriter`), des nombres, montants et unités (`DictationNumberFormat`, `NumberWriter`), comparaison flux/fichier, historique SQLite, coûts, retard de la version sur `main` (`BuildFreshness`), adresses d'aide et de retour (`FeedbackLinks`), releases et mises à jour (`ReleaseUpdate`, `UpdateInstallRules`), progression du premier lancement guidé (`OnboardingFlow`), place de la bulle, écrans et zone de saisie à éviter (`OverlayPlacement`, `OverlayScreen`, `OverlayGeometry`), garde de l'écoute du clavier selon les autorisations (`KeyboardTapWatch`), lecture d'un bloc JSON enregistré même abîmé et réécriture sans perte (`StoredJSON`). Aucun texte d'interface. | — |
+| `WispadCore` | Logique pure et testable : requêtes de transcription et de correction, consigne, garde-fou, format des dates et des heures (`DictationDateFormat`, `DateTimeWriter`), des nombres, montants et unités (`DictationNumberFormat`, `NumberWriter`), comparaison flux/fichier, historique SQLite, coûts, retard de la version sur `main` (`BuildFreshness`), adresses d'aide et de retour (`FeedbackLinks`), releases et mises à jour (`ReleaseUpdate`, `UpdateInstallRules`), progression du premier lancement guidé (`OnboardingFlow`), place de la bulle, écrans et zone de saisie à éviter (`OverlayPlacement`, `OverlayScreen`, `OverlayGeometry`), garde de l'écoute du clavier selon les autorisations (`KeyboardTapWatch`), lecture d'un bloc JSON enregistré même abîmé et réécriture sans perte (`StoredJSON`), file GCD des appels qui attendent (`BlockingQueue`). Aucun texte d'interface. | — |
 | `Wispad` (app) | Coordinateur de dictée, raccourci, bulle, écrans SwiftUI, clés, traductions. | `WispadCore` |
 
 Le projet Xcode (hors Git) est généré par xcodegen depuis `project.yml`. `Package.swift` décrit les mêmes
@@ -194,6 +194,25 @@ boutons, puis les touches, plutôt que de passer à la ligne.
 
 Toutes les frontières du système (micro, réseau, clés, collage, son) passent par
 `AppDependencies` : les tests les remplacent et n'ouvrent jamais le vrai micro ni le vrai réseau.
+
+## Appels qui attendent
+
+Un appel qui attend (question à macOS, accessibilité d'une autre app, SQLite, fichier, processus) ne s'exécute jamais
+sur un fil de Swift concurrency : ni dans `Task.detached`, ni dans une fonction `async` non isolée. Ces fils, autant
+que de cœurs, servent toute l'app, minuteries de la dictée comprises (`DictationCoordinator.value(of:within:)`), et
+macOS n'en ajoute pas quand l'un d'eux attend. L'appel passe par `BlockingQueue` (WispadCore), une file GCD série,
+et l'appelant attend sans occuper de fil :
+
+- **file partagée**, quand les appels se suivent ou doivent garder leur ordre : autorisations relues
+  (`PermissionReads`), fichier des clés (`APIKeys.LocalFile.queue`, deux enregistrements ne s'écrasent plus),
+  installation d'une mise à jour (`UpdateTools.queue`), détail et diagnostic lus dans la base ;
+- **file neuve par appel**, quand une attente ne doit en retarder aucune autre : accessibilité d'une autre app
+  (champ actif, fenêtre, collage, zone de saisie, surveillance des corrections : une app figée attend 0,5 s par
+  question), accès au micro avant chaque dictée, audio lu avant son envoi.
+
+Le micro garde sa file (`AudioCapture`) ; le fil principal garde ce qui doit y rester (base de l'historique écrite
+dans l'ordre de la dictée, ⌘V). Preuve : `BlockingWorkTests`, qui lit l'étiquette de la file pendant l'appel, comme
+`PermissionReadsTests`.
 
 ## Écran Historique
 

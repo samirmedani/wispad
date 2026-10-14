@@ -190,7 +190,10 @@ enum APIKeys {
     // MARK: - Fichier local
 
     enum LocalFile {
-        /// File des lectures et écritures du fichier des clés.
+        /// File des lectures et écritures du fichier des clés : jamais sur un fil de Swift concurrency (un disque lent ou
+        /// un dossier réseau feraient attendre ce fil), et l'une après l'autre. Deux enregistrements faits ensemble (deux
+        /// vérifications qui finissent en même temps) relisaient le fichier chacun sur son fil, et le dernier écrasait
+        /// l'autre.
         static let queue = BlockingQueue(label: "wispad.cles")
 
         static var defaultURL: URL {
@@ -199,7 +202,7 @@ enum APIKeys {
         }
 
         static func readAll(_ accounts: [String], url: URL = defaultURL) async -> [(String, String?, Bool)] {
-            await Task.detached(priority: .userInitiated) {
+            await queue.run {
                 guard let file = read(url) else { return accounts.map { ($0, nil, false) } }
                 return accounts.map { account in
                     let value = (file.keys[account] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -207,23 +210,23 @@ enum APIKeys {
                     // Fichier abîmé : un compte hors de sa partie intacte est dit illisible, pas absent.
                     return (account, key, key != nil || file.intact)
                 }
-            }.value
+            }
         }
 
         static func write(_ account: String, _ secret: String, url: URL = defaultURL) async -> Bool {
-            await Task.detached(priority: .userInitiated) {
+            await queue.run {
                 guard var stored = load(url) else { return false }
                 stored[account] = secret
                 return save(stored, to: url)
-            }.value
+            }
         }
 
         static func delete(_ account: String, url: URL = defaultURL) async -> Bool {
-            await Task.detached(priority: .userInitiated) {
+            await queue.run {
                 guard var stored = load(url) else { return false }
                 stored[account] = nil
                 return save(stored, to: url)
-            }.value
+            }
         }
 
         /// Contenu du fichier, entrée par entrée : un fichier absent est vide ; un fichier abîmé (tronqué, invalide) rend

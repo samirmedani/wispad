@@ -568,7 +568,7 @@ public enum BatchTranscriber {
         for term in request.keyterms {
             fields.append(("keyterm", term))
         }
-        let (body, contentType) = try multipart(fields: fields, fileURL: fileURL, readFile: readFile)
+        let (body, contentType) = try await multipart(fields: fields, fileURL: fileURL, readFile: readFile)
         var http = URLRequest(url: URL(string: "https://api.x.ai/v1/stt")!)
         http.httpMethod = "POST"
         http.setValue("Bearer \(request.apiKey)", forHTTPHeaderField: "Authorization")
@@ -587,7 +587,7 @@ public enum BatchTranscriber {
         if let language = request.language.openAICodes.first, request.language != .auto {
             fields.append(("language", language))
         }
-        let (body, contentType) = try multipart(fields: fields, fileURL: fileURL, readFile: readFile)
+        let (body, contentType) = try await multipart(fields: fields, fileURL: fileURL, readFile: readFile)
         var http = URLRequest(url: URL(string: "https://api.openai.com/v1/audio/transcriptions")!)
         http.httpMethod = "POST"
         http.setValue("Bearer \(request.apiKey)", forHTTPHeaderField: "Authorization")
@@ -609,7 +609,7 @@ public enum BatchTranscriber {
     }
 
     private static func multipart(fields: [(String, String)], fileURL: URL,
-                                  readFile: (URL) throws -> Data) throws -> (Data, String) {
+                                  readFile: @escaping @Sendable (URL) throws -> Data) async throws -> (Data, String) {
         let boundary = "WispadBoundary\(UUID().uuidString.replacingOccurrences(of: "-", with: ""))"
         var body = Data()
         for (name, value) in fields {
@@ -617,7 +617,9 @@ public enum BatchTranscriber {
             body.appendUTF8("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n")
             body.appendUTF8("\(value)\r\n")
         }
-        let file = try readFile(fileURL)
+        // L'audio est lu sur une file à lui, jamais sur un fil de Swift concurrency : un long enregistrement, ou un audio
+        // relu pour Retranscrire sur un disque lent, ferait attendre ce fil ; une file par envoi, aucun n'attend l'autre.
+        let file = try await BlockingQueue.run(label: "wispad.audio-envoi") { try readFile(fileURL) }
         body.appendUTF8("--\(boundary)\r\n")
         body.appendUTF8("Content-Disposition: form-data; name=\"file\"; filename=\"dictation.wav\"\r\n")
         body.appendUTF8("Content-Type: audio/wav\r\n\r\n")

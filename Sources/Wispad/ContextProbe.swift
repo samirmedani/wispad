@@ -42,22 +42,18 @@ struct UncheckedSendable<Value>: @unchecked Sendable {
     init(_ value: Value) { self.value = value }
 }
 
-/// Lecture d'accessibilité hors du fil principal : une app lente (Electron) ne fige ni la bulle ni Wispad.
-func offMain<Input, Output>(_ input: Input, _ work: @escaping @Sendable (Input) -> Output) async -> Output {
-    let box = UncheckedSendable(input)
-    return await Task.detached(priority: .userInitiated) { UncheckedSendable(work(box.value)) }.value.value
-}
-
 enum ContextProbe {
     /// App au premier plan, lue tout de suite (c'est là que le texte sera collé), puis le champ actif et le texte
     /// autour du curseur, lus en parallèle hors du fil principal : le micro s'ouvre sans attendre une app lente.
+    /// Chaque question attend l'app jusqu'à 0,5 s : la lecture a sa file, jamais un fil de Swift concurrency (les
+    /// minuteries de la dictée en dépendent), et celle d'une app figée ne retarde pas la dictée suivante.
     /// `read` : la lecture du champ, remplacée dans les tests.
     @MainActor static func begin(read: @escaping @Sendable (pid_t?) -> FieldSnapshot? = { ContextProbe.trustedField(pid: $0) })
         -> (DictationContext, Task<FieldSnapshot?, Never>) {
         let context = frontmost()
         let pid = context.pid
         let field = Task.detached(priority: .userInitiated) { () -> FieldSnapshot? in
-            read(pid)
+            await BlockingQueue.run(label: "wispad.champ-actif") { read(pid) }
         }
         return (context, field)
     }
@@ -224,12 +220,14 @@ enum ContextProbe {
         var zone: CGRect? { OverlayGeometry.inputZone(field: field, caret: caret, window: window) }
     }
 
-    /// Zone de saisie de l'app, lue après l'envoi du texte, `seconds` au plus ; nil sans réponse à temps. `reader` : la
-    /// lecture, remplacée dans les tests.
+    /// Zone de saisie de l'app, lue après l'envoi du texte, `seconds` au plus ; nil sans réponse à temps. La lecture a
+    /// sa file, jamais un fil de Swift concurrency. `reader` : la lecture, remplacée dans les tests.
     @MainActor static func inputZone(pid: pid_t, within seconds: Double,
                                      reader: @escaping @Sendable (pid_t) -> InputLocation = { ContextProbe.inputLocation(pid: $0) })
         async -> CGRect? {
-        let task = Task.detached(priority: .utility) { reader(pid) }
+        let task = Task.detached(priority: .utility) {
+            await BlockingQueue.run(label: "wispad.zone-de-saisie", qos: .utility) { reader(pid) }
+        }
         guard let location = await DictationCoordinator.value(of: task, within: seconds) else { return nil }
         return location.zone
     }

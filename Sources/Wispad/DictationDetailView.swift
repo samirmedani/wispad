@@ -113,12 +113,13 @@ struct DictationDetailView: View {
 }
 
 extension DictationDetailView {
-    /// File des lectures du détail technique dans la base.
+    /// File des lectures du détail technique : la base peut attendre jusqu'à 2 s qu'un autre programme (autre Wispad,
+    /// outil qui l'inspecte) la rende, jamais sur un fil de Swift concurrency.
     nonisolated static let traceReads = BlockingQueue(label: "wispad.historique")
 
     /// Détail technique d'une dictée, lu dans la base hors du fil principal.
     nonisolated static func traces(in store: HistoryStore, dictationID: String) async throws -> [DictationTrace] {
-        try await Task.detached(priority: .userInitiated) { try store.traces(dictationID: dictationID) }.value
+        try await traceReads.run { try store.traces(dictationID: dictationID) }
     }
 }
 

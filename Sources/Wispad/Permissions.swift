@@ -15,9 +15,12 @@ enum PermissionCenter {
         microphoneStatus() == .authorized
     }
 
-    /// `status` : la lecture de l'accès, remplacée dans les tests.
+    /// Avant chaque dictée. L'accès est lu sur une file à lui (une question au démon des autorisations de macOS, une
+    /// dizaine de millisecondes) : jamais sur un fil de Swift concurrency, et sans attendre une autre lecture
+    /// d'autorisation (`PermissionReads`). `status` : la lecture de l'accès, remplacée dans les tests.
     static func requestMicrophone(status: @escaping @Sendable () -> AVAuthorizationStatus = { PermissionCenter.microphoneStatus() }) async -> Bool {
-        switch status() {
+        let current = await BlockingQueue.run(label: "wispad.autorisations.micro", status)
+        switch current {
         case .authorized:
             return true
         case .denied, .restricted:
@@ -109,12 +112,10 @@ struct PermissionReading: Sendable {
 /// de macOS (une dizaine de millisecondes, bien plus sur une machine lente) : elles passent sur une file GCD, jamais
 /// sur un fil de Swift concurrency, dont quelques-uns servent toute l'app (minuteries de la dictée comprises).
 enum PermissionReads {
-    private static let queue = DispatchQueue(label: "wispad.autorisations", qos: .userInitiated)
+    private static let queue = BlockingQueue(label: "wispad.autorisations")
 
     static func offMain<Value: Sendable>(_ read: @escaping @Sendable () -> Value) async -> Value {
-        await withCheckedContinuation { continuation in
-            queue.async { continuation.resume(returning: read()) }
-        }
+        await queue.run(read)
     }
 }
 

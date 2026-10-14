@@ -285,7 +285,9 @@ final class UpdateInstaller {
 
 /// Outils système de l'installation, hors du fil principal.
 enum UpdateTools {
-    /// File des appels qui attendent pendant l'installation (disque relu, signature, outils du système).
+    /// File des appels qui attendent pendant l'installation (disque relu en entier, signature, `hdiutil` et `ditto`
+    /// attendus jusqu'à leur fin, plusieurs secondes) : jamais sur un fil de Swift concurrency, que les minuteries d'une
+    /// dictée faite pendant le téléchargement partagent. L'installation les demande l'une après l'autre.
     static let queue = BlockingQueue(label: "wispad.mise-a-jour")
 
     static func makeWorkspace() throws -> URL {
@@ -302,9 +304,9 @@ enum UpdateTools {
 
     /// `checkDownload` hors du fil principal : le disque reçu est lu en entier.
     static func check(_ file: URL, asset: DiskImageAsset) async throws {
-        try await Task.detached(priority: .userInitiated) {
+        try await queue.run {
             try UpdateTools.checkDownload(file, asset: asset)
-        }.value
+        }
     }
 
     /// Taille et empreinte SHA-256 annoncées par GitHub : un fichier tronqué ou modifié s'arrête ici.
@@ -358,9 +360,9 @@ enum UpdateTools {
     }
 
     static func verify(_ app: URL, teamID: String) async -> Bool {
-        await Task.detached(priority: .userInitiated) {
+        await queue.run {
             CodeSignature.satisfies(app, bundleID: AppIdentity.bundleID, teamID: teamID)
-        }.value
+        }
     }
 
     /// Échange atomique de deux dossiers du même volume (`renamex_np`, APFS). Repli, seulement sur un volume qui ne
@@ -475,7 +477,7 @@ enum UpdateTools {
 
     /// Lance un outil du système et attend sa fin, hors du fil principal : code de sortie et sortie standard.
     static func run(_ tool: String, _ arguments: [String]) async -> (status: Int32, output: Data) {
-        await Task.detached(priority: .userInitiated) { () -> (status: Int32, output: Data) in
+        await queue.run { () -> (status: Int32, output: Data) in
             let process = Process()
             process.executableURL = URL(fileURLWithPath: tool)
             process.arguments = arguments
@@ -490,7 +492,7 @@ enum UpdateTools {
             let output = pipe.fileHandleForReading.readDataToEndOfFile()
             process.waitUntilExit()
             return (status: process.terminationStatus, output: output)
-        }.value
+        }
     }
 }
 

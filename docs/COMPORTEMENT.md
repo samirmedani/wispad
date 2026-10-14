@@ -77,6 +77,10 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 - Le micro reste fermé au repos ; un appui simple ne le prépare pas.
 - La lecture du champ actif (lente dans les apps Electron) ne retarde pas l'enregistrement : l'audio est gardé
   jusqu'à ce que la transcription en direct soit branchée (le champ est attendu 150 ms au plus pour ses mots-clés).
+- Une app lente ou figée (chaque question d'accessibilité l'attend 0,5 s), une base tenue par un autre programme, un
+  disque lent ou un outil de mise à jour qui tarde n'occupent aucun des fils dont dépendent les délais de la dictée
+  (démarrage du micro, champ actif attendu 150 ms, relecture du champ après ⌘V) : ces délais restent tenus. Chaque
+  lecture d'une autre app a sa file : une app figée ne retarde pas la dictée suivante dans une autre app.
 - Chaque dictée ajoute une ligne à `~/Library/Application Support/Wispad/latence.log` (date, mode ; appui →
   bulle, micro, premier audio, flux ; fin → collé ; statut), sans aucun texte, 500 lignes au plus.
 
@@ -701,6 +705,8 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
 - Fichier de clés : une entrée d'un autre type (ajoutée par une version plus récente, ou abîmée) ne cache aucune autre
   clé et reste telle quelle quand on en enregistre une. Un fichier abîmé (tronqué, invalide) n'est jamais réécrit :
   les clés de sa partie intacte servent, les autres sont dites illisibles.
+- Clés enregistrées en même temps (deux vérifications qui finissent ensemble) : toutes sont gardées dans le fichier,
+  l'une après l'autre ; aucune ne manque au lancement suivant.
 
 ## Mises à jour et réinstallation
 
