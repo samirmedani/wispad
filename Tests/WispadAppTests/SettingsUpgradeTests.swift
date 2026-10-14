@@ -610,4 +610,44 @@ struct APIKeysUpgradeTests {
         ])
     }
 
+    /// Fichier de clés écrit dans un dossier temporaire, jamais le vrai.
+    private func keyFile(_ contents: String) throws -> (directory: URL, url: URL) {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("wispad-keys-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let url = directory.appendingPathComponent("api-keys.json")
+        try Data(contents.utf8).write(to: url)
+        return (directory, url)
+    }
+
+    /// Entrée d'un autre type (ajoutée par une version plus récente, ou abîmée) : elle rendait toutes les clés illisibles
+    /// et bloquait l'enregistrement. Elle ne cache plus les autres clés et reste telle quelle quand on en enregistre une.
+    @Test func entryOfAnotherTypeHidesNoOtherKey() async throws {
+        let (directory, url) = try keyFile(#"{"xai": "valeur-de-test-xai", "openai": 42, "format": {"version": 2}}"#)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let read = await APIKeys.LocalFile.readAll(["xai", "openai", "deepseek"], url: url)
+        #expect(read.map(\.1) == ["valeur-de-test-xai", nil, nil])
+        #expect(read.allSatisfy { $0.2 })
+        #expect(await APIKeys.LocalFile.write("deepseek", "valeur-de-test-deepseek", url: url))
+
+        let stored = try #require(try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        #expect(StoredJSON.same(stored, [
+            "xai": "valeur-de-test-xai", "openai": 42, "format": ["version": 2], "deepseek": "valeur-de-test-deepseek",
+        ]))
+    }
+
+    /// Fichier de clés tronqué : les clés de sa partie intacte servent, les autres sont dites illisibles (pas absentes),
+    /// et le fichier n'est jamais réécrit.
+    @Test func truncatedKeyFileKeepsItsIntactKeysAndIsNeverRewritten() async throws {
+        let damaged = #"{"deepseek":"valeur-de-test-deepseek","openai":"valeur-de-test-ope"#
+        let (directory, url) = try keyFile(damaged)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let read = await APIKeys.LocalFile.readAll(["deepseek", "openai", "xai"], url: url)
+        #expect(read.map(\.1) == ["valeur-de-test-deepseek", nil, nil])
+        #expect(read.map(\.2) == [true, false, false])
+        #expect(!(await APIKeys.LocalFile.write("xai", "valeur-de-test-xai", url: url)))
+        #expect(!(await APIKeys.LocalFile.delete("deepseek", url: url)))
+        #expect(try String(contentsOf: url, encoding: .utf8) == damaged)
+    }
 }

@@ -197,10 +197,12 @@ enum APIKeys {
 
         static func readAll(_ accounts: [String], url: URL = defaultURL) async -> [(String, String?, Bool)] {
             await Task.detached(priority: .userInitiated) {
-                guard let stored = load(url) else { return accounts.map { ($0, nil, false) } }
+                guard let file = read(url) else { return accounts.map { ($0, nil, false) } }
                 return accounts.map { account in
-                    let value = stored[account]?.trimmingCharacters(in: .whitespacesAndNewlines)
-                    return (account, value?.isEmpty == false ? value : nil, true)
+                    let value = (file.keys[account] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let key = value?.isEmpty == false ? value : nil
+                    // Fichier abîmé : une clé absente de sa partie intacte est illisible, pas absente.
+                    return (account, key, key != nil || file.intact)
                 }
             }.value
         }
@@ -221,17 +223,25 @@ enum APIKeys {
             }.value
         }
 
-        /// Clés enregistrées ; un fichier absent est vide, un fichier illisible rend nil.
-        static func load(_ url: URL) -> [String: String]? {
-            guard FileManager.default.fileExists(atPath: url.path) else { return [:] }
-            guard let data = try? Data(contentsOf: url),
-                  let stored = try? JSONDecoder().decode([String: String].self, from: data) else { return nil }
-            return stored
+        /// Contenu du fichier, entrée par entrée : un fichier absent est vide ; un fichier abîmé (tronqué, invalide) rend
+        /// les entrées de sa partie intacte, `intact` faux ; nil s'il n'est pas lisible du tout.
+        static func read(_ url: URL) -> (keys: [String: Any], intact: Bool)? {
+            guard FileManager.default.fileExists(atPath: url.path) else { return ([:], true) }
+            guard let data = try? Data(contentsOf: url), let file = StoredJSON.object(from: data) else { return nil }
+            return (file.object, file.intact)
+        }
+
+        /// Entrées à réécrire ; nil si le fichier est abîmé ou illisible : il n'est alors jamais réécrit. Une entrée
+        /// qui n'est pas une clé lisible ici (autre type, ajoutée par une version plus récente) reste telle quelle.
+        static func load(_ url: URL) -> [String: Any]? {
+            guard let file = read(url), file.intact else { return nil }
+            return file.keys
         }
 
         /// Écriture complète d'un coup, fichier créé lisible par le seul utilisateur (0600) avant d'y mettre les clés.
-        static func save(_ stored: [String: String], to url: URL) -> Bool {
-            guard let data = try? JSONEncoder().encode(stored) else { return false }
+        static func save(_ stored: [String: Any], to url: URL) -> Bool {
+            guard JSONSerialization.isValidJSONObject(stored),
+                  let data = try? JSONSerialization.data(withJSONObject: stored, options: [.sortedKeys]) else { return false }
             let fileManager = FileManager.default
             let directory = url.deletingLastPathComponent()
             try? fileManager.createDirectory(at: directory, withIntermediateDirectories: true)

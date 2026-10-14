@@ -630,6 +630,9 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
   La relecture continue seule ; l'appui suivant la rejoint au lieu d'en lancer une autre.
 - Chaque clé de voix ou de correction (xAI, OpenAI, DeepSeek) est vérifiée chez le fournisseur avant d'être
   enregistrée ; les clés de gestion xAI et TypeSafe sont enregistrées sans vérification.
+- Fichier de clés : une entrée d'un autre type (ajoutée par une version plus récente, ou abîmée) ne cache aucune autre
+  clé et reste telle quelle quand on en enregistre une. Un fichier abîmé (tronqué, invalide) n'est jamais réécrit :
+  les clés de sa partie intacte servent, les autres sont dites illisibles.
 
 ## Mises à jour et réinstallation
 
