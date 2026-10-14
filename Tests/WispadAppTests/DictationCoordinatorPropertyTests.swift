@@ -471,6 +471,10 @@ private final class FuzzHardware: @unchecked Sendable {
         lock.withLock { abandonedMicrophones.contains(number) }
     }
 
+    func isStarting(_ number: Int) -> Bool {
+        lock.withLock { operations[number] == "démarrage" }
+    }
+
     func isRestarting(_ number: Int) -> Bool {
         lock.withLock { operations[number] == "redémarrage" }
     }
@@ -909,6 +913,8 @@ private final class ModelWorld {
     private var copying = false
     private var corrections: [@MainActor ([CorrectionLearner.Candidate]) -> Void] = []
     private var beginsRunning = 0
+    /// Un départ de dictée (`begin`) est en cours.
+    var isBeginning: Bool { beginsRunning > 0 }
     private var pasteTasks = 0
     private var insertsRunning = 0
     private var cleansRunning = 0
@@ -1683,7 +1689,9 @@ struct DictationCoordinatorPropertyTests {
             let failure = await world.play()
             world.dispose()
             if let failure {
-                Issue.record("Séquence \(index) (graine \(seed)) : \(failure)")
+                // Une ligne, valeur comprise : scripts/check.sh ne garde que les lignes ✘ du journal.
+                let violation: String? = "séquence \(index), graine \(seed) : \(failure)"
+                #expect(violation == nil)
                 return
             }
         }
@@ -1700,20 +1708,49 @@ struct DictationSequenceRegressionTests {
     /// commencée, et le double appui suivant ne démarrait rien.
     @Test func escapeBeforeAQueuedDoubleTapLeavesTheShortcutReady() async throws {
         var finishing = DictationPlan()
-        finishing.providers.streamFinishMs = 300
-        let sequence = ModelSequence.scripted([
-            (.hold, .milliseconds(60)),
-            (.release, .milliseconds(30)),
-            (.doubleTap, .immediate),
-            (.escape, .milliseconds(30)),
-        ], plans: [finishing, DictationPlan()])
+        finishing.providers.streamFinishMs = 2_000
+        let sequence = ModelSequence.scripted([], plans: [finishing, DictationPlan()])
         let world = try ModelWorld(sequence, startLimit: MicrophoneStartWatch.startLimit)
         defer { world.dispose() }
-        let failure = await world.play()
+        await world.perform(.hold)
+        let listening = await eventually { world.model.coordinator.phase == .listening(.pushToTalk) && !world.isBeginning }
+        #expect(listening)
+        await world.perform(.release)
+        let ending = await eventually { world.model.coordinator.phase == .finishing }
+        #expect(ending)
+        // Dans le même tour du fil principal : le départ du double appui attend encore son tour quand Échap arrive.
+        await world.perform(.doubleTap)
+        await world.perform(.escape)
+        let failure = await world.finishAndCheck()
         #expect(failure == nil)
         // La première dictée est annulée ; la seconde, démarrée par le double appui, est collée.
         #expect(world.tracks[1]?.cancelledBeforePaste == true)
         #expect(world.tracks[1]?.pasted == false)
+        #expect(world.tracks[2]?.pasted == true)
+    }
+
+    /// Micro lent à démarrer : on relâche la touche, puis double appui et Échap pendant ce démarrage. Échap annule la
+    /// dictée qui démarre ; sa fin et le départ du double appui attendent en file, déjà comptés par le clavier.
+    /// `sessionEnded()` remettait pourtant son geste au repos : la seconde dictée écoutait en mains libres sans que
+    /// l'appui suivant l'arrête (un appui simple ne fait rien au repos).
+    @Test func cancellingAStartingDictationKeepsTheQueuedDoubleTap() async throws {
+        var slow = DictationPlan()
+        slow.mic = .slow
+        let sequence = ModelSequence.scripted([], plans: [slow, DictationPlan()])
+        let world = try ModelWorld(sequence, startLimit: MicrophoneStartWatch.startLimit, hangSeconds: 1)
+        defer { world.dispose() }
+        await world.perform(.hold)
+        let starting = await eventually { world.hardware.isStarting(1) }
+        #expect(starting)
+        // Dans le même tour du fil principal, pendant le démarrage du micro.
+        await world.perform(.release)
+        await world.perform(.doubleTap)
+        await world.perform(.escape)
+        #expect(world.model.coordinator.phase == .idle)
+        #expect(world.tracks[1]?.cancelledListening == true)
+        let failure = await world.finishAndCheck()
+        #expect(failure == nil)
+        #expect(world.tracks[1]?.ended == false)
         #expect(world.tracks[2]?.pasted == true)
     }
 
