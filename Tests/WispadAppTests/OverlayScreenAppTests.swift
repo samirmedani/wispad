@@ -189,6 +189,9 @@ struct OverlayScreenAppTests {
         defer { box.dispose() }
         box.model.settings.overlayPlacement.setAnchor(OverlayAnchor(x: 0, y: 0), for: .dictation)
         box.listen()
+        // La bulle suit aussi la nouvelle phase, en différé (`refresh`, puis `moveToTarget`) : elle se pose d'abord, pour
+        // que seule la surveillance puisse la ramener ensuite.
+        try await Task.sleep(nanoseconds: 100_000_000)
         #expect(external.frame.contains(box.bubble))
         #expect(box.panel.frame.intersects(builtIn.frame))
         let recoveries = box.model.overlay.diagnosticState.recoveries
