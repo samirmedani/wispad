@@ -6,6 +6,10 @@ import Testing
 /// Outils réels de l'installation, dans un dossier temporaire : échange de l'app et de sa copie cachée, verrou entre
 /// instances de Wispad, aide de relance. Aucune app remplacée ni relancée : l'aide y appelle un faux `open`, qui note
 /// ce qu'il reçoit.
+/// Un test après l'autre : un processus en cours de lancement (aide de relance exécutée pour de vrai) garde un instant
+/// une copie des descripteurs ouverts, même `O_CLOEXEC`, et un verrou `flock` rendu à ce moment paraît encore tenu
+/// (mesuré le 14 octobre : 182 reprises ratées sur 20 000 avec des lancements en parallèle, aucune sans).
+@Suite(.serialized)
 struct UpdateToolsTests {
     /// Volume du Mac (APFS) : l'app et la copie cachée échangent leurs noms d'un coup ; la copie contient ensuite
     /// l'ancienne version, et rien d'autre ne reste.
