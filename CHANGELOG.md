@@ -19,6 +19,7 @@ dictée, raccourci, réglages, réseau et mémoire.
 - La mise à jour en un clic continuera de fonctionner quand macOS retirera `hdiutil attach`, signalé obsolète depuis macOS 27.
 - Montants et unités : « 1,5 kilomètre par heure » devient « 1,5 km/h », « 15 kilowatt-hours » est reconnu, « payé 20 € 3 fois » et « $5m » restent justes. Dates en anglais : « on 3 May 8 people came » ne prend plus 8 pour le jour, « May 14/15 » reste tel quel.
 - Une dictée ne devient plus jamais un collage vide, et un texte contenant un caractère invisible inhabituel est gardé en entier dans l'historique.
+- Premier lancement guidé : plus aucune étape sans issue. Un micro muet, une clé xAI fausse, une clé refusée faute de crédit ou une touche jamais reçue s'expliquent, avec un bouton pour réessayer ; une étape réussie le reste quand la fenêtre est rouverte, et quitter Wispad sur l'écran de fin ne fait plus tout recommencer.
 
 **Plus fiable**
 - Une dictée ne reste plus bloquée : un micro qui ne redémarre pas est abandonné après 4 s, un micro débranché en pleine dictée sans autre micro arrête la dictée et colle ce qui a déjà été dit, et un coffre de secrets qui ne répond plus est signalé après 10 s.
@@ -34,6 +35,7 @@ dictée, raccourci, réglages, réseau et mémoire.
 **Plus rapide et plus sobre**
 - Le traitement local du texte (franglais, garde-fou, contexte de la fenêtre, suivi des corrections) est environ 2,4 fois plus rapide.
 - Wispad se réveille moins souvent au repos, et sa mémoire reste stable même ouvert pendant des jours.
+- Les autorisations sont relues sans jamais faire attendre le clavier ni l'affichage : chaque question à macOS prend une dizaine de millisecondes.
 
 ## 0.2.0 — 13 octobre 2026
 
