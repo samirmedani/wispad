@@ -68,11 +68,13 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 - Démarrage du micro surveillé, première dictée après un lancement comprise : si macOS reconfigure l'entrée
   (micro Bluetooth qui change de profil, autre fréquence, micro débranché), le moteur repart aussitôt, dans le même
   enregistrement ; au repos, il est remplacé par un neuf à la dictée suivante. Aucun audio 1,5 s après le
-  démarrage : le micro redémarre une fois sur un moteur neuf. Toujours rien 1,5 s plus tard, ou démarrage (comme
-  redémarrage) qui ne rend pas la main en 4 s : la dictée est abandonnée, rien n'est envoyé, Wispad revient prêt
-  (le raccourci redémarre une dictée) et la bulle affiche « Le micro n'a pas démarré : réessaie ». Rien ne reste
-  ouvert : micro, flux de transcription déjà branché et spectre se referment, même un démarrage qui rend la main
-  juste après l'abandon. Une erreur du micro (aucun micro, moteur refusé) s'affiche de même dans la bulle.
+  démarrage : le micro redémarre une fois sur un moteur neuf. Dictée arrêtée ou annulée pendant ce redémarrage
+  (touche relâchée, Échap, ■) : elle s'arrête tout de suite, sans attendre le moteur ; rien n'avait été entendu, rien
+  n'est envoyé, et le moteur se referme dès qu'il rend la main. Toujours rien 1,5 s plus tard, ou démarrage (comme
+  redémarrage) qui ne rend pas la main en 4 s : la dictée est abandonnée, rien n'est envoyé, Wispad revient prêt (le
+  raccourci redémarre une dictée) et la bulle affiche « Le micro n'a pas démarré : réessaie ». Rien ne reste ouvert :
+  micro, flux de transcription déjà branché et spectre se referment, même un démarrage qui rend la main juste après
+  l'abandon. Une erreur du micro (aucun micro, moteur refusé) s'affiche de même dans la bulle.
 - Micro qui disparaît en pleine dictée sans autre micro pour prendre le relais (ou moteur qui refuse de repartir) :
   la dictée s'arrête là, comme si on l'avait terminée. Ce qui a déjà été dit est transcrit et collé, le raccourci est
   aussitôt libre et la bulle affiche « Le micro ne répond plus : dictée arrêtée ». Jamais de bulle figée sur un

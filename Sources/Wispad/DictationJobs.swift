@@ -41,6 +41,9 @@ final class Capture {
     var correctionClaimed = false
     /// Surveillance du premier paquet audio (`MicrophoneStartWatch`).
     var audioWatch: Task<Void, Never>?
+    /// Redémarrage du micro encore sur sa file : `stop()` attendrait sa fin sur le fil principal. Levé par le
+    /// redémarrage lui-même dès qu'il rend la main, sans attendre le fil principal.
+    let restarting = OSAllocatedUnfairLock(initialState: false)
     /// Surveillance de l'accès au micro pendant l'écoute (retiré dans Réglages Système).
     var microphoneAccessWatch: Task<Void, Never>?
 

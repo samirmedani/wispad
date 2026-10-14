@@ -339,7 +339,10 @@ final class DictationCoordinator {
                 case .restart:
                     Self.audioLog.notice("aucun audio du micro : redémarrage sur un moteur neuf")
                     // Un moteur neuf peut tarder autant qu'au premier démarrage : même délai, jamais d'attente sans fin.
+                    let busy = current.restarting
+                    busy.withLock { $0 = true }
                     let restarting = Task.detached(priority: Task.currentPriority) { () async -> Bool in
+                        defer { busy.withLock { $0 = false } }
                         do {
                             try await audio.restart()
                             return true
@@ -459,8 +462,7 @@ final class DictationCoordinator {
         current.audioWatch?.cancel()
         current.microphoneAccessWatch?.cancel()
         stopMeter()
-        let stopped = current.audio?.stop()
-        current.audio = nil
+        let stopped = closeMicrophone(current)
         current.pcm.close()
         current.marks.released = KeyboardTap.now()
         let url = stopped?.url ?? current.audioURL
@@ -545,8 +547,7 @@ final class DictationCoordinator {
         stopMeter()
         current.startTask?.cancel()
         current.field.cancel()
-        let stopped = current.audio?.stop()
-        current.audio = nil
+        let stopped = closeMicrophone(current)
         current.pcm.close()
         // L'audio a pu partir, mais une annulation ne confirme ni son traitement ni sa facturation.
         recordStreaming(current, seconds: stopped?.duration ?? 0, succeeded: false)
@@ -562,6 +563,19 @@ final class DictationCoordinator {
         changed()
     }
 
+    /// Ferme le micro de cette écoute. Pendant son redémarrage (`watchFirstAudio`), `stop()` attendrait la fin du
+    /// moteur neuf sur le fil principal (file du micro) : Wispad resterait figé. Le micro se refermera seul en rendant
+    /// la main (`abandonStart`), sans audio à garder : aucun paquet n'était arrivé, d'où le redémarrage.
+    private func closeMicrophone(_ current: Capture) -> (url: URL?, duration: Double)? {
+        defer { current.audio = nil }
+        guard let audio = current.audio else { return nil }
+        guard !current.restarting.withLock({ $0 }) else {
+            audio.abandonStart()
+            return nil
+        }
+        return audio.stop()
+    }
+
     /// Écoute qui n'a pas pu commencer (micro refusé, capture impossible) ou micro resté muet : tout ce qu'elle a
     /// ouvert se referme, spectre et flux en direct compris.
     private func discard(_ current: Capture, outcome: DictationOutcome = .captureFailed) {
@@ -573,8 +587,7 @@ final class DictationCoordinator {
         current.startTask?.cancel()
         current.field.cancel()
         current.pcm.close()
-        let stopped = current.audio?.stop()
-        current.audio = nil
+        let stopped = closeMicrophone(current)
         // Flux déjà branché quand le micro reste muet : refermé, sans audio rien n'a été envoyé ni facturé.
         current.session?.cancel()
         delete(stopped?.url ?? current.audioURL)
