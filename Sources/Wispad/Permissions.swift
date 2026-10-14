@@ -119,6 +119,35 @@ enum PermissionReads {
     }
 }
 
+/// Ordre des lectures d'autorisation affichées (Réglages, barre latérale, premier lancement guidé) : chacune prend un
+/// numéro à son départ, et chaque valeur garde celui de la lecture qui l'a donnée. Une lecture partie plus tôt ne la
+/// remplace jamais, même si sa réponse arrive après : une lecture hors du fil principal qui tarde n'efface pas la
+/// relecture faite entre-temps après un clic.
+struct PermissionReadOrder {
+    enum Value: Hashable {
+        case microphone
+        case accessibility
+        case inputMonitoring
+        case launchAtLogin
+    }
+
+    private var started = 0
+    private var givenBy: [Value: Int] = [:]
+
+    /// Numéro de la lecture qui part.
+    mutating func start() -> Int {
+        started += 1
+        return started
+    }
+
+    /// Vrai si la lecture `serial` est la plus récente à donner `value` : sa valeur est retenue.
+    mutating func accepts(_ serial: Int, for value: Value) -> Bool {
+        guard serial > givenBy[value, default: 0] else { return false }
+        givenBy[value] = serial
+        return true
+    }
+}
+
 enum LoginItemController {
     static var isEnabled: Bool {
         SMAppService.mainApp.status == .enabled

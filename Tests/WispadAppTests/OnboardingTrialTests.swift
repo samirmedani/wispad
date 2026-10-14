@@ -105,6 +105,8 @@ private final class TrialFixture {
         system.permissions = {
             OnboardingSystem.PermissionSnapshot(microphoneGranted: true, accessibilityTrusted: true, inputMonitoringTrusted: true)
         }
+        // Sondage lu sur place, sans aucune vraie autorisation : l'essai en attend l'effet dès le retour de `tick()`.
+        system.pollPermissions = nil
         system.keyboardListening = { _ in true }
         system.reinstallKeyboard = { _ in }
         system.fnUsage = { 0 }

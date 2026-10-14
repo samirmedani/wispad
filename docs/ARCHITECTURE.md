@@ -60,8 +60,10 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
 - **État vivant** : `OnboardingController` lit macOS par `OnboardingSystem` (autorisations sans demande, Réglages
   Système, relance, micros, vumètre), sondé toutes les 0,5 s pendant l'affichage (`poll`, arrêté par `suspend` quand
   la fenêtre se ferme, relancé par `resume`, qui garde une étape déjà réussie) ; à l'étape Fournisseur, le sondage
-  revérifie aussi une clé enregistrée restée sans résultat. Les tests le remplacent (`OnboardingControllerTests`,
-  et `OnboardingDeadEndTests` : chaque étape sans issue possible). Écrans dans `OnboardingView.swift`.
+  revérifie aussi une clé enregistrée restée sans résultat. Le sondage lit les autorisations hors du fil principal
+  (`pollPermissions`), une action (Autoriser, étape suivante, fenêtre rouverte) les relit sur place (`permissions`) :
+  voir « Appels qui attendent ». Les tests le remplacent (`OnboardingControllerTests`, et `OnboardingDeadEndTests` :
+  chaque étape sans issue possible ; `OnboardingPollTests` pour le sondage). Écrans dans `OnboardingView.swift`.
 - **Micro** : `MicrophoneMeter` ne sort que des niveaux (rien d'écrit ni d'envoyé) ; son arrêt passe par sa file
   sans l'attendre, pour qu'un démarrage bloqué ne fige jamais le fil principal. Le délai sans voix se compte à
   l'horloge depuis l'ouverture du test (`MicrophoneCheck.status`, `listening`), même sans aucun son reçu. Le micro
@@ -222,6 +224,16 @@ et l'appelant attend sans occuper de fil :
 Le micro garde sa file (`AudioCapture`) ; le fil principal garde ce qui doit y rester (base de l'historique écrite
 dans l'ordre de la dictée, ⌘V). Preuve : `BlockingWorkTests`, qui lit l'étiquette de la file pendant l'appel, comme
 `PermissionReadsTests`.
+
+Les autorisations affichées (Réglages › Autorisations, alerte de la barre latérale, premier lancement guidé) se
+lisent sur la file de `PermissionReads` à l'ouverture de la fenêtre ou de Réglages, au retour dans Wispad
+(`AppModel.refreshPermissionsInBackground` : une lecture à la fois, puis une seule relecture pour les demandes faites
+pendant ce temps) et à chaque passage du sondage du premier lancement (`OnboardingSystem.pollPermissions`, une
+lecture à la fois). Juste après une action, elles se relisent sur place (`refreshPermissions`). Chaque lecture est
+numérotée à son départ (`AppModel.startPermissionRead`) et chaque valeur garde celle qui l'a donnée
+(`PermissionReadOrder`) : une réponse lente n'efface jamais une valeur plus récente. Frontières remplaçables dans
+`AppDependencies` (`permissions`, `permissionsOffMain`, `launchAtLogin`, `setLaunchAtLogin`) et `OnboardingSystem`
+(`permissions`, `pollPermissions`) ; preuves : `AppPermissionReadTests` et `OnboardingPollTests`.
 
 ## Écran Historique
 

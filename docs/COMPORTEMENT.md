@@ -212,9 +212,10 @@ réussie. « Plus tard » est proposé seulement pour le micro, la touche et l'e
   Avec « Réduire les animations », image fixe.
 - **Autorisations**, toutes sur un écran : micro, accessibilité (coller le texte), surveillance des entrées (touche
   fn). « Autoriser » déclenche la demande de macOS ; ensuite, ou après un refus, le bouton ouvre le bon panneau de
-  Réglages Système et le chemin exact est affiché. L'état est relu toutes les 0,5 s. Surveillance des entrées
-  accordée mais écoute du clavier impossible après 3 s : macOS attend une relance, « Relancer Wispad » rouvre l'app
-  à la même étape (si macOS refuse de la fermer, elle s'arrête d'elle-même après le rangement habituel).
+  Réglages Système et le chemin exact est affiché. L'état est relu toutes les 0,5 s, hors du fil principal, et aussitôt
+  après « Autoriser » (voir « Autorisations retirées ou rendues »). Surveillance des entrées accordée mais écoute du
+  clavier impossible après 3 s : macOS attend une relance, « Relancer Wispad » rouvre l'app à la même étape (si macOS
+  refuse de la fermer, elle s'arrête d'elle-même après le rangement habituel).
 - **Micro** : choix du micro (celui du système par défaut ; le micro choisi sert ensuite aux dictées tant qu'il est
   branché, sinon celui du système ; Réglages › Général › Micro) et vumètre réel. ✓ quand une vraie voix est
   entendue : au moins 0,6 s au-dessus de −48 dBFS et 10 dB au-dessus du bruit de la pièce (un clic, un souffle ou
@@ -620,9 +621,17 @@ Wispad relit ces autorisations sans jamais les redemander : une demande de macOS
 - **Accessibilité au moment du collage** : ni ⌘V ni lecture du champ ; le texte est copié et la bulle affiche
   « Accessibilité non autorisée : le texte est prêt » (voir « Reprise après erreur »). Même chose pour **Coller** et
   « Coller la dernière dictée ».
-- **Affichage** : Réglages › Autorisations et l'alerte de la barre latérale sont relus à chaque retour dans Wispad
-  (par exemple depuis Réglages Système), hors du fil principal, plus seulement à l'ouverture de l'écran. Le premier
-  lancement guidé les relit toutes les 0,5 s.
+- **Affichage** : Réglages › Autorisations et l'alerte de la barre latérale sont relus à l'ouverture de la fenêtre ou
+  de Réglages et à chaque retour dans Wispad (par exemple depuis Réglages Système) ; le premier lancement guidé les
+  relit toutes les 0,5 s. Ces lectures se font hors du fil principal : le micro et la surveillance des entrées sont
+  deux questions au démon des autorisations de macOS, une vingtaine de millisecondes (mesuré le 14 octobre 2026),
+  assez pour faire sauter des images aux animations (bulle de l'accueil, vumètre, écran qui s'ouvre). Jamais deux à
+  la fois : demandées pendant une lecture, elles sont faites ensemble par une seule relecture juste après (le premier
+  lancement, lui, relit au passage suivant du sondage), et une réponse arrivée après une lecture plus récente ne
+  l'efface jamais, valeur par valeur (« Ouvrir à la connexion » compris). Juste après une action (Autoriser, étape
+  suivante du premier lancement, fenêtre rouverte, clic sur une rangée de Réglages › Autorisations, export du
+  diagnostic), la relecture reste immédiate : l'écran ou le rapport en montre l'effet aussitôt. Fenêtre du premier
+  lancement fermée pendant une lecture, sa réponse ne change rien.
 - Insertion par ⌘V comme au clavier, dans toutes les apps : ⌘ enfoncée (changement de modificateur), V, puis ⌘
   relâchée, envoyés au système une fois l'app cible vérifiée au premier plan et les modificateurs relâchés. Le
   13 octobre 2026, l'écriture par `AXSelectedText` dans Chrome et un ⌘V adressé au seul processus cible laissaient

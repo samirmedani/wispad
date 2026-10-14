@@ -7,22 +7,36 @@ import WispadCore
 /// les remplacent ; l'aperçu de développement n'en appelle aucune.
 @MainActor
 struct OnboardingSystem {
-    struct PermissionSnapshot: Equatable {
+    struct PermissionSnapshot: Equatable, Sendable {
         var microphoneGranted = false
         var microphoneDenied = false
         var accessibilityTrusted = false
         var inputMonitoringTrusted = false
+
+        /// Lecture sans aucune demande (rien ne s'affiche côté macOS), depuis n'importe quel fil. Le micro et la
+        /// surveillance des entrées sont chacun une question au démon des autorisations de macOS (une dizaine de
+        /// millisecondes) ; l'accessibilité, gardée en mémoire par macOS, se lit en une microseconde.
+        static func read() -> PermissionSnapshot {
+            let microphone = PermissionCenter.microphoneStatus()
+            return PermissionSnapshot(
+                microphoneGranted: microphone == .authorized,
+                microphoneDenied: microphone == .denied || microphone == .restricted,
+                accessibilityTrusted: PermissionCenter.accessibilityTrusted(prompt: false),
+                inputMonitoringTrusted: PermissionCenter.inputMonitoringTrusted()
+            )
+        }
     }
 
-    /// Lecture sans aucune demande : rien ne s'affiche côté macOS.
-    var permissions: @MainActor () -> PermissionSnapshot = {
-        let microphone = PermissionCenter.microphoneStatus()
-        return PermissionSnapshot(
-            microphoneGranted: microphone == .authorized,
-            microphoneDenied: microphone == .denied || microphone == .restricted,
-            accessibilityTrusted: PermissionCenter.accessibilityTrusted(prompt: false),
-            inputMonitoringTrusted: PermissionCenter.inputMonitoringTrusted()
-        )
+    /// Lecture sans aucune demande, sur place : juste après une action (Autoriser, qui demande à macOS ou ouvre Réglages
+    /// Système ; étape suivante ; fenêtre rouverte), dont l'écran montre l'effet aussitôt et dont l'étape Micro dépend
+    /// pour ouvrir son test.
+    var permissions: @MainActor () -> PermissionSnapshot = { PermissionSnapshot.read() }
+    /// Lecture du sondage (deux fois par seconde pendant tout l'affichage), sur la file des autorisations : faite sur le
+    /// fil principal, elle le retiendrait une vingtaine de millisecondes à chaque passage, assez pour faire sauter des
+    /// images aux animations (bulle de l'accueil, vumètre). Nil : `permissions`, sur place (macOS simulé dont les tests
+    /// attendent l'effet dès le retour de `tick`).
+    var pollPermissions: (@Sendable () async -> PermissionSnapshot)? = {
+        await PermissionReads.offMain { PermissionSnapshot.read() }
     }
     var requestMicrophone: @MainActor () async -> Bool = { await PermissionCenter.requestMicrophone() }
     var requestAccessibility: @MainActor () -> Void = { _ = PermissionCenter.accessibilityTrusted(prompt: true) }
@@ -67,6 +81,12 @@ final class OnboardingController {
     private(set) var permissions: [PermissionKind: PermissionState] = [:]
     @ObservationIgnored private var requested: Set<PermissionKind> = []
     @ObservationIgnored private var inputTrustedSince: Date?
+    /// Lecture du sondage en route, hors du fil principal : le sondage n'en lance pas d'autre tant qu'elle n'a pas
+    /// répondu, même lente.
+    @ObservationIgnored private(set) var pollingPermissions = false
+    /// Numéro (`AppModel.startPermissionRead`) de la dernière lecture appliquée : une réponse partie avant ne l'efface
+    /// pas.
+    @ObservationIgnored private var appliedPermissionRead = 0
 
     // Micro
     private(set) var devices: [AudioInputDevice] = []
@@ -218,9 +238,7 @@ final class OnboardingController {
     func tick() {
         guard !isPreview else { return }
         now = system.now()
-        let microphone = permissions[.microphone]
-        refreshPermissions()
-        followMicrophonePermission(from: microphone)
+        pollPermissions()
         noteStall()
         noteTrialProgress()
         // Clé enregistrée restée sans résultat (vérification écartée, clé relue) : vérifiée, jamais « Vérification… »
@@ -272,9 +290,43 @@ final class OnboardingController {
 
     // MARK: - Autorisations
 
+    /// Relecture sur place, juste après une action (Autoriser, étape suivante, fenêtre rouverte) : l'écran en montre
+    /// l'effet aussitôt, et l'étape Micro en dépend pour ouvrir son test.
     func refreshPermissions() {
         guard !isPreview else { return }
-        let snapshot = system.permissions()
+        let serial = model.startPermissionRead()
+        apply(system.permissions(), read: serial)
+    }
+
+    /// Lecture du sondage, faite hors du fil principal (`OnboardingSystem.pollPermissions`) et jamais deux à la fois.
+    /// Sa réponse s'applique à son arrivée, avec ses effets dans le même ordre qu'une relecture sur place (écoute du
+    /// clavier, état affiché, test du micro), sauf si une lecture partie après elle a déjà été appliquée (relecture
+    /// après un clic) ou si la fenêtre s'est fermée entre-temps : l'état n'est plus relu jusqu'à sa réouverture.
+    private func pollPermissions() {
+        guard let read = system.pollPermissions else {
+            let microphone = permissions[.microphone]
+            refreshPermissions()
+            followMicrophonePermission(from: microphone)
+            return
+        }
+        guard !pollingPermissions else { return }
+        pollingPermissions = true
+        let serial = model.startPermissionRead()
+        Task { [weak self] in
+            let snapshot = await read()
+            guard let self else { return }
+            self.pollingPermissions = false
+            guard !self.isSuspended else { return }
+            let microphone = self.permissions[.microphone]
+            self.apply(snapshot, read: serial)
+            self.followMicrophonePermission(from: microphone)
+        }
+    }
+
+    /// Lecture `serial` : appliquée si aucune lecture partie après elle ne l'a déjà été.
+    private func apply(_ snapshot: OnboardingSystem.PermissionSnapshot, read serial: Int) {
+        guard serial > appliedPermissionRead else { return }
+        appliedPermissionRead = serial
         let at = system.now()
         if snapshot.inputMonitoringTrusted {
             if inputTrustedSince == nil {
@@ -297,8 +349,7 @@ final class OnboardingController {
                                                                settling: settling),
         ]
         if fresh != permissions { permissions = fresh }
-        if model.accessibilityTrusted != snapshot.accessibilityTrusted { model.accessibilityTrusted = snapshot.accessibilityTrusted }
-        if model.inputMonitoringTrusted != snapshot.inputMonitoringTrusted { model.inputMonitoringTrusted = snapshot.inputMonitoringTrusted }
+        model.applyTrust(accessibility: snapshot.accessibilityTrusted, inputMonitoring: snapshot.inputMonitoringTrusted, read: serial)
     }
 
     /// Demande système (première fois) ; ensuite, le bon panneau de Réglages Système.

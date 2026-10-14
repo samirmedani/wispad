@@ -79,6 +79,9 @@ private final class FakeSystem {
             self.permissionReads += 1
             return self.snapshot
         }
+        // Le sondage lit aussi ce macOS simulé sur place : ces tests en attendent l'effet dès le retour de `tick()`.
+        // Sa lecture hors du fil principal est prouvée par `OnboardingPollTests`.
+        system.pollPermissions = nil
         system.requestMicrophone = { [unowned self] in
             self.microphoneRequests += 1
             return self.snapshot.microphoneGranted
@@ -172,6 +175,17 @@ private final class GuideFixture {
 
     func controller(at step: OnboardingStep) -> OnboardingController {
         let controller = OnboardingController(model: model, step: step, system: fake.system)
+        model.onboarding = controller
+        controller.resume()
+        return controller
+    }
+
+    /// Parcours dont le sondage lit `source` hors du fil principal, comme sur un vrai Mac ; les relectures qui suivent
+    /// une action lisent toujours `fake`, sur place.
+    func controller(at step: OnboardingStep, polling source: PollSource) -> OnboardingController {
+        var system = fake.system
+        system.pollPermissions = source.read
+        let controller = OnboardingController(model: model, step: step, system: system)
         model.onboarding = controller
         controller.resume()
         return controller
@@ -999,6 +1013,223 @@ struct OnboardingDeadEndTests {
         defer { third.dispose() }
         #expect(third.model.onboarding == nil)
         #expect(third.model.settings.onboardingCompleted)
+    }
+}
+
+// MARK: - Sondage hors du fil principal
+
+/// macOS simulé pour le sondage, lu comme le vrai sur la file des autorisations : chaque lecture est comptée avec
+/// la file et le fil où elle se fait. Une réponse peut être retenue (`hold`) : la lecture est faite et sa valeur prise,
+/// puis sa réponse attend `release` sans retenir aucun fil, ni la file des autorisations que d'autres tests partagent.
+private final class PollSource: @unchecked Sendable {
+    @Guarded var snapshot = OnboardingSystem.PermissionSnapshot()
+    @Guarded var reads = 0
+    @Guarded var queues: [String] = []
+    @Guarded var readsOnMainThread = 0
+    @Guarded private var gate: AsyncResult<Void>?
+
+    func hold() {
+        gate = AsyncResult<Void>()
+    }
+
+    func release() {
+        let held = gate
+        gate = nil
+        held?.resolve(.success(()))
+    }
+
+    var read: @Sendable () async -> OnboardingSystem.PermissionSnapshot {
+        { [self] in
+            let held = gate
+            let snapshot = await PermissionReads.offMain { [self] in
+                reads += 1
+                queues.append(String(cString: __dispatch_queue_get_label(nil)))
+                if Thread.isMainThread { readsOnMainThread += 1 }
+                return self.snapshot
+            }
+            if let held { try? await held.value() }
+            return snapshot
+        }
+    }
+}
+
+/// Le sondage du premier lancement (deux fois par seconde pendant tout l'affichage) lit les autorisations sur la file
+/// des autorisations, jamais sur le fil principal : mesuré le 14 octobre, le micro et la surveillance des entrées y
+/// prenaient une vingtaine de millisecondes à chaque passage, assez pour faire sauter des images à la bulle de
+/// l'accueil et au vumètre. Une lecture à la fois, même lente ; une réponse plus ancienne qu'une lecture déjà appliquée
+/// (relecture après un clic) ne l'efface pas ; ses effets (écoute du clavier, état affiché, micro du test) gardent leur
+/// ordre.
+@MainActor
+@Suite(.serialized)
+struct OnboardingPollTests {
+    @Test func pollingReadsThePermissionsOffTheMainThread() async throws {
+        // Sur un vrai Mac, le sondage a sa lecture hors du fil principal.
+        let mac = OnboardingSystem()
+        #expect(mac.pollPermissions != nil)
+        let f = try GuideFixture()
+        defer { f.dispose() }
+        let source = PollSource()
+        let guide = f.controller(at: .permissions, polling: source)
+        // L'arrivée sur l'étape relit sur place, une fois ; le sondage, jamais.
+        let readsHere = f.fake.permissionReads
+        let polling = Task { await guide.poll(every: .milliseconds(5)) }
+        let polled = await settles { source.reads >= 5 }
+        #expect(polled)
+        guide.suspend()
+        let stopped = await DictationCoordinator.value(of: polling, within: 2) != nil
+        #expect(stopped)
+        #expect(f.fake.permissionReads == readsHere)
+        #expect(source.readsOnMainThread == 0)
+        #expect(source.queues.allSatisfy { $0 == "wispad.autorisations" })
+    }
+
+    @Test func aSlowPollReadIsNeverStacked() async throws {
+        let f = try GuideFixture()
+        defer { f.dispose() }
+        let source = PollSource()
+        let guide = f.controller(at: .permissions, polling: source)
+        // Démon des autorisations occupé : la réponse de la première lecture tarde.
+        source.hold()
+        guide.tick()
+        let started = await settles { source.reads == 1 }
+        #expect(started)
+        #expect(guide.pollingPermissions)
+        // Vingt passages du sondage, puis le vrai sondage pendant 0,1 s : aucune autre lecture ne part en attendant.
+        for _ in 0..<20 { guide.tick() }
+        let polling = Task { await guide.poll(every: .milliseconds(5)) }
+        try await Task.sleep(for: .milliseconds(100))
+        polling.cancel()
+        let stopped = await DictationCoordinator.value(of: polling, within: 2) != nil
+        #expect(stopped)
+        #expect(source.reads == 1)
+        // La réponse arrive : le passage suivant relit, une fois.
+        source.release()
+        let answered = await settles { !guide.pollingPermissions }
+        #expect(answered)
+        #expect(source.reads == 1)
+        guide.tick()
+        let next = await settles { source.reads == 2 && !guide.pollingPermissions }
+        #expect(next)
+        #expect(source.reads == 2)
+    }
+
+    /// Une lecture partie avant un clic sur « Autoriser » répond après la relecture faite sur place : plus ancienne,
+    /// elle est écartée, et l'écran ne revient pas en arrière.
+    @Test func aLatePollAnswerNeverOverwritesTheReadingMadeAfterAClick() async throws {
+        let f = try GuideFixture()
+        defer { f.dispose() }
+        let source = PollSource()
+        // Micro et surveillance des entrées accordés, accessibilité pas encore.
+        f.fake.grantAll()
+        f.fake.snapshot.accessibilityTrusted = false
+        source.snapshot = f.fake.snapshot
+        let guide = f.controller(at: .permissions, polling: source)
+        #expect(guide.permissions[.accessibility] == .notRequested)
+        // Le sondage lit l'état d'avant le clic ; sa réponse tarde.
+        source.hold()
+        guide.tick()
+        let started = await settles { source.reads == 1 }
+        #expect(started)
+        // « Autoriser » : macOS accorde l'accessibilité, la relecture sur place l'affiche aussitôt.
+        f.fake.snapshot.accessibilityTrusted = true
+        source.snapshot = f.fake.snapshot
+        guide.request(.accessibility)
+        #expect(f.fake.accessibilityRequests == 1)
+        #expect(guide.currentStatus == .succeeded)
+        #expect(f.model.accessibilityTrusted)
+        // La réponse partie avant le clic arrive : écartée.
+        source.release()
+        let answered = await settles { !guide.pollingPermissions }
+        #expect(answered)
+        #expect(guide.permissions[.accessibility] == .granted)
+        #expect(guide.currentStatus == .succeeded)
+        #expect(f.model.accessibilityTrusted)
+        // Une lecture partie après le clic s'applique, elle : accessibilité retirée ensuite, le sondage le montre.
+        source.snapshot.accessibilityTrusted = false
+        guide.tick()
+        let withdrawn = await settles { guide.permissions[.accessibility] == .waiting }
+        #expect(withdrawn)
+        #expect(!f.model.accessibilityTrusted)
+    }
+
+    /// Fenêtre fermée pendant qu'une lecture du sondage est en route : sa réponse ne change rien (l'état n'est plus relu
+    /// jusqu'à la réouverture) et n'ouvre pas le micro ; rouverte, l'étape relit sur place et repart.
+    @Test func aPollAnswerArrivingAfterTheWindowClosedChangesNothing() async throws {
+        let f = try GuideFixture()
+        defer { f.dispose() }
+        let source = PollSource()
+        f.fake.grantAll()
+        f.fake.snapshot.microphoneGranted = false
+        f.fake.snapshot.microphoneDenied = true
+        source.snapshot = f.fake.snapshot
+        let guide = f.controller(at: .microphone, polling: source)
+        #expect(guide.currentStatus == .failed(.permission(.microphone, .denied)))
+        // Accès rendu dans Réglages Système : le sondage le lit, sa réponse tarde, la fenêtre se ferme entre-temps.
+        source.snapshot.microphoneGranted = true
+        source.snapshot.microphoneDenied = false
+        source.hold()
+        guide.tick()
+        let started = await settles { source.reads == 1 }
+        #expect(started)
+        guide.suspend()
+        source.release()
+        let answered = await settles { !guide.pollingPermissions }
+        #expect(answered)
+        #expect(guide.permissions[.microphone] == .denied)
+        #expect(f.fake.meter.starts == 0)
+        // Rouverte : relue sur place, le test du micro repart.
+        f.fake.snapshot = source.snapshot
+        guide.resume()
+        #expect(guide.permissions[.microphone] == .granted)
+        let reopened = await settles { f.fake.meter.starts == 1 }
+        #expect(reopened)
+    }
+
+    /// Étape Micro : l'accès lu par le sondage, hors du fil principal, est suivi comme avant. Retiré, le micro du test
+    /// est rendu ; rendu, le test repart seul, sans rien demander à macOS.
+    @Test func theMicrophoneStepFollowsTheAccessReadByThePoll() async throws {
+        let f = try GuideFixture()
+        defer { f.dispose() }
+        let source = PollSource()
+        f.fake.grantAll()
+        source.snapshot = f.fake.snapshot
+        let guide = f.controller(at: .microphone, polling: source)
+        let opened = await settles { guide.meterOpened }
+        #expect(opened)
+        let stops = f.fake.meter.stops
+        source.snapshot.microphoneGranted = false
+        source.snapshot.microphoneDenied = true
+        guide.tick()
+        let released = await settles { f.fake.meter.stops == stops + 1 }
+        #expect(released)
+        #expect(guide.currentStatus == .failed(.permission(.microphone, .denied)))
+        source.snapshot.microphoneGranted = true
+        source.snapshot.microphoneDenied = false
+        guide.tick()
+        let restarted = await settles { f.fake.meter.starts == 2 }
+        #expect(restarted)
+        #expect(f.fake.microphoneRequests == 0)
+    }
+
+    /// Surveillance des entrées accordée dans Réglages Système, lue par le sondage : l'écoute du clavier est réinstallée
+    /// une fois, à la première lecture qui la voit, jamais à chaque passage.
+    @Test func inputMonitoringReadByThePollReinstallsTheKeyboardOnce() async throws {
+        let f = try GuideFixture()
+        defer { f.dispose() }
+        let source = PollSource()
+        let guide = f.controller(at: .permissions, polling: source)
+        let reinstalls = f.fake.reinstalls
+        source.snapshot.inputMonitoringTrusted = true
+        f.fake.listening = true
+        for _ in 0..<5 {
+            guide.tick()
+            let answered = await settles { !guide.pollingPermissions }
+            #expect(answered)
+        }
+        #expect(f.fake.reinstalls == reinstalls + 1)
+        #expect(guide.permissions[.inputMonitoring] == .granted)
+        #expect(f.model.inputMonitoringTrusted)
+        #expect(f.fake.inputRequests == 0)
     }
 }
 

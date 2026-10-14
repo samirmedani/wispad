@@ -62,7 +62,8 @@ struct RootView: View {
         }
         .frame(minWidth: 820, minHeight: 540)
         .tint(Theme.brand)
-        .onAppear { model.refreshPermissions() }
+        // Alerte de la barre latérale : relue hors du fil principal, qui dessine la fenêtre qui s'ouvre.
+        .onAppear { model.refreshPermissionsInBackground() }
         .sheet(item: Binding(get: { model.updateSheet }, set: { model.updateSheet = $0 }),
                onDismiss: { model.updater.dismissFailure() }) { release in
             UpdateSheet(release: release)

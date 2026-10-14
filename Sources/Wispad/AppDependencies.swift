@@ -77,6 +77,16 @@ struct AppDependencies {
     /// Accès au micro, relu sans rien demander pendant l'écoute : retiré dans Réglages Système, la dictée s'arrête.
     /// Lu hors du fil principal : la question à macOS prend une dizaine de millisecondes.
     var microphoneAuthorized: @Sendable () -> Bool = { PermissionCenter.microphoneAuthorized() }
+    /// Autorisations et ouverture à la connexion affichées, lues sans rien demander, sur place : au lancement, et
+    /// juste après une action dont l'écran ou le diagnostic dépend aussitôt.
+    var permissions: () -> PermissionReading = { PermissionReading.read() }
+    /// Les mêmes, lues sans retenir le fil principal (retour dans Wispad, fenêtre ou Réglages qui s'ouvrent) : le micro
+    /// et la surveillance des entrées sont chacun une question au démon des autorisations de macOS (une dizaine de
+    /// millisecondes), posée sur la file des autorisations.
+    var permissionsOffMain: @Sendable () async -> PermissionReading = { await PermissionReads.offMain { PermissionReading.read() } }
+    /// Ouverture à la connexion (`SMAppService`) : jamais touchée par les tests.
+    var launchAtLogin: () -> Bool = { LoginItemController.isEnabled }
+    var setLaunchAtLogin: (Bool) throws -> Void = { try LoginItemController.setEnabled($0) }
     /// App au premier plan tout de suite, champ actif lu en parallèle : le micro n'attend pas une app lente.
     var captureContext: () -> (DictationContext, Task<FieldSnapshot?, Never>) = { ContextProbe.begin() }
     /// App au premier plan, sans lire son champ : cible de « Coller la dernière dictée ».

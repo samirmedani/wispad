@@ -884,34 +884,87 @@ final class AppModel {
 
     func setLaunchAtLogin(_ enabled: Bool) {
         do {
-            try LoginItemController.setEnabled(enabled)
-            settings.launchAtLogin = LoginItemController.isEnabled
+            try dependencies.setLaunchAtLogin(enabled)
+            noteLaunchAtLogin()
             saveSettings()
         } catch {
-            settings.launchAtLogin = LoginItemController.isEnabled
+            noteLaunchAtLogin()
             statusBanner = String(localized: "Ouverture à la connexion refusée.")
         }
     }
 
-    /// Relue aussi à chaque retour dans Wispad : seule une valeur qui change touche à l'interface.
-    func refreshPermissions() {
-        apply(PermissionReading.read())
+    /// État réel relu juste après un changement : plus récent que toute lecture encore en route, qui ne le remplacera
+    /// pas.
+    private func noteLaunchAtLogin() {
+        let serial = startPermissionRead()
+        let enabled = dependencies.launchAtLogin()
+        if permissionOrder.accepts(serial, for: .launchAtLogin) { settings.launchAtLogin = enabled }
     }
 
-    /// Retour dans Wispad : les mêmes lectures, faites hors du fil principal (la plupart interrogent macOS, une
-    /// dizaine de millisecondes chacune), puis appliquées. Rien ne fige la fenêtre qui revient au premier plan.
+    /// Ordre des lectures d'autorisation affichées, ici et au premier lancement guidé : une réponse lente n'efface
+    /// jamais une valeur donnée par une lecture partie après elle.
+    @ObservationIgnored private var permissionOrder = PermissionReadOrder()
+    /// Lecture hors du fil principal en route : les demandes faites pendant ce temps n'en lancent pas d'autre, mais une
+    /// seule relecture, juste après elle.
+    @ObservationIgnored private(set) var readingPermissions = false
+    @ObservationIgnored private var permissionsRereadRequested = false
+
+    /// Numéro d'une lecture d'autorisation qui part (`PermissionReadOrder`), ici ou au premier lancement guidé.
+    func startPermissionRead() -> Int {
+        permissionOrder.start()
+    }
+
+    /// Relecture sur place : au lancement, quand l'écoute du clavier perd une autorisation, et juste après une action
+    /// (Autoriser, export du diagnostic) dont l'écran ou le rapport dépend aussitôt. Seule une valeur qui change touche
+    /// à l'interface.
+    func refreshPermissions() {
+        let serial = startPermissionRead()
+        apply(dependencies.permissions(), read: serial)
+    }
+
+    /// Retour dans Wispad, fenêtre ou Réglages qui s'ouvrent : les mêmes lectures, faites hors du fil principal (la
+    /// plupart interrogent macOS, une dizaine de millisecondes chacune), puis appliquées. Rien ne fige la fenêtre qui
+    /// revient au premier plan ni l'écran qui s'ouvre. Jamais deux à la fois : demandées pendant une lecture, elles sont
+    /// faites ensemble par une seule relecture, partie après elles.
     func refreshPermissionsInBackground() {
+        guard !readingPermissions else {
+            permissionsRereadRequested = true
+            return
+        }
+        readingPermissions = true
+        let serial = startPermissionRead()
+        let read = dependencies.permissionsOffMain
         Task { [weak self] in
-            let reading = await PermissionReads.offMain { PermissionReading.read() }
-            self?.apply(reading)
+            let reading = await read()
+            guard let self else { return }
+            self.readingPermissions = false
+            self.apply(reading, read: serial)
+            if self.permissionsRereadRequested {
+                self.permissionsRereadRequested = false
+                self.refreshPermissionsInBackground()
+            }
         }
     }
 
-    private func apply(_ reading: PermissionReading) {
-        if microphoneStatus != reading.microphone { microphoneStatus = reading.microphone }
-        if accessibilityTrusted != reading.accessibility { accessibilityTrusted = reading.accessibility }
-        if inputMonitoringTrusted != reading.inputMonitoring { inputMonitoringTrusted = reading.inputMonitoring }
-        if settings.launchAtLogin != reading.launchAtLogin { settings.launchAtLogin = reading.launchAtLogin }
+    /// Accessibilité et surveillance des entrées données par la lecture `serial` (ici ou au premier lancement guidé),
+    /// retenues seulement si aucune lecture partie après elle ne les a déjà données.
+    func applyTrust(accessibility: Bool, inputMonitoring: Bool, read serial: Int) {
+        if permissionOrder.accepts(serial, for: .accessibility), accessibilityTrusted != accessibility {
+            accessibilityTrusted = accessibility
+        }
+        if permissionOrder.accepts(serial, for: .inputMonitoring), inputMonitoringTrusted != inputMonitoring {
+            inputMonitoringTrusted = inputMonitoring
+        }
+    }
+
+    private func apply(_ reading: PermissionReading, read serial: Int) {
+        if permissionOrder.accepts(serial, for: .microphone), microphoneStatus != reading.microphone {
+            microphoneStatus = reading.microphone
+        }
+        applyTrust(accessibility: reading.accessibility, inputMonitoring: reading.inputMonitoring, read: serial)
+        if permissionOrder.accepts(serial, for: .launchAtLogin), settings.launchAtLogin != reading.launchAtLogin {
+            settings.launchAtLogin = reading.launchAtLogin
+        }
     }
 
     func purgeAudio() {
