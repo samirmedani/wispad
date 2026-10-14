@@ -202,9 +202,24 @@ final class OnboardingController {
     func tick() {
         guard !isPreview else { return }
         now = system.now()
+        let microphone = permissions[.microphone]
         refreshPermissions()
+        followMicrophonePermission(from: microphone)
         noteStall()
         noteTrialProgress()
+    }
+
+    /// Étape « Micro » : accès retiré dans Réglages Système pendant l'écran, le test rend le micro (il n'entendrait
+    /// plus que du silence) ; accès rendu, le test repart de lui-même au lieu d'attendre une voix qu'il n'écoute pas.
+    private func followMicrophonePermission(from previous: PermissionState?) {
+        guard step == .microphone, !isSuspended, let previous else { return }
+        let current = permissions[.microphone]
+        guard current != previous else { return }
+        if current == .granted {
+            startMicrophoneTest()
+        } else if previous == .granted {
+            stopMicrophoneTest()
+        }
     }
 
     private func enter(_ step: OnboardingStep) {

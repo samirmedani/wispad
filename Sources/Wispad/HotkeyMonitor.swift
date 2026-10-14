@@ -32,6 +32,9 @@ final class HotkeyMonitor {
                         self?.model?.statusBanner = String(localized: "Autorise la surveillance des entrées pour le raccourci global.")
                     }
                 }
+            },
+            lost: { [weak self] permissions in
+                DispatchQueue.main.async { MainActor.assumeIsolated { self?.keyboardLost(permissions) } }
             }
         )
         self.tap = tap
@@ -85,6 +88,15 @@ final class HotkeyMonitor {
 
     func now() -> Int {
         KeyboardTap.now()
+    }
+
+    /// L'écoute du clavier a été retirée faute d'autorisation (retirée dans Réglages Système) : la dictée en cours
+    /// ne verrait plus ni son raccourci ni Échap, elle s'arrête et la bulle dit pourquoi. L'écoute revient seule avec
+    /// l'autorisation (surveillance de 3 s).
+    private func keyboardLost(_ permissions: KeyboardPermissions) {
+        guard let model else { return }
+        model.refreshPermissions()
+        model.coordinator.keyboardLost(permissions)
     }
 
     private func receive(_ output: HotkeyOutput) {

@@ -893,11 +893,16 @@ final class AppModel {
         }
     }
 
+    /// Relue aussi à chaque retour dans Wispad : seule une valeur qui change touche à l'interface.
     func refreshPermissions() {
-        microphoneStatus = PermissionCenter.microphoneStatus()
-        accessibilityTrusted = PermissionCenter.accessibilityTrusted(prompt: false)
-        inputMonitoringTrusted = PermissionCenter.inputMonitoringTrusted()
-        settings.launchAtLogin = LoginItemController.isEnabled
+        let microphone = PermissionCenter.microphoneStatus()
+        if microphoneStatus != microphone { microphoneStatus = microphone }
+        let accessibility = PermissionCenter.accessibilityTrusted(prompt: false)
+        if accessibilityTrusted != accessibility { accessibilityTrusted = accessibility }
+        let inputMonitoring = PermissionCenter.inputMonitoringTrusted()
+        if inputMonitoringTrusted != inputMonitoring { inputMonitoringTrusted = inputMonitoring }
+        let launchAtLogin = LoginItemController.isEnabled
+        if settings.launchAtLogin != launchAtLogin { settings.launchAtLogin = launchAtLogin }
     }
 
     func purgeAudio() {

@@ -41,6 +41,8 @@ final class Capture {
     var correctionClaimed = false
     /// Surveillance du premier paquet audio (`MicrophoneStartWatch`).
     var audioWatch: Task<Void, Never>?
+    /// Surveillance de l'accès au micro pendant l'écoute (retiré dans Réglages Système).
+    var microphoneAccessWatch: Task<Void, Never>?
 
     init(mode: ListenMode, context: DictationContext, field: Task<FieldSnapshot?, Never>, marks: LatencyMarks, run: DictationTraceRecorder) {
         self.mode = mode

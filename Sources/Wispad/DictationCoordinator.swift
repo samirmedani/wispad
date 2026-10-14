@@ -112,6 +112,18 @@ final class DictationCoordinator {
     static var microphoneLostMessage: String {
         String(localized: "Le micro ne répond plus : dictée arrêtée")
     }
+    /// Message de la bulle quand l'accès au micro est retiré dans Réglages Système en pleine écoute.
+    static var microphoneRevokedMessage: String {
+        String(localized: "Accès au micro retiré : dictée arrêtée")
+    }
+    /// Message de la bulle quand l'écoute du clavier est retirée en pleine dictée, faute de cette autorisation.
+    static func keyboardLostMessage(_ permissions: KeyboardPermissions) -> String {
+        permissions.listen
+            ? String(localized: "Accessibilité retirée : dictée arrêtée")
+            : String(localized: "Surveillance des entrées retirée : dictée arrêtée")
+    }
+    /// Vérification de l'accès au micro pendant l'écoute ; raccourcie par les tests.
+    @ObservationIgnored var microphoneAccessInterval = 1.0
     /// Délais de démarrage du micro (`MicrophoneStartWatch`) ; raccourcis par les tests. Un redémarrage sur un
     /// moteur neuf a le même délai que le premier démarrage.
     @ObservationIgnored var audioStartLimit = MicrophoneStartWatch.startLimit
@@ -261,6 +273,7 @@ final class DictationCoordinator {
         startMeter()
         signalAudioReady(current)
         watchFirstAudio(current, audio: audio) { firstPacket.withLock { $0 != nil } }
+        watchMicrophoneAccess(current)
         // Le flux en direct reçoit les mots utiles du champ actif : attendus au plus 150 ms, l'audio est gardé
         // pendant ce temps et part dès que le flux est branché.
         if case .some(let snapshot) = await Self.value(of: field, within: Self.contextWait) {
@@ -369,13 +382,53 @@ final class DictationCoordinator {
     private func microphoneLost(_ current: Capture) {
         guard isCapturing(current) else { return }
         Self.audioLog.error("micro arrêté pendant l'écoute : dictée terminée avec l'audio déjà reçu")
+        stopListening(current, message: Self.microphoneLostMessage)
+    }
+
+    /// L'écoute en cours ne peut plus continuer : elle s'arrête là, comme si on l'avait terminée (ce qui a déjà été
+    /// dit est transcrit et collé), le raccourci est libre et la bulle dit pourquoi.
+    private func stopListening(_ current: Capture, message: String) {
+        guard isCapturing(current) else { return }
         model?.hotkeys?.sessionEnded()
         endCapture()
-        let message = Self.microphoneLostMessage
         model?.statusBanner = message
         shownFailure = ShownFailure(message: message, text: nil, offersHistory: false)
         refreshPhase()
         changed()
+    }
+
+    /// Accès au micro retiré dans Réglages Système pendant l'écoute : macOS n'arrête pas le moteur, il ne lui livre
+    /// plus que du silence, et la dictée continuerait sur un spectre immobile. Vérifié chaque seconde, pendant
+    /// l'écoute seulement et si l'accès était accordé au départ ; jamais une demande à macOS.
+    private func watchMicrophoneAccess(_ current: Capture) {
+        guard let model, model.dependencies.microphoneAuthorized() else { return }
+        let interval = microphoneAccessInterval
+        current.microphoneAccessWatch = Task { @MainActor [weak self] in
+            while true {
+                try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
+                guard !Task.isCancelled, let self, self.isCapturing(current), let model = self.model else { return }
+                guard !model.dependencies.microphoneAuthorized() else { continue }
+                Self.audioLog.error("accès au micro retiré pendant l'écoute : dictée terminée avec l'audio déjà reçu")
+                self.stopListening(current, message: Self.microphoneRevokedMessage)
+                return
+            }
+        }
+    }
+
+    /// L'écoute du clavier a été retirée faute d'une autorisation (`KeyboardTap`) : ni le raccourci ni Échap
+    /// n'atteindraient plus la dictée en cours. Elle s'arrête là, comme si on l'avait terminée, et la bulle dit
+    /// pourquoi ; un micro encore en démarrage est abandonné (rien n'a été dit).
+    func keyboardLost(_ permissions: KeyboardPermissions) {
+        guard let current = capture, !current.cancelled else { return }
+        let message = Self.keyboardLostMessage(permissions)
+        hotkeyLog.notice("écoute du clavier retirée pendant la dictée : dictée terminée")
+        if current.listening {
+            stopListening(current, message: message)
+        } else {
+            shownFailure = ShownFailure(message: message, text: nil, offersHistory: false)
+            model?.statusBanner = message
+            discard(current, outcome: .cancelled)
+        }
     }
 
     /// Relais pris d'emblée : voix chez l'autre fournisseur si le principal est en panne (jamais hors connexion, où
@@ -397,6 +450,7 @@ final class DictationCoordinator {
         guard let current = capture, current.listening else { return nil }
         capture = nil
         current.audioWatch?.cancel()
+        current.microphoneAccessWatch?.cancel()
         stopMeter()
         let stopped = current.audio?.stop()
         current.audio = nil
@@ -479,6 +533,7 @@ final class DictationCoordinator {
         current.cancelled = true
         current.correctionClaimed = true
         current.audioWatch?.cancel()
+        current.microphoneAccessWatch?.cancel()
         capture = nil
         stopMeter()
         current.startTask?.cancel()
@@ -505,6 +560,7 @@ final class DictationCoordinator {
     private func discard(_ current: Capture, outcome: DictationOutcome = .captureFailed) {
         current.cancelled = true
         current.audioWatch?.cancel()
+        current.microphoneAccessWatch?.cancel()
         capture = nil
         stopMeter()
         current.startTask?.cancel()
@@ -786,7 +842,7 @@ final class DictationCoordinator {
             job.delivered = true
             if let note = job.announcement { pendingAnnouncement = note.message }
         } else {
-            offerReadyText(finalText, status: status, recordID: record.id)
+            offerReadyText(finalText, status: status, recordID: record.id, accessibilityRefused: context.accessibilityRefused)
         }
         // La bulle part d'abord ; le ménage des vieux audios vient après.
         settle(job)
@@ -831,8 +887,10 @@ final class DictationCoordinator {
 
     // MARK: - Texte prêt, faute de champ
 
-    /// Message de la bulle quand le texte n'a pas pu être écrit : court, toujours suivi de Copier.
-    static func readyMessage(for status: InsertionStatus) -> String {
+    /// Message de la bulle quand le texte n'a pas pu être écrit : court, toujours suivi de Copier. Collage refusé
+    /// faute d'accessibilité : la bulle dit laquelle manque, plutôt qu'un texte « pas arrivé » jamais envoyé.
+    static func readyMessage(for status: InsertionStatus, accessibilityRefused: Bool = false) -> String {
+        if accessibilityRefused { return String(localized: "Accessibilité non autorisée : le texte est prêt") }
         switch status {
         case .noTarget: return String(localized: "Pas de champ où écrire : le texte est prêt")
         case .refusedSecure: return String(localized: "Champ sécurisé : le texte est prêt")
@@ -843,11 +901,11 @@ final class DictationCoordinator {
 
     /// Échec avéré : le texte reste récupérable sans voler le focus. Il est copié, sauf vers un champ sécurisé
     /// où il ne doit pas traîner dans le presse-papiers.
-    private func offerReadyText(_ text: String, status: InsertionStatus, recordID: String?) {
+    private func offerReadyText(_ text: String, status: InsertionStatus, recordID: String?, accessibilityRefused: Bool = false) {
         guard let model else { return }
         if status != .refusedSecure { model.dependencies.copyText(text) }
         Self.insertionLog.notice("récupération du collage : \(status.rawValue, privacy: .public)")
-        let message = Self.readyMessage(for: status)
+        let message = Self.readyMessage(for: status, accessibilityRefused: accessibilityRefused)
         model.statusBanner = message
         showFailure(message, text: text, recordID: recordID)
     }
@@ -925,7 +983,7 @@ final class DictationCoordinator {
             }
             announce(String(localized: "Collé"), relay: false)
         case .cancelled: break
-        default: offerReadyText(text, status: status, recordID: record?.id)
+        default: offerReadyText(text, status: status, recordID: record?.id, accessibilityRefused: target.accessibilityRefused)
         }
     }
 

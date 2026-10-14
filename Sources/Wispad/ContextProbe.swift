@@ -12,6 +12,9 @@ final class DictationContext: @unchecked Sendable {
     var nearbyText: String?
     var isSecure = false
     var element: AXUIElement?
+    /// Le collage n'a pas été tenté : l'accessibilité n'est pas autorisée (retirée dans Réglages Système, ou jamais
+    /// donnée). Noté par l'insertion, pour que la bulle dise pourquoi le texte reste à copier.
+    var accessibilityRefused = false
     /// Le champ actif a été lu (ou sa lecture a échoué) : rien de plus à attendre.
     private(set) var fieldRead = false
 

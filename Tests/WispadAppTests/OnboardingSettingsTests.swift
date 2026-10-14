@@ -370,6 +370,85 @@ struct OnboardingControllerTests {
         polling.cancel()
     }
 
+    // MARK: Autorisations retirées puis rendues pendant la configuration
+
+    @Test func microphoneTestStartsByItselfWhenItsAccessComesBack() async throws {
+        let f = try GuideFixture()
+        defer { f.dispose() }
+        f.fake.grantAll()
+        // Accès au micro retiré avant d'arriver à l'étape : aucun test ne peut s'ouvrir.
+        f.fake.snapshot.microphoneGranted = false
+        f.fake.snapshot.microphoneDenied = true
+        let guide = f.controller(at: .microphone)
+        #expect(guide.currentStatus == .failed(.permission(.microphone, .denied)))
+        #expect(f.fake.meter.starts == 0)
+        // Rendu dans Réglages Système : le test repart seul, sans attendre une voix qu'il n'écoute pas.
+        f.fake.snapshot.microphoneGranted = true
+        f.fake.snapshot.microphoneDenied = false
+        guide.tick()
+        let deadline = Date().addingTimeInterval(15)
+        while f.fake.meter.onLevel == nil, Date() < deadline { try await Task.sleep(nanoseconds: 10_000_000) }
+        let deliver = try #require(f.fake.meter.onLevel)
+        for _ in 0..<20 { deliver(-62, 0.05) }
+        for _ in 0..<16 { deliver(-26, 0.05) }
+        #expect(guide.currentStatus == .succeeded)
+        #expect(f.fake.meter.starts == 1)
+        #expect(f.fake.microphoneRequests == 0)
+    }
+
+    @Test func microphoneTestReleasesTheMicrophoneWhenItsAccessIsWithdrawn() async throws {
+        let f = try GuideFixture()
+        defer { f.dispose() }
+        f.fake.grantAll()
+        let guide = f.controller(at: .microphone)
+        let deadline = Date().addingTimeInterval(15)
+        while f.fake.meter.onLevel == nil, Date() < deadline { try await Task.sleep(nanoseconds: 10_000_000) }
+        let deliver = try #require(f.fake.meter.onLevel)
+        let stops = f.fake.meter.stops
+        // Accès retiré pendant le test : macOS ne livrerait plus que du silence, le micro est rendu.
+        f.fake.snapshot.microphoneGranted = false
+        f.fake.snapshot.microphoneDenied = true
+        guide.tick()
+        #expect(f.fake.meter.stops == stops + 1)
+        #expect(guide.currentStatus == .failed(.permission(.microphone, .denied)))
+        // Les niveaux d'un test arrêté ne comptent plus ; d'autres relectures ne relancent rien.
+        for _ in 0..<40 { deliver(-26, 0.05) }
+        #expect(!guide.detector.detected)
+        for _ in 0..<10 { guide.tick() }
+        #expect(f.fake.meter.starts == 1)
+        #expect(f.fake.meter.stops == stops + 1)
+        #expect(f.fake.microphoneRequests == 0)
+    }
+
+    /// Autorisations retirées puis rendues plusieurs fois, l'écran relu à chaque passage du sondage : l'état suit,
+    /// l'affichage des Réglages aussi, l'écoute du clavier est réinstallée une fois par retour, jamais à chaque
+    /// relecture, et rien n'est demandé à macOS sans un clic.
+    @Test func permissionsWithdrawnAndGivenBackAreFollowedWithoutAskingAgain() throws {
+        let f = try GuideFixture()
+        defer { f.dispose() }
+        f.fake.grantAll()
+        let guide = f.controller(at: .permissions)
+        #expect(guide.currentStatus == .succeeded)
+        let reinstalls = f.fake.reinstalls
+        for _ in 0..<3 {
+            f.fake.snapshot = OnboardingSystem.PermissionSnapshot()
+            f.fake.listening = false
+            for _ in 0..<10 { guide.tick() }
+            #expect(guide.currentStatus == .todo)
+            #expect(!f.model.accessibilityTrusted && !f.model.inputMonitoringTrusted)
+            f.fake.grantAll()
+            for _ in 0..<10 { guide.tick() }
+            #expect(guide.currentStatus == .succeeded)
+            #expect(f.model.accessibilityTrusted && f.model.inputMonitoringTrusted)
+        }
+        #expect(f.fake.reinstalls == reinstalls + 3)
+        #expect(f.fake.microphoneRequests == 0)
+        #expect(f.fake.accessibilityRequests == 0)
+        #expect(f.fake.inputRequests == 0)
+        #expect(f.fake.opened.isEmpty)
+        #expect(f.fake.relaunches == 0)
+    }
+
     @Test func laterIsOnlyOfferedWhereItMakesSense() throws {
         let f = try GuideFixture()
         defer { f.dispose() }

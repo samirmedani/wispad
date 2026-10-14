@@ -177,6 +177,17 @@ public struct HotkeyLogic: Equatable, Sendable {
         return output
     }
 
+    /// L'écoute du clavier a été retirée (autorisation retirée dans Réglages Système) : plus aucune frappe ne sera
+    /// vue. Le geste en cours, Échap et « Coller la dernière dictée » avalés sont oubliés sans effet ; l'app arrête
+    /// elle-même la dictée qu'ils tenaient, en disant pourquoi. Écoute rendue, le premier appui compte.
+    public mutating func listeningLost() {
+        engine.forceIdle()
+        chordDown = false
+        chordShortcut = nil
+        escapeSwallowed = false
+        pasteKeyDown = nil
+    }
+
     /// Accord rendu sans son relâchement : un maintien s'arrête, un appui en attente est oublié sans rien démarrer.
     private mutating func releaseChord(at time: Int, into output: inout HotkeyOutput) {
         chordDown = false
