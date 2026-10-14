@@ -47,6 +47,9 @@ private final class TrialFixture {
     var streams: [TrialStream] = []
     /// Ce que le fournisseur entend (flux et fichier) ; vide : l'utilisateur n'a rien dit.
     var heard = spoken
+    /// Correction lente : sa réponse attend ce signal.
+    var cleanGate: AsyncResult<Void>?
+    var cleanCalls = 0
     var clock = Date(timeIntervalSince1970: 2_000_000)
     var model: AppModel!
 
@@ -73,7 +76,11 @@ private final class TrialFixture {
             return stream
         }
         dependencies.transcribe = { [unowned self] _, _ in self.heard }
-        dependencies.clean = { text, _, _, _ in CleanupOutcome(text: text) }
+        dependencies.clean = { [unowned self] text, _, _, _ in
+            self.cleanCalls += 1
+            if let gate = self.cleanGate { try? await gate.value() }
+            return CleanupOutcome(text: text)
+        }
         dependencies.playCue = { _ in }
         dependencies.muteOutput = { _, _ in }
         dependencies.restoreOutput = {}
@@ -244,6 +251,32 @@ struct OnboardingTrialTests {
         #expect(guide.currentStatus == .inProgress)
         if let stream = f.streams.last { try await stream.ready.value() }
         await f.model.coordinator.end()
+        guide.noteTrialProgress()
+        #expect(guide.currentStatus == .succeeded)
+        #expect(guide.trialText == spoken)
+    }
+
+    /// Longue dictée dont la fin dépasse 45 s (correction lente) : l'essai dit « Pas de réponse à temps » avec
+    /// Réessayer, mais rien n'est bloqué ; quand le texte arrive dans le champ, l'essai réussit sans rien refaire.
+    @Test func lateDictationStillCompletesTheTrial() async throws {
+        let f = try TrialFixture()
+        defer { f.dispose() }
+        let gate = AsyncResult<Void>()
+        f.cleanGate = gate
+        let guide = f.guide(at: .trial)
+        await f.model.coordinator.begin(.toggle)
+        if let stream = f.streams.last { try await stream.ready.value() }
+        let finishing = try #require(f.model.coordinator.endCapture())
+        let deadline = Date().addingTimeInterval(15)
+        while f.cleanCalls == 0, Date() < deadline { try await Task.sleep(nanoseconds: 10_000_000) }
+        #expect(f.cleanCalls > 0)
+        guide.tick()
+        #expect(guide.currentStatus == .inProgress)
+        f.clock.addTimeInterval(TrialCheck.stallLimit)
+        guide.tick()
+        #expect(guide.currentStatus == .failed(.trial(.timeout)))
+        gate.resolve(.success(()))
+        await finishing.value
         guide.noteTrialProgress()
         #expect(guide.currentStatus == .succeeded)
         #expect(guide.trialText == spoken)
