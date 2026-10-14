@@ -32,6 +32,20 @@ enum HistoryStoreFixture {
         )
     }
 
+    /// `count` fils à eux, pas les fils de GCD : d'autres tests, lancés en même temps, mesurent des délais sur les
+    /// files de GCD et ne doivent pas attendre un fil libre. Rend la main quand tous ont fini.
+    static func onThreads(_ count: Int, _ work: @escaping @Sendable (Int) -> Void) {
+        let group = DispatchGroup()
+        for index in 0..<count {
+            group.enter()
+            Thread.detachNewThread {
+                work(index)
+                group.leave()
+            }
+        }
+        group.wait()
+    }
+
     /// Taille d'un fichier, 0 s'il n'existe pas.
     static func size(_ path: String) -> Int {
         ((try? FileManager.default.attributesOfItem(atPath: path))?[.size] as? NSNumber)?.intValue ?? 0
