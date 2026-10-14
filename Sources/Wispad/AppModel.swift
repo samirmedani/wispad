@@ -902,7 +902,7 @@ final class AppModel {
     /// dizaine de millisecondes chacune), puis appliquées. Rien ne fige la fenêtre qui revient au premier plan.
     func refreshPermissionsInBackground() {
         Task { [weak self] in
-            let reading = await Task.detached(priority: .userInitiated) { PermissionReading.read() }.value
+            let reading = await PermissionReads.offMain { PermissionReading.read() }
             self?.apply(reading)
         }
     }

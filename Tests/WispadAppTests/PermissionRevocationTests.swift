@@ -1,6 +1,7 @@
 import AppKit
 import CoreGraphics
 import Foundation
+import os
 import Testing
 @testable import WispadApp
 @testable import WispadCore
@@ -294,6 +295,38 @@ struct KeyboardTapPermissionTests {
 }
 
 // MARK: - Dictée en cours
+
+/// Lectures d'autorisation bloquantes : jamais sur les fils de Swift concurrency, que les minuteries de la dictée
+/// partagent (le 14 octobre, une lecture réelle par dictée y figeait une dictée de test sur la CI).
+struct PermissionReadsTests {
+    @Test func blockingPermissionReadsNeverHoldTheSwiftConcurrencyThreads() async throws {
+        // Deux fois plus de lectures bloquées que de fils de Swift concurrency, toutes libérées après 2 s. La
+        // libération part d'une file série : elle obtient un fil même si tous ceux de Swift concurrency attendent.
+        let reads = ProcessInfo.processInfo.activeProcessorCount * 2
+        let gate = DispatchSemaphore(value: 0)
+        let started = OSAllocatedUnfairLock(initialState: 0)
+        let releaseAt = Date().addingTimeInterval(2)
+        DispatchQueue(label: "wispad.tests.liberation").asyncAfter(deadline: .now() + 2) {
+            for _ in 0..<reads { gate.signal() }
+        }
+        let pending = (0..<reads).map { _ in
+            Task.detached {
+                await PermissionReads.offMain {
+                    started.withLock { $0 += 1 }
+                    gate.wait()
+                    return true
+                }
+            }
+        }
+        // Lectures en cours : sur les fils de Swift concurrency, elles les occuperaient tous en quelques microsecondes.
+        while started.withLock({ $0 }) == 0 { try await Task.sleep(nanoseconds: 1_000_000) }
+        try await Task.sleep(nanoseconds: 100_000_000)
+        // Une tâche ordinaire passe pourtant avant leur libération : aucun fil de Swift concurrency n'attend macOS.
+        let ranAt = await Task.detached { Date() }.value
+        #expect(ranAt < releaseAt)
+        for task in pending { #expect(await task.value) }
+    }
+}
 
 private final class FakeAudio: AudioRecording, @unchecked Sendable {
     @Guarded var onPCM: (@Sendable (Data) -> Void)?

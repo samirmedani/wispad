@@ -104,6 +104,19 @@ struct PermissionReading: Sendable {
     }
 }
 
+/// Lectures d'autorisation hors du fil principal. Chacune bloque le temps d'une question au démon des autorisations
+/// de macOS (une dizaine de millisecondes, bien plus sur une machine lente) : elles passent sur une file GCD, jamais
+/// sur un fil de Swift concurrency, dont quelques-uns servent toute l'app (minuteries de la dictée comprises).
+enum PermissionReads {
+    private static let queue = DispatchQueue(label: "wispad.autorisations", qos: .userInitiated)
+
+    static func offMain<Value: Sendable>(_ read: @escaping @Sendable () -> Value) async -> Value {
+        await withCheckedContinuation { continuation in
+            queue.async { continuation.resume(returning: read()) }
+        }
+    }
+}
+
 enum LoginItemController {
     static var isEnabled: Bool {
         SMAppService.mainApp.status == .enabled

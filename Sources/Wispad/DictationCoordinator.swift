@@ -408,22 +408,17 @@ final class DictationCoordinator {
         let interval = microphoneAccessInterval
         current.microphoneAccessWatch = Task { @MainActor [weak self] in
             // Accès refusé au départ (tests, machine de vérification) : rien n'est surveillé.
-            guard await Self.readOffMain(authorized) else { return }
+            guard await PermissionReads.offMain(authorized) else { return }
             while true {
                 try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
                 guard !Task.isCancelled, let self, self.isCapturing(current) else { return }
-                guard await !Self.readOffMain(authorized) else { continue }
+                guard await !PermissionReads.offMain(authorized) else { continue }
                 guard !Task.isCancelled, self.isCapturing(current) else { return }
                 Self.audioLog.error("accès au micro retiré pendant l'écoute : dictée terminée avec l'audio déjà reçu")
                 self.stopListening(current, message: Self.microphoneRevokedMessage)
                 return
             }
         }
-    }
-
-    /// Lecture d'une autorisation sur un fil d'arrière-plan.
-    private nonisolated static func readOffMain(_ read: @escaping @Sendable () -> Bool) async -> Bool {
-        await Task.detached(priority: .utility) { read() }.value
     }
 
     /// L'écoute du clavier a été retirée faute d'une autorisation (`KeyboardTap`) : ni le raccourci ni Échap
