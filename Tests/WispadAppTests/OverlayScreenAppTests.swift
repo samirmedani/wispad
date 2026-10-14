@@ -7,7 +7,7 @@ import Testing
 /// l'écran comme pendant une dictée, mais son contenu est masqué et il reste hors de tout écran réel ; il ne prend jamais
 /// le focus.
 @MainActor
-@Suite(.serialized)
+@Suite(.serialized, .inputZoneExclusive)
 struct OverlayScreenAppTests {
     /// Écrans, pointeur et écran principal simulés, relus par la bulle à chaque placement.
     @MainActor

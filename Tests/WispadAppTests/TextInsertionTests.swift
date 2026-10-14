@@ -48,7 +48,7 @@ private final class InsertionFixture {
 }
 
 @MainActor
-@Suite(.serialized)
+@Suite(.serialized, .inputZoneExclusive)
 struct TextInsertionTests {
     @Test func aConfirmedPasteRestoresTheClipboardAtOnce() async {
         let f = InsertionFixture(); defer { f.dispose() }

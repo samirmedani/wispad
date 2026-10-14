@@ -6,7 +6,7 @@ import Testing
 
 /// Place de la bulle sur le vrai écran du Mac de test, sans afficher de fenêtre ni lire une vraie app.
 @MainActor
-@Suite(.serialized)
+@Suite(.serialized, .inputZoneExclusive)
 struct OverlayPlacementAppTests {
     @MainActor
     private final class Box {
