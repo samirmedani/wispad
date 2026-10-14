@@ -107,10 +107,16 @@ public extension SpectrumAnalyzer {
 public struct BandTimeline: Sendable {
     /// Au-delà, le retard s'accumule : on repart de l'instant présent.
     public static let maxBacklog = 0.2
+    /// Image passée depuis plus longtemps à l'arrivée d'un paquet : plus rien ne la lira (écran en veille ou
+    /// débranché pendant l'écoute, le spectre n'est plus redessiné).
+    public static let staleAfter = 1.0
 
     private var queue: [(time: Double, bands: [Float])] = []
     private var latest: [Float]
     private var lastScheduled = -Double.infinity
+
+    /// Images gardées pour l'affichage.
+    var pendingFrames: Int { queue.count }
 
     public init(bandCount: Int = SpectrumAnalyzer.bandCount) {
         latest = Array(repeating: 0, count: bandCount)
@@ -118,6 +124,13 @@ public struct BandTimeline: Sendable {
 
     public mutating func push(_ frames: [[Float]], arrival: Double, hopSeconds: Double) {
         guard !frames.isEmpty else { return }
+        // Sans lecture du spectre, les images s'empilaient pendant toute l'écoute (62 par seconde). Seule la dernière
+        // des images passées compte, comme dans `current(at:)` : les autres sont oubliées.
+        let stale = queue.prefix(while: { $0.time <= arrival - Self.staleAfter }).count
+        if stale > 0 {
+            latest = queue[stale - 1].bands
+            queue.removeFirst(stale)
+        }
         var start = max(arrival, lastScheduled + hopSeconds)
         if start - arrival > Self.maxBacklog {
             start = arrival
