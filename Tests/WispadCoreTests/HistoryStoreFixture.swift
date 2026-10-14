@@ -1,6 +1,12 @@
 import Foundation
 import SQLite3
+import Testing
 @testable import WispadCore
+
+/// Tests de robustesse de `HistoryStore`, l'un après l'autre : ils écrivent beaucoup et en occupent chacun un fil du
+/// groupe partagé de Swift ; ensemble, ils retarderaient les tests voisins qui mesurent des délais.
+@Suite(.serialized)
+enum HistoryStoreRobustness {}
 
 /// Bases fictives des tests de robustesse de `HistoryStore` : un dossier temporaire par test, effacé à la fin, et
 /// des données inventées.
