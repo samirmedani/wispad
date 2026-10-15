@@ -104,7 +104,8 @@ struct HistoryView: View {
     private var filtered: [DictationRecord] {
         let needle = appliedQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !needle.isEmpty else { return model.history }
-        return model.history.filter { $0.finalText.localizedCaseInsensitiveContains(needle) }
+        // Ce qui a été entendu compte aussi : une correction partie à côté ne cache pas la dictée.
+        return model.history.filter { $0.matches(search: needle) }
     }
 }
 
