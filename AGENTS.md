@@ -3,6 +3,11 @@
 Dictée vocale open source pour macOS. Lire [README.md](README.md), puis [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 avant d'ajouter un fournisseur, un réglage ou un écran.
 
+## Réponses au mainteneur
+
+- Courtes et simples : le résultat d'abord, en quelques phrases. Pas de tableau, de liste de chiffres ni
+  d'explication technique sans demande.
+
 ## Règles
 
 - Ne jamais journaliser les transcriptions, le contexte autour du curseur ni les clés API.
