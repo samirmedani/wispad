@@ -3,6 +3,17 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.2.2 — 15 octobre 2026
+
+Une dictée ne peut plus être remplacée par un texte que tu n'as pas dit.
+
+> Depuis la 0.2.0 : si la mise à jour reste sur « Relance… », ferme cette fenêtre, puis quitte Wispad et rouvre-le.
+> La 0.2.2 est déjà installée.
+
+**Corrigé**
+- Quand la correction répondait à côté au lieu de corriger ta dictée (texte de la fenêtre recopié, réponse à ta question, traduction), Wispad collait cette réponse. C'est arrivé pendant une panne de DeepSeek, avec le fournisseur de secours. Wispad colle maintenant ce que tu as dit.
+- Historique : la recherche trouve aussi une dictée par les mots que tu as vraiment dits, même quand le texte collé était différent.
+
 ## 0.2.1 — 15 octobre 2026
 
 Corrige deux plantages de la 0.2.0, rend la mise à jour en un clic fiable et rend Wispad plus solide partout :
