@@ -22,6 +22,21 @@ struct CorrectionWatchTests {
         return outcome(of: watch.observe(sample(value)))
     }
 
+    /// Champ long qui ne bouge plus : chaque lecture (quatre par seconde pendant 30 s) constate qu'il n'a pas changé,
+    /// sans redécouper ses mots. Avant, une lecture coûtait au moins ce découpage (4,7 ms contre 0,15 ms pour un fil
+    /// de 33 000 caractères, mesuré sous Linux).
+    @Test func unchangedLongFieldIsNotSplitAgainAtEachRead() {
+        let thread = (0..<500).map { "Ligne \($0) d'un long fil de discussion, avec quelques mots de plus." }.joined(separator: "\n")
+        let value = thread + "\n" + inserted
+        var watch = CorrectionWatch(inserted: inserted, known: [])
+        #expect(watch.observe(sample(value)) == .continueWatching(adoptElement: false))
+        var steps: [CorrectionWatch.Step] = []
+        let split = Timing.fastest { _ = CorrectionLearner.words(in: value) }
+        let read = Timing.fastest { steps.append(watch.observe(sample(value))) }
+        #expect(steps.allSatisfy { $0 == .continueWatching(adoptElement: false) })
+        #expect(read < split / 4)
+    }
+
     @Test func correctionThenClearedFieldKeepsTheCandidate() {
         var watch = CorrectionWatch(inserted: inserted, known: [])
         #expect(watch.observe(sample(inserted)) == .continueWatching(adoptElement: false))

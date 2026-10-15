@@ -125,7 +125,7 @@ struct EarlyCorrectionTests {
         await f.model.coordinator.begin(.toggle)
         await f.pause(after: "Bonjour à tous")
         // La correction part après 0,25 s de pause ; d'autres tests occupent parfois le fil principal plus longtemps.
-        let deadline = Date().addingTimeInterval(2)
+        let deadline = Date().addingTimeInterval(15)
         while f.cleanTexts.isEmpty, Date() < deadline {
             try await Task.sleep(nanoseconds: 20_000_000)
         }

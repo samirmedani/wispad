@@ -59,6 +59,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                     await model?.checkDownServices()
                 }
             }
+            // Toujours chaque minute, à quelques secondes près : macOS peut grouper ce réveil avec d'autres au repos.
+            retentionTimer?.tolerance = 6
             Task { @MainActor [weak self] in
                 await model.refreshKeys()
                 // Relance technique ou diagnostic : aucune fenêtre, même si le coffre ne répond pas.
@@ -130,6 +132,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
 
     func applicationDidBecomeActive(_ notification: Notification) {
+        // Retour de Réglages Système : une autorisation a pu y être retirée ou rendue. Réglages › Autorisations et la
+        // barre latérale le montrent aussitôt, sans attendre qu'on rouvre l'écran ; lu hors du fil principal.
+        model?.refreshPermissionsInBackground()
         guard pendingReopen else { return }
         pendingReopen = false
         show(section: model?.selectedSection ?? .home)

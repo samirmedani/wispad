@@ -11,7 +11,10 @@ final class AppModel {
         // L'écoute du clavier, sur son propre fil, lit une copie du raccourci.
         didSet { hotkeys?.refreshConfig() }
     }
-    var history: [DictationRecord] = []
+    var history: [DictationRecord] = [] {
+        // Le cache des lignes ne garde ni dictée supprimée ni copie de l'historique relu.
+        didSet { HistoryRowCache.shared.follow(history, previous: oldValue) }
+    }
     var dictionary: [DictionaryEntry] = []
     /// Appels API, du plus récent au plus ancien.
     var usage: [UsageEvent] = []
@@ -68,7 +71,7 @@ final class AppModel {
     let historyPlayer: HistoryAudioPlayer
     let overlay = OverlayController()
     let supportURL: URL
-    weak var hotkeys: HotkeyMonitor?
+    weak var hotkeys: (any HotkeyControl)?
     var onOpenWindow: ((AppSection) -> Void)?
 
     var audioDirectory: URL {
@@ -355,10 +358,28 @@ final class AppModel {
         FallbackSummary.make(events: usageEvents(for: period, now: now, calendar: calendar), period: .all, now: now, calendar: calendar)
     }
 
+    /// Relecture des clés en cours : une dictée qui attend sa clé la rejoint au lieu d'en relancer une.
+    @ObservationIgnored private var keyRefresh: (token: UUID, task: Task<Void, Never>)?
+    /// Attente maximale des clés par une dictée : un coffre qui ne répond plus ne retient jamais le raccourci.
+    static let keyRefreshSeconds = 10.0
+    /// Raccourcie par les tests.
+    @ObservationIgnored var keyRefreshLimit = AppModel.keyRefreshSeconds
+
     /// Relit les clés (fichier de l'app, ou coffre de secrets s'il est configuré).
     func refreshKeys() async {
-        keysReachable = await dependencies.refreshKeys()
-        keysLoadedAt = Date()
+        await startKeyRefresh().value
+    }
+
+    /// Relecture des clés, notée en cours dès son lancement et oubliée à sa fin.
+    private func startKeyRefresh() -> Task<Void, Never> {
+        let token = UUID()
+        let task = Task { @MainActor in
+            keysReachable = await dependencies.refreshKeys()
+            keysLoadedAt = Date()
+            if keyRefresh?.token == token { keyRefresh = nil }
+        }
+        keyRefresh = (token, task)
+        return task
     }
 
     /// Nom d'une clé dans le coffre de secrets.
@@ -542,7 +563,9 @@ final class AppModel {
         let started = updater.install(
             release, kind: status.kind, installed: version,
             isIdle: { [weak self] in self?.coordinator.phase == .idle },
-            relaunchArguments: { [weak self] in self?.relaunchArguments() ?? ["--updated"] }
+            relaunchArguments: { [weak self] in self?.relaunchArguments() ?? ["--updated"] },
+            // Fenêtre de mise à jour fermée par son état SwiftUI : macOS refuse de quitter tant qu'elle est en feuille.
+            beforeQuit: { [weak self] in self?.updateSheet = nil }
         )
         if started { updateSheet = release }
     }
@@ -683,18 +706,24 @@ final class AppModel {
 
     /// Ce qui empêche une dictée de partir : clé absente ou coffre injoignable.
     func voiceProblem() async -> (outcome: DictationOutcome, message: String)? {
-        // Clé pas encore lue (démarrage) ou ajoutée depuis : une relecture suffit.
-        if (apiKey() ?? "").isEmpty { await refreshKeys() }
+        // Clé pas encore lue (démarrage) ou ajoutée depuis : une relecture suffit, celle en cours si elle existe.
+        // Sans réponse dans `keyRefreshLimit`, le coffre est dit injoignable et la relecture continue seule.
+        var reachable = keysReachable
+        if (apiKey() ?? "").isEmpty {
+            let refresh = keyRefresh?.task ?? startKeyRefresh()
+            let answered = await DictationCoordinator.value(of: refresh, within: keyRefreshLimit) != nil
+            reachable = answered && keysReachable
+        }
         guard let key = apiKey(), !key.isEmpty else {
             let provider = settings.provider.displayName
             switch dependencies.keyStore {
             case .vault:
                 let name = keyLocation(for: settings.provider.rawValue)
-                return (.keyUnavailable, keysReachable
+                return (.keyUnavailable, reachable
                     ? String(localized: "Aucune clé \(provider) dans le coffre (\(name)).")
                     : String(localized: "Coffre de secrets injoignable : clé \(name) indisponible."))
             case .file:
-                return (.keyUnavailable, keysReachable
+                return (.keyUnavailable, reachable
                     ? String(localized: "Ajoute ta clé \(provider) dans Fournisseurs.")
                     : String(localized: "Clés illisibles sur ce Mac : clé \(provider) indisponible."))
             }
@@ -734,17 +763,32 @@ final class AppModel {
         return fallback
     }
 
-    /// Contrôle en arrière-plan des services mis de côté (appelé toutes les minutes).
+    /// Relais d'une dictée dont le fournisseur de voix n'a pas répondu. Jamais hors connexion : il échouerait de
+    /// même, et compterait une bascule ratée ; l'audio reste dans l'historique pour Retranscrire.
+    func voiceRelay(for speech: SpeechRequest) -> SpeechRequest? {
+        dependencies.isOnline() ? voiceFallback(for: speech) : nil
+    }
+
+    /// Réussite ou échec d'un service distant. Hors connexion, un échec ne dit rien du service : il n'est pas compté,
+    /// sinon la dictée suivante, connexion revenue, partirait chez le relais sans raison.
+    func recordHealth(_ service: String, succeeded: Bool) {
+        guard succeeded || dependencies.isOnline() else { return }
+        health.record(service, succeeded: succeeded)
+    }
+
+    /// Contrôle en arrière-plan des services mis de côté (appelé toutes les minutes). Hors connexion, aucun contrôle :
+    /// il échouerait sans rien dire du service, et chaque essai raté s'ajouterait à Consommation.
     func checkDownServices() async {
+        guard dependencies.isOnline() else { return }
         for service in health.downServices() {
             if service == ServiceHealth.deepSeek, let key = dependencies.loadKey(CleanupModel.deepSeekAccount), !key.isEmpty {
-                if let usage = await HealthProbe.deepSeek(key: key) {
+                if let usage = await dependencies.probeDeepSeek(key) {
                     recordUsage(usage)
-                    health.record(service, succeeded: usage.succeeded)
+                    recordHealth(service, succeeded: usage.succeeded)
                 }
             } else if let provider = ProviderID.allCases.first(where: { ServiceHealth.voice($0) == service }),
                       let key = dependencies.loadKey(provider.rawValue), !key.isEmpty,
-                      await HealthProbe.voice(provider, key: key) {
+                      await dependencies.probeVoice(provider, key) {
                 health.record(service, succeeded: true)
             }
         }
@@ -754,7 +798,7 @@ final class AppModel {
     func recordCleanup(_ outcome: CleanupOutcome) {
         for usage in outcome.failedUsages + [outcome.usage].compactMap({ $0 }) {
             recordUsage(usage)
-            if usage.api == .deepSeekCleanup { health.record(ServiceHealth.deepSeek, succeeded: usage.succeeded) }
+            if usage.api == .deepSeekCleanup { recordHealth(ServiceHealth.deepSeek, succeeded: usage.succeeded) }
         }
     }
 
@@ -840,30 +884,96 @@ final class AppModel {
 
     func setLaunchAtLogin(_ enabled: Bool) {
         do {
-            try LoginItemController.setEnabled(enabled)
-            settings.launchAtLogin = LoginItemController.isEnabled
+            try dependencies.setLaunchAtLogin(enabled)
+            noteLaunchAtLogin()
             saveSettings()
         } catch {
-            settings.launchAtLogin = LoginItemController.isEnabled
+            noteLaunchAtLogin()
             statusBanner = String(localized: "Ouverture à la connexion refusée.")
         }
     }
 
+    /// État réel relu juste après un changement : plus récent que toute lecture encore en route, qui ne le remplacera
+    /// pas.
+    private func noteLaunchAtLogin() {
+        let serial = startPermissionRead()
+        let enabled = dependencies.launchAtLogin()
+        if permissionOrder.accepts(serial, for: .launchAtLogin) { settings.launchAtLogin = enabled }
+    }
+
+    /// Ordre des lectures d'autorisation affichées, ici et au premier lancement guidé : une réponse lente n'efface
+    /// jamais une valeur donnée par une lecture partie après elle.
+    @ObservationIgnored private var permissionOrder = PermissionReadOrder()
+    /// Lecture hors du fil principal en route : les demandes faites pendant ce temps n'en lancent pas d'autre, mais une
+    /// seule relecture, juste après elle.
+    @ObservationIgnored private(set) var readingPermissions = false
+    @ObservationIgnored private var permissionsRereadRequested = false
+
+    /// Numéro d'une lecture d'autorisation qui part (`PermissionReadOrder`), ici ou au premier lancement guidé.
+    func startPermissionRead() -> Int {
+        permissionOrder.start()
+    }
+
+    /// Relecture sur place : au lancement, quand l'écoute du clavier perd une autorisation, et juste après une action
+    /// (Autoriser, export du diagnostic) dont l'écran ou le rapport dépend aussitôt. Seule une valeur qui change touche
+    /// à l'interface.
     func refreshPermissions() {
-        microphoneStatus = PermissionCenter.microphoneStatus()
-        accessibilityTrusted = PermissionCenter.accessibilityTrusted(prompt: false)
-        inputMonitoringTrusted = PermissionCenter.inputMonitoringTrusted()
-        settings.launchAtLogin = LoginItemController.isEnabled
+        let serial = startPermissionRead()
+        apply(dependencies.permissions(), read: serial)
+    }
+
+    /// Retour dans Wispad, fenêtre ou Réglages qui s'ouvrent : les mêmes lectures, faites hors du fil principal (la
+    /// plupart interrogent macOS, une dizaine de millisecondes chacune), puis appliquées. Rien ne fige la fenêtre qui
+    /// revient au premier plan ni l'écran qui s'ouvre. Jamais deux à la fois : demandées pendant une lecture, elles sont
+    /// faites ensemble par une seule relecture, partie après elles.
+    func refreshPermissionsInBackground() {
+        guard !readingPermissions else {
+            permissionsRereadRequested = true
+            return
+        }
+        readingPermissions = true
+        let serial = startPermissionRead()
+        let read = dependencies.permissionsOffMain
+        Task { [weak self] in
+            let reading = await read()
+            guard let self else { return }
+            self.readingPermissions = false
+            self.apply(reading, read: serial)
+            if self.permissionsRereadRequested {
+                self.permissionsRereadRequested = false
+                self.refreshPermissionsInBackground()
+            }
+        }
+    }
+
+    /// Accessibilité et surveillance des entrées données par la lecture `serial` (ici ou au premier lancement guidé),
+    /// retenues seulement si aucune lecture partie après elle ne les a déjà données.
+    func applyTrust(accessibility: Bool, inputMonitoring: Bool, read serial: Int) {
+        if permissionOrder.accepts(serial, for: .accessibility), accessibilityTrusted != accessibility {
+            accessibilityTrusted = accessibility
+        }
+        if permissionOrder.accepts(serial, for: .inputMonitoring), inputMonitoringTrusted != inputMonitoring {
+            inputMonitoringTrusted = inputMonitoring
+        }
+    }
+
+    private func apply(_ reading: PermissionReading, read serial: Int) {
+        if permissionOrder.accepts(serial, for: .microphone), microphoneStatus != reading.microphone {
+            microphoneStatus = reading.microphone
+        }
+        applyTrust(accessibility: reading.accessibility, inputMonitoring: reading.inputMonitoring, read: serial)
+        if permissionOrder.accepts(serial, for: .launchAtLogin), settings.launchAtLogin != reading.launchAtLogin {
+            settings.launchAtLogin = reading.launchAtLogin
+        }
     }
 
     func purgeAudio() {
         let files: [StoredAudio] = history.compactMap { record in
             guard let path = record.audioPath else { return nil }
-            let bytes = (try? FileManager.default.attributesOfItem(atPath: path)[.size] as? NSNumber)?.intValue ?? 0
             return StoredAudio(
                 id: record.id,
                 path: path,
-                bytes: bytes,
+                bytes: StoredAudio.bytes(atPath: path),
                 createdAt: record.createdAt,
                 expiresAt: record.audioExpiresAt
             )
@@ -875,12 +985,15 @@ final class AppModel {
         )
         guard !victims.isEmpty else { return }
         if let id = historyPlayer.recordID, victims.contains(id) { historyPlayer.close() }
+        // Audio de chaque dictée, lu une fois : chercher chaque victime dans tout l'historique était quadratique.
+        let audioPaths = Dictionary(history.map { ($0.id, $0.audioPath) }, uniquingKeysWith: { first, _ in first })
         for id in victims {
-            if let path = history.first(where: { $0.id == id })?.audioPath {
+            if let path = audioPaths[id] ?? nil {
                 try? FileManager.default.removeItem(atPath: path)
             }
-            persist("purge d'un audio") { try store.updateAudio(id: id, path: nil, expiresAt: nil) }
         }
+        // Une seule écriture pour tous : une par audio attendait chaque fois une base occupée (2 s), sur ce fil.
+        persist("purge des audios") { try store.clearAudio(ids: victims) }
         reloadHistory()
     }
 

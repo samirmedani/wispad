@@ -12,6 +12,9 @@ final class DictationContext: @unchecked Sendable {
     var nearbyText: String?
     var isSecure = false
     var element: AXUIElement?
+    /// Le collage n'a pas été tenté : l'accessibilité n'est pas autorisée (retirée dans Réglages Système, ou jamais
+    /// donnée). Noté par l'insertion, pour que la bulle dise pourquoi le texte reste à copier.
+    var accessibilityRefused = false
     /// Le champ actif a été lu (ou sa lecture a échoué) : rien de plus à attendre.
     private(set) var fieldRead = false
 
@@ -39,23 +42,26 @@ struct UncheckedSendable<Value>: @unchecked Sendable {
     init(_ value: Value) { self.value = value }
 }
 
-/// Lecture d'accessibilité hors du fil principal : une app lente (Electron) ne fige ni la bulle ni Wispad.
-func offMain<Input, Output>(_ input: Input, _ work: @escaping @Sendable (Input) -> Output) async -> Output {
-    let box = UncheckedSendable(input)
-    return await Task.detached(priority: .userInitiated) { UncheckedSendable(work(box.value)) }.value.value
-}
-
 enum ContextProbe {
     /// App au premier plan, lue tout de suite (c'est là que le texte sera collé), puis le champ actif et le texte
     /// autour du curseur, lus en parallèle hors du fil principal : le micro s'ouvre sans attendre une app lente.
-    @MainActor static func begin() -> (DictationContext, Task<FieldSnapshot?, Never>) {
+    /// Chaque question attend l'app jusqu'à 0,5 s : la lecture a sa file, jamais un fil de Swift concurrency (les
+    /// minuteries de la dictée en dépendent), et celle d'une app figée ne retarde pas la dictée suivante.
+    /// `read` : la lecture du champ, remplacée dans les tests.
+    @MainActor static func begin(read: @escaping @Sendable (pid_t?) -> FieldSnapshot? = { ContextProbe.trustedField(pid: $0) })
+        -> (DictationContext, Task<FieldSnapshot?, Never>) {
         let context = frontmost()
         let pid = context.pid
         let field = Task.detached(priority: .userInitiated) { () -> FieldSnapshot? in
-            guard PermissionCenter.accessibilityTrusted(prompt: false) else { return nil }
-            return readField(pid: pid)
+            await BlockingQueue.run(label: "wispad.champ-actif") { read(pid) }
         }
         return (context, field)
+    }
+
+    /// Champ actif et texte autour du curseur, si l'accessibilité est autorisée.
+    static func trustedField(pid: pid_t?) -> FieldSnapshot? {
+        guard PermissionCenter.accessibilityTrusted(prompt: false) else { return nil }
+        return readField(pid: pid)
     }
 
     /// Lecture complète et immédiate (autotest d'insertion).
@@ -94,7 +100,9 @@ enum ContextProbe {
 
     /// Champ actif de l'app au premier plan. Les apps Electron/Chromium n'ouvrent leur arbre
     /// d'accessibilité qu'à la demande : AXManualAccessibility le force, comme le font les outils de dictée.
+    /// Jamais Wispad lui-même (voir `isOwnProcess`).
     static func focusedElement(pid: pid_t?) -> AXUIElement? {
+        guard !isOwnProcess(pid) else { return nil }
         var focused: CFTypeRef?
         if let pid {
             let app = AXUIElementCreateApplication(pid)
@@ -108,17 +116,64 @@ enum ContextProbe {
                 return element
             }
         }
-        let system = AXUIElementCreateSystemWide()
-        guard AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString, &focused) == .success,
-              let focused, CFGetTypeID(focused) == AXUIElementGetTypeID() else { return nil }
-        let element = focused as! AXUIElement
+        guard let element = systemFocusedElement() else { return nil }
         // Le repli système peut appartenir à une autre app si le focus a changé pendant la lecture.
+        var owner: pid_t = 0
+        let ownerKnown = AXUIElementGetPid(element, &owner) == .success
+        if ownerKnown, isOwnProcess(owner) { return nil }
         if let pid {
-            var owner: pid_t = 0
-            guard AXUIElementGetPid(element, &owner) == .success, owner == pid else { return nil }
+            guard ownerKnown, owner == pid else { return nil }
         }
         AXUIElementSetMessagingTimeout(element, 0.5)
         return element
+    }
+
+    static let ownPID = ProcessInfo.processInfo.processIdentifier
+
+    /// Wispad lui-même (sa fenêtre au premier plan, une dictée dans son dictionnaire…) : jamais lu par
+    /// l'accessibilité. Ces lectures se font alors dans son propre processus, sur le fil qui les demande : hors du
+    /// fil principal, SwiftUI y recalcule l'interface et macOS arrête l'app (plantage du 13 octobre 2026). Sa
+    /// fenêtre n'apporte rien à la dictée, et un collage dans Wispad n'a pas besoin de confirmation.
+    static func isOwnProcess(_ pid: pid_t?) -> Bool {
+        #if DEBUG
+        // Autotest d'insertion (`--self-test`, développement seulement) : il vise exprès ses fenêtres AppKit.
+        if selfTestReadsOwnProcess.withLock({ $0 }) { return false }
+        #endif
+        return pid == ownPID
+    }
+
+    #if DEBUG
+    /// Posé par `InsertionSelfTest` au démarrage ; absent de la version Release.
+    static let selfTestReadsOwnProcess = OSAllocatedUnfairLock(initialState: false)
+    #endif
+
+    /// Repli : champ actif de l'app au premier plan, demandé à l'élément système. Jamais quand c'est Wispad (sa
+    /// fenêtre ouverte pendant la lecture d'une autre app) : la question lui serait servie dans son propre processus,
+    /// sur ce fil, pour une réponse de toute façon écartée (voir `isOwnProcess`). L'app au premier plan est lue
+    /// d'abord, sans rien demander à ses fenêtres.
+    static func systemFocusedElement(frontmost: () -> pid_t? = systemFrontmostPID,
+                                     ask: () -> AXUIElement? = askSystemFocusedElement) -> AXUIElement? {
+        guard !isOwnProcess(frontmost()) else { return nil }
+        return ask()
+    }
+
+    /// App au premier plan selon l'accessibilité : seul son processus est lu.
+    static func systemFrontmostPID() -> pid_t? {
+        var application: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(AXUIElementCreateSystemWide(), kAXFocusedApplicationAttribute as CFString,
+                                            &application) == .success,
+              let application, CFGetTypeID(application) == AXUIElementGetTypeID() else { return nil }
+        var pid: pid_t = 0
+        guard AXUIElementGetPid(application as! AXUIElement, &pid) == .success else { return nil }
+        return pid
+    }
+
+    static func askSystemFocusedElement() -> AXUIElement? {
+        var focused: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(AXUIElementCreateSystemWide(), kAXFocusedUIElementAttribute as CFString,
+                                            &focused) == .success,
+              let focused, CFGetTypeID(focused) == AXUIElementGetTypeID() else { return nil }
+        return focused as! AXUIElement
     }
 
     /// Navigateurs Chromium : ils ignorent AXManualAccessibility (réservé à Electron) et n'exposent le champ d'une
@@ -165,7 +220,20 @@ enum ContextProbe {
         var zone: CGRect? { OverlayGeometry.inputZone(field: field, caret: caret, window: window) }
     }
 
+    /// Zone de saisie de l'app, lue après l'envoi du texte, `seconds` au plus ; nil sans réponse à temps. La lecture a
+    /// sa file, jamais un fil de Swift concurrency. `reader` : la lecture, remplacée dans les tests.
+    @MainActor static func inputZone(pid: pid_t, within seconds: Double,
+                                     reader: @escaping @Sendable (pid_t) -> InputLocation = { ContextProbe.inputLocation(pid: $0) })
+        async -> CGRect? {
+        let task = Task.detached(priority: .utility) {
+            await BlockingQueue.run(label: "wispad.zone-de-saisie", qos: .utility) { reader(pid) }
+        }
+        guard let location = await DictationCoordinator.value(of: task, within: seconds) else { return nil }
+        return location.zone
+    }
+
     static func inputLocation(pid: pid_t) -> InputLocation {
+        guard !isOwnProcess(pid) else { return InputLocation() }
         // Écran principal (barre des menus) : origine des coordonnées d'accessibilité. Lisible hors du fil principal.
         let primaryHeight = CGDisplayBounds(CGMainDisplayID()).height
         let flip = { (rect: CGRect) in OverlayGeometry.flipped(rect, primaryHeight: primaryHeight) }
@@ -256,9 +324,15 @@ enum ContextProbe {
 
     private static func nearby(value: String, element: AXUIElement) -> String {
         var rangeValue: CFTypeRef?
+        let read = AXUIElementCopyAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, &rangeValue) == .success
+        return nearby(value: value, selection: read ? rangeValue : nil)
+    }
+
+    /// Texte autour de la sélection que l'app annonce. Une valeur qui n'est pas une plage, ou une plage démesurée,
+    /// ne fait pas planter Wispad : le début du champ sert alors de repère, comme sans sélection lisible.
+    static func nearby(value: String, selection rangeValue: CFTypeRef?) -> String {
         var range = CFRange(location: 0, length: 0)
-        if AXUIElementCopyAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, &rangeValue) == .success,
-           let rangeValue {
+        if let rangeValue, CFGetTypeID(rangeValue) == AXValueGetTypeID() {
             let axValue = rangeValue as! AXValue
             withUnsafeMutablePointer(to: &range) { pointer in
                 _ = AXValueGetValue(axValue, .cfRange, pointer)
@@ -267,7 +341,8 @@ enum ContextProbe {
         let ns = value as NSString
         let location = min(max(0, range.location), ns.length)
         let start = max(0, location - 220)
-        let end = min(ns.length, location + max(range.length, 0) + 220)
+        // Longueur bornée au champ avant l'addition, qui ne peut plus déborder.
+        let end = min(ns.length, location + min(max(range.length, 0), ns.length) + 220)
         guard end > start else { return String(value.prefix(400)) }
         return ns.substring(with: NSRange(location: start, length: end - start))
     }

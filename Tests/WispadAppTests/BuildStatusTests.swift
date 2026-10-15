@@ -81,7 +81,9 @@ struct BuildStatusTests {
         let newer = Self.release("0.1.2")
         status.fetchLatest = { .release(newer) }
         status.start(delay: .zero)
-        let deadline = Date().addingTimeInterval(3)
+        // La vérification part en tâche de faible priorité : sur une machine de CI chargée (les tests se partagent le
+        // fil principal), 3 s ne suffisaient pas toujours. La boucle s'arrête dès que la release est vue.
+        let deadline = Date().addingTimeInterval(15)
         while status.available == nil, Date() < deadline {
             try await Task.sleep(for: .milliseconds(20))
         }

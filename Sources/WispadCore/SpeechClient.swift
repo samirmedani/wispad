@@ -117,6 +117,9 @@ public final class LiveSpeechSession: NSObject, URLSessionWebSocketDelegate, @un
     public var onSettled: (@Sendable (String) -> Void)?
     /// Borne avant `audio.done`. xAI clôt le socket dès ce message : l'envoyer avec `finalize` laisse la fin en intermédiaire.
     var tailFinalWaitSeconds = 0.8
+    /// Attente maximale du texte final après l'arrêt ; au-delà, le flux est en échec et la dictée passe par le
+    /// fichier. Raccourcie par les tests.
+    var finalReplySeconds = 12.0
     /// Tests : appelé après le gel de l'audio, avant l'envoi de `finalize`, pour glisser le dernier paquet.
     var beforeFinalizeDrain: (@Sendable () -> Void)?
     /// Tests : messages réellement enfilés, dans l'ordre. Aucun socket n'est ouvert.
@@ -190,8 +193,9 @@ public final class LiveSpeechSession: NSObject, URLSessionWebSocketDelegate, @un
             if request.provider == .xai, !lock.withLock({ closed || didFinish }) {
                 sendAudioDone()
             }
+            let replySeconds = finalReplySeconds
             Task { [weak self] in
-                try? await Task.sleep(nanoseconds: 12_000_000_000)
+                try? await Task.sleep(nanoseconds: UInt64(replySeconds * 1_000_000_000))
                 self?.finishResult.resolve(.failure(SpeechError.message("La transcription finale n'a pas répondu.")))
             }
             return try await finishResult.value()
@@ -536,15 +540,23 @@ public final class LiveSpeechSession: NSObject, URLSessionWebSocketDelegate, @un
 
 public enum BatchTranscriber {
     public static func transcribe(fileURL: URL, request: SpeechRequest) async throws -> String {
+        try await transcribe(fileURL: fileURL, request: request, transport: TextCleaner.httpTransport)
+    }
+
+    /// Transport substituable dans les tests, comme pour la correction : aucune clé ni requête réelle. `readFile` : la
+    /// lecture de l'audio, remplacée dans les tests.
+    static func transcribe(fileURL: URL, request: SpeechRequest, transport: TextCleaner.HTTPTransport,
+                           readFile: @escaping @Sendable (URL) throws -> Data = { try Data(contentsOf: $0) }) async throws -> String {
         switch request.provider {
         case .xai:
-            return try await xai(fileURL: fileURL, request: request)
+            return try await xai(fileURL: fileURL, request: request, transport: transport, readFile: readFile)
         case .openAI:
-            return try await openAI(fileURL: fileURL, request: request)
+            return try await openAI(fileURL: fileURL, request: request, transport: transport, readFile: readFile)
         }
     }
 
-    private static func xai(fileURL: URL, request: SpeechRequest) async throws -> String {
+    private static func xai(fileURL: URL, request: SpeechRequest, transport: TextCleaner.HTTPTransport,
+                            readFile: @escaping @Sendable (URL) throws -> Data) async throws -> String {
         var fields: [(String, String)] = [
             ("model", request.fileModel),
             ("filler_words", "false")
@@ -556,17 +568,18 @@ public enum BatchTranscriber {
         for term in request.keyterms {
             fields.append(("keyterm", term))
         }
-        let (body, contentType) = try multipart(fields: fields, fileURL: fileURL)
+        let (body, contentType) = try await multipart(fields: fields, fileURL: fileURL, readFile: readFile)
         var http = URLRequest(url: URL(string: "https://api.x.ai/v1/stt")!)
         http.httpMethod = "POST"
         http.setValue("Bearer \(request.apiKey)", forHTTPHeaderField: "Authorization")
         http.setValue(contentType, forHTTPHeaderField: "Content-Type")
         http.httpBody = body
         http.timeoutInterval = 60
-        return try await textResponse(http)
+        return try await textResponse(http, transport: transport)
     }
 
-    private static func openAI(fileURL: URL, request: SpeechRequest) async throws -> String {
+    private static func openAI(fileURL: URL, request: SpeechRequest, transport: TextCleaner.HTTPTransport,
+                               readFile: @escaping @Sendable (URL) throws -> Data) async throws -> String {
         var fields = [
             ("model", request.fileModel),
             ("prompt", String(request.prompt.prefix(800)))
@@ -574,18 +587,18 @@ public enum BatchTranscriber {
         if let language = request.language.openAICodes.first, request.language != .auto {
             fields.append(("language", language))
         }
-        let (body, contentType) = try multipart(fields: fields, fileURL: fileURL)
+        let (body, contentType) = try await multipart(fields: fields, fileURL: fileURL, readFile: readFile)
         var http = URLRequest(url: URL(string: "https://api.openai.com/v1/audio/transcriptions")!)
         http.httpMethod = "POST"
         http.setValue("Bearer \(request.apiKey)", forHTTPHeaderField: "Authorization")
         http.setValue(contentType, forHTTPHeaderField: "Content-Type")
         http.httpBody = body
         http.timeoutInterval = 60
-        return try await textResponse(http)
+        return try await textResponse(http, transport: transport)
     }
 
-    private static func textResponse(_ request: URLRequest) async throws -> String {
-        let (data, response) = try await URLSession.shared.data(for: request)
+    private static func textResponse(_ request: URLRequest, transport: TextCleaner.HTTPTransport) async throws -> String {
+        let (data, response) = try await transport(request)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard (200..<300).contains(status) else {
             throw SpeechError.message("Transcription refusée (HTTP \(status)).")
@@ -595,7 +608,8 @@ public enum BatchTranscriber {
         return text
     }
 
-    private static func multipart(fields: [(String, String)], fileURL: URL) throws -> (Data, String) {
+    private static func multipart(fields: [(String, String)], fileURL: URL,
+                                  readFile: @escaping @Sendable (URL) throws -> Data) async throws -> (Data, String) {
         let boundary = "WispadBoundary\(UUID().uuidString.replacingOccurrences(of: "-", with: ""))"
         var body = Data()
         for (name, value) in fields {
@@ -603,7 +617,9 @@ public enum BatchTranscriber {
             body.appendUTF8("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n")
             body.appendUTF8("\(value)\r\n")
         }
-        let file = try Data(contentsOf: fileURL)
+        // L'audio est lu sur une file à lui, jamais sur un fil de Swift concurrency : un long enregistrement, ou un audio
+        // relu pour Retranscrire sur un disque lent, ferait attendre ce fil ; une file par envoi, aucun n'attend l'autre.
+        let file = try await BlockingQueue.run(label: "wispad.audio-envoi") { try readFile(fileURL) }
         body.appendUTF8("--\(boundary)\r\n")
         body.appendUTF8("Content-Disposition: form-data; name=\"file\"; filename=\"dictation.wav\"\r\n")
         body.appendUTF8("Content-Type: audio/wav\r\n\r\n")

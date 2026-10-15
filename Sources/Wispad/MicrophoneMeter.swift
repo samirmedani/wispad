@@ -11,8 +11,13 @@ protocol MicrophoneMetering: AnyObject, Sendable {
 }
 
 final class MicrophoneMeter: MicrophoneMetering, @unchecked Sendable {
-    private let queue = DispatchQueue(label: "com.yatofix.wispad.vumetre", qos: .userInitiated)
+    /// Seule file qui touche au moteur : démarrage et arrêt s'y suivent dans l'ordre demandé.
+    private let queue: DispatchQueue
     private var engine: AVAudioEngine?
+
+    init(queue: DispatchQueue = DispatchQueue(label: "com.yatofix.wispad.vumetre", qos: .userInitiated)) {
+        self.queue = queue
+    }
 
     func start(deviceUID: String?, onLevel: @escaping @MainActor @Sendable (Double, Double) -> Void) async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
@@ -52,8 +57,10 @@ final class MicrophoneMeter: MicrophoneMetering, @unchecked Sendable {
         self.engine = engine
     }
 
+    /// Sans attendre la file : un démarrage qui ne rend pas la main (micro bloqué, moteur qui ne répond plus) y est
+    /// peut-être encore, et l'attendre figerait Wispad (Réessayer, Continuer, fenêtre fermée). L'arrêt passe après lui.
     func stop() {
-        queue.sync { stopEngine() }
+        queue.async { self.stopEngine() }
     }
 
     private func stopEngine() {

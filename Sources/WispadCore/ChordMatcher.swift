@@ -58,26 +58,31 @@ public enum ChordMatcher {
     ) -> ChordTransition {
         let current = flags & ModifierMask.relevant
         let required = configuredFlags & ModifierMask.relevant
-        if recording, phase == .flags, keyCode == functionKeyCode, current == 0 {
-            return ChordTransition(
-                swallow: false,
-                edge: nil,
-                chordIsDown: chordIsDown,
-                capturedKeyCode: functionKeyCode,
-                capturedFlags: ModifierMask.function
+        if recording {
+            // Enregistrement d'un nouveau raccourci : la touche enregistrée ne démarre jamais l'accord (ni geste, ni
+            // dictée), mais un accord déjà enfoncé se termine encore, relâché ou combiné à une autre touche.
+            var transition = step(
+                phase: phase, keyCode: keyCode, flags: flags, configuredKey: configuredKey, configuredFlags: configuredFlags,
+                autorepeat: autorepeat, chordIsDown: chordIsDown, recording: false
             )
-        }
-        if recording, phase == .down, !autorepeat {
-            if keyCode == functionKeyCode {
-                return ChordTransition(swallow: false, edge: nil, chordIsDown: chordIsDown)
+            if transition.edge == .down {
+                transition.edge = nil
+                transition.chordIsDown = chordIsDown
             }
-            return ChordTransition(
-                swallow: true,
-                edge: nil,
-                chordIsDown: chordIsDown,
-                capturedKeyCode: keyCode,
-                capturedFlags: current
-            )
+            if phase == .flags, keyCode == functionKeyCode, current == 0 {
+                // fn seule, enregistrée à son relâchement.
+                transition.swallow = false
+                transition.capturedKeyCode = functionKeyCode
+                transition.capturedFlags = ModifierMask.function
+            } else if phase == .down, !autorepeat {
+                // Toute autre touche, avec ses modificateurs ; fn n'arrive que par ses changements de modificateur.
+                transition.swallow = keyCode != functionKeyCode
+                if keyCode != functionKeyCode {
+                    transition.capturedKeyCode = keyCode
+                    transition.capturedFlags = current
+                }
+            }
+            return transition
         }
         if configuredKey == functionKeyCode {
             return functionAlone(phase: phase, keyCode: keyCode, current: current, chordIsDown: chordIsDown)

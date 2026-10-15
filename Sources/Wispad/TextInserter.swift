@@ -55,6 +55,18 @@ struct InsertionField: @unchecked Sendable {
         guard let element, let other = other.element else { return false }
         return CFEqual(element, other)
     }
+
+    /// Champ actif de l'app, `seconds` au plus ; un champ vide sans réponse à temps. Chaque lecture a sa file, jamais un
+    /// fil de Swift concurrency : relancée pendant qu'une précédente attend encore une app lente, elle ne l'attend pas.
+    /// `reader` : la lecture, remplacée dans les tests.
+    @MainActor static func read(pid: pid_t, within seconds: Double,
+                                reader: @escaping @Sendable (pid_t) -> InsertionField = { InsertionField.read(pid: $0) })
+        async -> InsertionField {
+        let task = Task.detached(priority: .userInitiated) {
+            await BlockingQueue.run(label: "wispad.insertion") { reader(pid) }
+        }
+        return await DictationCoordinator.value(of: task, within: seconds) ?? InsertionField()
+    }
 }
 
 /// Frontières macOS remplaçables dans les tests, sans envoyer de touches aux apps de l'utilisateur.
@@ -66,16 +78,14 @@ struct InsertionSystem {
     var secureInput: () -> Bool = { IsSecureEventInputEnabled() }
     var modifiersReleased: () async -> Bool = { await TextInserter.waitForModifierRelease() }
     var read: (pid_t) async -> InsertionField = { pid in
-        let task = Task.detached(priority: .userInitiated) { InsertionField.read(pid: pid) }
-        return await DictationCoordinator.value(of: task, within: TextInserter.fieldReadLimit) ?? InsertionField()
+        await InsertionField.read(pid: pid, within: TextInserter.fieldReadLimit)
     }
     var pasteboard: NSPasteboard = .general
-    var postPaste: (pid_t) async -> Bool = { _ in TextInserter.postCommandV() }
+    /// Sur le fil principal : la touche V se cherche dans la disposition du clavier, que macOS n'autorise que là.
+    var postPaste: @MainActor (pid_t) async -> Bool = { _ in TextInserter.postCommandV() }
     /// Zone de saisie lue après l'envoi, pour que les messages de la bulle ne la couvrent pas.
     var locate: (pid_t) async -> CGRect? = { pid in
-        let task = Task.detached(priority: .utility) { ContextProbe.inputLocation(pid: pid) }
-        guard let location = await DictationCoordinator.value(of: task, within: TextInserter.fieldReadLimit) else { return nil }
-        return location.zone
+        await ContextProbe.inputZone(pid: pid, within: TextInserter.fieldReadLimit)
     }
     var confirmationLimit: Double = TextInserter.confirmationLimit
     var clipboardHold: Double = TextInserter.clipboardHold
@@ -135,7 +145,12 @@ enum TextInserter {
         defer { if !releasesLater { finishTurn(done) } }
         guard shouldProceed(), !Task.isCancelled else { return .cancelled }
         if context.isSecure || system.secureInput() { return .refusedSecure }
-        guard system.trusted() else { return .failed }
+        guard system.trusted() else {
+            // Accessibilité retirée (ou jamais donnée) : ni ⌘V ni lecture du champ, le texte reste à copier.
+            log.notice("collage retenu : accessibilité non autorisée")
+            context.accessibilityRefused = true
+            return .failed
+        }
         guard let pid = context.pid ?? system.frontmostPID(), system.frontmostPID() == pid else {
             // Ne pas réactiver une ancienne app pendant que l'utilisateur écrit ailleurs.
             log.notice("collage retenu : app cible plus au premier plan")
@@ -240,14 +255,14 @@ enum TextInserter {
     /// ⌘V comme au clavier : ⌘ enfoncée, V, puis ⌘ relâchée, envoyés au système (l'app au premier plan, vérifiée
     /// juste avant). Chrome et les apps Electron ignorent parfois un ⌘V adressé à leur processus ou porté par la
     /// seule touche V (régression du 13 octobre 2026 : texte absent du champ).
-    static func postCommandV() -> Bool {
+    @MainActor static func postCommandV() -> Bool {
         guard let events = pasteEvents() else { return false }
         for event in events { event.post(tap: .cghidEventTap) }
         return true
     }
 
     /// Marqués : l'écoute du clavier de Wispad les laisse passer sans les prendre pour une frappe.
-    static func pasteEvents() -> [CGEvent]? {
+    @MainActor static func pasteEvents() -> [CGEvent]? {
         let source = CGEventSource(stateID: .combinedSessionState)
         source?.userData = KeyboardTap.syntheticMarker
         let command: CGKeyCode = 0x37

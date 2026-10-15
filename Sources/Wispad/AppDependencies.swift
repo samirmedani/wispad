@@ -4,6 +4,9 @@ import WispadCore
 
 protocol AudioRecording: AnyObject, Sendable {
     var onPCM: (@Sendable (Data) -> Void)? { get set }
+    /// L'écoute en cours s'est arrêtée sans pouvoir repartir (micro disparu sans autre micro, moteur refusé) :
+    /// plus aucun audio n'arrivera. Appelé une fois, hors du fil principal.
+    var onInterruption: (@Sendable () -> Void)? { get set }
     /// Niveaux par bande de fréquence (grave → aigu), pour l'overlay.
     var bands: [Float] { get }
     /// Micro choisi (identifiant CoreAudio) pour la prochaine écoute ; nil : celui du système.
@@ -12,7 +15,8 @@ protocol AudioRecording: AnyObject, Sendable {
     func stop() -> (url: URL?, duration: Double)
     /// Écoute en cours mais muette : redémarre le micro sur un moteur neuf, dans le même fichier.
     func restart() async throws
-    /// Démarrage trop long : la dictée ne l'attend plus, il se refermera seul en rendant la main.
+    /// Démarrage ou redémarrage trop long : la dictée ne l'attend plus. Ce qu'il a ouvert pour elle se referme
+    /// seul dès qu'il rend la main, sans `stop()` à attendre sur le fil principal.
     func abandonStart()
 }
 
@@ -20,6 +24,12 @@ extension AudioRecording {
     /// Un enregistreur sans moteur à relancer (tests) : rien à faire.
     func restart() async throws {}
     func abandonStart() {}
+
+    /// Un enregistreur qui ne s'interrompt jamais seul (tests) : rien à signaler.
+    var onInterruption: (@Sendable () -> Void)? {
+        get { nil }
+        set {}
+    }
 
     /// Un enregistreur qui ne choisit pas son micro (tests) : toujours celui du système.
     var inputDeviceUID: String? {
@@ -64,15 +74,26 @@ struct AppDependencies {
         return (response as? HTTPURLResponse)?.statusCode ?? 0
     }
     var requestMicrophone: () async -> Bool = { await PermissionCenter.requestMicrophone() }
+    /// Accès au micro, relu sans rien demander pendant l'écoute : retiré dans Réglages Système, la dictée s'arrête.
+    /// Lu hors du fil principal : la question à macOS prend une dizaine de millisecondes.
+    var microphoneAuthorized: @Sendable () -> Bool = { PermissionCenter.microphoneAuthorized() }
+    /// Autorisations et ouverture à la connexion affichées, lues sans rien demander, sur place : au lancement, et
+    /// juste après une action dont l'écran ou le diagnostic dépend aussitôt.
+    var permissions: () -> PermissionReading = { PermissionReading.read() }
+    /// Les mêmes, lues sans retenir le fil principal (retour dans Wispad, fenêtre ou Réglages qui s'ouvrent) : le micro
+    /// et la surveillance des entrées sont chacun une question au démon des autorisations de macOS (une dizaine de
+    /// millisecondes), posée sur la file des autorisations.
+    var permissionsOffMain: @Sendable () async -> PermissionReading = { await PermissionReads.offMain { PermissionReading.read() } }
+    /// Ouverture à la connexion (`SMAppService`) : jamais touchée par les tests.
+    var launchAtLogin: () -> Bool = { LoginItemController.isEnabled }
+    var setLaunchAtLogin: (Bool) throws -> Void = { try LoginItemController.setEnabled($0) }
     /// App au premier plan tout de suite, champ actif lu en parallèle : le micro n'attend pas une app lente.
     var captureContext: () -> (DictationContext, Task<FieldSnapshot?, Never>) = { ContextProbe.begin() }
     /// App au premier plan, sans lire son champ : cible de « Coller la dernière dictée ».
     var frontmostApp: () -> DictationContext = { ContextProbe.frontmost() }
     /// Conversation visible dans la fenêtre de l'app où l'on dicte, lue hors du fil principal (300 ms au plus).
     /// Elle reste en mémoire le temps de la correction : jamais journalisée ni enregistrée.
-    var readWindow: (pid_t) async -> String? = { pid in
-        await Task.detached(priority: .userInitiated) { WindowTextProbe.read(pid: pid).context }.value
-    }
+    var readWindow: (pid_t) async -> String? = { pid in await WindowTextProbe.context(pid: pid) }
     var makeCapture: () -> any AudioRecording = { AudioCapture.shared }
     var makeSession: (SpeechRequest) -> any SpeechStreaming = { LiveSpeechSession(request: $0) }
     /// Transcription d'un fichier chez le fournisseur.
@@ -82,6 +103,10 @@ struct AppDependencies {
     var clean: (String, CorrectionRequest, SpeechRequest, Bool) async -> CleanupOutcome = {
         await TextCleaner.clean(transcript: $0, request: $1, speech: $2, enabled: $3)
     }
+    /// Contrôles d'un service mis de côté : complétion d'un jeton chez DeepSeek, liste des modèles (gratuite) chez
+    /// un fournisseur de voix.
+    var probeDeepSeek: (String) async -> UsageEvent? = { await HealthProbe.deepSeek(key: $0) }
+    var probeVoice: (ProviderID, String) async -> Bool = { await HealthProbe.voice($0, key: $1) }
     var playCue: (DictationCue) -> Void = { SoundCues.play($0) }
     /// Son du Mac coupé pendant la dictée, puis rétabli. Simulé dans les tests : jamais de vrai son touché.
     var muteOutput: (Bool, OutputMuteMode) -> Void = { OutputMuter.mute(enabled: $0, mode: $1) }

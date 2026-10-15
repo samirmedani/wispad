@@ -149,7 +149,7 @@ enum APIKeys {
             return status == 0
         }
 
-        private static func run(_ arguments: [String], input: String? = nil) async -> (Int32, String) {
+        static func run(_ arguments: [String], input: String? = nil, tool: URL? = Vault.tool) async -> (Int32, String) {
             guard let tool else { return (-1, "") }
             return await withCheckedContinuation { continuation in
                 DispatchQueue.global(qos: .userInitiated).async {
@@ -169,8 +169,7 @@ enum APIKeys {
                     }
                     if let input {
                         // La clé passe par l'entrée standard, jamais en argument de commande.
-                        stdin.fileHandleForWriting.write(Data(input.utf8))
-                        try? stdin.fileHandleForWriting.close()
+                        send(input, to: stdin.fileHandleForWriting)
                     }
                     let data = output.fileHandleForReading.readDataToEndOfFile()
                     process.waitUntilExit()
@@ -178,53 +177,77 @@ enum APIKeys {
                 }
             }
         }
+
+        /// Une commande qui se termine sans lire son entrée (coffre qui refuse `put`) ferme le tuyau : l'écriture
+        /// échoue alors sans arrêter Wispad, au lieu du signal SIGPIPE ou de l'exception de `write(_:)`.
+        private static func send(_ input: String, to handle: FileHandle) {
+            _ = fcntl(handle.fileDescriptor, F_SETNOSIGPIPE, 1)
+            try? handle.write(contentsOf: Data(input.utf8))
+            try? handle.close()
+        }
     }
 
     // MARK: - Fichier local
 
     enum LocalFile {
+        /// File des lectures et écritures du fichier des clés : jamais sur un fil de Swift concurrency (un disque lent ou
+        /// un dossier réseau feraient attendre ce fil), et l'une après l'autre. Deux enregistrements faits ensemble (deux
+        /// vérifications qui finissent en même temps) relisaient le fichier chacun sur son fil, et le dernier écrasait
+        /// l'autre.
+        static let queue = BlockingQueue(label: "wispad.cles")
+
         static var defaultURL: URL {
             ((try? AppPaths.supportDirectory()) ?? FileManager.default.temporaryDirectory)
                 .appendingPathComponent("api-keys.json")
         }
 
         static func readAll(_ accounts: [String], url: URL = defaultURL) async -> [(String, String?, Bool)] {
-            await Task.detached(priority: .userInitiated) {
-                guard let stored = load(url) else { return accounts.map { ($0, nil, false) } }
+            await queue.run {
+                guard let file = read(url) else { return accounts.map { ($0, nil, false) } }
                 return accounts.map { account in
-                    let value = stored[account]?.trimmingCharacters(in: .whitespacesAndNewlines)
-                    return (account, value?.isEmpty == false ? value : nil, true)
+                    let value = (file.keys[account] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let key = value?.isEmpty == false ? value : nil
+                    // Fichier abîmé : un compte hors de sa partie intacte est dit illisible, pas absent.
+                    return (account, key, key != nil || file.intact)
                 }
-            }.value
+            }
         }
 
         static func write(_ account: String, _ secret: String, url: URL = defaultURL) async -> Bool {
-            await Task.detached(priority: .userInitiated) {
+            await queue.run {
                 guard var stored = load(url) else { return false }
                 stored[account] = secret
                 return save(stored, to: url)
-            }.value
+            }
         }
 
         static func delete(_ account: String, url: URL = defaultURL) async -> Bool {
-            await Task.detached(priority: .userInitiated) {
+            await queue.run {
                 guard var stored = load(url) else { return false }
                 stored[account] = nil
                 return save(stored, to: url)
-            }.value
+            }
         }
 
-        /// Clés enregistrées ; un fichier absent est vide, un fichier illisible rend nil.
-        static func load(_ url: URL) -> [String: String]? {
-            guard FileManager.default.fileExists(atPath: url.path) else { return [:] }
-            guard let data = try? Data(contentsOf: url),
-                  let stored = try? JSONDecoder().decode([String: String].self, from: data) else { return nil }
-            return stored
+        /// Contenu du fichier, entrée par entrée : un fichier absent est vide ; un fichier abîmé (tronqué, invalide) rend
+        /// les entrées de sa partie intacte, `intact` faux ; nil s'il n'est pas lisible du tout.
+        static func read(_ url: URL) -> (keys: [String: Any], intact: Bool)? {
+            guard FileManager.default.fileExists(atPath: url.path) else { return ([:], true) }
+            guard let data = try? Data(contentsOf: url), let file = StoredJSON.object(from: data) else { return nil }
+            return (file.object, file.intact)
+        }
+
+        /// Entrées à réécrire ; nil si le fichier est abîmé ou illisible : il n'est alors jamais réécrit. Une entrée
+        /// qui n'est pas une clé lisible ici (autre type, ajoutée par une version plus récente) reste telle quelle.
+        static func load(_ url: URL) -> [String: Any]? {
+            guard let file = read(url), file.intact else { return nil }
+            return file.keys
         }
 
         /// Écriture complète d'un coup, fichier créé lisible par le seul utilisateur (0600) avant d'y mettre les clés.
-        static func save(_ stored: [String: String], to url: URL) -> Bool {
-            guard let data = try? JSONEncoder().encode(stored) else { return false }
+        static func save(_ stored: [String: Any], to url: URL) -> Bool {
+            guard JSONSerialization.isValidJSONObject(stored),
+                  let data = try? JSONSerialization.data(withJSONObject: stored, options: [.sortedKeys]) else { return false }
             let fileManager = FileManager.default
             let directory = url.deletingLastPathComponent()
             try? fileManager.createDirectory(at: directory, withIntermediateDirectories: true)

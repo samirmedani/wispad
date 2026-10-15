@@ -128,8 +128,12 @@ enum OnboardingCopy {
     static func key(_ check: KeyCheck, provider: ProviderID, keyStore: KeyStoreKind) -> (title: String, detail: String) {
         switch check {
         case .rejected(let status):
+            // 403 : la clé est reconnue mais refusée (compte sans crédit, plafond atteint, clé désactivée ou limitée) ;
+            // la recopier n'y changerait rien.
             return (String(localized: "Clé refusée par \(provider.displayName) (HTTP \(status))"),
-                    String(localized: "Copie à nouveau la clé depuis la console du fournisseur, en entier et sans espace."))
+                    status == 403
+                        ? String(localized: "Le fournisseur reconnaît la clé mais la refuse : crédit épuisé, plafond de dépenses atteint, clé désactivée ou sans les droits nécessaires. Vérifie dans sa console, puis réessaie.")
+                        : String(localized: "Copie à nouveau la clé depuis la console du fournisseur, en entier et sans espace."))
         case .unverified(let status):
             return (String(localized: "Vérification impossible (HTTP \(status))"),
                     String(localized: "Le fournisseur n'a pas confirmé la clé. Réessaie dans un instant."))
@@ -142,6 +146,20 @@ enum OnboardingCopy {
         case .missing, .verifying, .valid:
             return ("", "")
         }
+    }
+
+    /// Détail d'un problème de l'étape « Touche » : réglage macOS de la touche fn s'il lance autre chose, puis, si rien
+    /// n'arrive, ce que Wispad ne peut pas voir lui-même : un clavier sans touche fn, ou un raccourci personnalisé que
+    /// macOS ou une autre app garde pour lui. Les deux se règlent après la configuration, dans Réglages › Raccourci.
+    static func shortcutDetail(_ issue: OnboardingIssue, detail: String, shortcutIsFn: Bool, fnSettingMatters: Bool) -> String {
+        var text = detail
+        if fnSettingMatters {
+            text += " " + String(localized: "Dans Réglages Système › Clavier, règle aussi « Touche fn/🌐 » sur « Ne rien faire ».")
+        }
+        guard issue == .noKeyEvent else { return text }
+        return text + " " + (shortcutIsFn
+            ? String(localized: "Clavier sans touche fn ? Continue avec « Plus tard », puis choisis une autre touche dans Réglages › Raccourci.")
+            : String(localized: "Ce raccourci sert peut-être déjà à macOS ou à une autre app : continue avec « Plus tard », puis choisis-en un autre dans Réglages › Raccourci."))
     }
 
     static func trial(_ failure: TrialFailure) -> (title: String, detail: String) {
@@ -182,6 +200,12 @@ enum OnboardingCopy {
 
 // MARK: - Écran
 
+/// Le sondage repart à chaque étape et à chaque réouverture de la fenêtre.
+private struct OnboardingPollKey: Equatable {
+    var step: OnboardingStep
+    var activation: Int
+}
+
 struct OnboardingView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.interactionReduceMotion) private var reduceMotion
@@ -214,12 +238,10 @@ struct OnboardingView: View {
         .animation(reduceMotion ? nil : Theme.spring, value: controller.step)
         .onAppear { controller.resume() }
         .onDisappear { controller.suspend() }
-        .task(id: controller.step) {
-            // Sondage léger : autorisations accordées dans Réglages Système, attentes, réussite de l'essai.
-            while !Task.isCancelled {
-                controller.tick()
-                try? await Task.sleep(nanoseconds: 500_000_000)
-            }
+        .task(id: OnboardingPollKey(step: controller.step, activation: controller.activation)) {
+            // Sondage léger : autorisations accordées dans Réglages Système, attentes, réussite de l'essai. Arrêté
+            // fenêtre fermée, relancé à la réouverture.
+            await controller.poll()
         }
         .onChange(of: model.coordinator.isListening) { _, listening in
             if listening { controller.dictationStarted() }
@@ -745,7 +767,13 @@ private struct ProviderStep: View {
                            detail: String(localized: "Vérifiée auprès de \(provider.displayName), et enregistrée \(model.dependencies.keyStore.place)."))
             case .failed(let issue):
                 let text = OnboardingCopy.issue(issue, provider: provider, keyStore: model.dependencies.keyStore)
-                StepBanner(tone: .problem, title: text.title, detail: text.detail)
+                StepBanner(tone: .problem, title: text.title, detail: text.detail) {
+                    // Clé déjà enregistrée, champ vide : sans ce bouton, il faudrait la recoller pour la revérifier.
+                    if controller.retriesStoredVoiceKey {
+                        Button("Réessayer") { controller.retryVoiceKey() }
+                            .hoverFeedback()
+                    }
+                }
             case .inProgress:
                 StepBanner(tone: .working, title: String(localized: "Vérification auprès de \(provider.displayName)…"))
             case .todo:
@@ -926,12 +954,19 @@ private struct ShortcutStep: View {
                            detail: String(localized: "Essaie aussi de la maintenir ou de l'appuyer deux fois : chaque geste reconnu s'allume ci-dessus."))
             case .failed(let issue):
                 let text = OnboardingCopy.issue(issue, provider: model.settings.provider, keyStore: model.dependencies.keyStore)
-                StepBanner(tone: .problem, title: text.title, detail: fnDetail(text.detail)) {
+                let detail = OnboardingCopy.shortcutDetail(issue, detail: text.detail, shortcutIsFn: controller.shortcutIsFn,
+                                                           fnSettingMatters: controller.fnSettingMatters)
+                StepBanner(tone: .problem, title: text.title, detail: detail) {
                     if controller.fnSettingMatters {
                         Button("Ouvrir Réglages Clavier") { controller.openKeyboardSettings() }
                             .hoverFeedback()
                     }
-                    if PermissionsCheck.needsRelaunch(controller.permissions) {
+                    // Rien reçu alors que l'autorisation est accordée : le texte conseille son panneau et une relance.
+                    if issue == .noKeyEvent {
+                        Button("Ouvrir Réglages Système") { controller.openSettings(.inputMonitoring) }
+                            .hoverFeedback()
+                    }
+                    if issue == .noKeyEvent || PermissionsCheck.needsRelaunch(controller.permissions) {
                         Button("Relancer Wispad") { controller.relaunch() }
                             .hoverFeedback()
                     }
@@ -944,11 +979,6 @@ private struct ShortcutStep: View {
                                : nil)
             }
         }
-    }
-
-    private func fnDetail(_ detail: String) -> String {
-        guard controller.fnSettingMatters else { return detail }
-        return detail + " " + String(localized: "Dans Réglages Système › Clavier, règle aussi « Touche fn/🌐 » sur « Ne rien faire ».")
     }
 }
 

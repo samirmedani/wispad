@@ -13,6 +13,12 @@ public final class SpectrumAnalyzer: @unchecked Sendable {
     private let setup: FFTSetup
     private var window = [Float](repeating: 0, count: SpectrumAnalyzer.size)
     private var samples: [Float] = []
+    /// Tampons du calcul, entièrement réécrits à chaque tranche : la boucle audio (une tranche toutes les 16 ms)
+    /// n'alloue plus quatre tableaux par tranche.
+    private var windowed = [Float](repeating: 0, count: SpectrumAnalyzer.size)
+    private var real = [Float](repeating: 0, count: SpectrumAnalyzer.size / 2)
+    private var imaginary = [Float](repeating: 0, count: SpectrumAnalyzer.size / 2)
+    private var magnitudes = [Float](repeating: 0, count: SpectrumAnalyzer.size / 2)
     /// Moins d'un hop, reporté au paquet suivant pour ne pas allonger artificiellement le spectre.
     private var frameRemainder = Data()
     private let edges: [Int]
@@ -36,7 +42,7 @@ public final class SpectrumAnalyzer: @unchecked Sendable {
     public func bands(pcm16 data: Data) -> [Float] {
         data.withUnsafeBytes { raw in
             let values = raw.bindMemory(to: Int16.self)
-            samples.append(contentsOf: values.map { Float($0) / 32_768 })
+            samples.append(contentsOf: values.lazy.map { Float($0) / 32_768 })
         }
         if samples.count > Self.size {
             samples.removeFirst(samples.count - Self.size)
@@ -45,11 +51,7 @@ public final class SpectrumAnalyzer: @unchecked Sendable {
             return Array(repeating: 0, count: Self.bandCount)
         }
         let half = Self.size / 2
-        var windowed = [Float](repeating: 0, count: Self.size)
         vDSP_vmul(samples, 1, window, 1, &windowed, 1, vDSP_Length(Self.size))
-        var real = [Float](repeating: 0, count: half)
-        var imaginary = [Float](repeating: 0, count: half)
-        var magnitudes = [Float](repeating: 0, count: half)
         real.withUnsafeMutableBufferPointer { realPointer in
             imaginary.withUnsafeMutableBufferPointer { imaginaryPointer in
                 var split = DSPSplitComplex(realp: realPointer.baseAddress!, imagp: imaginaryPointer.baseAddress!)
@@ -105,10 +107,16 @@ public extension SpectrumAnalyzer {
 public struct BandTimeline: Sendable {
     /// Au-delà, le retard s'accumule : on repart de l'instant présent.
     public static let maxBacklog = 0.2
+    /// Image passée depuis plus longtemps à l'arrivée d'un paquet : plus rien ne la lira (écran en veille ou
+    /// débranché pendant l'écoute, le spectre n'est plus redessiné).
+    public static let staleAfter = 1.0
 
     private var queue: [(time: Double, bands: [Float])] = []
     private var latest: [Float]
     private var lastScheduled = -Double.infinity
+
+    /// Images gardées pour l'affichage.
+    var pendingFrames: Int { queue.count }
 
     public init(bandCount: Int = SpectrumAnalyzer.bandCount) {
         latest = Array(repeating: 0, count: bandCount)
@@ -116,6 +124,13 @@ public struct BandTimeline: Sendable {
 
     public mutating func push(_ frames: [[Float]], arrival: Double, hopSeconds: Double) {
         guard !frames.isEmpty else { return }
+        // Sans lecture du spectre, les images s'empilaient pendant toute l'écoute (62 par seconde). Seule la dernière
+        // des images passées compte, comme dans `current(at:)` : les autres sont oubliées.
+        let stale = queue.prefix(while: { $0.time <= arrival - Self.staleAfter }).count
+        if stale > 0 {
+            latest = queue[stale - 1].bands
+            queue.removeFirst(stale)
+        }
         var start = max(arrival, lastScheduled + hopSeconds)
         if start - arrival > Self.maxBacklog {
             start = arrival

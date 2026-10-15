@@ -71,6 +71,16 @@
         }
       }
     },
+    "Voir les notes de version, puis confirmer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "See the release notes, then confirm"
+          }
+        }
+      }
+    },
     "Voir" : {
       "localizations" : {
         "en" : {
@@ -327,6 +337,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Wispad is up to date but couldn't relaunch: quit it, then open it again."
+          }
+        }
+      }
+    },
+    "Un autre Wispad ouvert installe déjà une mise à jour : réessaie quand il aura fini." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Another open Wispad is already installing an update: try again once it's done."
           }
         }
       }
@@ -6121,6 +6141,16 @@
         }
       }
     },
+    "Le fournisseur reconnaît la clé mais la refuse : crédit épuisé, plafond de dépenses atteint, clé désactivée ou sans les droits nécessaires. Vérifie dans sa console, puis réessaie." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The provider recognizes the key but refuses it: credit used up, spending limit reached, key disabled or missing permissions. Check its console, then try again."
+          }
+        }
+      }
+    },
     "Corriger le texte" : {
       "localizations" : {
         "en" : {
@@ -7061,6 +7091,26 @@
         }
       }
     },
+    "Clavier sans touche fn ? Continue avec « Plus tard », puis choisis une autre touche dans Réglages › Raccourci." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keyboard without an fn key? Continue with “Later”, then choose another key in Settings › Shortcut."
+          }
+        }
+      }
+    },
+    "Ce raccourci sert peut-être déjà à macOS ou à une autre app : continue avec « Plus tard », puis choisis-en un autre dans Réglages › Raccourci." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This shortcut may already be used by macOS or another app: continue with “Later”, then choose another one in Settings › Shortcut."
+          }
+        }
+      }
+    },
     "Vérifier" : {
       "localizations" : {
         "en" : {
@@ -7207,6 +7257,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "The microphone didn't start: try again"
+          }
+        }
+      }
+    },
+    "Le micro ne répond plus : dictée arrêtée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The microphone stopped responding: dictation ended"
           }
         }
       }
@@ -8451,6 +8511,46 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "An appointment time is written in this format: “at two thirty in the afternoon” becomes “at 14h30”, or “at 2:30 PM” in 12-hour time."
+          }
+        }
+      }
+    },
+    "Accès au micro retiré : dictée arrêtée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Microphone access removed: dictation ended"
+          }
+        }
+      }
+    },
+    "Surveillance des entrées retirée : dictée arrêtée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Input Monitoring removed: dictation ended"
+          }
+        }
+      }
+    },
+    "Accessibilité retirée : dictée arrêtée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accessibility removed: dictation ended"
+          }
+        }
+      }
+    },
+    "Accessibilité non autorisée : le texte est prêt" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accessibility not allowed: the text is ready"
           }
         }
       }

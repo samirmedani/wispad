@@ -52,6 +52,15 @@ public struct GestureEngine: Equatable, Sendable {
         return false
     }
 
+    /// Aucun geste en cours : ni appui en attente, ni maintien, ni mains libres.
+    public var isIdle: Bool { phase == .idle }
+
+    /// Premier appui encore en attente de son réveil, qui décide (maintien, simple appui, relâchement perdu).
+    public var isPressPending: Bool {
+        if case .firstDown = phase { return true }
+        return false
+    }
+
     /// Drops gesture state without emitting a stop. The caller already stopped.
     public mutating func forceIdle() {
         phase = .idle

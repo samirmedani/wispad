@@ -164,7 +164,9 @@ struct SettingsView: View {
             DiagnosticsSection()
             HelpSection()
         }
-        .onAppear { model.refreshPermissions() }
+        // Autorisations relues hors du fil principal, qui anime l'écran qui s'ouvre ; un clic sur une rangée les relit,
+        // lui, sur place.
+        .onAppear { model.refreshPermissionsInBackground() }
     }
 
     /// Correction réellement faite, d'après les clés du coffre.

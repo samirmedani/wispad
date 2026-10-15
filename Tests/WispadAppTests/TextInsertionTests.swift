@@ -48,7 +48,7 @@ private final class InsertionFixture {
 }
 
 @MainActor
-@Suite(.serialized)
+@Suite(.serialized, .inputZoneExclusive)
 struct TextInsertionTests {
     @Test func aConfirmedPasteRestoresTheClipboardAtOnce() async {
         let f = InsertionFixture(); defer { f.dispose() }
@@ -109,6 +109,24 @@ struct TextInsertionTests {
         #expect(await f.insert(system: system) == .failed)
         #expect(f.sent == 0)
         #expect(f.board.string(forType: .string) == "Copie conservée")
+    }
+
+    /// Accessibilité retirée dans Réglages Système : ni ⌘V ni lecture du champ, le presse-papiers reste tel quel, et
+    /// la cause est notée pour que la bulle la dise.
+    @Test func withoutAccessibilityNothingIsSentAndTheCauseIsKept() async {
+        let f = InsertionFixture(); defer { f.dispose() }
+        var system = f.system
+        system.trusted = { false }
+        #expect(await f.insert(system: system) == .failed)
+        #expect(f.keys == 0 && f.reads == 0 && f.sent == 0)
+        #expect(f.context.accessibilityRefused)
+        #expect(f.board.string(forType: .string) == "Copie conservée")
+        // Rendue : le collage repart normalement.
+        let context = DictationContext()
+        context.pid = f.pid
+        #expect(await TextInserter.insert("Bonjour.", context: context, system: f.system) == .inserted)
+        #expect(!context.accessibilityRefused)
+        #expect(f.keys == 1)
     }
 
     @Test func changingAppsOrEnteringASecureFieldNeverWrites() async {
@@ -249,5 +267,35 @@ struct TextInsertionTests {
         for event in events {
             #expect(event.getIntegerValueField(.eventSourceUserData) == KeyboardTap.syntheticMarker)
         }
+    }
+
+    /// Wispad au premier plan : sa fenêtre n'est jamais lue par l'accessibilité, surtout pas hors du fil principal,
+    /// où ces lectures se font dans son propre processus et font recalculer SwiftUI (plantage du 13 octobre 2026).
+    @Test func ownWindowIsNeverReadByAccessibility() async {
+        let own = ProcessInfo.processInfo.processIdentifier
+        let nothingRead = await Task.detached {
+            ContextProbe.focusedElement(pid: own) == nil
+                && ContextProbe.inputLocation(pid: own).zone == nil
+                && WindowTextProbe.read(pid: own).context == nil
+        }.value
+        #expect(nothingRead)
+    }
+
+    /// L'app visée ne donne pas son champ (inactive, lente) et Wispad est passé au premier plan entre-temps : fenêtre
+    /// ouverte pendant la surveillance des corrections, la confirmation d'un collage ou la lecture de la zone de saisie.
+    /// Le repli sur l'élément système ne lui pose jamais la question : elle lui serait servie dans son propre
+    /// processus, hors du fil principal, comme lors du plantage du 13 octobre 2026.
+    @Test func systemFallbackNeverAsksWispadItself() async {
+        let own = ProcessInfo.processInfo.processIdentifier
+        let frontmostApps: [pid_t?] = [own, own + 1, nil]
+        let questions = await Task.detached { () -> [Bool] in
+            frontmostApps.map { (frontmost: pid_t?) -> Bool in
+                var asked = false
+                _ = ContextProbe.systemFocusedElement(frontmost: { frontmost }, ask: { asked = true; return nil })
+                return asked
+            }
+        }.value
+        // Wispad au premier plan : rien n'est demandé. Une autre app, ou une app inconnue : la question part, comme avant.
+        #expect(questions == [false, true, true])
     }
 }

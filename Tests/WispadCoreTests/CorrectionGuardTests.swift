@@ -2,6 +2,19 @@ import Testing
 @testable import WispadCore
 
 struct CorrectionGuardTests {
+    /// Un grand dictionnaire ne ralentit pas une correction ordinaire : ses mots ne sont relus que pour vérifier un nom
+    /// d'allure inventée. Avant, chaque correction (jusqu'à six par dictée) les découpait tous : 20 ms pour 2 000 termes,
+    /// mesuré sous Linux.
+    @Test func largeDictionaryDoesNotSlowAnOrdinaryCorrection() {
+        let heard = "bonjour je voulais te dire que le déploiement de vercel est terminé et que tout marche bien"
+        let written = "Bonjour, je voulais te dire que le déploiement de Vercel est terminé et que tout marche bien."
+        let dictionary = (0..<20_000).map { "Terme\($0) Spécial" }
+        #expect(FidelityGuard.check(transcript: heard, corrected: written, dictionary: dictionary) == written)
+        let without = Timing.fastest(of: 5) { _ = FidelityGuard.check(transcript: heard, corrected: written) }
+        let with = Timing.fastest(of: 5) { _ = FidelityGuard.check(transcript: heard, corrected: written, dictionary: dictionary) }
+        #expect(with < without * 4)
+    }
+
     @Test func oralElisionsAreWrittenOutButFamiliarFormsStay() {
         let system = CorrectionPrompt.system
         #expect(system.contains("« j'sais » → « je sais »"))

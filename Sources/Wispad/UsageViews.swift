@@ -377,7 +377,7 @@ struct UsageRowView: View {
         if row.api.isAudio {
             parts.append(UsageText.audio(row.audioSeconds))
         } else {
-            parts.append(String(localized: "\(UsageText.count(row.tokens.input + row.tokens.cachedInput)) jetons en entrée"))
+            parts.append(String(localized: "\(UsageText.count(row.tokens.totalInput)) jetons en entrée"))
             parts.append(String(localized: "\(UsageText.count(row.tokens.output)) en sortie"))
         }
         if row.failures > 0 { parts.append(row.failures == 1 ? String(localized: "1 échec") : String(localized: "\(row.failures) échecs")) }
@@ -437,7 +437,7 @@ enum UsagePresentation {
     static func quantities(_ event: UsageEvent) -> String {
         if event.api.isAudio { return UsageText.audio(event.audioSeconds) }
         if event.costUSD == nil, event.tokens == TokenUsage() { return String(localized: "Compteurs indisponibles") }
-        return String(localized: "\(event.tokens.input + event.tokens.cachedInput) → \(event.tokens.output) jetons")
+        return String(localized: "\(event.tokens.totalInput) → \(event.tokens.output) jetons")
     }
 
     static func providerAmount(_ summary: UsageSummary, providers: Set<String>, storageIncomplete: Bool = false) -> String {

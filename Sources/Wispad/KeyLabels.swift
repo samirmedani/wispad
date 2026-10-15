@@ -6,7 +6,9 @@ import WispadCore
 /// Touche physique qui produit un caractère dans la disposition active (AZERTY, Dvorak…),
 /// pour que Cmd+V reste Cmd+V quel que soit le clavier.
 enum KeyboardLayout {
-    static func keyCode(for character: Character) -> CGKeyCode? {
+    /// Fil principal seulement : hors de lui, macOS arrête l'app quand la liste des dispositions n'est pas encore en
+    /// cache (plantage du 13 octobre 2026, ⌘V envoyé juste après un lancement).
+    @MainActor static func keyCode(for character: Character) -> CGKeyCode? {
         guard let source = TISCopyCurrentKeyboardLayoutInputSource()?.takeRetainedValue(),
               let pointer = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData) else { return nil }
         let data = Unmanaged<CFData>.fromOpaque(pointer).takeUnretainedValue() as Data
@@ -34,8 +36,8 @@ enum KeyboardLayout {
     static let characterKeyCodes: Set<Int> = Set(0...47).subtracting([36]).union([50])
 
     /// Caractère inscrit sur chaque touche de caractère dans la disposition active (A ou Q en haut à gauche selon
-    /// AZERTY ou QWERTY), en majuscule. Vide si la disposition est illisible.
-    static func characters(for codes: Set<Int> = characterKeyCodes) -> [Int: String] {
+    /// AZERTY ou QWERTY), en majuscule. Vide si la disposition est illisible. Fil principal seulement.
+    @MainActor static func characters(for codes: Set<Int> = characterKeyCodes) -> [Int: String] {
         let wanted = codes.intersection(characterKeyCodes)
         guard !wanted.isEmpty, let source = TISCopyCurrentKeyboardLayoutInputSource()?.takeRetainedValue(),
               let pointer = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData) else { return [:] }
@@ -63,6 +65,8 @@ enum KeyboardLayout {
     }
 }
 
+/// Noms de touches lus dans la disposition active : fil principal seulement (voir `KeyboardLayout`).
+@MainActor
 enum KeyLabels {
     static func describe(keyCode: Int, modifiers: UInt64) -> String {
         if keyCode == ChordMatcher.functionKeyCode { return "fn" }

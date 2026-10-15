@@ -227,18 +227,15 @@ public enum DateTimeWriter {
                 pass.claim(dateRange, with: render(day: day, month: month, year: nil))
             }
         } else {
-            // « October 24, 2026 », « October 24th ».
-            for match in englishMonthFirst.matches(in: text, range: pass.whole) where pass.isFree(match.range) {
-                guard let month = monthNumber(pass.group(match, 1)), let day = day(pass.group(match, 2)) else { continue }
-                let yearText = pass.group(match, 4)
-                let year = yearText.flatMap { fullYear($0, reference: referenceYear) }
-                guard yearText == nil || year != nil, isValid(day: day, month: month, year: year) else { continue }
-                pass.claim(match.range, with: render(day: day, month: month, year: year))
-            }
-            // « 24 October 2026 », « the 24th of October ».
-            for match in englishDayFirst.matches(in: text, range: pass.whole) where pass.isFree(match.range) {
-                guard let day = day(pass.group(match, 1)), let month = monthNumber(pass.group(match, 2)) else { continue }
-                let yearText = pass.group(match, 3)
+            // « October 24, 2026 », « October 24th », « 24 October 2026 », « the 24th of October ». Deux lectures qui se
+            // chevauchent : la première dans le texte l'emporte (« on 3 May 8 people came » : le 3 mai, pas le 8).
+            let monthFirst = englishMonthFirst.matches(in: text, range: pass.whole).map { (match: $0, month: 1, day: 2, year: 4) }
+            let dayFirst = englishDayFirst.matches(in: text, range: pass.whole).map { (match: $0, month: 2, day: 1, year: 3) }
+            for reading in (monthFirst + dayFirst).sorted(by: { $0.match.range.location < $1.match.range.location })
+            where pass.isFree(reading.match.range) {
+                let match = reading.match
+                guard let month = monthNumber(pass.group(match, reading.month)), let day = day(pass.group(match, reading.day)) else { continue }
+                let yearText = pass.group(match, reading.year)
                 let year = yearText.flatMap { fullYear($0, reference: referenceYear) }
                 guard yearText == nil || year != nil, isValid(day: day, month: month, year: year) else { continue }
                 pass.claim(match.range, with: render(day: day, month: month, year: year))
@@ -508,13 +505,14 @@ public enum DateTimeWriter {
         "(?i)" + numberStart + "(1er|\\d{1,2})(" + space + "+(?:au|et|ou|à)" + space + "+(?:le" + space + "+)?|" + space + "*[-–]" + space + "*)"
             + "(\\d{1,2})" + space + "+(" + frenchMonthNames + ")(?:" + space + "+(\\d{4}))?" + #"(?![\p{L}\p{N}_])"#
     )
-    /// « October 24 », « October 24th, 2026 ».
+    /// « October 24 », « October 24th, 2026 ». Pas « May 14/15 » ni « May 4-5 » : deux jours, pas une date seule.
     static let englishMonthFirst = expression(
-        #"(?<![\p{L}\p{N}_])("# + englishMonthNames + ")" + space + #"+(\d{1,2})((?:st|nd|rd|th)?)(?:,?"# + space + #"+(\d{4}))?(?![\p{L}\p{N}_]|[:.]\p{N})"#
+        #"(?<![\p{L}\p{N}_])("# + englishMonthNames + ")" + space + #"+(\d{1,2})((?:st|nd|rd|th)?)(?:,?"# + space + #"+(\d{4}))?(?![\p{L}\p{N}_]|[/.:\-–]\p{N})"#
     )
-    /// « 24 October 2026 », « the 24th of October ».
+    /// « 24 October 2026 », « the 24th of October ». « the » ne fait partie de la date que devant un ordinal ou « of » :
+    /// « the 31 May deadline » le garde.
     static let englishDayFirst = expression(
-        numberStart + "(?:[Tt]he" + space + #"+)?(\d{1,2})(?:st|nd|rd|th)?"# + space + "+(?:of" + space + "+)?(" + englishMonthNames + ")(?:,?" + space + #"+(\d{4}))?(?![\p{L}\p{N}_])"#
+        numberStart + "(?:[Tt]he" + space + "+(?=" + #"\d{1,2}(?:st|nd|rd|th|"# + space + "+of" + space + "))" + #")?(\d{1,2})(?:st|nd|rd|th)?"# + space + "+(?:of" + space + "+)?(" + englishMonthNames + ")(?:,?" + space + #"+(\d{4}))?(?![\p{L}\p{N}_])"#
     )
     /// « 2026-11-03 », « 2026/11/03 ».
     static let yearFirstDate = expression(numberStart + #"(\d{4})([/.\-])(\d{1,2})\2(\d{1,2})"# + numberEnd)
@@ -752,7 +750,7 @@ enum MomentReading {
         }
         for value in shown {
             if take(value) { continue }
-            if value >= 1000, let index = pool.indices.dropLast().first(where: { (10...99).contains(pool[$0]) && pool[$0] * 100 + pool[$0 + 1] == value }) {
+            if value >= 1000, let index = pool.indices.dropLast().first(where: { formsYear(pool[$0], pool[$0 + 1], value) }) {
                 pool.removeSubrange(index...(index + 1))
                 continue
             }
@@ -776,9 +774,15 @@ enum MomentReading {
         if pool.contains(year) { return true }
         if year >= 1000 {
             if pool.contains(year % 100) { return true }
-            return zip(pool, pool.dropFirst()).contains { (10...99).contains($0) && $0 * 100 + $1 == year }
+            return zip(pool, pool.dropFirst()).contains { formsYear($0, $1, year) }
         }
         return pool.contains { $0 >= 1000 && $0 % 100 == year }
+    }
+
+    /// Deux nombres dits qui forment une année en deux morceaux (« twenty twenty-six » → 2026). Comparés par
+    /// soustraction : un nombre dit démesuré (« cent cent cent… ») ne fait rien déborder.
+    static func formsYear(_ century: Int, _ rest: Int, _ year: Int) -> Bool {
+        (10...99).contains(century) && year - century * 100 == rest
     }
 
     /// Un mot qui a la forme d'une date ou d'une heure : « 03/11 », « 14h30 », « h », « 2:30 », « PM », « 1er », « novembre ».

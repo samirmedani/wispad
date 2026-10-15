@@ -19,6 +19,10 @@ passe par une pull request relue et acceptée par le mainteneur.** Personne ne p
    push direct sur `main` refusé).
 2. Commits signés : `git commit -s` (ligne `Signed-off-by: Nom <e-mail>`, voir plus bas).
 3. `scripts/check.sh` doit passer en local : tests, traductions, compilation Release.
+   Pour un changement de concurrence ou de mémoire, aussi `swift test --sanitize=thread` puis
+   `swift test --sanitize=address` (ils doivent rester muets). Les tests de propriétés, séquences du coordinateur
+   de dictée comprises, tirent un quart de leurs cas par défaut ;
+   `WISPAD_PROPERTY_RUNS=full swift test --filter PropertyTests` les tire tous.
 4. Pull request vers `main`, en remplissant le modèle. Une pull request = un sujet, la plus petite possible.
 5. La vérification automatique doit être verte, puis le mainteneur relit. Les remarques se règlent dans la même
    pull request ; une nouvelle poussée annule l'approbation précédente.

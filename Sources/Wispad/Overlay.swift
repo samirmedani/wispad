@@ -90,8 +90,6 @@ enum OverlayLayout {
     static let pillHeight: CGFloat = 30
     /// Espace transparent sous la pilule, pour l'ombre.
     static let bottomMargin: CGFloat = 10
-    static let dockGap: CGFloat = 6
-    static let screenGap: CGFloat = 10
     static let space = "wispad-overlay"
     static let spectrumPadding: CGFloat = 14
     /// Pilule à spectre (maintien, mains libres, finalisation) : barres et marges.
@@ -105,7 +103,7 @@ enum OverlayLayout {
     /// Bas de la pilule en coordonnées écran : juste au-dessus du Dock affiché, sinon près du bord
     /// (Dock masqué, sur le côté, ou caché par une app en plein écran).
     static func pillBottom(screen: NSRect, visible: NSRect, dockShown: Bool) -> CGFloat {
-        dockShown && visible.minY > screen.minY + 0.5 ? visible.minY + dockGap : screen.minY + screenGap
+        OverlayGeometry.defaultBottom(screen: screen, visible: visible, dockShown: dockShown)
     }
 
     static func panelFrame(screen: NSRect, visible: NSRect, dockShown: Bool) -> NSRect {
@@ -121,6 +119,11 @@ enum OverlayLayout {
     static func panelFrame(bottomCenter: CGPoint) -> NSRect {
         NSRect(x: (bottomCenter.x - panelSize.width / 2).rounded(), y: (bottomCenter.y - bottomMargin).rounded(),
                width: panelSize.width, height: panelSize.height)
+    }
+
+    /// Bas-centre de la bulle dans ce panneau.
+    static func bottomCenter(of panel: NSRect) -> CGPoint {
+        CGPoint(x: panel.midX, y: panel.minY + bottomMargin)
     }
 
     /// Taille maximale de ce que montre la bulle dans ce mode, pour la garder à l'écran et hors du champ.
@@ -808,6 +811,17 @@ final class OverlayController {
     var displaysPanel = true
     /// Lecture de `isOnActiveSpace`, remplaçable dans les tests faute d'espace plein écran.
     var isOnActiveSpace: @MainActor (NSWindow) -> Bool = { $0.isOnActiveSpace }
+    /// Écrans, pointeur et écran principal lus de macOS ; remplaçables dans les tests pour brancher, débrancher ou
+    /// régler autrement des écrans simulés.
+    var screens: @MainActor () -> [OverlayScreen] = { NSScreen.screens.compactMap { OverlayScreen($0) } }
+    var pointer: @MainActor () -> CGPoint = { NSEvent.mouseLocation }
+    var mainScreen: @MainActor () -> UInt32? = { NSScreen.main?.displayID }
+    /// Écrans lus au dernier changement : seul un écran branché, débranché, déplacé ou redimensionné déplace la bulle.
+    private(set) var knownScreens: [OverlayScreen] = []
+    /// Numéro de l'écran où la bulle a été placée : elle y reste tant qu'elle est affichée, même quand les coordonnées
+    /// de tous les écrans changent (autre écran principal, autre résolution d'un voisin).
+    private var placedScreen: UInt32?
+    nonisolated(unsafe) private var screenObserver: NSObjectProtocol?
     /// Aperçu demandé depuis Réglages : le message bref s'affiche à la place de ce rôle.
     var previewRole: OverlayRole?
 
@@ -825,6 +839,7 @@ final class OverlayController {
     deinit {
         visibilityTask?.cancel()
         if let spaceObserver { NSWorkspace.shared.notificationCenter.removeObserver(spaceObserver) }
+        if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }
     }
 
     func install(model: AppModel) {
@@ -846,6 +861,13 @@ final class OverlayController {
                 // Changement d'espace pendant une dictée : la bulle suit sans attendre la surveillance.
                 self.restoreVisibilityIfNeeded()
             }
+        }
+        knownScreens = screens()
+        if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }
+        screenObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.screensDidChange() }
         }
         // La toute première lecture de la liste des fenêtres coûte des dizaines de ms : faite d'avance,
         // hors du fil principal, pour ne pas retarder la première bulle.
@@ -888,7 +910,10 @@ final class OverlayController {
             replacePanelIfOffActiveSpace()
         }
         if let panel, !panel.isVisible, displaysPanel {
-            if let frame = targetFrame(for: state.mode) { panel.setFrame(frame, display: false) }
+            if let next = target(for: state.mode) {
+                panel.setFrame(next.frame, display: false)
+                placedScreen = next.screen
+            }
             panel.orderFrontRegardless()
         } else {
             moveToTarget()
@@ -942,7 +967,9 @@ final class OverlayController {
 
     private func restoreVisibilityIfNeeded() {
         guard wanted, displaysPanel, var panel else { return }
-        let onScreen = NSScreen.screens.contains { $0.frame.intersects(panel.frame) }
+        // La bulle elle-même, pas le panneau transparent qui l'entoure : il peut encore toucher un écran voisin quand la
+        // bulle était sur un écran débranché. Sans aucun écran, rien à restaurer.
+        let onScreen = !OverlayGeometry.isLost(bubbleFrame(in: panel), among: screens())
         let onActiveSpace = isOnActiveSpace(panel)
         guard !panel.isVisible || !onActiveSpace || !onScreen || panel.alphaValue == 0 else { return }
         visibilityRecoveries += 1
@@ -950,11 +977,35 @@ final class OverlayController {
         if replacePanelIfOffActiveSpace(), let replacement = self.panel {
             panel = replacement
         }
-        if !onScreen, let frame = targetFrame(for: state.mode) {
-            panel.setFrame(frame, display: false)
+        if !onScreen, let next = target(for: state.mode) {
+            panel.setFrame(next.frame, display: false)
+            placedScreen = next.screen
         }
         panel.alphaValue = 1
         panel.orderFrontRegardless()
+    }
+
+    /// Cadre de la bulle (taille la plus grande de ce mode) dans ce panneau, en coordonnées écran.
+    private func bubbleFrame(in panel: NSPanel) -> CGRect {
+        let size = OverlayLayout.contentSize(for: state.mode, hasReadyText: model?.coordinator.failureText != nil)
+        return OverlayGeometry.bubble(bottomCenter: OverlayLayout.bottomCenter(of: panel.frame), contentSize: size)
+    }
+
+    /// Écran branché ou débranché, autre résolution, autre échelle, autre écran principal : macOS ne déplace pas un
+    /// panneau sans barre de titre. La bulle affichée reprend aussitôt sa place sur son écran s'il est toujours là,
+    /// sinon sur celui du pointeur ; la zone de saisie, lue dans les coordonnées d'avant, est oubliée. Un Dock ou une
+    /// barre des menus qui changent ne déplacent rien : la bulle reste entière sur son écran.
+    func screensDidChange() {
+        let current = screens()
+        let changed = !OverlayScreen.sameDisplays(current, knownScreens)
+        knownScreens = current
+        guard changed else { return }
+        InputZoneTracker.reset()
+        guard wanted, displaysPanel, let panel, panel.isVisible, let next = target(for: state.mode) else { return }
+        placedScreen = next.screen
+        if panel.frame != next.frame {
+            panel.setFrame(next.frame, display: false)
+        }
     }
 
     /// macOS ne rattache une fenêtre de tous les bureaux à un espace plein écran qu'à sa toute première
@@ -989,37 +1040,35 @@ final class OverlayController {
     /// Cadre du panneau pour ce mode : position choisie dans Réglages (sinon au-dessus du Dock, au centre), puis,
     /// pour les messages, décalage hors de la zone de saisie lue au dernier collage dans l'app au premier plan.
     func targetFrame(for mode: OverlayMode) -> NSRect? {
+        target(for: mode)?.frame
+    }
+
+    /// Cadre du panneau pour ce mode et numéro de l'écran qui l'accueille : celui de la saisie, sinon celui où la bulle
+    /// est déjà (pas de saut d'écran en cours de dictée), sinon celui de la souris (`OverlayGeometry.screen`). nil sans
+    /// écran : la bulle reste où elle est.
+    private func target(for mode: OverlayMode) -> (frame: NSRect, screen: UInt32)? {
         guard let model else { return nil }
         let placement = model.settings.overlayPlacement
         let role = mode.isMessage ? (previewRole ?? mode.role) : mode.role
         let size = OverlayLayout.contentSize(for: mode, hasReadyText: model.coordinator.failureText != nil)
         let zone = mode.isMessage && placement.avoidsInput && previewRole == nil
             ? InputZoneTracker.zone(frontmost: NSWorkspace.shared.frontmostApplication?.processIdentifier) : nil
-        // Écran de la saisie, sinon celui où la bulle est déjà (pas de saut d'écran en cours de dictée), sinon la souris.
-        func screen(containing point: CGPoint) -> NSScreen? { NSScreen.screens.first { $0.frame.contains(point) } }
-        let shown = panel.flatMap { $0.isVisible ? CGPoint(x: $0.frame.midX, y: $0.frame.minY + OverlayLayout.bottomMargin) : nil }
-        let screen = zone.flatMap { screen(containing: CGPoint(x: $0.midX, y: $0.midY)) }
-            ?? shown.flatMap(screen(containing:))
-            ?? screen(containing: NSEvent.mouseLocation) ?? NSScreen.main
-        guard let screen else { return nil }
-        let visible = screen.visibleFrame
-        var bottomCenter: CGPoint
-        if let anchor = placement.anchor(for: role) {
-            bottomCenter = OverlayGeometry.point(for: anchor, visible: visible, contentSize: size)
-        } else {
-            bottomCenter = CGPoint(x: visible.midX,
-                                   y: OverlayLayout.pillBottom(screen: screen.frame, visible: visible, dockShown: Self.dockShown(on: screen)))
-        }
-        if let zone {
-            bottomCenter = OverlayGeometry.avoiding(zone, bottomCenter: bottomCenter, contentSize: size, visible: visible)
-        }
-        return OverlayLayout.panelFrame(bottomCenter: bottomCenter)
+        let shown = panel.flatMap { $0.isVisible ? $0 : nil }
+        guard let screen = OverlayGeometry.screen(
+            among: screens(), zone: zone, shownOn: shown == nil ? nil : placedScreen,
+            shownAt: shown.map { OverlayLayout.bottomCenter(of: $0.frame) }, pointer: pointer(), main: mainScreen()
+        ) else { return nil }
+        let bottomCenter = OverlayGeometry.bottomCenter(on: screen, anchor: placement.anchor(for: role), contentSize: size,
+                                                        dockShown: Self.dockShown(onFrame: screen.frame), zone: zone)
+        return (OverlayLayout.panelFrame(bottomCenter: bottomCenter), screen.id)
     }
 
     /// Bulle déjà affichée dont le mode change de place (fin de dictée → alerte) : elle glisse vers sa nouvelle place.
     func moveToTarget() {
-        guard displaysPanel, wanted, let panel, panel.isVisible, let frame = targetFrame(for: state.mode),
-              abs(frame.minX - panel.frame.minX) > 1 || abs(frame.minY - panel.frame.minY) > 1 else { return }
+        guard displaysPanel, wanted, let panel, panel.isVisible, let next = target(for: state.mode) else { return }
+        placedScreen = next.screen
+        let frame = next.frame
+        guard abs(frame.minX - panel.frame.minX) > 1 || abs(frame.minY - panel.frame.minY) > 1 else { return }
         if reduceMotion {
             panel.setFrame(frame, display: true)
         } else {
@@ -1056,10 +1105,15 @@ final class OverlayController {
     /// Lit les fenêtres à l'écran pour savoir si le Dock est affiché sur cet écran (1 à 3 ms une fois
     /// la liste préchauffée par install(), 25 à 30 ms sinon).
     static func dockShown(on screen: NSScreen) -> Bool {
+        dockShown(onFrame: screen.frame)
+    }
+
+    /// Même lecture, pour l'écran de ce cadre.
+    static func dockShown(onFrame frame: CGRect) -> Bool {
         let dockPIDs = Set(NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.dock").map(\.processIdentifier))
         let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] ?? []
-        let primaryHeight = NSScreen.screens.first?.frame.maxY ?? screen.frame.maxY
-        return OverlayLayout.dockShown(on: screen.frame, primaryHeight: primaryHeight, windows: windows, dockPIDs: dockPIDs)
+        let primaryHeight = NSScreen.screens.first?.frame.maxY ?? frame.maxY
+        return OverlayLayout.dockShown(on: frame, primaryHeight: primaryHeight, windows: windows, dockPIDs: dockPIDs)
     }
 
     /// Maintien et finalisation : tout le panneau laisse passer la souris.
@@ -1148,5 +1202,21 @@ final class FirstMouseHostingView<Content: View>: NSHostingView<Content> {
         let area = NSTrackingArea(rect: .zero, options: [.mouseMoved, .activeAlways, .inVisibleRect], owner: mouseTracker, userInfo: nil)
         addTrackingArea(area)
         trackingArea = area
+    }
+}
+
+extension NSScreen {
+    /// Numéro de l'écran pour macOS (`CGDirectDisplayID`) : le même quand l'écran change de place, de résolution ou
+    /// devient l'écran principal.
+    var displayID: UInt32? {
+        (deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value
+    }
+}
+
+extension OverlayScreen {
+    /// Écran de macOS tel que la bulle le voit ; nil si son numéro ou son cadre sont illisibles.
+    @MainActor init?(_ screen: NSScreen) {
+        guard let id = screen.displayID else { return nil }
+        self.init(id: id, frame: screen.frame, visible: screen.visibleFrame)
     }
 }

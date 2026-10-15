@@ -68,6 +68,10 @@ final class DictationCoordinator {
 
     @ObservationIgnored private var generation = 0
     @ObservationIgnored private var operation: Task<Void, Never>?
+    /// Gestes en file, pas encore joués : l'écoute du clavier les a déjà comptés.
+    @ObservationIgnored private var queuedGestures = 0
+    /// Retraits de l'écoute du clavier (`keyboardLost`) : un geste compté avant l'un d'eux a été oublié avec elle.
+    @ObservationIgnored private var keyboardLosses = 0
     /// Dictée en cours d'écoute.
     @ObservationIgnored private var capture: Capture?
     /// Dictées qui se terminent, dans l'ordre où elles ont été dites.
@@ -108,8 +112,26 @@ final class DictationCoordinator {
     static var microphoneStalledMessage: String {
         String(localized: "Le micro n'a pas démarré : réessaie")
     }
-    /// Délais de démarrage du micro (`MicrophoneStartWatch`) ; raccourcis par les tests.
+    /// Message de la bulle quand le micro s'arrête en pleine écoute sans pouvoir repartir.
+    static var microphoneLostMessage: String {
+        String(localized: "Le micro ne répond plus : dictée arrêtée")
+    }
+    /// Message de la bulle quand l'accès au micro est retiré dans Réglages Système en pleine écoute.
+    static var microphoneRevokedMessage: String {
+        String(localized: "Accès au micro retiré : dictée arrêtée")
+    }
+    /// Message de la bulle quand l'écoute du clavier est retirée en pleine dictée, faute de cette autorisation.
+    static func keyboardLostMessage(_ permissions: KeyboardPermissions) -> String {
+        permissions.listen
+            ? String(localized: "Accessibilité retirée : dictée arrêtée")
+            : String(localized: "Surveillance des entrées retirée : dictée arrêtée")
+    }
+    /// Vérification de l'accès au micro pendant l'écoute ; raccourcie par les tests.
+    @ObservationIgnored var microphoneAccessInterval = 1.0
+    /// Délais de démarrage du micro (`MicrophoneStartWatch`) ; raccourcis par les tests. Un redémarrage sur un
+    /// moteur neuf a le même délai que le premier démarrage.
     @ObservationIgnored var audioStartLimit = MicrophoneStartWatch.startLimit
+    @ObservationIgnored var audioRestartLimit = MicrophoneStartWatch.startLimit
     @ObservationIgnored var firstPacketLimit = MicrophoneStartWatch.firstPacketLimit
 
     var isListening: Bool {
@@ -120,31 +142,47 @@ final class DictationCoordinator {
     /// Dictées en cours de transcription, de correction ou de collage.
     var finishingCount: Int { jobs.count }
 
+    /// Début ou fin d'une dictée, dans l'ordre des gestes. Chaque geste en file est joué, même après un Échap pris
+    /// avant lui (fil principal occupé) : l'écoute du clavier l'a déjà compté. Jeté, un début en mains libres la
+    /// laissait attendre une fin, et l'appui suivant ne servait qu'à arrêter une dictée jamais commencée.
+    /// Seule exception : l'écoute du clavier retirée depuis l'a oublié avec le geste en cours (`keyboardLost`).
     func enqueue(_ work: @escaping @MainActor () async -> Void) {
         let previous = operation
-        let token = generation
+        let losses = keyboardLosses
+        queuedGestures += 1
         operation = Task { @MainActor in
             await previous?.value
-            guard self.generation == token, !Task.isCancelled else { return }
+            self.queuedGestures -= 1
+            guard self.keyboardLosses == losses else { return }
             await work()
         }
+    }
+
+    /// La dictée s'arrête sans son geste (annulée, échouée, micro perdu) : l'écoute du clavier oublie le geste qui la
+    /// tenait, pour que l'appui suivant en démarre une autre. Un geste encore en file vient après lui (relâchement,
+    /// nouveau départ) : le clavier en est déjà là, et le remettre au repos effacerait la dictée suivante.
+    private func endGesture() {
+        guard queuedGestures == 0 else { return }
+        model?.hotkeys?.sessionEnded()
     }
 
     func begin(_ mode: ListenMode, pressedAt: Int? = nil) async {
         guard capture == nil, let model else { return }
         guard !retrying else {
-            model.hotkeys?.sessionEnded()
+            endGesture()
             return
         }
         let latencyMarks = LatencyMarks(pressed: pressedAt)
         let run = DictationTraceRecorder(origin: mode == .toggle ? .toggle : .hold, pressedAt: pressedAt, marks: latencyMarks)
+        let losses = keyboardLosses
         let problem = await model.voiceProblem()
-        guard capture == nil, !retrying else { return }
+        // Écoute du clavier retirée pendant la lecture de la clé : elle a oublié ce geste (`keyboardLost`).
+        guard capture == nil, !retrying, keyboardLosses == losses else { return }
         if let problem {
             run.complete(problem.outcome, model: model)
             model.statusBanner = problem.message
             model.open(.providers)
-            model.hotkeys?.sessionEnded()
+            endGesture()
             return
         }
         // La bulle d'abord, puis le micro. L'app au premier plan est lue tout de suite ; son champ actif (lent
@@ -198,6 +236,13 @@ final class DictationCoordinator {
                 }
             }
         }
+        // Micro disparu en pleine écoute, sans autre micro pour repartir : la dictée s'arrête avec ce qui a été dit.
+        audio.onInterruption = { [weak self, weak current] in
+            Task { @MainActor in
+                guard let self, let current else { return }
+                self.microphoneLost(current)
+            }
+        }
         let directory = model.audioDirectory
         do {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -248,6 +293,7 @@ final class DictationCoordinator {
         startMeter()
         signalAudioReady(current)
         watchFirstAudio(current, audio: audio) { firstPacket.withLock { $0 != nil } }
+        watchMicrophoneAccess(current)
         // Le flux en direct reçoit les mots utiles du champ actif : attendus au plus 150 ms, l'audio est gardé
         // pendant ce temps et part dès que le flux est branché.
         if case .some(let snapshot) = await Self.value(of: field, within: Self.contextWait) {
@@ -300,6 +346,7 @@ final class DictationCoordinator {
     private func watchFirstAudio(_ current: Capture, audio: any AudioRecording, packetArrived: @escaping @Sendable () -> Bool) {
         guard !packetArrived() else { return }
         let limit = firstPacketLimit
+        let restartLimit = audioRestartLimit
         current.audioWatch = Task { @MainActor [weak self] in
             var watch = MicrophoneStartWatch()
             while true {
@@ -310,12 +357,30 @@ final class DictationCoordinator {
                     return
                 case .restart:
                     Self.audioLog.notice("aucun audio du micro : redémarrage sur un moteur neuf")
-                    do {
-                        try await audio.restart()
-                    } catch {
-                        guard self.isCapturing(current) else { return }
+                    // Un moteur neuf peut tarder autant qu'au premier démarrage : même délai, jamais d'attente sans fin.
+                    let busy = current.restarting
+                    busy.withLock { $0 = true }
+                    let restarting = Task.detached(priority: Task.currentPriority) { () async -> Bool in
+                        defer { busy.withLock { $0 = false } }
+                        do {
+                            try await audio.restart()
+                            return true
+                        } catch {
+                            return false
+                        }
+                    }
+                    let restarted = await Self.value(of: restarting, within: restartLimit)
+                    guard self.isCapturing(current) else { return }
+                    guard restarted == true else {
                         _ = watch.restartFailed()
-                        Self.audioLog.error("redémarrage du micro impossible : dictée abandonnée")
+                        if restarted == nil {
+                            // Il se refermera seul en rendant la main : rien n'attend sa file sur le fil principal.
+                            audio.abandonStart()
+                            current.audio = nil
+                            Self.audioLog.error("redémarrage du micro trop long : dictée abandonnée")
+                        } else {
+                            Self.audioLog.error("redémarrage du micro impossible : dictée abandonnée")
+                        }
                         self.failMicrophone(current, message: Self.microphoneStalledMessage)
                         return
                     }
@@ -335,10 +400,72 @@ final class DictationCoordinator {
         discard(current)
     }
 
-    /// Relais pris d'emblée : voix chez l'autre fournisseur si le principal est en panne, correction par OpenAI
-    /// si DeepSeek l'est.
+    /// Le micro s'est arrêté en pleine écoute sans pouvoir repartir : la dictée s'arrête là, comme si on l'avait
+    /// terminée (ce qui a déjà été dit est transcrit et collé), le raccourci est libre et la bulle dit pourquoi.
+    private func microphoneLost(_ current: Capture) {
+        guard isCapturing(current) else { return }
+        Self.audioLog.error("micro arrêté pendant l'écoute : dictée terminée avec l'audio déjà reçu")
+        stopListening(current, message: Self.microphoneLostMessage)
+    }
+
+    /// L'écoute en cours ne peut plus continuer : elle s'arrête là, comme si on l'avait terminée (ce qui a déjà été
+    /// dit est transcrit et collé), le raccourci est libre et la bulle dit pourquoi.
+    private func stopListening(_ current: Capture, message: String) {
+        guard isCapturing(current) else { return }
+        endGesture()
+        endCapture()
+        model?.statusBanner = message
+        shownFailure = ShownFailure(message: message, text: nil, offersHistory: false)
+        refreshPhase()
+        changed()
+    }
+
+    /// Accès au micro retiré dans Réglages Système pendant l'écoute : macOS n'arrête pas le moteur, il ne lui livre
+    /// plus que du silence, et la dictée continuerait sur un spectre immobile. Vérifié chaque seconde, pendant
+    /// l'écoute seulement et si l'accès était accordé au départ ; jamais une demande à macOS.
+    /// Chaque lecture interroge le démon des autorisations de macOS (une dizaine de millisecondes) : faite hors du
+    /// fil principal, pour que le spectre ne saccade pas.
+    private func watchMicrophoneAccess(_ current: Capture) {
+        guard let model else { return }
+        let authorized = model.dependencies.microphoneAuthorized
+        let interval = microphoneAccessInterval
+        current.microphoneAccessWatch = Task { @MainActor [weak self] in
+            // Accès refusé au départ (tests, machine de vérification) : rien n'est surveillé.
+            guard await PermissionReads.offMain(authorized) else { return }
+            while true {
+                try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
+                guard !Task.isCancelled, let self, self.isCapturing(current) else { return }
+                guard await !PermissionReads.offMain(authorized) else { continue }
+                guard !Task.isCancelled, self.isCapturing(current) else { return }
+                Self.audioLog.error("accès au micro retiré pendant l'écoute : dictée terminée avec l'audio déjà reçu")
+                self.stopListening(current, message: Self.microphoneRevokedMessage)
+                return
+            }
+        }
+    }
+
+    /// L'écoute du clavier a été retirée faute d'une autorisation (`KeyboardTap`) : ni le raccourci ni Échap
+    /// n'atteindraient plus la dictée en cours. Elle s'arrête là, comme si on l'avait terminée, et la bulle dit
+    /// pourquoi ; un micro encore en démarrage est abandonné (rien n'a été dit). Les gestes encore en file ou en
+    /// attente de la clé sont oubliés avec elle (`HotkeyLogic.listeningLost`) : leur dictée ne démarre pas.
+    func keyboardLost(_ permissions: KeyboardPermissions) {
+        keyboardLosses += 1
+        guard let current = capture, !current.cancelled else { return }
+        let message = Self.keyboardLostMessage(permissions)
+        hotkeyLog.notice("écoute du clavier retirée pendant la dictée : dictée terminée")
+        if current.listening {
+            stopListening(current, message: message)
+        } else {
+            shownFailure = ShownFailure(message: message, text: nil, offersHistory: false)
+            model?.statusBanner = message
+            discard(current, outcome: .cancelled)
+        }
+    }
+
+    /// Relais pris d'emblée : voix chez l'autre fournisseur si le principal est en panne (jamais hors connexion, où
+    /// la bascule échouerait de même), correction par OpenAI si DeepSeek l'est.
     private func routed(_ speech: SpeechRequest, model: AppModel) -> (speech: SpeechRequest, relay: String?) {
-        if model.health.isDown(ServiceHealth.voice(speech.provider)), let fallback = model.voiceFallback(for: speech) {
+        if model.health.isDown(ServiceHealth.voice(speech.provider)), let fallback = model.voiceRelay(for: speech) {
             return (fallback, fallback.provider.displayName)
         }
         if speech.cleanupPrimaryDown, model.settings.cleanupEnabled, !(speech.fallbackKey ?? "").isEmpty {
@@ -354,9 +481,9 @@ final class DictationCoordinator {
         guard let current = capture, current.listening else { return nil }
         capture = nil
         current.audioWatch?.cancel()
+        current.microphoneAccessWatch?.cancel()
         stopMeter()
-        let stopped = current.audio?.stop()
-        current.audio = nil
+        let stopped = closeMicrophone(current)
         current.pcm.close()
         current.marks.released = KeyboardTap.now()
         let url = stopped?.url ?? current.audioURL
@@ -436,12 +563,12 @@ final class DictationCoordinator {
         current.cancelled = true
         current.correctionClaimed = true
         current.audioWatch?.cancel()
+        current.microphoneAccessWatch?.cancel()
         capture = nil
         stopMeter()
         current.startTask?.cancel()
         current.field.cancel()
-        let stopped = current.audio?.stop()
-        current.audio = nil
+        let stopped = closeMicrophone(current)
         current.pcm.close()
         // L'audio a pu partir, mais une annulation ne confirme ni son traitement ni sa facturation.
         recordStreaming(current, seconds: stopped?.duration ?? 0, succeeded: false)
@@ -451,24 +578,42 @@ final class DictationCoordinator {
             accountEarlyCorrections(current, model: model, cancel: true)
             current.run.complete(.cancelled, model: model)
         }
-        model?.hotkeys?.sessionEnded()
+        endGesture()
         refreshPhase()
         cue(.cancel)
         changed()
     }
 
-    /// Écoute qui n'a pas pu commencer (micro refusé, capture impossible).
+    /// Ferme le micro de cette écoute. Pendant son redémarrage (`watchFirstAudio`), `stop()` attendrait la fin du
+    /// moteur neuf sur le fil principal (file du micro) : Wispad resterait figé. Le micro se refermera seul en rendant
+    /// la main (`abandonStart`), sans audio à garder : aucun paquet n'était arrivé, d'où le redémarrage.
+    private func closeMicrophone(_ current: Capture) -> (url: URL?, duration: Double)? {
+        defer { current.audio = nil }
+        guard let audio = current.audio else { return nil }
+        guard !current.restarting.withLock({ $0 }) else {
+            audio.abandonStart()
+            return nil
+        }
+        return audio.stop()
+    }
+
+    /// Écoute qui n'a pas pu commencer (micro refusé, capture impossible) ou micro resté muet : tout ce qu'elle a
+    /// ouvert se referme, spectre et flux en direct compris.
     private func discard(_ current: Capture, outcome: DictationOutcome = .captureFailed) {
         current.cancelled = true
         current.audioWatch?.cancel()
+        current.microphoneAccessWatch?.cancel()
         capture = nil
+        stopMeter()
+        current.startTask?.cancel()
         current.field.cancel()
         current.pcm.close()
-        let stopped = current.audio?.stop()
-        current.audio = nil
+        let stopped = closeMicrophone(current)
+        // Flux déjà branché quand le micro reste muet : refermé, sans audio rien n'a été envoyé ni facturé.
+        current.session?.cancel()
         delete(stopped?.url ?? current.audioURL)
         if let model { current.run.complete(outcome, model: model) }
-        model?.hotkeys?.sessionEnded()
+        endGesture()
         refreshPhase()
         changed()
     }
@@ -517,7 +662,7 @@ final class DictationCoordinator {
         }
         let streamed = !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         if current.session != nil, liveBroke || streamed {
-            model.health.record(ServiceHealth.voice(speech.provider), succeeded: !liveBroke)
+            model.recordHealth(ServiceHealth.voice(speech.provider), succeeded: !liveBroke)
             if !liveBroke { announcedRelays.remove(ServiceHealth.voice(speech.provider)) }
         }
         var correctionLedger: CorrectionLedger?
@@ -738,7 +883,7 @@ final class DictationCoordinator {
             job.delivered = true
             if let note = job.announcement { pendingAnnouncement = note.message }
         } else {
-            offerReadyText(finalText, status: status, recordID: record.id)
+            offerReadyText(finalText, status: status, recordID: record.id, accessibilityRefused: context.accessibilityRefused)
         }
         // La bulle part d'abord ; le ménage des vieux audios vient après.
         settle(job)
@@ -783,8 +928,10 @@ final class DictationCoordinator {
 
     // MARK: - Texte prêt, faute de champ
 
-    /// Message de la bulle quand le texte n'a pas pu être écrit : court, toujours suivi de Copier.
-    static func readyMessage(for status: InsertionStatus) -> String {
+    /// Message de la bulle quand le texte n'a pas pu être écrit : court, toujours suivi de Copier. Collage refusé
+    /// faute d'accessibilité : la bulle dit laquelle manque, plutôt qu'un texte « pas arrivé » jamais envoyé.
+    static func readyMessage(for status: InsertionStatus, accessibilityRefused: Bool = false) -> String {
+        if accessibilityRefused { return String(localized: "Accessibilité non autorisée : le texte est prêt") }
         switch status {
         case .noTarget: return String(localized: "Pas de champ où écrire : le texte est prêt")
         case .refusedSecure: return String(localized: "Champ sécurisé : le texte est prêt")
@@ -795,11 +942,11 @@ final class DictationCoordinator {
 
     /// Échec avéré : le texte reste récupérable sans voler le focus. Il est copié, sauf vers un champ sécurisé
     /// où il ne doit pas traîner dans le presse-papiers.
-    private func offerReadyText(_ text: String, status: InsertionStatus, recordID: String?) {
+    private func offerReadyText(_ text: String, status: InsertionStatus, recordID: String?, accessibilityRefused: Bool = false) {
         guard let model else { return }
         if status != .refusedSecure { model.dependencies.copyText(text) }
         Self.insertionLog.notice("récupération du collage : \(status.rawValue, privacy: .public)")
-        let message = Self.readyMessage(for: status)
+        let message = Self.readyMessage(for: status, accessibilityRefused: accessibilityRefused)
         model.statusBanner = message
         showFailure(message, text: text, recordID: recordID)
     }
@@ -877,7 +1024,7 @@ final class DictationCoordinator {
             }
             announce(String(localized: "Collé"), relay: false)
         case .cancelled: break
-        default: offerReadyText(text, status: status, recordID: record?.id)
+        default: offerReadyText(text, status: status, recordID: record?.id, accessibilityRefused: target.accessibilityRefused)
         }
     }
 
@@ -1151,7 +1298,7 @@ final class DictationCoordinator {
         let ticker = FrameTicker { [weak self] elapsed in
             self?.pushLevel(elapsed: elapsed)
         }
-        ticker.start(on: NSScreen.screens.first { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) } ?? NSScreen.main)
+        ticker.start { NSScreen.screens.first { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) } ?? NSScreen.main }
         meter = ticker
     }
 
@@ -1159,6 +1306,9 @@ final class DictationCoordinator {
         meter?.stop()
         meter = nil
     }
+
+    /// Le spectre suit le micro à la cadence de l'écran : seulement pendant une écoute.
+    var isMetering: Bool { meter != nil }
 
     private func pushLevel(elapsed: Double) {
         let bands = capture?.audio?.bands ?? []

@@ -5,6 +5,10 @@ import Foundation
 /// (accord impossible, forme verbale impossible, référence matérielle reconnue, contexte OAuth explicite) :
 /// ce n'est pas une table de remplacement mot à mot, et une phrase en français normal n'est jamais touchée.
 public enum FranglaisNormalizer {
+    // Les expressions sont compilées une fois : compiler celles de ce fichier coûtait environ 3 ms à chaque appel
+    // (classes Unicode et casse ignorée), pour 0,06 ms de recherche, et `normalize` tourne plusieurs fois par dictée
+    // sur le fil principal, dont à l'arrêt et juste avant le collage. Une `NSRegularExpression` est immuable et
+    // utilisable depuis plusieurs fils : le résultat ne change pas.
     public static func normalize(_ text: String) -> String {
         guard !text.isEmpty else { return text }
         var result = text
@@ -24,31 +28,42 @@ public enum FranglaisNormalizer {
     static func joinHardwareReferences(_ text: String) -> String {
         var result = text
         // Numéros dits en deux morceaux : « RTX 50 70 » → « RTX 5070 », « Ryzen 9 7 950X » → « Ryzen 9 7950X ».
-        result = replace(result, #"\b(RTX|GTX) ([1-5]0) ([1-9]0)\b"#, "$1 $2$3")
-        result = replace(result, #"\b(Ryzen [3579]|Threadripper(?: PRO)?|Core i[3579]|i[3579]|RTX|GTX|RX) (\d{1,2})[ \x{00A0}\x{202F}](\d{3})(?!\d)"#, "$1 $2$3")
+        result = replace(result, Hardware.splitNumber, "$1 $2$3")
+        result = replace(result, Hardware.splitSeries, "$1 $2$3")
         // AMD : suffixes collés au numéro (X3D, X, XT, HX…).
-        result = joinSuffix(result, pattern: #"\b(Ryzen(?: [3579])?|Threadripper(?: PRO)?) (\d{4,5})((?: ?(?:3 ?D|[A-Z])){1,3})(?![\p{L}\d])"#,
+        result = joinSuffix(result, Hardware.ryzen,
                             allowed: ["X3D", "X", "XT", "G", "GE", "HX", "HS", "H", "U", "WX"]) { "\($0) \($1)\($2)" }
-        result = joinSuffix(result, pattern: #"\b((?:Radeon )?RX) (\d{4})((?: ?[A-Z]){1,3})(?![\p{L}\d])"#,
+        result = joinSuffix(result, Hardware.radeon,
                             allowed: ["XT", "XTX", "GRE"]) { "\($0) \($1) \($2)" }
         // « 7950X 3D » sans gamme : un « X 3D » détaché derrière un numéro n'existe que chez AMD.
-        result = replace(result, #"\b(\d{4,5})X 3D\b"#, "$1X3D")
+        result = replace(result, Hardware.detached3D, "$1X3D")
         // Intel Core Ultra : « Core Ultra 9 285 K » → « Core Ultra 9 285K ».
-        result = joinSuffix(result, pattern: #"\b(Core Ultra [3579]) (\d{3})((?: ?[A-Z]){1,2})(?![\p{L}\d])"#,
+        result = joinSuffix(result, Hardware.coreUltra,
                             allowed: ["K", "KF", "H", "HX", "U", "V"]) { "\($0) \($1)\($2)" }
         result = joinIntel(result)
         // NVIDIA : « TI » s'écrit « Ti ».
-        result = replace(result, #"\b(RTX|GTX) (\d{3,4}) ?(?:TI|ti)\b"#, "$1 $2 Ti")
+        result = replace(result, Hardware.nvidiaTi, "$1 $2 Ti")
         // Apple : « MacBook Pro M 4 Pro » → « MacBook Pro M4 Pro ».
-        result = replace(result, #"\b(MacBook(?: Pro| Air)?|Mac(?: mini| Studio| Pro)?|iMac|puce) M ([1-6])\b"#, "$1 M$2")
+        result = replace(result, Hardware.appleChip, "$1 M$2")
         return result
+    }
+
+    private enum Hardware {
+        static let splitNumber = try? NSRegularExpression(pattern: #"\b(RTX|GTX) ([1-5]0) ([1-9]0)\b"#)
+        static let splitSeries = try? NSRegularExpression(pattern: #"\b(Ryzen [3579]|Threadripper(?: PRO)?|Core i[3579]|i[3579]|RTX|GTX|RX) (\d{1,2})[ \x{00A0}\x{202F}](\d{3})(?!\d)"#)
+        static let ryzen = try! NSRegularExpression(pattern: #"\b(Ryzen(?: [3579])?|Threadripper(?: PRO)?) (\d{4,5})((?: ?(?:3 ?D|[A-Z])){1,3})(?![\p{L}\d])"#)
+        static let radeon = try! NSRegularExpression(pattern: #"\b((?:Radeon )?RX) (\d{4})((?: ?[A-Z]){1,3})(?![\p{L}\d])"#)
+        static let detached3D = try? NSRegularExpression(pattern: #"\b(\d{4,5})X 3D\b"#)
+        static let coreUltra = try! NSRegularExpression(pattern: #"\b(Core Ultra [3579]) (\d{3})((?: ?[A-Z]){1,2})(?![\p{L}\d])"#)
+        static let intel = try! NSRegularExpression(pattern: #"\b(Core )?i([3579])[ -]?(\d{4,5})((?: ?[A-Z]){0,2})(?![\p{L}\d])"#)
+        static let nvidiaTi = try? NSRegularExpression(pattern: #"\b(RTX|GTX) (\d{3,4}) ?(?:TI|ti)\b"#)
+        static let appleChip = try? NSRegularExpression(pattern: #"\b(MacBook(?: Pro| Air)?|Mac(?: mini| Studio| Pro)?|iMac|puce) M ([1-6])\b"#)
     }
 
     /// Intel Core : « i5 13600 K » → « i5-13600K ». Sans suffixe, il faut un numéro à 5 chiffres ou « Core » devant,
     /// pour ne pas confondre avec une année (« i7 2018 »).
     private static func joinIntel(_ text: String) -> String {
-        let regex = try! NSRegularExpression(pattern: #"\b(Core )?i([3579])[ -]?(\d{4,5})((?: ?[A-Z]){0,2})(?![\p{L}\d])"#)
-        return rewrite(text, regex) { match, text in
+        rewrite(text, Hardware.intel) { match, text in
             let core = group(match, 1, in: text)
             let digits = group(match, 3, in: text)
             let suffix = group(match, 4, in: text).replacingOccurrences(of: " ", with: "")
@@ -58,9 +73,8 @@ public enum FranglaisNormalizer {
         }
     }
 
-    private static func joinSuffix(_ text: String, pattern: String, allowed: Set<String>, build: (String, String, String) -> String) -> String {
-        let regex = try! NSRegularExpression(pattern: pattern)
-        return rewrite(text, regex) { match, text in
+    private static func joinSuffix(_ text: String, _ regex: NSRegularExpression, allowed: Set<String>, build: (String, String, String) -> String) -> String {
+        rewrite(text, regex) { match, text in
             let suffix = group(match, 3, in: text).replacingOccurrences(of: " ", with: "")
             guard allowed.contains(suffix) else { return nil }
             return build(group(match, 1, in: text), group(match, 2, in: text), suffix)
@@ -75,12 +89,12 @@ public enum FranglaisNormalizer {
     /// des tokens, un login ou une API. Jamais dans un nom de produit ou de schéma (Basic Auth, NextAuth,
     /// Better Auth, Firebase Auth, Auth0, Auth.js, Firebase.Auth…).
     static func restoreOAuth(_ text: String) -> String {
-        let result = replace(text, #"\bO[ -]Auth\b"#, "OAuth")
-        let candidates = try! NSRegularExpression(pattern: #"(?<![\p{L}\d.])Auth(?!\p{L}|\.\p{L}| ?0\b| (?:zéro|zero)\b)"#)
-        let product = try! NSRegularExpression(pattern: #"(?i)(?:next|better|basic|digest|bearer|firebase|supabase|clerk|stack|lucia|amplify|cognito|passport|kinde|nuxt|sveltekit)[ -]?$"#)
-        let version = try! NSRegularExpression(pattern: #"^(?: (?:1\.0a?|2\.[01])|2)(?![\d.]\d)"#)
-        let strong = try! NSRegularExpression(pattern: #"(?i)\b(permissions?|scopes?|consentement|consent|redirect\w*|callback|client[ _-]?(?:id|secret)|pkce|refresh token|access token|authorization code|code d'autorisation)\b"#)
-        let weak = try! NSRegularExpression(pattern: #"(?i)\b(tokens?|login|logout|connexion|API|provider|autorisations?|SSO)\b"#)
+        let result = replace(text, OAuth.spaced, "OAuth")
+        let candidates = OAuth.candidates
+        let product = OAuth.product
+        let version = OAuth.version
+        let strong = OAuth.strong
+        let weak = OAuth.weak
         let mentionsOAuth = result.contains("OAuth")
         return rewrite(result, candidates) { match, text in
             let ns = text as NSString
@@ -98,19 +112,33 @@ public enum FranglaisNormalizer {
         }
     }
 
+    private enum OAuth {
+        static let spaced = try? NSRegularExpression(pattern: #"\bO[ -]Auth\b"#)
+        static let candidates = try! NSRegularExpression(pattern: #"(?<![\p{L}\d.])Auth(?!\p{L}|\.\p{L}| ?0\b| (?:zéro|zero)\b)"#)
+        static let product = try! NSRegularExpression(pattern: #"(?i)(?:next|better|basic|digest|bearer|firebase|supabase|clerk|stack|lucia|amplify|cognito|passport|kinde|nuxt|sveltekit)[ -]?$"#)
+        static let version = try! NSRegularExpression(pattern: #"^(?: (?:1\.0a?|2\.[01])|2)(?![\d.]\d)"#)
+        static let strong = try! NSRegularExpression(pattern: #"(?i)\b(permissions?|scopes?|consentement|consent|redirect\w*|callback|client[ _-]?(?:id|secret)|pkce|refresh token|access token|authorization code|code d'autorisation)\b"#)
+        static let weak = try! NSRegularExpression(pattern: #"(?i)\b(tokens?|login|logout|connexion|API|provider|autorisations?|SSO)\b"#)
+    }
+
     // MARK: - Verbes anglais au passé composé
 
     /// « j'ai fixe le problème » → « j'ai fix le problème ». Après l'auxiliaire avoir, le français demanderait
     /// « fixé » : un « fixe » nu suivi de son complément ne peut être que le verbe anglais prononcé tel quel.
     /// « on a fixe, internet et télé » (le nom : la ligne fixe) reste intact, faute de complément.
     static func keepEnglishPastParticiple(_ text: String) -> String {
-        let auxiliary = #"(?:ai|as|a|avons|avez|ont|avais|avait|avions|aviez|avaient|aurai|auras|aura|aurons|aurez|auront|aurais|aurait|aurions|auriez|auraient)"#
-        let adverb = #"(?: (?:déjà|bien|pas|enfin|encore|aussi|vite|finalement|rapidement|jamais|tout|pas encore))?"#
-        let object = #"(?:le|la|les|l['’]|un|une|des|du|ce|cet|cette|ces|mon|ton|son|ma|ta|sa|mes|tes|ses|notre|votre|leur|nos|vos|leurs|ça|tout|deux|trois)"#
-        var result = replace(text, #"(?i)(?<![\p{L}])((?:[jtn]['’])?"# + auxiliary + adverb + #") fixe (?="# + object + #"\b)"#, "$1 fix ")
+        var result = replace(text, PastParticiple.beforeObject, "$1 fix ")
         // Pronom complément devant l'auxiliaire : « je l'ai fixe », « on l'a fixe. »
-        result = replace(result, #"(?i)(?<![\p{L}])((?:[jn]['’])?l['’]"# + auxiliary + adverb + #") fixe(?=[\s,.;:!?…)»]|$)"#, "$1 fix")
+        result = replace(result, PastParticiple.afterPronoun, "$1 fix")
         return result
+    }
+
+    private enum PastParticiple {
+        static let auxiliary = #"(?:ai|as|a|avons|avez|ont|avais|avait|avions|aviez|avaient|aurai|auras|aura|aurons|aurez|auront|aurais|aurait|aurions|auriez|auraient)"#
+        static let adverb = #"(?: (?:déjà|bien|pas|enfin|encore|aussi|vite|finalement|rapidement|jamais|tout|pas encore))?"#
+        static let object = #"(?:le|la|les|l['’]|un|une|des|du|ce|cet|cette|ces|mon|ton|son|ma|ta|sa|mes|tes|ses|notre|votre|leur|nos|vos|leurs|ça|tout|deux|trois)"#
+        static let beforeObject = try? NSRegularExpression(pattern: #"(?i)(?<![\p{L}])((?:[jtn]['’])?"# + auxiliary + adverb + #") fixe (?="# + object + #"\b)"#)
+        static let afterPronoun = try? NSRegularExpression(pattern: #"(?i)(?<![\p{L}])((?:[jn]['’])?l['’]"# + auxiliary + adverb + #") fixe(?=[\s,.;:!?…)»]|$)"#)
     }
 
     // MARK: - environment variable
@@ -120,11 +148,16 @@ public enum FranglaisNormalizer {
     /// variables » (nom singulier, adjectif pluriel) est tout aussi impossible. Les déterminants des deux genres
     /// (leur, notre, chaque…) ne prouvent rien : « leur environnement variable » reste intact.
     static func restoreEnvironmentVariable(_ text: String) -> String {
-        let feminine = #"(?:une|la|cette|aucune|toute|ma|ta|sa|quelle|certaine)"#
-        let adjective = #"(?: (?:autre|nouvelle|seule|première|deuxième|dernière|bonne|mauvaise|même))?"#
-        var result = replace(text, #"(?i)(?<![\p{L}])("# + feminine + adjective + #") environnement variable\b"#, "$1 environment variable")
-        result = replace(result, #"(?i)(?<![\p{L}])((?:les|des|ces|mes|tes|ses|nos|vos|leurs|plusieurs|quelques|certaines|aucune|deux|trois)(?: (?:autres|nouvelles|bonnes|mêmes))?) environnement variables\b"#, "$1 environment variables")
+        var result = replace(text, EnvironmentVariable.singular, "$1 environment variable")
+        result = replace(result, EnvironmentVariable.plural, "$1 environment variables")
         return result
+    }
+
+    private enum EnvironmentVariable {
+        static let feminine = #"(?:une|la|cette|aucune|toute|ma|ta|sa|quelle|certaine)"#
+        static let adjective = #"(?: (?:autre|nouvelle|seule|première|deuxième|dernière|bonne|mauvaise|même))?"#
+        static let singular = try? NSRegularExpression(pattern: #"(?i)(?<![\p{L}])("# + feminine + adjective + #") environnement variable\b"#)
+        static let plural = try? NSRegularExpression(pattern: #"(?i)(?<![\p{L}])((?:les|des|ces|mes|tes|ses|nos|vos|leurs|plusieurs|quelques|certaines|aucune|deux|trois)(?: (?:autres|nouvelles|bonnes|mêmes))?) environnement variables\b"#)
     }
 
     // MARK: - Outils
@@ -134,11 +167,8 @@ public enum FranglaisNormalizer {
     /// Ces suites n'existent ni en français ni en anglais : les remplacer ne touche aucune phrase juste.
     static func fixKnownMishearings(_ text: String) -> String {
         var result = text
-        for (pattern, replacement) in [
-            (#"(?i)(?<![\p{L}\p{N}])(?:services?|server less|serveur less|serveurless) functions(?![\p{L}\p{N}])"#, "serverless functions"),
-            (#"(?i)(?<![\p{L}\p{N}])day inference(?![\p{L}\p{N}])"#, "AI inference"),
-        ] {
-            guard let regex = try? NSRegularExpression(pattern: pattern) else { continue }
+        for (regex, replacement) in mishearings {
+            guard let regex else { continue }
             for match in regex.matches(in: result, range: NSRange(result.startIndex..., in: result)).reversed() {
                 guard let range = Range(match.range, in: result) else { continue }
                 let startsUpper = result[range].first?.isUppercase == true
@@ -151,8 +181,14 @@ public enum FranglaisNormalizer {
         return result
     }
 
-    private static func replace(_ text: String, _ pattern: String, _ template: String) -> String {
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return text }
+    private static let mishearings: [(NSRegularExpression?, String)] = [
+        (try? NSRegularExpression(pattern: #"(?i)(?<![\p{L}\p{N}])(?:services?|server less|serveur less|serveurless) functions(?![\p{L}\p{N}])"#), "serverless functions"),
+        (try? NSRegularExpression(pattern: #"(?i)(?<![\p{L}\p{N}])day inference(?![\p{L}\p{N}])"#), "AI inference"),
+    ]
+
+    /// `regex` nil (expression invalide) : le texte reste tel quel.
+    private static func replace(_ text: String, _ regex: NSRegularExpression?, _ template: String) -> String {
+        guard let regex else { return text }
         return regex.stringByReplacingMatches(in: text, range: NSRange(text.startIndex..., in: text), withTemplate: template)
     }
 
@@ -176,7 +212,7 @@ public enum FranglaisNormalizer {
     /// Phrase qui contient `range` : bornée par . ! ? … suivis d'un espace ou d'une fin de ligne, ou par un retour
     /// à la ligne. Un point collé (Node.js, 2.0, accounts.google.com) ne coupe pas.
     private static func sentenceAround(_ range: NSRange, in text: NSString) -> String {
-        let boundary = try! NSRegularExpression(pattern: #"[.!?…](?=\s|$)|\n"#)
+        let boundary = sentenceBoundary
         var start = 0
         var end = text.length
         for match in boundary.matches(in: text as String, range: NSRange(location: 0, length: text.length)) {
@@ -185,5 +221,19 @@ public enum FranglaisNormalizer {
             else if match.range.location >= range.location + range.length { end = position; break }
         }
         return text.substring(with: NSRange(location: start, length: end - start))
+    }
+
+    private static let sentenceBoundary = try! NSRegularExpression(pattern: #"[.!?…](?=\s|$)|\n"#)
+
+    /// Toutes les expressions de `normalize`, déjà compilées : le test de coût les recompile pour comparer.
+    static var expressions: [NSRegularExpression] {
+        let all: [NSRegularExpression?] = [
+            Hardware.splitNumber, Hardware.splitSeries, Hardware.ryzen, Hardware.radeon, Hardware.detached3D,
+            Hardware.coreUltra, Hardware.intel, Hardware.nvidiaTi, Hardware.appleChip,
+            OAuth.spaced, OAuth.candidates, OAuth.product, OAuth.version, OAuth.strong, OAuth.weak,
+            PastParticiple.beforeObject, PastParticiple.afterPronoun,
+            EnvironmentVariable.singular, EnvironmentVariable.plural, sentenceBoundary,
+        ]
+        return all.compactMap { $0 } + mishearings.compactMap { $0.0 }
     }
 }

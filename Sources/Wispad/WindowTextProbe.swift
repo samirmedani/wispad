@@ -36,7 +36,8 @@ enum WindowTextProbe {
 
     static func read(pid: pid_t, limits: WindowWalkLimits = .windowReading) -> WindowTextSnapshot {
         let start = ContinuousClock.now
-        guard AXIsProcessTrusted(), let access = focusedWindow(pid: pid) else {
+        // Jamais la fenêtre de Wispad lui-même : voir `ContextProbe.isOwnProcess`.
+        guard !ContextProbe.isOwnProcess(pid), AXIsProcessTrusted(), let access = focusedWindow(pid: pid) else {
             return snapshot(fragments: [], nodesVisited: 0, stoppedOnBudget: false, start: start)
         }
         let walked = WindowTreeWalk.collect(
@@ -51,6 +52,13 @@ enum WindowTextProbe {
             stoppedOnBudget: walked.stoppedOnBudget,
             start: start
         )
+    }
+
+    /// Conversation visible pendant une dictée, lue hors du fil principal, sur sa file : jamais un fil de Swift
+    /// concurrency. `reader` : la lecture, remplacée dans les tests.
+    static func context(pid: pid_t,
+                        reader: @escaping @Sendable (pid_t) -> WindowTextSnapshot = { WindowTextProbe.read(pid: $0) }) async -> String? {
+        await BlockingQueue.run(label: "wispad.fenetre") { reader(pid).context }
     }
 
     #if DEBUG
@@ -88,10 +96,10 @@ enum WindowTextProbe {
         )
     }
 
-    /// La lecture AX quitte le fil principal avant la première question.
+    /// La lecture AX quitte le fil principal avant la première question, pour une file à elle.
     private static func readOffMain(pid: pid_t) -> WindowTextSnapshot {
         let handoff = ProbeHandoff()
-        Task.detached(priority: .utility) {
+        DispatchQueue(label: "wispad.fenetre", qos: .utility).async {
             handoff.complete(read(pid: pid))
         }
         return handoff.wait()
@@ -185,7 +193,7 @@ enum WindowTextProbe {
     }
 }
 
-/// Passe le résultat de la tâche détachée au fil qui attend, sans exposer le texte.
+/// Passe le résultat de la lecture au fil qui attend, sans exposer le texte.
 private final class ProbeHandoff: @unchecked Sendable {
     private var snapshot: WindowTextSnapshot?
     private let semaphore = DispatchSemaphore(value: 0)

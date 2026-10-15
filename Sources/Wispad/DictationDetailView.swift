@@ -100,7 +100,7 @@ struct DictationDetailView: View {
             let store = model.store
             let id = record.id
             do {
-                let loaded = try await Task.detached(priority: .userInitiated) { try store.traces(dictationID: id) }.value
+                let loaded = try await Self.traces(in: store, dictationID: id)
                 guard !Task.isCancelled else { return }
                 traces = loaded
                 loadFailed = false
@@ -109,6 +109,17 @@ struct DictationDetailView: View {
                 loadFailed = true
             }
         }
+    }
+}
+
+extension DictationDetailView {
+    /// File des lectures du détail technique : la base peut attendre jusqu'à 2 s qu'un autre programme (autre Wispad,
+    /// outil qui l'inspecte) la rende, jamais sur un fil de Swift concurrency.
+    nonisolated static let traceReads = BlockingQueue(label: "wispad.historique")
+
+    /// Détail technique d'une dictée, lu dans la base hors du fil principal.
+    nonisolated static func traces(in store: HistoryStore, dictationID: String) async throws -> [DictationTrace] {
+        try await traceReads.run { try store.traces(dictationID: dictationID) }
     }
 }
 

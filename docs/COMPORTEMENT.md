@@ -17,6 +17,19 @@ Raccourci par défaut : fn seule. Wispad intercepte la touche fn pour que macOS 
 - Moins de 0,3 s d'audio : rien n'est envoyé.
 - Une nouvelle dictée peut commencer pendant que la précédente se termine : les textes se collent dans l'ordre
   où ils ont été dits, séparés par une espace, sans changer de majuscule.
+- Un double appui ou un maintien reconnu démarre toujours sa dictée, même quand Wispad, occupé, traite d'abord un
+  Échap pressé juste après : Échap annule alors seulement ce qui se terminait. Aucun appui suivant ne se perd à
+  arrêter une dictée jamais démarrée.
+- Une dictée arrêtée sans son geste (Échap, ✕, micro en échec ou perdu) pendant que d'autres gestes attendent leur
+  tour ne remet pas le raccourci au repos : il en est déjà à ces gestes, et la dictée qu'ils démarrent s'arrête au
+  raccourci comme d'habitude (un appui en mains libres, le relâchement en maintien).
+- Jamais mort ni bloqué : une touche relâchée sans que l'écoute du clavier le voie (écoute coupée par macOS, champ
+  de mot de passe, écran verrouillé, autre session, veille) arrête la dictée en maintien au plus tard à la
+  vérification suivante de l'écoute (voir « Réactivité ») ; le raccourci répond ensuite normalement. Échap n'est
+  jamais avalé à tort ensuite.
+- Réglages › Raccourci › Modifier : la touche essayée, fn comprise, ne démarre ni n'arrête aucune dictée ; une
+  dictée en maintien déjà en cours s'arrête quand on relâche sa touche. Un raccourci remplacé pendant qu'on le tient
+  arrête sa dictée dès la frappe suivante, au plus tard à son relâchement ; le nouveau répond dès son premier appui.
 
 ### Coller la dernière dictée
 
@@ -51,18 +64,31 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 ## Réactivité
 
 - L'écoute du clavier tourne sur son propre fil : le clavier n'attend jamais l'app. Elle est vérifiée toutes les
-  3 s et rétablie si macOS l'a coupée.
+  3 s et rétablie si macOS l'a coupée, jamais sans les autorisations qu'elle avait à son installation (voir
+  « Autorisations retirées ou rendues ») ; restée active, elle est recalée sur la touche réelle du raccourci, au cas
+  où elle n'aurait rien reçu sans être coupée.
 - L'audio s'initialise sur une file dédiée, la bulle s'affiche tout de suite ; le moteur arrêté est réutilisé.
 - Démarrage du micro surveillé, première dictée après un lancement comprise : si macOS reconfigure l'entrée
   (micro Bluetooth qui change de profil, autre fréquence, micro débranché), le moteur repart aussitôt, dans le même
   enregistrement ; au repos, il est remplacé par un neuf à la dictée suivante. Aucun audio 1,5 s après le
-  démarrage : le micro redémarre une fois sur un moteur neuf. Toujours rien 1,5 s plus tard, ou démarrage qui ne
-  rend pas la main en 4 s : la dictée est abandonnée, rien n'est envoyé, Wispad revient prêt (le raccourci
-  redémarre une dictée) et la bulle affiche « Le micro n'a pas démarré : réessaie ». Une erreur du micro (aucun
-  micro, moteur refusé) s'affiche de même dans la bulle. Jamais de bulle figée sur un spectre immobile.
+  démarrage : le micro redémarre une fois sur un moteur neuf. Dictée arrêtée ou annulée pendant ce redémarrage
+  (touche relâchée, Échap, ■) : elle s'arrête tout de suite, sans attendre le moteur ; rien n'avait été entendu, rien
+  n'est envoyé, et le moteur se referme dès qu'il rend la main. Toujours rien 1,5 s plus tard, ou démarrage (comme
+  redémarrage) qui ne rend pas la main en 4 s : la dictée est abandonnée, rien n'est envoyé, Wispad revient prêt (le
+  raccourci redémarre une dictée) et la bulle affiche « Le micro n'a pas démarré : réessaie ». Rien ne reste ouvert :
+  micro, flux de transcription déjà branché et spectre se referment, même un démarrage qui rend la main juste après
+  l'abandon. Une erreur du micro (aucun micro, moteur refusé) s'affiche de même dans la bulle.
+- Micro qui disparaît en pleine dictée sans autre micro pour prendre le relais (ou moteur qui refuse de repartir) :
+  la dictée s'arrête là, comme si on l'avait terminée. Ce qui a déjà été dit est transcrit et collé, le raccourci est
+  aussitôt libre et la bulle affiche « Le micro ne répond plus : dictée arrêtée ». Jamais de bulle figée sur un
+  spectre immobile.
 - Le micro reste fermé au repos ; un appui simple ne le prépare pas.
 - La lecture du champ actif (lente dans les apps Electron) ne retarde pas l'enregistrement : l'audio est gardé
   jusqu'à ce que la transcription en direct soit branchée (le champ est attendu 150 ms au plus pour ses mots-clés).
+- Une app lente ou figée (chaque question d'accessibilité l'attend 0,5 s), une base tenue par un autre programme, un
+  disque lent ou un outil de mise à jour qui tarde n'occupent aucun des fils dont dépendent les délais de la dictée
+  (démarrage du micro, champ actif attendu 150 ms, relecture du champ après ⌘V) : ces délais restent tenus. Chaque
+  lecture d'une autre app a sa file : une app figée ne retarde pas la dictée suivante dans une autre app.
 - Chaque dictée ajoute une ligne à `~/Library/Application Support/Wispad/latence.log` (date, mode ; appui →
   bulle, micro, premier audio, flux ; fin → collé ; statut), sans aucun texte, 500 lignes au plus.
 
@@ -75,6 +101,10 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 - La recherche filtre dès que l'on cesse de taper (150 ms) ; l'effacer réaffiche tout aussitôt.
 - Le défilement reste fluide avec des milliers de dictées : seules les lignes visibles sont construites, et une
   ligne déjà vue n'est ni reformatée ni remesurée.
+- Supprimer une dictée, ou tout l'historique, l'efface aussi de la mémoire de Wispad, même ouvert depuis des jours ;
+  l'historique relu après chaque dictée n'y est jamais gardé en double.
+- Un texte enregistré (dictée, transcription, autre écoute, app, mot du dictionnaire, refus) se relit en entier, même
+  avec un caractère de contrôle : un caractère nul ne le coupe plus.
 
 ## Bulle
 
@@ -98,7 +128,16 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   ligne du curseur ; pour un champ invisible à l'accessibilité (Codex, apps Electron), les 22 % du bas de la fenêtre
   active (90 à 200 points). Les messages qui couvriraient cette zone se placent 12 points au-dessus, sinon en
   dessous ; la bulle de dictée garde sa place. Cette lecture suit l'envoi du texte (au plus 0,3 s, hors du fil
-  principal) : ni la bulle ni le collage ne l'attendent. Elle vaut pour cette app pendant 2 minutes.
+  principal) : ni la bulle ni le collage ne l'attendent. Elle vaut pour cette app pendant 2 minutes, tant que les
+  écrans ne changent pas (branché, débranché, autre résolution). Une zone illisible (coordonnées infinies, NaN ou
+  démesurées) est ignorée.
+- **Écrans qui changent** (écran externe branché ou débranché, autre résolution ou échelle, autre écran principal) :
+  la bulle affichée, dictée en cours comprise, reprend aussitôt sa place sur son écran, retrouvé même quand les
+  coordonnées de tous les écrans changent, ou sur celui du pointeur si le sien a disparu. Pendant une dictée, elle ne
+  change pas d'écran tant que le sien est branché. Toujours entière sur un écran existant, jamais sur un écran
+  disparu ; sans aucun écran, elle attend son retour. La place choisie, gardée en fractions de l'écran, ne change
+  pas : la bulle la retrouve quand son écran revient. Le Dock ou la barre des menus seuls ne la déplacent pas, elle
+  reste entière. Le spectre continue, à la cadence d'un autre écran, quand le sien est débranché.
 - Deux notes montantes signalent le premier audio réellement reçu, une seule fois ; d'autres sons marquent la fin
   et l'annulation. Tous se coupent dans Réglages.
 - Une app passée en plein écran après la première bulle reçoit une bulle neuve : macOS ne rattache une fenêtre de
@@ -173,23 +212,32 @@ réussie. « Plus tard » est proposé seulement pour le micro, la touche et l'e
   Avec « Réduire les animations », image fixe.
 - **Autorisations**, toutes sur un écran : micro, accessibilité (coller le texte), surveillance des entrées (touche
   fn). « Autoriser » déclenche la demande de macOS ; ensuite, ou après un refus, le bouton ouvre le bon panneau de
-  Réglages Système et le chemin exact est affiché. L'état est relu toutes les 0,5 s. Surveillance des entrées
-  accordée mais écoute du clavier impossible après 3 s : macOS attend une relance, « Relancer Wispad » rouvre l'app
-  à la même étape.
+  Réglages Système et le chemin exact est affiché. L'état est relu toutes les 0,5 s, hors du fil principal, et aussitôt
+  après « Autoriser » (voir « Autorisations retirées ou rendues »). Surveillance des entrées accordée mais écoute du
+  clavier impossible après 3 s : macOS attend une relance, « Relancer Wispad » rouvre l'app à la même étape (si macOS
+  refuse de la fermer, elle s'arrête d'elle-même après le rangement habituel).
 - **Micro** : choix du micro (celui du système par défaut ; le micro choisi sert ensuite aux dictées tant qu'il est
   branché, sinon celui du système ; Réglages › Général › Micro) et vumètre réel. ✓ quand une vraie voix est
   entendue : au moins 0,6 s au-dessus de −48 dBFS et 10 dB au-dessus du bruit de la pièce (un clic, un souffle ou
-  un ventilateur ne suffisent pas). Sans voix après 12 s, l'écran dit quoi vérifier. Seul le niveau est lu :
-  l'audio n'est ni enregistré, ni gardé, ni envoyé.
+  un ventilateur ne suffisent pas). Sans voix après 12 s, l'écran dit quoi vérifier, avec « Réessayer » : aussi
+  quand le micro ne livre aucun son, ou que son ouverture ne rend pas la main (« Le micro n'a pas pu s'ouvrir ») ;
+  quitter l'étape ne l'attend pas. Seul le niveau est lu : l'audio n'est ni enregistré, ni gardé, ni envoyé.
+  Accès au micro retiré dans Réglages Système pendant l'écran : le test rend le micro ; rendu, le test repart seul.
 - **Fournisseur** : xAI ou OpenAI, clé collée puis vérifiée chez le fournisseur avant d'être enregistrée (même
-  vérification que Fournisseurs) ; une clé déjà enregistrée est revérifiée sans être réécrite. ✓ seulement avec une
+  vérification que Fournisseurs) ; une clé déjà enregistrée est revérifiée sans être réécrite, et de nouveau avec
+  « Réessayer » ou en revenant sur l'étape si sa vérification n'a pas abouti (réseau, réponse inattendue), sans la
+  recoller. Clé refusée (HTTP 400 ou 401 ; xAI répond 400 à une clé fausse) : à recopier ; reconnue mais refusée
+  (HTTP 403) : crédit épuisé, plafond de dépenses atteint, clé désactivée ou limitée, à voir dans la console du
+  fournisseur. « Vérification… » ne s'affiche que pendant une vraie vérification. ✓ seulement avec une
   clé acceptée. Lien vers la page de création de clé de chaque fournisseur. Correction facultative (DeepSeek, relais
   OpenAI) avec la même vérification, et les réglages « Comprendre le sujet grâce à la fenêtre active » et
   « Apprendre de mes corrections ».
 - **Touche** : maintien et double appui expliqués, avec les touches du raccourci dessinées et le schéma du clavier
   de MacBook où elles sont en couleur (elles passent au vert dès qu'un appui est reçu) ; pendant cette étape, chaque appui est seulement constaté
   (« Touche détectée », gestes reconnus allumés) et aucune dictée ne démarre. Rien reçu en 10 s : rappel de la
-  surveillance des entrées, et du réglage macOS « Touche fn/🌐 : Ne rien faire » s'il lance autre chose.
+  surveillance des entrées, avec « Ouvrir Réglages Système » et « Relancer Wispad » (reprise à cette étape), et du
+  réglage macOS « Touche fn/🌐 : Ne rien faire » s'il lance autre chose ; clavier sans touche fn, ou raccourci
+  personnalisé que macOS ou une autre app garde : « Plus tard », puis Réglages › Raccourci.
 - **Essai** : vraie dictée avec la touche dans un champ de l'écran, phrase suggérée. Le test de la touche est
   toujours rendu en arrivant ici (un test resté actif hors de l'étape « Touche » est abandonné) : le raccourci
   dicte pour de vrai. Dictée faite dans la fenêtre de Wispad : son texte final s'écrit directement dans le champ
@@ -198,11 +246,15 @@ réussie. « Plus tard » est proposé seulement pour le micro, la touche et l'e
   n'est infinie : geste reçu sans écoute ouverte en 4 s, ou micro qui s'ouvre / dictée qui se termine sans aboutir
   en 45 s, et l'essai passe en échec avec sa cause. En cas d'échec, la cause : micro, clé, réseau, fournisseur,
   rien entendu, collage, annulation, dictée non démarrée ou délai dépassé, avec « Réessayer » et l'étape à revoir.
-- **Fin** : rappel des deux gestes, lien vers Réglages, « Terminer ».
+- **Fin** : rappel des deux gestes, lien vers Réglages, « Terminer ». Une fois la fin atteinte, la configuration est
+  faite : Wispad quitté (ou le Mac redémarré) avant « Terminer », elle ne revient pas au lancement suivant.
 
 Une installation existante (réglages sans ce champ) ne refait pas la configuration après une mise à jour.
 Réglages › Général › « Revoir la configuration » la rejoue sans rien effacer ; on peut la quitter à tout moment.
-Fenêtre fermée pendant la configuration : le test du micro s'arrête et la touche dicte de nouveau normalement.
+Fenêtre fermée pendant la configuration : le test du micro s'arrête, la touche dicte de nouveau normalement et
+l'état n'est plus relu jusqu'à la réouverture. Rouverte, une étape déjà réussie le reste (voix entendue, tant que
+l'accès au micro est accordé ; appuis de la touche ; essai) ; une dictée arrivée dans le champ d'essai pendant la
+fermeture compte.
 
 ## Transcription
 
@@ -226,10 +278,13 @@ retenue part à la correction. Une correction déjà préparée sur ce même tex
 correction du flux continue à se préparer en parallèle du fichier. La vérification audio n'est pas sautée,
 même pour une dictée de quelques mots.
 
-**Sans connexion** : rien n'est transcrit sur le Mac. Si la connexion manque ou se perd pendant la dictée (flux,
-fichier, puis le relais de voix s'il a une clé, en échec), l'audio reste dans l'historique pour **Retranscrire** une
-fois la connexion revenue. La correction par un fournisseur est sautée hors connexion (seules les commandes de mise
-en page s'appliquent).
+**Sans connexion** : rien n'est transcrit sur le Mac. Si la connexion manque ou se perd pendant la dictée (flux et
+fichier en échec, puis le relais de voix s'il a une clé et que la connexion est revenue), l'audio reste dans
+l'historique pour **Retranscrire** une fois la connexion revenue. Hors connexion, le relais n'est pas tenté : il
+échouerait de même et compterait une bascule ratée. Un échec hors connexion ne dit rien du fournisseur : il n'est pas
+compté pour le mettre de côté, et la dictée suivante, connexion revenue, repart chez lui sans bascule. La correction
+par un fournisseur est sautée hors connexion, celle préparée pendant l'écoute ou à l'arrêt comprise (seules les
+commandes de mise en page s'appliquent).
 
 Une installation qui transcrivait « Sur ce Mac » (fonction retirée) repasse sur le cloud au lancement ; les modèles
 téléchargés par Wispad et les réglages devenus inutiles sont effacés.
@@ -292,11 +347,12 @@ et fichier, l'usage de la correction préparée pendant l'écoute et le report d
   nouveau mot), le texte entendu part déjà à la correction. Si l'on arrête sans rien ajouter (même texte à la
   ponctuation, la casse ou l'écriture des nombres près), cette correction sert telle quelle et le texte se colle sans
   attendre un nouvel appel. Si la parole reprend, elle est comptée (coût réel)
-  et la suivante la remplace ; quatre au plus par dictée. Jamais si la correction est coupée.
+  et la suivante la remplace ; quatre au plus par dictée. Jamais si la correction est coupée, ni hors connexion.
 - **Correction lancée à l'arrêt** : dès l'arrêt, ce que le flux a déjà affiché part à la correction, sans attendre
   son texte final (0,3 à 0,5 s sur les dictées courtes, mesuré le 13 octobre 2026). Si le texte final dit la même
   chose, cette correction sert ; sinon elle est comptée et une correction du texte final la remplace. Rien de plus
-  n'est lancé si une correction préparée à une pause porte déjà sur ce texte.
+  n'est lancé si une correction préparée à une pause porte déjà sur ce texte, ni hors connexion : la fin de dictée
+  corrige alors si la connexion est revenue.
 - Expressions mal entendues malgré les mots-clés, réécrites avant et après la correction : « services functions »
   → « serverless functions », « day inference » → « AI inference ».
 
@@ -309,6 +365,10 @@ pour une nouvelle installation.
   en 300 ms au plus) et dernières dictées livrées dans la même app (cinq, trente minutes, 1 500 caractères).
 - Texte autour du curseur et sélection, pour l'orthographe.
 - Rien de ce contexte n'est enregistré ni journalisé ; il n'ajoute jamais un mot qui n'a pas été dit.
+- Jamais Wispad lui-même : quand sa fenêtre est au premier plan (dictionnaire, recherche…), même si elle y passe
+  pendant la lecture d'une autre app, ni le contexte, ni le champ, ni la zone de saisie, ni le suivi des corrections
+  ne sont lus par l'accessibilité. Ces lectures se feraient dans son propre processus, hors du fil principal, et
+  arrêteraient l'app. Le texte s'y colle sans confirmation, comme dans un champ illisible.
 
 ## Garde-fou de fidélité
 
@@ -324,6 +384,9 @@ Après la correction, `FidelityGuard` rejette ou répare :
 - sur une dictée de trois mots au plus, tout mot qui ne ressemble au mot entendu ni à l'écrit ni à l'oreille, ou qui
   s'ajoute (hors « ne » rétabli) : la transcription est collée (« Était sérieux » ne devient pas « Sois sérieux » ;
   « cloud code » → « Claude Code » et « un sot d'eau » → « Un seau d'eau. » restent).
+
+Le texte rendu n'est jamais blanc quand la transcription ne l'est pas : une correction blanche, ou une transcription
+sans mot (« … ») dont la correction n'était qu'une référence inventée, laisse la transcription.
 
 À l'oreille : prononciation française approchée (`PhoneticKey`), à une différence près pour cinq sons ; une lettre
 isolée se lit par son nom (« C » comme « c'est »). Des lettres épelées regroupées (« aime E elle » → « M-E-L ») ne
@@ -376,7 +439,9 @@ Repasser sur un texte déjà mis en forme ne change plus rien. Sans réponse ou 
   MM/JJ/AAAA → « 10/24/2026 ») ; au mois en lettres (« 3 novembre », « 1er novembre 2026 », « du 3 au 5 novembre »,
   « October 24, 2026 », « the 24th of October ») ; sans année après « le », « du », « au » ou un jour de la semaine
   (« le 3/11 », « le 3 du 11 »). En toutes lettres, l'inverse : « le 24/10/2026 » → « le 24 octobre 2026 »,
-  « le 1/11 » → « le 1er novembre ».
+  « le 1/11 » → « le 1er novembre ». En anglais, deux lectures qui se chevauchent : la première du texte l'emporte
+  (« on 3 May 8 people came » → « on 03/05 8 people came ») ; « the » n'appartient à la date que devant un ordinal ou
+  « of » (« the 24th of October » → « 24/10 », mais « the 31 May deadline » → « the 31/05 deadline »).
 - Heures : suivies de AM/PM, « du matin », « de l'après-midi » ou « du soir », qui disparaissent (« 2 h de
   l'après-midi » → « 14 h ») ; précédées de « à », « vers », « dès », « jusqu'à », « à partir de », « il est », d'un
   jour de la semaine ou de « demain » (anglais : at, around, by, until, before, after, from, between) ; ou reliées à
@@ -385,7 +450,8 @@ Repasser sur un texte déjà mis en forme ne change plus rien. Sans réponse ou 
 - Jamais touchés : un jour, un mois ou une année seuls ; une durée ou une distance (« 2 heures de route », « 1h30 de
   trajet », « à 2 h de Paris », « de 2 à 3 heures », « jusqu'à 3 heures » ; « jusqu'à 18 h » est une heure) ; une
   note ou une fraction (« 8/10 », « 3/4 ») ; une version (« 1.12.20 »), une adresse IP, un numéro de téléphone, un
-  score, « 16:9 », « Jean 3:16 » ; une date impossible ; une adresse web, un e-mail, du code.
+  score, « 16:9 », « Jean 3:16 » ; une date impossible ; deux jours après un mois anglais (« May 14/15 »,
+  « May 4-5 ») ; une adresse web, un e-mail, du code.
 
 ### Nombres, montants et unités
 
@@ -395,7 +461,8 @@ Réglages › Mise en forme : **Montants et unités** (symboles, par défaut, ou
 
 - Montant, pourcentage ou mesure suivi de son unité, dite ou écrite : « 25 euros », « 25€ » → « 25 € » ; « 3,5 € »,
   « 3.50 € » → « 3,50 € » ; « 15% », « 15 pour cent » → « 15 % » ; « 5 kilomètres » → « 5 km » ; « 12 kilomètres par
-  heure » → « 12 km/h » ; « 120 mètres carrés » → « 120 m² » ; « 20 degrés Celsius » → « 20 °C » ;
+  heure », « 1,5 kilomètre par heure » → « 12 km/h », « 1,5 km/h » ; « 120 mètres carrés » → « 120 m² » ;
+  « 20 degrés Celsius » → « 20 °C » ; « 15 kilowatt-hours » (anglais) → « 15 kWh » ;
   « 16 gigaoctets » → « 16 Go », mais « 16 gigas », dit ainsi, reste tel quel. En français, espace insécable
   avant le symbole et espace fine insécable entre les milliers (« 1 500 € ») ; en anglais, « $25 », « €3.50 », « 15% », « $1,500 ». Un prix garde ses centimes sur deux chiffres.
 - En toutes lettres : « 25 euros », « 1 euro », « 1,50 euro », « 5 kilomètres » (pluriel à partir de 2 en
@@ -406,7 +473,9 @@ Réglages › Mise en forme : **Montants et unités** (symboles, par défaut, ou
   des lettres.
 - Jamais touchés : un nombre sans unité reconnue (années, codes postaux, références de matériel, numéros de version,
   « 12 500 personnes »), les durées (« 5 min », « 300 ms », « 2 heures de route »), une élision après un nombre
-  (« les 3 l'ont vu »), « 3,50 € » écrit à la française dans une dictée anglaise, les codes EUR, USD et GBP.
+  (« les 3 l'ont vu »), « 3,50 € » écrit à la française dans une dictée anglaise, les codes EUR, USD et GBP. Un
+  symbole qui suit déjà un montant ne passe pas au nombre suivant (« payé 20 € 3 fois », « 3 € 50 ») et un nombre
+  précédé de sa devise n'est jamais une mesure (« $5m », cinq millions).
 - « Et demi » reste en lettres après un nom, accordé : la transcription vocale écrit parfois « 2 mois et 1/2 », qui
   devient « 2 mois et demi » ; « 1 heure et 1/2 » → « 1 heure et demie ». Une fraction seule (« 1/2 litre ») ne change
   pas et n'est jamais lue comme une quantité.
@@ -499,6 +568,8 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
   échecs, la dictée démarre directement chez l'autre fournisseur.
 - Correction : après deux échecs, DeepSeek passe après le relais. Un service mis de côté est contrôlé chaque
   minute et repris dès qu'il répond, au plus tard après 30 minutes.
+- Hors connexion, aucun échec n'est compté, aucun service mis de côté n'est contrôlé et aucune bascule n'est tentée :
+  un service n'est mis de côté que pour ses propres échecs, et un relais ne travaille que s'il peut répondre.
 - Le spectre passe au vert quand un relais travaille ; la première bascule d'une panne est annoncée.
 
 ## Reprise après erreur
@@ -508,9 +579,10 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
   une explication de 12 points et des boutons de 30 points sur une ligne séparée, avec **Copier** en évidence et
   **Coller** : « Pas de champ où écrire : le texte est prêt » (focus sur une liste, un bouton, un menu, ou le bureau
   et les fenêtres du Finder, avant l'envoi), « Le texte n'est pas arrivé dans le champ » (champ lisible resté
-  identique 1 s après ⌘V), « Collage impossible : le texte est prêt » (accessibilité refusée, app cible fermée ou
-  qui a perdu le premier plan, presse-papiers non modifiable, ⌘V non envoyé), « Champ sécurisé : le texte est
-  prêt ». Le texte est déjà copié, sauf pour un champ sécurisé. 12 s, avec une barre qui se vide (en pause au
+  identique 1 s après ⌘V), « Accessibilité non autorisée : le texte est prêt » (accessibilité retirée dans Réglages
+  Système, ou jamais donnée : ni ⌘V ni lecture du champ), « Collage impossible : le texte est prêt » (app cible
+  fermée ou qui a perdu le premier plan, presse-papiers non modifiable, ⌘V non envoyé), « Champ sécurisé : le texte
+  est prêt ». Le texte est déjà copié, sauf pour un champ sécurisé. 12 s, avec une barre qui se vide (en pause au
   survol) ; ✕ au survol ou Échap la ferment. Elle ne prend jamais le focus : **Copier** remet le texte au
   presse-papiers et confirme « Copié » (1,5 s), **Coller** le colle dans le champ de l'app active (même collage que
   « Coller la dernière dictée »). Le collage garde tous les formats du presse-papiers précédent et refuse les champs
@@ -519,6 +591,47 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
   prouve un échec. Le statut reste « Collage envoyé », sans carte ni copie : la bulle ne revient pas à chaque dictée.
   Si le texte manque, « Coller la dernière dictée » et l'historique le gardent. Aucun apprentissage sur une
   insertion non confirmée ; « Coller la dernière dictée » dit « Collé » dans les deux cas.
+
+## Autorisations retirées ou rendues
+
+Micro, accessibilité et surveillance des entrées peuvent être retirés dans Réglages Système puis rendus, Wispad
+ouvert, au repos comme en pleine dictée : rien ne plante, rien ne reste bloqué, et Wispad n'a pas à être relancé.
+Wispad relit ces autorisations sans jamais les redemander : une demande de macOS ne paraît qu'après un clic.
+
+- **Surveillance des entrées ou accessibilité** : l'écoute du clavier (raccourci, Échap, « Coller la dernière
+  dictée ») voit passer et peut avaler chaque frappe de toutes les apps. Elle n'est jamais réarmée sans les
+  autorisations qu'elle avait à son installation : réarmée sans elles, elle pourrait retenir le clavier de tout le
+  Mac. Accessibilité retirée : vu à la vérification suivante (3 s), même si macOS laisse l'écoute active.
+  Surveillance des entrées retirée : vu dès que macOS coupe ou invalide l'écoute ; tant qu'elle reste active,
+  l'accessibilité lui suffit, et cette question au démon des autorisations de macOS (une dizaine de millisecondes)
+  n'est jamais posée pendant que chaque frappe du Mac attend l'écoute. L'écoute est alors retirée, et remplacée par
+  une écoute neuve si macOS en accepte encore une ; sinon le raccourci se tait. Une dictée en cours s'arrête alors
+  comme si on l'avait terminée (ce qui a été dit est transcrit et collé ; un micro encore en démarrage se referme
+  sans rien enregistrer) et la bulle affiche « Surveillance des entrées retirée : dictée arrêtée » ou
+  « Accessibilité retirée : dictée arrêtée ». Un geste compté juste avant le retrait, dont la dictée n'a pas encore
+  démarré (départ en file, clé encore en lecture), est oublié avec l'écoute : sa dictée ne démarre pas, puisque ni le
+  raccourci ni Échap ne pourraient l'arrêter. Autorisation rendue, l'écoute revient à la vérification suivante : le
+  premier appui compte, et Échap n'est jamais avalé à tort. Une autorisation donnée après l'installation de l'écoute
+  n'est pas exigée ensuite.
+- **Micro** : macOS peut laisser tourner le micro d'une dictée en cours en ne lui livrant plus que du silence.
+  Pendant l'écoute seulement, l'accès est relu chaque seconde hors du fil principal (s'il était accordé au départ) :
+  retiré, la dictée s'arrête comme si on l'avait terminée et la bulle affiche « Accès au micro retiré : dictée
+  arrêtée ». Au repos, comme avant, la dictée suivante ne s'ouvre pas et Réglages s'affiche (« Le microphone n'est
+  pas autorisé. »).
+- **Accessibilité au moment du collage** : ni ⌘V ni lecture du champ ; le texte est copié et la bulle affiche
+  « Accessibilité non autorisée : le texte est prêt » (voir « Reprise après erreur »). Même chose pour **Coller** et
+  « Coller la dernière dictée ».
+- **Affichage** : Réglages › Autorisations et l'alerte de la barre latérale sont relus à l'ouverture de la fenêtre ou
+  de Réglages et à chaque retour dans Wispad (par exemple depuis Réglages Système) ; le premier lancement guidé les
+  relit toutes les 0,5 s. Ces lectures se font hors du fil principal : le micro et la surveillance des entrées sont
+  deux questions au démon des autorisations de macOS, une vingtaine de millisecondes (mesuré le 14 octobre 2026),
+  assez pour faire sauter des images aux animations (bulle de l'accueil, vumètre, écran qui s'ouvre). Jamais deux à
+  la fois : demandées pendant une lecture, elles sont faites ensemble par une seule relecture juste après (le premier
+  lancement, lui, relit au passage suivant du sondage), et une réponse arrivée après une lecture plus récente ne
+  l'efface jamais, valeur par valeur (« Ouvrir à la connexion » compris). Juste après une action (Autoriser, étape
+  suivante du premier lancement, fenêtre rouverte, clic sur une rangée de Réglages › Autorisations, export du
+  diagnostic), la relecture reste immédiate : l'écran ou le rapport en montre l'effet aussitôt. Fenêtre du premier
+  lancement fermée pendant une lecture, sa réponse ne change rien.
 - Insertion par ⌘V comme au clavier, dans toutes les apps : ⌘ enfoncée (changement de modificateur), V, puis ⌘
   relâchée, envoyés au système une fois l'app cible vérifiée au premier plan et les modificateurs relâchés. Le
   13 octobre 2026, l'écriture par `AXSelectedText` dans Chrome et un ⌘V adressé au seul processus cible laissaient
@@ -543,6 +656,26 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
   (Chrome, Brave, Edge, Arc, Vivaldi, Opera) l'ignorent et reçoivent aussi AXEnhancedUserInterface, comme pour un
   lecteur d'écran : le champ d'une page devient lisible (confirmation du collage, contexte, apprentissage).
 - Les audios expirés sont purgés chaque minute et au lancement.
+
+## Données inattendues
+
+Ce qui vient de l'extérieur (fournisseurs, base locale, app où l'on dicte, coffre de secrets) n'arrête jamais
+Wispad ; les cas ordinaires gardent exactement leur résultat.
+
+- Nombre dit démesuré (« cent » répété, dit ou mal transcrit) : lu par morceaux qui tiennent dans un entier, et la
+  dictée se termine normalement.
+- Compteurs de jetons démesurés annoncés par un fournisseur : comptés et affichés plafonnés dans Consommation.
+- Durée ou nombre de mots abîmés dans la base locale : affichés bornés ; une durée illisible compte pour 0.
+- Base locale tenue en écriture par un autre programme (autre Wispad ouvert, outil qui l'inspecte) : Wispad démarre
+  quand même et affiche l'historique ; une base à jour s'ouvre sans rien y écrire (seul le premier lancement d'une
+  version qui la fait évoluer doit y écrire). Une écriture (dictée, mot, appel, ménage des audios expirés, fait d'un
+  seul bloc) attend jusqu'à 2 s que la base se libère ; deux Wispad ouverts écrivent ainsi chacun leur tour, sans
+  rien perdre.
+- Sélection annoncée par l'app où l'on dicte : illisible, l'extrait autour du curseur part du début du champ, comme
+  sans sélection ; démesurée, il s'arrête à la fin du champ.
+- Commande du coffre de secrets qui se termine sans lire la clé : « Impossible d'enregistrer la clé dans ton coffre
+  de secrets. », et Wispad continue.
+- Identifiant d'équipe xAI qui ne forme pas une adresse : « Facturation » ouvre la console xAI.
 
 ## Signaler une erreur
 
@@ -581,8 +714,18 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
   en mémoire, rien d'écrit sur le Mac. Une clé que le coffre ne rend pas (connexion ratée) est redemandée deux fois
   (0,5 s puis 1,5 s) ; une clé absente ne l'est pas. Noms : `WISPAD_XAI_API_KEY`, `WISPAD_OPENAI_API_KEY`,
   `WISPAD_DEEPSEEK_API_KEY`, `WISPAD_XAI_MANAGEMENT_KEY`, `TYPESAFE_API_KEY`.
+- Une dictée sans clé en mémoire relit les clés, ou rejoint la relecture déjà en cours (lancement, appui précédent),
+  10 s au plus : un coffre qui ne répond plus est dit injoignable, sans ouvrir le micro, et le raccourci reste libre.
+  La relecture continue seule ; l'appui suivant la rejoint au lieu d'en lancer une autre.
 - Chaque clé de voix ou de correction (xAI, OpenAI, DeepSeek) est vérifiée chez le fournisseur avant d'être
-  enregistrée ; les clés de gestion xAI et TypeSafe sont enregistrées sans vérification.
+  enregistrée ; les clés de gestion xAI et TypeSafe sont enregistrées sans vérification. Une réponse 400, 401 ou 403
+  est un refus (« Clé refusée ») ; une autre réponse ou l'absence de réseau laisse la clé non vérifiée. Dans les deux
+  cas, rien n'est enregistré.
+- Fichier de clés : une entrée d'un autre type (ajoutée par une version plus récente, ou abîmée) ne cache aucune autre
+  clé et reste telle quelle quand on en enregistre une. Un fichier abîmé (tronqué, invalide) n'est jamais réécrit :
+  les clés de sa partie intacte servent, les autres sont dites illisibles.
+- Clés enregistrées en même temps (deux vérifications qui finissent ensemble) : toutes sont gardées dans le fichier,
+  l'une après l'autre ; aucune ne manque au lancement suivant.
 
 ## Mises à jour et réinstallation
 
@@ -601,11 +744,16 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
 - Un réglage inconnu (retiré, ou venu d'une version plus récente) est ignoré mais gardé à l'enregistrement : revenir à
   une version précédente retrouve ses choix. Seuls les réglages retirés des raccourcis vocaux, de la transcription
   sur le Mac et du serveur de correction compatible OpenAI sont effacés au lancement. Lire les réglages ne les réécrit jamais.
-- Bloc de réglages illisible en entier : une copie est gardée de côté, jamais effacée, et l'app repart sans refaire
-  le premier lancement guidé.
+- Retour en arrière : une valeur qu'une version ne sait pas lire (fournisseur, modèle, mode ou champ ajouté par une
+  version plus récente) prend chez elle la valeur par défaut de ce seul réglage, mais reste enregistrée telle quelle
+  tant qu'on ne change pas ce réglage ; la version plus récente la retrouve ensuite. Un réglage changé est écrit, et
+  un réglage composé (format des dates, place de la bulle, ton selon l'app) garde ses champs inconnus.
+- Bloc de réglages abîmé (tronqué, octet invalide, ou illisible en entier) : une copie est gardée de côté, jamais
+  effacée ; chaque réglage encore entier garde sa valeur, seuls le réglage abîmé et ceux d'après une coupure prennent
+  leur valeur par défaut, et l'app repart sans refaire le premier lancement guidé.
 - Les clés API d'un fournisseur retiré restent dans le fichier de clés.
 - Reprise depuis OpenFlow (une seule fois) : réglages, base, audios, journaux et fichier de clés, sans rien écraser
-  de Wispad ; ce qui n'est pas repris reste en place.
+  de Wispad, pas même un bloc de réglages abîmé ; ce qui n'est pas repris reste en place.
 
 ## Version et mises à jour
 
@@ -621,8 +769,10 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
   par la signature de l'app, et un contributeur qui signe son build avec son propre certificat Developer ID reste un
   build de développement.
 - **Release** : la version seule (« Wispad 0.1.1 »), puis « À jour », ou « Wispad 0.1.2 est disponible » (un clic
-  ouvre la fenêtre de mise à jour) et le bouton « Mettre à jour ». Le tag de la dernière release (« v0.1.2 ») et la
-  version de l'app (`CFBundleShortVersionString`) se comparent en semver : X.Y.Z, une pré-version avant la version
+  ouvre la fenêtre de mise à jour) et le bouton « Mettre à jour », qui ouvre aussi cette fenêtre : l'installation
+  ne démarre qu'après lecture des notes, avec son bouton « Mettre à jour ». Le tag de la dernière release
+  (« v0.1.2 ») et la version de l'app (`CFBundleShortVersionString`) se comparent en semver : X.Y.Z, une pré-version
+  avant la version
   finale. Une app plus récente que la dernière release (release retirée) reste « À jour ».
 - **Build de développement** : la version et le commit court gravé à la compilation (« Wispad 0.1.0 · abc1234 »),
   puis « À jour » ou « N commits de retard » (« 1 commit de retard ») sur la branche `main` du dépôt public, comme
@@ -651,33 +801,47 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
   et `code` dans la ligne ; texte sélectionnable), « Voir sur GitHub », « Plus tard » et « Mettre à jour ». Pendant
   l'installation : l'étape et sa progression, et « Annuler » tant que rien n'est remplacé. En cas d'échec : la
   raison, « Ouvrir la page de la release » et « Réessayer ».
-- **Installation en un clic** (« Mettre à jour », dans la barre latérale ou la fenêtre de mise à jour, qui s'ouvre
-  pour suivre l'avancement ; la barre latérale le résume) :
+- **Installation en un clic** (« Mettre à jour » de la fenêtre de mise à jour, qui reste ouverte pour suivre
+  l'avancement ; la barre latérale le résume) :
   1. téléchargement de `Wispad.dmg` (asset de la release, seulement depuis
      `https://github.com/samirmedani/wispad/releases/download/`), avec sa progression ; taille et empreinte SHA-256
      comparées à celles qu'annonce GitHub ;
-  2. montage en lecture seule, invisible dans le Finder (`hdiutil attach -nobrowse`) ;
+  2. montage en lecture seule, invisible dans le Finder (`hdiutil attach -nobrowse`, sinon `diskutil image attach`,
+     son remplaçant, s'il échoue ou disparaît) ;
   3. vérification de `Wispad.app` dans le disque : version plus récente que celle qui tourne (jamais de retour en
      arrière) ; signature intacte (toutes architectures, code imbriqué, validation stricte), Developer ID d'Apple,
      même identifiant (`com.yatofix.wispad`) et même équipe (Team ID) que l'app qui tourne ;
   4. copie cachée à côté de l'app (`.Wispad.nouveau.app`, même dossier), vérifiée à son tour ; démontage du disque ;
   5. si une dictée est en cours, attente de sa fin (« Après la dictée… ») ; puis remplacement atomique de l'app par
-     la copie (échange des deux noms, APFS ; sinon deux renommages, l'ancienne app remise en place si le second
-     échoue) ; l'ancienne version est effacée ;
-  6. relance : une petite aide attend la fin de cette instance (60 s au plus), puis ouvre la nouvelle version, qui
-     rouvre la fenêtre si elle était affichée ; la bulle confirme « Wispad 0.1.2 est installé ».
+     la copie (échange des deux noms, APFS : un échange raté, disque plein ou droits retirés, laisse l'app à sa
+     place sans la déplacer ; sur un volume qui ne sait pas échanger, HFS+, exFAT ou partage réseau, deux
+     renommages, l'ancienne app remise en place si le second échoue) ; l'ancienne version est effacée ;
+  6. relance : la fenêtre de mise à jour se ferme (affichée en feuille, elle fait refuser, sans rien dire, la
+     fermeture de l'app par macOS), puis Wispad quitte ; une petite aide attend la fin de cette instance (60 s au
+     plus), puis ouvre la nouvelle version, qui rouvre la fenêtre si elle était affichée ; la bulle confirme
+     « Wispad 0.1.2 est installé ». Si macOS refuse quand même de fermer Wispad (trois demandes, par exemple une
+     autre feuille ouverte), Wispad s'arrête de force après avoir rangé comme à une fermeture normale (son du Mac
+     rétabli, réglages écrits) : une fois ses fichiers remplacés, l'ancienne instance n'a plus accès au micro ni à
+     l'accessibilité et ne peut plus dicter. L'aide ouvre alors la nouvelle version.
 
   Réglages, clés API, historique, audios et dictionnaire vivent hors de l'app (préférences de `com.yatofix.wispad`,
-  `Application Support/Wispad`, coffre de secrets) : la mise à jour n'y touche pas. Une copie cachée laissée par une
-  installation interrompue (Wispad quitté avant le remplacement) est effacée au lancement suivant.
+  `Application Support/Wispad`, coffre de secrets) : la mise à jour n'y touche pas. Les copies cachées laissées par
+  une installation interrompue (la nouvelle version, Wispad quitté avant le remplacement ; l'ancienne,
+  `.Wispad.ancien.app`, entre les deux renommages) sont effacées au lancement suivant.
+
+  Une seule installation à la fois, même avec deux Wispad ouverts (`open -n`, deux sessions) : un verrou dans le
+  dossier temporaire de l'utilisateur, que macOS rend si Wispad est tué. Le second s'arrête avant de rien
+  télécharger ni toucher (« Un autre Wispad ouvert installe déjà une mise à jour : réessaie quand il aura fini. »),
+  et son nettoyage du lancement laisse en place la copie cachée que le premier installe.
 - **Page de la release à la place** : app dans un dossier non modifiable (par exemple /Applications pour un compte
   sans droits d'administration), lancée depuis le disque d'installation ou déplacée par macOS, app sans signature
   Developer ID, ou release sans `Wispad.dmg` : « Mettre à jour » ouvre la page de la release dans le navigateur, et la
   fenêtre de mise à jour dit pourquoi.
-- **Échec** (téléchargement, fichier incomplet ou modifié, disque illisible, signature refusée, version pas plus
-  récente, copie, remplacement, relance) : message clair dans la fenêtre de mise à jour, « Échec de la mise à jour »
-  dans la barre latérale (un clic rouvre la fenêtre), avec le lien vers la release. L'app en place n'est jamais
-  laissée à moitié remplacée ; le journal (`mise-a-jour`) ne garde que le nom de l'étape, sans chemin.
+- **Échec** (autre installation en cours, téléchargement, fichier incomplet ou modifié, disque illisible, signature
+  refusée, version pas plus récente, copie, remplacement, relance) : message clair dans la fenêtre de mise à jour,
+  « Échec de la mise à jour » dans la barre latérale (un clic rouvre la fenêtre), avec le lien vers la release. L'app
+  en place n'est jamais laissée à moitié remplacée ; le journal (`mise-a-jour`) ne garde que le nom de l'étape, sans
+  chemin.
 - **Publier une release** (mainteneur) : `scripts/release.sh`, voir son en-tête (variables d'environnement, étapes).
 
 ## Aide et retours

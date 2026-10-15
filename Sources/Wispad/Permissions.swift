@@ -10,8 +10,17 @@ enum PermissionCenter {
         AVCaptureDevice.authorizationStatus(for: .audio)
     }
 
-    static func requestMicrophone() async -> Bool {
-        switch microphoneStatus() {
+    /// Accès au micro accordé, lu sans rien demander.
+    static func microphoneAuthorized() -> Bool {
+        microphoneStatus() == .authorized
+    }
+
+    /// Avant chaque dictée. L'accès est lu sur une file à lui (une question au démon des autorisations de macOS, une
+    /// dizaine de millisecondes) : jamais sur un fil de Swift concurrency, et sans attendre une autre lecture
+    /// d'autorisation (`PermissionReads`). `status` : la lecture de l'accès, remplacée dans les tests.
+    static func requestMicrophone(status: @escaping @Sendable () -> AVAuthorizationStatus = { PermissionCenter.microphoneStatus() }) async -> Bool {
+        let current = await BlockingQueue.run(label: "wispad.autorisations.micro", status)
+        switch current {
         case .authorized:
             return true
         case .denied, .restricted:
@@ -64,7 +73,7 @@ enum PermissionCenter {
 
     /// Quitte et rouvre Wispad (autorisation que macOS n'applique qu'au lancement suivant). Le chemin de l'app
     /// est passé en argument, jamais dans le texte de la commande.
-    static func relaunch() {
+    @MainActor static func relaunch() {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/sh")
         // Attend que cette instance soit vraiment fermée, sinon `open` ne ferait que la réactiver.
@@ -75,7 +84,67 @@ enum PermissionCenter {
         } catch {
             return
         }
-        NSApp.terminate(nil)
+        // Comme après une mise à jour : une feuille ou une fenêtre modale fait refuser la fermeture par macOS, et
+        // l'aide attendrait sans fin. Wispad s'arrête alors de lui-même, après le rangement habituel.
+        Task { @MainActor in
+            await UpdateTools.quitForRelaunch()
+            UpdateTools.forceQuit()
+        }
+    }
+}
+
+/// Autorisations et ouverture à la connexion, lues ensemble sans rien demander (depuis n'importe quel fil).
+struct PermissionReading: Sendable {
+    var microphone: AVAuthorizationStatus
+    var accessibility: Bool
+    var inputMonitoring: Bool
+    var launchAtLogin: Bool
+
+    static func read() -> PermissionReading {
+        PermissionReading(microphone: PermissionCenter.microphoneStatus(),
+                          accessibility: PermissionCenter.accessibilityTrusted(prompt: false),
+                          inputMonitoring: PermissionCenter.inputMonitoringTrusted(),
+                          launchAtLogin: LoginItemController.isEnabled)
+    }
+}
+
+/// Lectures d'autorisation hors du fil principal. Chacune bloque le temps d'une question au démon des autorisations
+/// de macOS (une dizaine de millisecondes, bien plus sur une machine lente) : elles passent sur une file GCD, jamais
+/// sur un fil de Swift concurrency, dont quelques-uns servent toute l'app (minuteries de la dictée comprises).
+enum PermissionReads {
+    private static let queue = BlockingQueue(label: "wispad.autorisations")
+
+    static func offMain<Value: Sendable>(_ read: @escaping @Sendable () -> Value) async -> Value {
+        await queue.run(read)
+    }
+}
+
+/// Ordre des lectures d'autorisation affichées (Réglages, barre latérale, premier lancement guidé) : chacune prend un
+/// numéro à son départ, et chaque valeur garde celui de la lecture qui l'a donnée. Une lecture partie plus tôt ne la
+/// remplace jamais, même si sa réponse arrive après : une lecture hors du fil principal qui tarde n'efface pas la
+/// relecture faite entre-temps après un clic.
+struct PermissionReadOrder {
+    enum Value: Hashable {
+        case microphone
+        case accessibility
+        case inputMonitoring
+        case launchAtLogin
+    }
+
+    private var started = 0
+    private var givenBy: [Value: Int] = [:]
+
+    /// Numéro de la lecture qui part.
+    mutating func start() -> Int {
+        started += 1
+        return started
+    }
+
+    /// Vrai si la lecture `serial` est la plus récente à donner `value` : sa valeur est retenue.
+    mutating func accepts(_ serial: Int, for value: Value) -> Bool {
+        guard serial > givenBy[value, default: 0] else { return false }
+        givenBy[value] = serial
+        return true
     }
 }
 

@@ -7,6 +7,8 @@ import WispadCore
 
 /// Ce qui a arrêté une installation. L'app en place n'est jamais laissée à moitié remplacée.
 enum UpdateFailure: Error, Equatable {
+    /// Un autre Wispad ouvert installe déjà une mise à jour : rien n'est touché.
+    case busy
     /// Téléchargement interrompu (réseau, serveur).
     case download
     /// Taille ou empreinte différente de celles annoncées par GitHub.
@@ -56,9 +58,15 @@ struct UpdateSystem {
     /// Échange la copie et l'app : après l'appel, la copie contient l'ancienne version.
     var swap: (URL, URL) throws -> Void = { try UpdateTools.swap($0, into: $1) }
     var remove: (URL) -> Void = { _ = try? FileManager.default.removeItem(at: $0) }
+    /// Verrou partagé par les instances de Wispad, le temps d'une installation ou du nettoyage du lancement : la
+    /// fonction qui le rend, ou nil si un autre Wispad ouvert le tient. macOS le rend aussi quand Wispad est tué.
+    var lock: () -> (() -> Void)? = { UpdateTools.lock(at: UpdateTools.lockURL) }
     /// Lance l'aide qui attend la fin de cette instance puis ouvre la nouvelle ; faux si elle n'a pas démarré.
     var relaunch: (URL, [String]) -> Bool = { UpdateTools.relaunch($0, arguments: $1) }
-    var terminate: @MainActor () -> Void = { NSApp.terminate(nil) }
+    /// Ferme cette instance pour la relance. Ne rend la main que si macOS a refusé de la fermer.
+    var terminate: @MainActor () async -> Void = { await UpdateTools.quitForRelaunch() }
+    /// Arrêt forcé, quand macOS refuse de fermer l'app après le remplacement. Ne rend jamais la main hors des tests.
+    var forceQuit: @MainActor () -> Void = { UpdateTools.forceQuit() }
     var open: @MainActor (URL) -> Void = { _ = NSWorkspace.shared.open($0) }
 }
 
@@ -115,11 +123,13 @@ final class UpdateInstaller {
 
     /// Lance l'installation en place. Si elle ne peut pas se faire ici (build de développement, dossier non
     /// modifiable, release sans disque, app sans signature Developer ID), la page de la release s'ouvre à la place.
-    /// Vrai si l'installation démarre.
+    /// `beforeQuit` referme les fenêtres de l'app (la fenêtre de mise à jour, affichée en feuille, fait refuser la
+    /// fermeture par macOS) juste avant la relance. Vrai si l'installation démarre.
     @discardableResult
     func install(_ release: ReleaseInfo, kind: BuildKind, installed: String,
                  isIdle: @escaping @MainActor () -> Bool,
-                 relaunchArguments: @escaping @MainActor () -> [String]) -> Bool {
+                 relaunchArguments: @escaping @MainActor () -> [String],
+                 beforeQuit: @escaping @MainActor () -> Void = {}) -> Bool {
         guard !isBusy else { return false }
         if let blocker = obstacle(for: release, kind: kind) {
             Self.log.notice("installation en place impossible (\(String(describing: blocker), privacy: .public)) : page de la release")
@@ -137,7 +147,7 @@ final class UpdateInstaller {
         work = Task { [weak self] in
             await previous?.value
             await self?.run(attempt: current, asset: asset, teamID: team, app: app, installed: installed,
-                            isIdle: isIdle, relaunchArguments: relaunchArguments)
+                            isIdle: isIdle, relaunchArguments: relaunchArguments, beforeQuit: beforeQuit)
         }
         return true
     }
@@ -155,17 +165,28 @@ final class UpdateInstaller {
         if case .failed = phase { phase = .idle }
     }
 
-    /// Copie cachée laissée par une installation interrompue (Wispad quitté entre la copie et le remplacement) :
-    /// effacée au lancement suivant. Jamais l'app elle-même.
+    /// Copies cachées laissées par une installation interrompue (Wispad quitté entre la copie et le remplacement, ou
+    /// entre les deux renommages d'un volume qui ne sait pas échanger deux noms) : effacées au lancement suivant.
+    /// Jamais l'app elle-même, ni la copie qu'un autre Wispad ouvert est en train d'installer.
     func removeLeftovers() {
-        let staged = UpdateInstallRules.stagingURL(for: system.appURL())
-        if system.exists(staged) { system.remove(staged) }
+        guard let unlock = system.lock() else { return }
+        defer { unlock() }
+        let app = system.appURL()
+        for leftover in [UpdateInstallRules.stagingURL(for: app), UpdateInstallRules.backupURL(for: app)]
+        where system.exists(leftover) {
+            system.remove(leftover)
+        }
     }
 
     private func run(attempt current: Int, asset: DiskImageAsset, teamID: String, app: URL, installed: String,
-                     isIdle: @MainActor () -> Bool, relaunchArguments: @MainActor () -> [String]) async {
+                     isIdle: @MainActor () -> Bool, relaunchArguments: @MainActor () -> [String],
+                     beforeQuit: @MainActor () -> Void) async {
         let system = self.system
         guard !Task.isCancelled else { return finish(current, .idle) }
+        // Un seul Wispad à la fois : la copie cachée est la même pour toutes ses instances, et un deuxième Wispad
+        // ouvert l'effacerait ou la remplacerait pendant que le premier l'échange avec l'app.
+        guard let unlock = system.lock() else { return finish(current, .failed(.busy)) }
+        defer { unlock() }
         guard let workspace = try? system.makeWorkspace() else { return finish(current, .failed(.download)) }
         defer { system.remove(workspace) }
         let image = workspace.appendingPathComponent(ReleaseCheck.diskImageName)
@@ -216,7 +237,13 @@ final class UpdateInstaller {
         set(.relaunching, attempt: current)
         Self.log.notice("nouvelle version installée : relance")
         guard system.relaunch(app, relaunchArguments()) else { return finish(current, .failed(.relaunch)) }
-        system.terminate()
+        beforeQuit()
+        await system.terminate()
+        // Toujours là : macOS a refusé de fermer Wispad. Cette instance ne peut plus dicter (ses fichiers ont été
+        // remplacés : macOS lui retire micro et accessibilité) ; arrêt forcé, l'aide ouvre la nouvelle version.
+        Self.log.error("fermeture refusée : arrêt forcé")
+        system.forceQuit()
+        finish(current, .failed(.relaunch))
     }
 
     /// Vérifie la nouvelle version dans le disque, la copie à côté de l'app, puis revérifie la copie (c'est elle qui
@@ -258,6 +285,11 @@ final class UpdateInstaller {
 
 /// Outils système de l'installation, hors du fil principal.
 enum UpdateTools {
+    /// File des appels qui attendent pendant l'installation (disque relu en entier, signature, `hdiutil` et `ditto`
+    /// attendus jusqu'à leur fin, plusieurs secondes) : jamais sur un fil de Swift concurrency, que les minuteries d'une
+    /// dictée faite pendant le téléchargement partagent. L'installation les demande l'une après l'autre.
+    static let queue = BlockingQueue(label: "wispad.mise-a-jour")
+
     static func makeWorkspace() throws -> URL {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("WispadUpdate-" + UUID().uuidString, isDirectory: true)
@@ -267,9 +299,14 @@ enum UpdateTools {
 
     static func download(_ asset: DiskImageAsset, to destination: URL, progress: @escaping @Sendable (Double?) -> Void) async throws {
         try await DiskImageDownload(destination: destination, progress: progress).run(asset.url)
-        try await Task.detached(priority: .userInitiated) {
-            try UpdateTools.checkDownload(destination, asset: asset)
-        }.value
+        try await check(destination, asset: asset)
+    }
+
+    /// `checkDownload` hors du fil principal : le disque reçu est lu en entier.
+    static func check(_ file: URL, asset: DiskImageAsset) async throws {
+        try await queue.run {
+            try UpdateTools.checkDownload(file, asset: asset)
+        }
     }
 
     /// Taille et empreinte SHA-256 annoncées par GitHub : un fichier tronqué ou modifié s'arrête ici.
@@ -285,21 +322,29 @@ enum UpdateTools {
         }
     }
 
-    /// `hdiutil attach` en lecture seule, invisible dans le Finder (`-nobrowse`), sans ouverture automatique, monté
-    /// dans le dossier de travail.
+    /// Disque monté en lecture seule, invisible dans le Finder, sans ouverture automatique, dans le dossier de travail :
+    /// `hdiutil attach` (macOS 14 à 27), sinon `diskutil image attach`, son remplaçant, s'il échoue ou disparaît
+    /// (`hdiutil attach` est signalé obsolète depuis macOS 27). Les deux rendent le même plist.
     static func mount(_ image: URL, under directory: URL) async throws -> URL {
-        let result = await run("/usr/bin/hdiutil", ["attach", "-nobrowse", "-readonly", "-noautoopen", "-plist",
-                                                    "-mountrandom", directory.path, image.path])
-        guard result.status == 0, let point = UpdateInstallRules.mountPoints(fromPlist: result.output).first else {
+        let hdiutil = await run("/usr/bin/hdiutil", ["attach", "-nobrowse", "-readonly", "-noautoopen", "-plist",
+                                                     "-mountrandom", directory.path, image.path])
+        if hdiutil.status == 0, let point = UpdateInstallRules.mountPoints(fromPlist: hdiutil.output).first {
+            return URL(fileURLWithPath: point, isDirectory: true)
+        }
+        let volume = directory.appendingPathComponent("volume", isDirectory: true)
+        let diskutil = await run("/usr/sbin/diskutil", ["image", "attach", "--plist", "--readOnly", "--nobrowse",
+                                                        "--mountPoint", volume.path, image.path])
+        guard diskutil.status == 0, let point = UpdateInstallRules.mountPoints(fromPlist: diskutil.output).first else {
             throw UpdateFailure.diskImage
         }
         return URL(fileURLWithPath: point, isDirectory: true)
     }
 
+    /// `hdiutil detach`, forcé au besoin, sinon `diskutil eject`.
     static func detach(_ mountPoint: URL) async {
-        if await run("/usr/bin/hdiutil", ["detach", mountPoint.path, "-quiet"]).status != 0 {
-            _ = await run("/usr/bin/hdiutil", ["detach", mountPoint.path, "-quiet", "-force"])
-        }
+        if await run("/usr/bin/hdiutil", ["detach", mountPoint.path, "-quiet"]).status == 0 { return }
+        if await run("/usr/bin/hdiutil", ["detach", mountPoint.path, "-quiet", "-force"]).status == 0 { return }
+        _ = await run("/usr/sbin/diskutil", ["eject", mountPoint.path])
     }
 
     /// `ditto` garde tout du paquet : liens, attributs, signature.
@@ -315,22 +360,22 @@ enum UpdateTools {
     }
 
     static func verify(_ app: URL, teamID: String) async -> Bool {
-        await Task.detached(priority: .userInitiated) {
+        await queue.run {
             CodeSignature.satisfies(app, bundleID: AppIdentity.bundleID, teamID: teamID)
-        }.value
+        }
     }
 
-    /// Échange atomique de deux dossiers du même volume (`renamex_np`, APFS). Repli : deux renommages, l'ancienne app
-    /// remise en place si le second échoue. Dans les deux cas, `staged` contient ensuite l'ancienne version.
-    static func swap(_ staged: URL, into app: URL) throws {
-        let swapped = staged.withUnsafeFileSystemRepresentation { (from: UnsafePointer<CChar>?) -> Bool in
-            app.withUnsafeFileSystemRepresentation { (to: UnsafePointer<CChar>?) -> Bool in
-                guard let from, let to else { return false }
-                return renamex_np(from, to, UInt32(RENAME_SWAP)) == 0
-            }
-        }
-        if swapped { return }
+    /// Échange atomique de deux dossiers du même volume (`renamex_np`, APFS). Repli, seulement sur un volume qui ne
+    /// sait pas échanger deux noms (HFS+, exFAT, partage réseau) : deux renommages, l'ancienne app remise en place si
+    /// le second échoue. Dans les deux cas, `staged` contient ensuite l'ancienne version. Sur un volume qui sait
+    /// échanger, un échange raté (disque plein, droits retirés, copie disparue) ne déplace jamais l'app.
+    static func swap(_ staged: URL, into app: URL, exchange: (URL, URL) -> Bool = UpdateTools.exchangeNames,
+                     canSwap: (URL) -> Bool? = UpdateTools.volumeCanSwap) throws {
+        if exchange(staged, app) { return }
+        guard canSwap(app.deletingLastPathComponent()) != true else { throw UpdateFailure.replace }
         let fileManager = FileManager.default
+        // Copie disparue : rien ne prendrait la place de l'app, qui ne bouge pas.
+        guard fileManager.fileExists(atPath: staged.path) else { throw UpdateFailure.replace }
         let backup = UpdateInstallRules.backupURL(for: app)
         try? fileManager.removeItem(at: backup)
         try fileManager.moveItem(at: app, to: backup)
@@ -343,19 +388,60 @@ enum UpdateTools {
         try? fileManager.moveItem(at: backup, to: staged)
     }
 
+    /// `renamex_np` avec `RENAME_SWAP` : vrai si les deux noms ont été échangés d'un coup.
+    static func exchangeNames(_ staged: URL, _ app: URL) -> Bool {
+        staged.withUnsafeFileSystemRepresentation { (from: UnsafePointer<CChar>?) -> Bool in
+            app.withUnsafeFileSystemRepresentation { (to: UnsafePointer<CChar>?) -> Bool in
+                guard let from, let to else { return false }
+                return renamex_np(from, to, UInt32(RENAME_SWAP)) == 0
+            }
+        }
+    }
+
+    /// Le volume de ce dossier sait-il échanger deux noms d'un coup (APFS) ? Nil si macOS ne le dit pas.
+    static func volumeCanSwap(_ folder: URL) -> Bool? {
+        (try? folder.resourceValues(forKeys: [.volumeSupportsSwapRenamingKey]))?.volumeSupportsSwapRenaming
+    }
+
+    /// Verrou de l'installation : un fichier du dossier temporaire de l'utilisateur, commun à toutes ses instances.
+    static var lockURL: URL {
+        FileManager.default.temporaryDirectory.appendingPathComponent("WispadUpdate.lock")
+    }
+
+    /// Prend le verrou sans attendre (`flock`) : la fonction qui le rend, ou nil si un autre Wispad le tient. macOS le
+    /// rend aussi à la fin du processus, même tué. Un fichier de verrou impossible à créer (disque plein) ne bloque
+    /// rien : le verrou est alors sans effet, comme avant qu'il existe.
+    static func lock(at url: URL) -> (() -> Void)? {
+        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let descriptor = open(url.path, O_RDWR | O_CREAT | O_CLOEXEC, 0o600)
+        guard descriptor >= 0 else { return {} }
+        guard flock(descriptor, LOCK_EX | LOCK_NB) == 0 else {
+            let held = errno == EWOULDBLOCK
+            close(descriptor)
+            return held ? nil : {}
+        }
+        return { _ = close(descriptor) }
+    }
+
     /// Petite aide : attend la fin de cette instance (60 s au plus), puis ouvre la nouvelle version ; LaunchServices
     /// peut mettre un instant à la voir. Chemin et arguments passés à part, jamais dans le texte de la commande.
     static func relaunch(_ app: URL, arguments: [String]) -> Bool {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/sh")
-        process.arguments = ["-c", relaunchScript, "wispad-relance",
-                             String(ProcessInfo.processInfo.processIdentifier), app.path] + arguments
+        process.arguments = relaunchCommand(pid: ProcessInfo.processInfo.processIdentifier, app: app,
+                                            arguments: arguments)
         do {
             try process.run()
             return true
         } catch {
             return false
         }
+    }
+
+    /// Arguments de `/bin/sh` pour l'aide : le script, toujours le même, puis ses paramètres. Le shell ne lit comme du
+    /// code que le script ; numéro du processus, chemin de l'app et arguments n'en sont que les paramètres ($1, $2…).
+    static func relaunchCommand(pid: Int32, app: URL, arguments: [String]) -> [String] {
+        ["-c", relaunchScript, "wispad-relance", String(pid), app.path] + arguments
     }
 
     static let relaunchScript = """
@@ -369,9 +455,29 @@ enum UpdateTools {
         exit 1
         """
 
+    /// Ferme Wispad pour la relance, une fois les feuilles retirées de l'écran ; la fermeture est redemandée jusqu'à
+    /// trois fois. Ne rend la main que si elle a été refusée chaque fois (feuille ou fenêtre modale restée ouverte).
+    @MainActor
+    static func quitForRelaunch() async {
+        for attempt in 0..<3 {
+            if NSApp.modalWindow != nil { NSApp.abortModal() }
+            try? await Task.sleep(for: .milliseconds(attempt == 0 ? 400 : 700))
+            NSApp.terminate(nil)
+        }
+    }
+
+    /// Arrêt sans la fermeture d'AppKit, que macOS a refusée : le délégué range comme à une fermeture normale (son du
+    /// Mac rétabli, dictée annulée), les réglages sont écrits, puis le processus s'arrête.
+    @MainActor
+    static func forceQuit() {
+        NotificationCenter.default.post(name: NSApplication.willTerminateNotification, object: NSApp)
+        UserDefaults.standard.synchronize()
+        exit(0)
+    }
+
     /// Lance un outil du système et attend sa fin, hors du fil principal : code de sortie et sortie standard.
     static func run(_ tool: String, _ arguments: [String]) async -> (status: Int32, output: Data) {
-        await Task.detached(priority: .userInitiated) { () -> (status: Int32, output: Data) in
+        await queue.run { () -> (status: Int32, output: Data) in
             let process = Process()
             process.executableURL = URL(fileURLWithPath: tool)
             process.arguments = arguments
@@ -386,7 +492,7 @@ enum UpdateTools {
             let output = pipe.fileHandleForReading.readDataToEndOfFile()
             process.waitUntilExit()
             return (status: process.terminationStatus, output: output)
-        }.value
+        }
     }
 }
 

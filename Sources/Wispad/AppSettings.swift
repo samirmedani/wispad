@@ -91,7 +91,8 @@ struct AppSettings: Codable, Equatable {
     /// Lecture tolérante, réglage par réglage : une mise à jour ne fait jamais perdre les autres choix.
     /// - clé absente (réglage ajouté après coup) : sa valeur par défaut ;
     /// - valeur illisible ou retirée (fournisseur, mode, modèle) : la valeur par défaut de ce seul réglage,
-    ///   ou la plus proche valide (modèle retiré → modèle par défaut du même fournisseur) ;
+    ///   ou la plus proche valide (modèle retiré → modèle par défaut du même fournisseur) ; tant que ce réglage ne
+    ///   change pas, `save` garde la valeur enregistrée telle quelle ;
     /// - élément illisible d'un dictionnaire : écarté, ses voisins restent ;
     /// - clé inconnue : ignorée ici, gardée dans le bloc enregistré par `save` (sauf `retiredKeys`).
     init(from decoder: Decoder) throws {
@@ -183,23 +184,20 @@ struct AppSettings: Codable, Equatable {
         defaults.set(cleaned, forKey: defaultsKey)
     }
 
-    /// Bloc illisible en entier (pas un objet JSON) : mis de côté ici avant toute écriture, jamais effacé.
+    /// Bloc abîmé (tronqué, invalide, pas un objet JSON) : mis de côté ici avant toute écriture, jamais effacé.
     static let unreadableBackupKey = "wispad.settings.v1.illisible"
 
     private static let log = Logger.wispad("reglages")
 
-    /// Réglages enregistrés. Un bloc absent est une nouvelle installation ; un bloc illisible garde une copie
-    /// de côté et repart des valeurs d'une installation existante (pas de premier lancement guidé).
+    /// Réglages enregistrés. Un bloc absent est une nouvelle installation. Un bloc abîmé (tronqué, octet invalide) est
+    /// mis de côté avant d'être réécrit ; ses réglages encore entiers restent, les autres prennent les valeurs d'une
+    /// installation existante (pas de premier lancement guidé).
     static func load(from defaults: UserDefaults = .standard) -> AppSettings {
         guard let stored = defaults.object(forKey: defaultsKey) else { return AppSettings() }
         if let data = stored as? Data, let settings = try? JSONDecoder().decode(AppSettings.self, from: data) {
             return settings
         }
-        if defaults.object(forKey: unreadableBackupKey) == nil {
-            defaults.set(stored, forKey: unreadableBackupKey)
-        }
-        log.error("réglages illisibles : copie mise de côté, valeurs par défaut en mémoire")
-        return existingInstallDefaults
+        return decoded(storedBlock(in: defaults) ?? [:]) ?? existingInstallDefaults
     }
 
     /// Valeurs d'une installation existante dont aucun réglage n'est lisible.
@@ -207,17 +205,57 @@ struct AppSettings: Codable, Equatable {
         (try? JSONDecoder().decode(AppSettings.self, from: Data("{}".utf8))) ?? AppSettings()
     }
 
-    /// Écrit les réglages connus de cette version par-dessus le bloc existant : une clé qu'elle ne connaît pas
-    /// (ajoutée par une version plus récente, ou d'un réglage retiré) reste telle quelle pour un retour en arrière.
-    /// Seules les clés de `retiredKeys`, retirées volontairement, ne sont pas reprises.
+    /// Écrit les réglages par-dessus le bloc existant, sans rien perdre de ce que cette version ne lit pas (retour en
+    /// arrière) :
+    /// - un réglage inchangé depuis la lecture garde sa valeur enregistrée telle quelle, même illisible ici (fournisseur,
+    ///   modèle ou mode d'une version plus récente) ; un réglage composé changé garde les champs qu'elle ne connaît pas ;
+    /// - une clé qu'elle ne connaît pas (ajoutée par une version plus récente, ou d'un réglage retiré) reste telle
+    ///   quelle ; seules les clés de `retiredKeys`, retirées volontairement, ne sont pas reprises.
+    /// Relu par cette version, le bloc écrit rend toujours exactement ces réglages.
     func save(to defaults: UserDefaults = .standard) {
         guard let data = try? JSONEncoder().encode(self),
               let current = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { return }
-        let stored = defaults.data(forKey: Self.defaultsKey).flatMap { try? JSONSerialization.jsonObject(with: $0) }
-        var merged = (stored as? [String: Any] ?? [:]).filter { !Self.retiredKeys.contains($0.key) }
-        merged.merge(current) { _, new in new }
+        let stored = Self.storedBlock(in: defaults) ?? [:]
+        let read = Self.decoded(stored).map(Self.encoded) ?? [:]
+        var merged = stored.filter { !Self.retiredKeys.contains($0.key) }
+        for (key, value) in current {
+            merged[key] = StoredJSON.merged(stored: stored[key], read: read[key], current: value)
+        }
+        // Un réglage que cette version relirait autrement qu'en mémoire (champs liés, comme la touche et les
+        // modificateurs d'un raccourci) est écrit tel quel.
+        let reread = Self.decoded(merged).map(Self.encoded) ?? [:]
+        for (key, value) in current where !(reread[key].map { StoredJSON.same($0, value) } ?? false) {
+            merged[key] = value
+        }
         let output = (try? JSONSerialization.data(withJSONObject: merged, options: [.sortedKeys])) ?? data
         defaults.set(output, forKey: Self.defaultsKey)
+    }
+
+    /// Bloc enregistré, lu aussi loin qu'il est intact ; nil sans bloc. Un bloc abîmé est d'abord copié sous
+    /// `unreadableBackupKey`, une seule fois, jamais effacé.
+    private static func storedBlock(in defaults: UserDefaults) -> [String: Any]? {
+        guard let stored = defaults.object(forKey: defaultsKey) else { return nil }
+        let block = (stored as? Data).flatMap(StoredJSON.object(from:))
+        if block?.intact != true {
+            if defaults.object(forKey: unreadableBackupKey) == nil {
+                defaults.set(stored, forKey: unreadableBackupKey)
+            }
+            log.error("réglages abîmés : copie mise de côté, réglages lisibles gardés")
+        }
+        return block?.object ?? [:]
+    }
+
+    /// Réglages lus d'un objet JSON, un par un ; une clé absente prend la valeur d'une installation existante.
+    private static func decoded(_ object: [String: Any]) -> AppSettings? {
+        guard JSONSerialization.isValidJSONObject(object),
+              let data = try? JSONSerialization.data(withJSONObject: object) else { return nil }
+        return try? JSONDecoder().decode(AppSettings.self, from: data)
+    }
+
+    /// Réglages tels qu'ils s'écrivent, clé par clé.
+    private static func encoded(_ settings: AppSettings) -> [String: Any] {
+        guard let data = try? JSONEncoder().encode(settings) else { return [:] }
+        return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
     }
 }
 

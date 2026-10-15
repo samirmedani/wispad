@@ -33,9 +33,9 @@ enum ShortcutKeys {
     static let command = ShortcutKey(keyCode: 55, symbol: "⌘", name: "command")
 
     /// Raccourci de dictée : fn seule, ou modificateurs (masques `ModifierMask`) puis une touche.
-    /// `name` : nom de la touche, celui de la disposition active par défaut.
-    static func dictation(keyCode: Int, modifiers: UInt64,
-                          name: (Int) -> String = KeyLabels.name(for:)) -> [ShortcutKey] {
+    /// `name` : nom de la touche, celui de la disposition active par défaut (fil principal).
+    @MainActor static func dictation(keyCode: Int, modifiers: UInt64,
+                          name: @MainActor (Int) -> String = KeyLabels.name(for:)) -> [ShortcutKey] {
         if keyCode == ChordMatcher.functionKeyCode { return [function] }
         var keys = modifierKeys(modifiers)
         // Flèches et touches F portent fn dans chaque frappe : ce n'est pas une touche de plus à enfoncer.
@@ -46,7 +46,8 @@ enum ShortcutKeys {
     }
 
     /// « Coller la dernière dictée » : modificateurs puis touche, jamais fn.
-    static func paste(_ shortcut: PasteShortcut, name: (Int) -> String = KeyLabels.name(for:)) -> [ShortcutKey] {
+    @MainActor static func paste(_ shortcut: PasteShortcut,
+                                 name: @MainActor (Int) -> String = KeyLabels.name(for:)) -> [ShortcutKey] {
         modifierKeys(shortcut.modifiers) + [key(shortcut.keyCode, name: name)]
     }
 
@@ -64,7 +65,7 @@ enum ShortcutKeys {
         return keys
     }
 
-    private static func key(_ keyCode: Int, name: (Int) -> String) -> ShortcutKey {
+    @MainActor private static func key(_ keyCode: Int, name: @MainActor (Int) -> String) -> ShortcutKey {
         let symbols: [Int: String] = [36: "↩", 48: "⇥", 51: "⌫"]
         return ShortcutKey(keyCode: keyCode, symbol: symbols[keyCode], name: name(keyCode))
     }

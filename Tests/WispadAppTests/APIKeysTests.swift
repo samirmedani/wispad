@@ -54,4 +54,20 @@ struct APIKeysTests {
         let untouched = try String(contentsOf: url, encoding: .utf8)
         #expect(untouched == "pas du JSON")
     }
+
+    /// Clés enregistrées en même temps (deux vérifications qui finissent ensemble, dans Fournisseurs ou au premier
+    /// lancement) : toutes restent dans le fichier. Avant, chaque enregistrement relisait le fichier sur son propre fil,
+    /// et le dernier écrasait les autres.
+    @Test func keysSavedAtTheSameTimeAreAllKept() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("wispad-keys-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("api-keys.json")
+        let accounts = (0..<20).map { "compte-\($0)" }
+        let saves = accounts.map { account in
+            Task.detached { await APIKeys.LocalFile.write(account, "valeur-de-test-\(account)", url: url) }
+        }
+        for save in saves { #expect(await save.value) }
+        let expected: [String?] = accounts.map { "valeur-de-test-\($0)" }
+        #expect(await APIKeys.LocalFile.readAll(accounts, url: url).map(\.1) == expected)
+    }
 }

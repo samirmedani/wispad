@@ -4,7 +4,7 @@
 
 | Module | Rôle | Dépend de |
 | --- | --- | --- |
-| `WispadCore` | Logique pure et testable : requêtes de transcription et de correction, consigne, garde-fou, format des dates et des heures (`DictationDateFormat`, `DateTimeWriter`), des nombres, montants et unités (`DictationNumberFormat`, `NumberWriter`), comparaison flux/fichier, historique SQLite, coûts, retard de la version sur `main` (`BuildFreshness`), adresses d'aide et de retour (`FeedbackLinks`), releases et mises à jour (`ReleaseUpdate`, `UpdateInstallRules`), progression du premier lancement guidé (`OnboardingFlow`), place de la bulle et zone de saisie à éviter (`OverlayPlacement`, `OverlayGeometry`). Aucun texte d'interface. | — |
+| `WispadCore` | Logique pure et testable : requêtes de transcription et de correction, consigne, garde-fou, format des dates et des heures (`DictationDateFormat`, `DateTimeWriter`), des nombres, montants et unités (`DictationNumberFormat`, `NumberWriter`), comparaison flux/fichier, historique SQLite, coûts, retard de la version sur `main` (`BuildFreshness`), adresses d'aide et de retour (`FeedbackLinks`), releases et mises à jour (`ReleaseUpdate`, `UpdateInstallRules`), progression du premier lancement guidé (`OnboardingFlow`), place de la bulle, écrans et zone de saisie à éviter (`OverlayPlacement`, `OverlayScreen`, `OverlayGeometry`), garde de l'écoute du clavier selon les autorisations (`KeyboardTapWatch`), lecture d'un bloc JSON enregistré même abîmé et réécriture sans perte (`StoredJSON`), file GCD des appels qui attendent (`BlockingQueue`). Aucun texte d'interface. | — |
 | `Wispad` (app) | Coordinateur de dictée, raccourci, bulle, écrans SwiftUI, clés, traductions. | `WispadCore` |
 
 Le projet Xcode (hors Git) est généré par xcodegen depuis `project.yml`. `Package.swift` décrit les mêmes
@@ -32,8 +32,11 @@ testée (`ReleaseScriptTests`), couverte par la signature de l'app, et indépend
   progression, taille et SHA-256), le montage (`hdiutil -nobrowse`), la vérification de la signature (`CodeSignature`,
   exigence `UpdateInstallRules.requirement` : Developer ID, même identifiant, même Team ID), la copie cachée à côté de
   l'app (`ditto`), l'attente de la fin de la dictée, l'échange atomique (`renamex_np`) puis la relance par une aide
-  `/bin/sh`. Toutes ses frontières passent par `UpdateSystem`, remplacé dans `UpdateInstallerTests`. Les règles (qui
-  s'installe en place, signature exigée, chemins, sortie de `hdiutil`) sont dans `UpdateInstallRules` (WispadCore).
+  `/bin/sh`, le tout sous un verrou partagé par les instances de Wispad (`flock`, `UpdateTools.lock`). Toutes ses
+  frontières passent par `UpdateSystem`, remplacé dans `UpdateInstallerTests` et `UpdateInterruptionTests` (disque
+  simulé : l'app reste entière à chaque état, même Wispad tué) ; échange, verrou et aide réels sont testés dans
+  `UpdateToolsTests`. Les règles (qui s'installe en place, signature exigée, chemins, sortie de `hdiutil`) sont dans
+  `UpdateInstallRules` (WispadCore).
   Fenêtre de mise à jour et notes de version (`ReleaseNotes` découpe le markdown simple) : `UpdateViews.swift`.
 - **Publier** : `scripts/release.sh` (en-tête : variables d'environnement, étapes). Rien de propre au mainteneur
   (équipe, certificat, clé de notarisation) n'est dans le dépôt.
@@ -55,10 +58,16 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
 - **Bulle de l'accueil** : `BubbleDemo` reprend `SpectrumBars` et le verre de la bulle ; ses niveaux viennent de
   `SimulatedVoice` (WispadCore, fonction pure du temps, testée par `SimulatedVoiceTests`).
 - **État vivant** : `OnboardingController` lit macOS par `OnboardingSystem` (autorisations sans demande, Réglages
-  Système, relance, micros, vumètre), sondé toutes les 0,5 s pendant l'affichage ; les tests le remplacent
-  (`OnboardingControllerTests`). Écrans dans `OnboardingView.swift`.
-- **Micro** : `MicrophoneMeter` ne sort que des niveaux (rien d'écrit ni d'envoyé) ; le micro choisi
-  (`microphoneUID`, `AudioInputDevices`) sert ensuite à `AudioCapture`, sans toucher au micro du système.
+  Système, relance, micros, vumètre), sondé toutes les 0,5 s pendant l'affichage (`poll`, arrêté par `suspend` quand
+  la fenêtre se ferme, relancé par `resume`, qui garde une étape déjà réussie) ; à l'étape Fournisseur, le sondage
+  revérifie aussi une clé enregistrée restée sans résultat. Le sondage lit les autorisations hors du fil principal
+  (`pollPermissions`), une action (Autoriser, étape suivante, fenêtre rouverte) les relit sur place (`permissions`) :
+  voir « Appels qui attendent ». Les tests le remplacent (`OnboardingControllerTests`, et `OnboardingDeadEndTests` :
+  chaque étape sans issue possible ; `OnboardingPollTests` pour le sondage). Écrans dans `OnboardingView.swift`.
+- **Micro** : `MicrophoneMeter` ne sort que des niveaux (rien d'écrit ni d'envoyé) ; son arrêt passe par sa file
+  sans l'attendre, pour qu'un démarrage bloqué ne fige jamais le fil principal. Le délai sans voix se compte à
+  l'horloge depuis l'ouverture du test (`MicrophoneCheck.status`, `listening`), même sans aucun son reçu. Le micro
+  choisi (`microphoneUID`, `AudioInputDevices`) sert ensuite à `AudioCapture`, sans toucher au micro du système.
 - **Touche** : pendant l'étape, `AppModel.shortcutProbe` reçoit les appuis à la place du coordinateur
   (`HotkeyMonitor` → `AppModel.shortcutReceived`) : aucune dictée ne démarre. Hors de l'étape « Touche », un test
   resté actif est rendu, et l'entrée dans l'essai l'arrête toujours.
@@ -67,18 +76,29 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
   le texte final directement dans le champ (`OnboardingController.receiveDictation`) au lieu de `TextInserter`.
   Geste reçu sans écoute (`TrialCheck.startGrace`) ou dictée bloquée (`TrialCheck.stallLimit`) : échec expliqué.
 - **Relance** : l'étape courante est gardée dans `onboardingResume` ; `OnboardingFlow.resumeStep` la relit de façon
-  tolérante.
+  tolérante. La fin atteinte marque la configuration comme faite (`onboardingCompleted`), même sans « Terminer ».
 
 ## Parcours d'une dictée
 
 1. `KeyboardTap` (fil dédié) reconnaît maintien, double appui ou Échap (`HotkeyLogic`) ; `HotkeyMonitor`, sur
-   le fil principal, transmet ces effets au coordinateur.
+   le fil principal, transmet ces effets au coordinateur. Quand macOS rend l'écoute qu'il avait coupée,
+   `HotkeyLogic.resync` recale le raccourci sur la touche réelle ; la surveillance de 3 s fait de même pour une
+   écoute restée active (`reconcile`). Scénarios de fiabilité : `HotkeyReliabilityTests`. L'écoute n'est jamais
+   réarmée sans les autorisations de son installation (`KeyboardTapWatch`, WispadCore) : une autorisation retirée
+   la fait retirer, le geste en cours est oublié (`HotkeyLogic.listeningLost`) et `HotkeyMonitor` arrête la dictée
+   en cours (`DictationCoordinator.keyboardLost`) ; elle revient avec l'autorisation. Ses frontières macOS
+   (création, coupure, autorisations, état des touches) passent par `KeyboardTapSystem`, remplacé dans
+   `KeyboardTapPermissionTests`.
 2. `DictationCoordinator.begin` vérifie la clé du fournisseur de voix, lit l'app au premier plan et lance en
    parallèle la lecture du champ actif (`ContextProbe`) et, si la correction et le réglage le permettent, de la
    conversation visible (`WindowTextProbe`). Puis il affiche la bulle et ouvre le micro (`AudioCapture`).
    Le démarrage est surveillé : délai de `audio.start`, puis premier paquet attendu, un redémarrage sur un moteur
-   neuf, puis abandon expliqué dans la bulle (règle `MicrophoneStartWatch`, WispadCore). `AudioCapture` relance
-   aussi son moteur sur `AVAudioEngineConfigurationChange` et referme seul un démarrage abandonné (`abandonStart`).
+   neuf (même délai), puis abandon expliqué dans la bulle (règle `MicrophoneStartWatch`, WispadCore). `AudioCapture`
+   relance aussi son moteur sur `AVAudioEngineConfigurationChange`, referme seul un démarrage ou un redémarrage
+   abandonné (`abandonStart`, dans l'ordre de sa file) et signale une écoute qui ne peut plus repartir
+   (`onInterruption`) : le coordinateur termine alors la dictée avec l'audio déjà reçu. Il en fait autant si l'accès
+   au micro est retiré pendant l'écoute (`AppDependencies.microphoneAuthorized`, relu chaque seconde pendant
+   l'écoute seulement). Autorisations retirées ou rendues : `PermissionRevocationTests`.
 3. Le flux en direct (`LiveSpeechSession`) reçoit l'audio dès que le champ actif est lu (150 ms au plus), et
    l'audio est aussi enregistré ; à chaque pause, une correction est préparée (`DictationCoordinator+EarlyCorrection`).
 4. `endCapture` ferme le micro ; un `FinishJob` termine la dictée en arrière-plan.
@@ -103,7 +123,11 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
    livré passe par `DictationCoordinator.offerReadyText` : texte copié, bulle avec Copier et Coller
    (`readyMessage`). Après l'envoi, `InsertionSystem.locate` lit la zone de saisie (`ContextProbe.inputLocation`,
    règles `OverlayGeometry.inputZone`) dans `InputZoneTracker` ; `OverlayController.targetFrame` place chaque
-   mode selon son rôle (`OverlayMode.role`, réglage `OverlayPlacement`) et décale les messages hors de cette zone. Les messages de la bulle partent seuls (`MessageTimer`, décompte
+   mode selon son rôle (`OverlayMode.role`, réglage `OverlayPlacement`), sur l'écran que choisit
+   `OverlayGeometry.screen` (`OverlayScreen`, lu de `NSScreen`), et décale les messages hors de cette zone. Écrans
+   changés (`NSApplication.didChangeScreenParametersNotification`) : `OverlayController.screensDidChange` oublie
+   la zone et replace la bulle affichée sur son écran (retenu par son numéro) ; `FrameTicker` refait le lien
+   d'affichage du spectre si son écran a disparu. Les messages de la bulle partent seuls (`MessageTimer`, décompte
    `MessageCountdown` de WispadCore) ; `OverlayController` met ce décompte en pause pendant le survol
    (`DictationCoordinator.holdMessages`) et la ✕ appelle `closeMessage`.
    Le callback final de `AppDependencies.insert` signale ⌘V avant la relecture d'accessibilité :
@@ -171,7 +195,45 @@ gauche ; ⓘ (popover avec le schéma), touches et boutons à droite, sur une li
 boutons, puis les touches, plutôt que de passer à la ligne.
 
 Toutes les frontières du système (micro, réseau, clés, collage, son) passent par
-`AppDependencies` : les tests les remplacent et n'ouvrent jamais le vrai micro ni le vrai réseau.
+`AppDependencies` : les tests les remplacent et n'ouvrent jamais le vrai micro ni le vrai réseau. Ce que la dictée
+dit à l'écoute du clavier (phase, fin d'un geste) passe par `AppModel.hotkeys` (`HotkeyControl`) : `HotkeyMonitor`
+dans l'app, un clavier simulé dans les tests.
+
+Filet du coordinateur : `DictationCoordinatorPropertyTests` joue des séquences tirées d'une graine fixe sur ces faux
+(gestes passés par `HotkeyLogic`, bulle, menu, micro, fournisseurs, correction, collage, « Coller la dernière
+dictée », réseau, autorisations) et vérifie après chaque événement et en fin de séquence les invariants du
+coordinateur : retour au repos borné, un seul collage par dictée et jamais après une annulation, micro et spectre
+fermés hors de l'écoute, historique cohérent, raccourci libre, aucun objet de dictée gardé. Une séquence qui a révélé
+un défaut reste en test fixe (`DictationSequenceRegressionTests`).
+
+## Appels qui attendent
+
+Un appel qui attend (question à macOS, accessibilité d'une autre app, SQLite, fichier, processus) ne s'exécute jamais
+sur un fil de Swift concurrency : ni dans `Task.detached`, ni dans une fonction `async` non isolée. Ces fils, autant
+que de cœurs, servent toute l'app, minuteries de la dictée comprises (`DictationCoordinator.value(of:within:)`), et
+macOS n'en ajoute pas quand l'un d'eux attend. L'appel passe par `BlockingQueue` (WispadCore), une file GCD série,
+et l'appelant attend sans occuper de fil :
+
+- **file partagée**, quand les appels se suivent ou doivent garder leur ordre : autorisations relues
+  (`PermissionReads`), fichier des clés (`APIKeys.LocalFile.queue`, deux enregistrements ne s'écrasent plus),
+  installation d'une mise à jour (`UpdateTools.queue`), détail et diagnostic lus dans la base ;
+- **file neuve par appel**, quand une attente ne doit en retarder aucune autre : accessibilité d'une autre app
+  (champ actif, fenêtre, collage, zone de saisie, surveillance des corrections : une app figée attend 0,5 s par
+  question), accès au micro avant chaque dictée, audio lu avant son envoi.
+
+Le micro garde sa file (`AudioCapture`) ; le fil principal garde ce qui doit y rester (base de l'historique écrite
+dans l'ordre de la dictée, ⌘V). Preuve : `BlockingWorkTests`, qui lit l'étiquette de la file pendant l'appel, comme
+`PermissionReadsTests`.
+
+Les autorisations affichées (Réglages › Autorisations, alerte de la barre latérale, premier lancement guidé) se
+lisent sur la file de `PermissionReads` à l'ouverture de la fenêtre ou de Réglages, au retour dans Wispad
+(`AppModel.refreshPermissionsInBackground` : une lecture à la fois, puis une seule relecture pour les demandes faites
+pendant ce temps) et à chaque passage du sondage du premier lancement (`OnboardingSystem.pollPermissions`, une
+lecture à la fois). Juste après une action, elles se relisent sur place (`refreshPermissions`). Chaque lecture est
+numérotée à son départ (`AppModel.startPermissionRead`) et chaque valeur garde celle qui l'a donnée
+(`PermissionReadOrder`) : une réponse lente n'efface jamais une valeur plus récente. Frontières remplaçables dans
+`AppDependencies` (`permissions`, `permissionsOffMain`, `launchAtLogin`, `setLaunchAtLogin`) et `OnboardingSystem`
+(`permissions`, `pollPermissions`) ; preuves : `AppPermissionReadTests` et `OnboardingPollTests`.
 
 ## Écran Historique
 
@@ -188,8 +250,11 @@ le défilement fait passer à l'écran ne doit être recalculé :
 - **Survol** : état local de la ligne ; pas de masque par ligne, le fond de carte et le fond de survol ont sa forme.
 - **Recherche** : appliquée 150 ms après la dernière frappe (`appliedQuery`), tout de suite quand on l'efface.
 
-Ces caches sont en mémoire seulement, bornés, et vidés avec l'app. `HistoryRenderingObserver` permet aux tests et à
-la sonde de compter les lignes évaluées.
+Ces caches sont en mémoire seulement, bornés, et vidés avec l'app. Ils suivent `AppModel.history`
+(`HistoryRowCache.follow`, à chaque changement) : une dictée supprimée en sort, une dictée modifiée y sera recalculée,
+et une dictée relue à l'identique (l'historique est relu après chaque dictée) y remplace sa copie. Ni texte supprimé
+ni seconde copie de l'historique n'y restent. `HistoryRenderingObserver` permet aux tests et à la sonde de compter
+les lignes évaluées.
 
 ## Ajouter…
 
@@ -225,17 +290,25 @@ Une mise à jour ne doit jamais faire perdre à l'utilisateur ses fournisseurs, 
   illisible, d'un mauvais type, hors limites ou retirée : valeur par défaut de ce seul réglage, ou la plus proche
   valide (fournisseur retiré → fournisseur par défaut du même rôle, modèle retiré → modèle par défaut du même
   fournisseur). Un élément illisible d'une liste ou d'un dictionnaire est écarté seul (`Lenient`). Clé inconnue : ignorée.
-- **Écriture par fusion** : `save` remplace les clés connues de cette version et garde les autres (réglage retiré ou
-  ajouté par une version plus récente), pour qu'un retour en arrière retrouve ses choix. Lire ne réécrit jamais le bloc.
-  Exception : les clés de `AppSettings.retiredKeys` (raccourcis vocaux, transcription sur le Mac, serveur de
-  correction compatible OpenAI), retirées volontairement, sont effacées au lancement (`removeRetiredKeys`) et jamais
-  recopiées.
-- **Bloc illisible en entier** (pas un objet JSON) : copié une fois sous `wispad.settings.v1.illisible` avant toute
-  écriture, jamais effacé ; l'app repart des valeurs d'une installation existante.
+- **Écriture par fusion** : `save` relit le bloc et compare chaque réglage à ce que cette version en lit
+  (`StoredJSON.merged`, WispadCore). Inchangé, il garde sa valeur enregistrée telle quelle, même illisible ici
+  (fournisseur, modèle, mode ou champ d'une version plus récente) ; changé, la nouvelle valeur est écrite, un objet
+  gardant ses champs inconnus (une entrée retirée d'une table disparaît). Les clés inconnues restent aussi (réglage
+  retiré ou ajouté par une version plus récente) : un retour en arrière ne fait perdre aucun choix. Garde-fou : un
+  réglage que cette version relirait autrement qu'en mémoire (champs liés, comme la touche et les modificateurs d'un
+  raccourci) est écrit tel quel. Lire ne réécrit jamais le bloc. Exception : les clés de `AppSettings.retiredKeys`
+  (raccourcis vocaux, transcription sur le Mac, serveur de correction compatible OpenAI), retirées volontairement,
+  sont effacées au lancement (`removeRetiredKeys`) et jamais recopiées.
+- **Bloc abîmé** (tronqué, octet invalide, pas un objet JSON) : copié une fois sous `wispad.settings.v1.illisible`
+  avant d'être réécrit, jamais effacé. `StoredJSON.object` en garde les paires complètes, chacune vérifiée seule,
+  jusqu'au premier endroit où sa structure se perd ; les réglages manquants prennent les valeurs d'une installation
+  existante.
 - **Base SQLite** (`HistoryStore`) : elle évolue par colonnes ajoutées à l'ouverture (`ALTER TABLE … ADD COLUMN`
   si `PRAGMA table_info` ne la trouve pas), jamais retirées ni renommées. Les lignes existantes gardent NULL dans les
   nouvelles colonnes, lu comme « inconnu » (origine d'un mot du dictionnaire : « Avant le suivi »). Ajoutées en fin
-  de table, elles restent invisibles pour une version précédente.
+  de table, elles restent invisibles pour une version précédente. Une reprise ponctuelle des données (prix des appels,
+  valeurs retirées) se fait dans une transaction avec son marqueur (`app_metadata`) ; les marqueurs sont lus d'abord,
+  si bien qu'une base à jour s'ouvre sans rien écrire, même quand une autre connexion tient le verrou d'écriture.
 - Valeur par défaut d'un ancien bloc : la propriété porte celle d'une nouvelle installation ; si une installation
   existante doit garder l'ancien comportement, `init(from:)` donne une autre valeur quand la clé est absente
   (`useWindowContext`, `onboardingCompleted`, `language`).
@@ -245,13 +318,16 @@ partie dépliée) sont des réglages comme les autres, écrits au changement par
 s'ils changent). Une recherche ou une saisie en cours reste un `@State` éphémère.
 
 **Ajouter un réglage** : nouvelle clé, jamais le nom d'une clé retirée ; sa lecture avec `value(...)` (ou `table`,
-`number` avec ses bornes) ; un test qui décode un ancien bloc sans la clé.
+`number` avec ses bornes) ; un test qui décode un ancien bloc sans la clé ; une valeur différente de son défaut dans
+la fixture `customized` de `SettingsUpgradeTests`, que les tests de lecture, de bloc tronqué et de retour en arrière
+parcourent réglage par réglage.
 
 **Retirer un réglage, un mode ou un fournisseur** : supprimer la propriété ou le cas de l'énumération suffit, la
 lecture tolérante fait le reste ; ne pas réutiliser son nom. Pour effacer ses anciennes valeurs (données
 personnelles sans usage), ajouter sa clé à `retiredKeys`. Si l'ancienne valeur doit se convertir (un mode retiré
 vers le plus proche), le faire dans `init(from:)`, à partir de la valeur brute. Ne jamais supprimer la clé API d'un
-fournisseur retiré : `APIKeys.LocalFile` garde les comptes qu'il ne connaît pas. Ajouter un test de
+fournisseur retiré : `APIKeys.LocalFile` garde les comptes qu'il ne connaît pas et les entrées d'un autre type, et
+ne réécrit jamais un fichier abîmé (les clés de sa partie intacte servent). Ajouter un test de
 `SettingsUpgradeTests` avec un bloc qui contient encore l'ancienne valeur.
 
 **Réinstaller** : `scripts/install.sh` ne remplace que le paquet `.app` ; préférences, dossier

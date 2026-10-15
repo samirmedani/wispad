@@ -1,6 +1,7 @@
 import AppKit
 import AVFoundation
 import QuartzCore
+import WispadCore
 import os
 
 // Outil de développement : absent de la version Release.
@@ -43,7 +44,23 @@ enum AudioStartupProbe {
                     }
                     let started = CACurrentMediaTime()
                     mainTicks.withLock { $0 = 0 }
-                    _ = try await audio.start(directory: directory)
+                    // Même délai qu'une dictée : un démarrage qui ne rend pas la main est signalé, la sonde ne reste
+                    // pas bloquée.
+                    let recorder = audio
+                    let starting = Task.detached { () async -> Result<URL, Error> in
+                        do {
+                            return .success(try await recorder.start(directory: directory))
+                        } catch {
+                            return .failure(error)
+                        }
+                    }
+                    guard let result = await DictationCoordinator.value(of: starting, within: MicrophoneStartWatch.startLimit) else {
+                        recorder.abandonStart()
+                        try? FileManager.default.removeItem(at: directory)
+                        print("audio_probe_failed=start_timeout")
+                        exit(1)
+                    }
+                    _ = try result.get()
                     let returned = CACurrentMediaTime()
                     let ticksDuringStart = mainTicks.withLock { $0 }
                     for _ in 0..<200 where first.withLock({ $0 }) == nil {

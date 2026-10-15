@@ -50,6 +50,47 @@ struct RetentionContractTests {
         #expect(RetentionPolicy.idsToDelete(files: [], now: now, maxBytes: 0).isEmpty)
     }
 
+    /// Plafond abaissé sous des milliers d'audios : le choix des audios à supprimer reste linéaire (il est fait sur le
+    /// fil principal, chaque minute et après chaque dictée). Avant, chaque audio retiré décalait toute la liste.
+    @Test func purgeOfThousandsOfFilesStaysLinear() {
+        let files = (0..<20_000).map { index in
+            StoredAudio(id: "audio-\(index)", path: "\(index)", bytes: 320_000,
+                        createdAt: now.addingTimeInterval(Double(-index)), expiresAt: nil)
+        }
+        let all = RetentionPolicy.idsToDelete(files: files, now: now, maxBytes: 0)
+        #expect(all.count == files.count)
+        #expect(all.first == "audio-19999")
+        #expect(all.last == "audio-0")
+        let kept = Timing.fastest(of: 3) { _ = RetentionPolicy.idsToDelete(files: files, now: now, maxBytes: .max) }
+        let purged = Timing.fastest(of: 3) { _ = RetentionPolicy.idsToDelete(files: files, now: now, maxBytes: 0) }
+        #expect(purged < kept * 4)
+    }
+
+    /// La taille lue pour la purge est celle que donnait `attributesOfItem(atPath:)` : fichier, fichier vide, dossier,
+    /// lien (le lien lui-même), fichier absent, nom accentué écrit en forme décomposée.
+    @Test func storedAudioSizeIsTheOneFileManagerReports() throws {
+        let manager = FileManager.default
+        let folder = manager.temporaryDirectory.appendingPathComponent("wispad-taille-\(UUID().uuidString)", isDirectory: true)
+        try manager.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? manager.removeItem(at: folder) }
+        let file = folder.appendingPathComponent("dictée.wav")
+        try Data(count: 3_210).write(to: file)
+        let empty = folder.appendingPathComponent("vide.wav")
+        try Data().write(to: empty)
+        let link = folder.appendingPathComponent("lien.wav")
+        try manager.createSymbolicLink(at: link, withDestinationURL: file)
+        let paths = [
+            file.path, empty.path, folder.path, link.path, folder.appendingPathComponent("absent.wav").path,
+            (file.path as NSString).decomposedStringWithCanonicalMapping,
+        ]
+        for path in paths {
+            let expected = (try? manager.attributesOfItem(atPath: path)[.size] as? NSNumber)?.intValue ?? 0
+            #expect(StoredAudio.bytes(atPath: path) == expected)
+        }
+        #expect(StoredAudio.bytes(atPath: file.path) == 3_210)
+        #expect(StoredAudio.bytes(atPath: "") == 0)
+    }
+
     @Test func unreadableSizesDoNotTriggerAPurge() {
         let files = [
             StoredAudio(id: "illisible", path: "a", bytes: -1, createdAt: now.addingTimeInterval(-100), expiresAt: nil),

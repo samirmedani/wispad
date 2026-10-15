@@ -62,7 +62,8 @@ struct RootView: View {
         }
         .frame(minWidth: 820, minHeight: 540)
         .tint(Theme.brand)
-        .onAppear { model.refreshPermissions() }
+        // Alerte de la barre latérale : relue hors du fil principal, qui dessine la fenêtre qui s'ouvre.
+        .onAppear { model.refreshPermissionsInBackground() }
         .sheet(item: Binding(get: { model.updateSheet }, set: { model.updateSheet = $0 }),
                onDismiss: { model.updater.dismissFailure() }) { release in
             UpdateSheet(release: release)
@@ -300,8 +301,9 @@ struct ProjectFooter: View {
         }
     }
 
-    /// Release plus récente : « Wispad 0.1.2 est disponible » (ouvre les notes de version), puis « Mettre à jour »,
-    /// ou l'avancement de l'installation (qui rouvre la fenêtre de mise à jour).
+    /// Release plus récente : « Wispad 0.1.2 est disponible », puis « Mettre à jour » ; les deux ouvrent la fenêtre de
+    /// mise à jour (notes de version), où l'installation se confirme. Pendant l'installation : son avancement, qui
+    /// rouvre la fenêtre.
     @ViewBuilder private func availableLines(_ release: ReleaseInfo) -> some View {
         let updater = model.updater
         Button {
@@ -333,10 +335,11 @@ struct ProjectFooter: View {
             .buttonStyle(HoverButtonStyle(treatment: .quiet))
             .transition(.opacity)
         } else {
-            Button("Mettre à jour") { model.installUpdate(release) }
+            Button("Mettre à jour") { model.showUpdate(release) }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
                 .hoverFeedback()
+                .help("Voir les notes de version, puis confirmer")
                 .padding(.top, 2)
                 .transition(.opacity)
         }

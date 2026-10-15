@@ -41,6 +41,11 @@ final class Capture {
     var correctionClaimed = false
     /// Surveillance du premier paquet audio (`MicrophoneStartWatch`).
     var audioWatch: Task<Void, Never>?
+    /// Redémarrage du micro encore sur sa file : `stop()` attendrait sa fin sur le fil principal. Levé par le
+    /// redémarrage lui-même dès qu'il rend la main, sans attendre le fil principal.
+    let restarting = OSAllocatedUnfairLock(initialState: false)
+    /// Surveillance de l'accès au micro pendant l'écoute (retiré dans Réglages Système).
+    var microphoneAccessWatch: Task<Void, Never>?
 
     init(mode: ListenMode, context: DictationContext, field: Task<FieldSnapshot?, Never>, marks: LatencyMarks, run: DictationTraceRecorder) {
         self.mode = mode
@@ -128,7 +133,7 @@ final class FileLedger {
         )
         run.adopt(event, model: model)
         model.recordUsage(event)
-        model.health.record(ServiceHealth.voice(speech.provider), succeeded: !attempt.failed)
+        model.recordHealth(ServiceHealth.voice(speech.provider), succeeded: !attempt.failed)
     }
 }
 

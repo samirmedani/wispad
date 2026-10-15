@@ -276,19 +276,19 @@ struct FileVerificationTests {
         try await f.cleanEntered.value()
         f.fileRelease.resolve(.success(file))
         // La correction du flux reste bloquée : le texte du fichier est pourtant corrigé et collé.
-        let deadline = Date().addingTimeInterval(3)
+        let deadline = Date().addingTimeInterval(15)
         while f.inserted.isEmpty, Date() < deadline { try await Task.sleep(nanoseconds: 20_000_000) }
         #expect(f.inserted == [file])
         #expect(f.cleanTexts == [stream, file])
         // Libérée ensuite, elle est quand même comptée, et ajoutée à la trace de la dictée.
         f.cleanRelease.resolve(.success(()))
         try await finish(within: 2, task)
-        let counted = Date().addingTimeInterval(2)
+        let counted = Date().addingTimeInterval(15)
         while f.model.usage.filter({ $0.api == .deepSeekCleanup }).count < 2, Date() < counted {
             try await Task.sleep(nanoseconds: 20_000_000)
         }
         #expect(f.model.usage.filter { $0.api == .deepSeekCleanup }.count == 2)
-        let traceDeadline = Date().addingTimeInterval(2)
+        let traceDeadline = Date().addingTimeInterval(15)
         while (try? f.trace())?.calls.filter({ $0.api == .deepSeekCleanup }).count ?? 0 < 2, Date() < traceDeadline {
             try await Task.sleep(nanoseconds: 20_000_000)
         }
@@ -338,7 +338,7 @@ struct FileVerificationTests {
         let task = try #require(f.model.coordinator.endCapture())
         try await f.cleanEntered.value()
         f.fileRelease.resolve(.success(file))
-        let started = Date().addingTimeInterval(2)
+        let started = Date().addingTimeInterval(15)
         while f.cleanTexts.count < 2, Date() < started { try await Task.sleep(nanoseconds: 20_000_000) }
         #expect(f.cleanTexts == [stream, file])
         f.cleanRelease.resolve(.success(()))
@@ -347,7 +347,7 @@ struct FileVerificationTests {
         #expect(f.inserted == [file])
         #expect(try f.trace().correctionPatched == true)
         f.secondCleanRelease.resolve(.success(()))
-        let billed = Date().addingTimeInterval(2)
+        let billed = Date().addingTimeInterval(15)
         while f.model.usage.filter({ $0.api == .deepSeekCleanup }).count < 2, Date() < billed {
             try await Task.sleep(nanoseconds: 20_000_000)
         }
@@ -388,7 +388,7 @@ struct FileVerificationTests {
         try await f.cleanEntered.value()
         f.fileRelease.resolve(.success(file))
         // Correction du flux bloquée : au-delà de la borne, le fichier est corrigé en entier et collé.
-        let deadline = Date().addingTimeInterval(3)
+        let deadline = Date().addingTimeInterval(15)
         while f.inserted.isEmpty, Date() < deadline { try await Task.sleep(nanoseconds: 20_000_000) }
         #expect(f.inserted == [file])
         #expect(f.cleanTexts == [stream, file])

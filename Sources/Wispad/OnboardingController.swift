@@ -7,22 +7,36 @@ import WispadCore
 /// les remplacent ; l'aperçu de développement n'en appelle aucune.
 @MainActor
 struct OnboardingSystem {
-    struct PermissionSnapshot: Equatable {
+    struct PermissionSnapshot: Equatable, Sendable {
         var microphoneGranted = false
         var microphoneDenied = false
         var accessibilityTrusted = false
         var inputMonitoringTrusted = false
+
+        /// Lecture sans aucune demande (rien ne s'affiche côté macOS), depuis n'importe quel fil. Le micro et la
+        /// surveillance des entrées sont chacun une question au démon des autorisations de macOS (une dizaine de
+        /// millisecondes) ; l'accessibilité, gardée en mémoire par macOS, se lit en une microseconde.
+        static func read() -> PermissionSnapshot {
+            let microphone = PermissionCenter.microphoneStatus()
+            return PermissionSnapshot(
+                microphoneGranted: microphone == .authorized,
+                microphoneDenied: microphone == .denied || microphone == .restricted,
+                accessibilityTrusted: PermissionCenter.accessibilityTrusted(prompt: false),
+                inputMonitoringTrusted: PermissionCenter.inputMonitoringTrusted()
+            )
+        }
     }
 
-    /// Lecture sans aucune demande : rien ne s'affiche côté macOS.
-    var permissions: @MainActor () -> PermissionSnapshot = {
-        let microphone = PermissionCenter.microphoneStatus()
-        return PermissionSnapshot(
-            microphoneGranted: microphone == .authorized,
-            microphoneDenied: microphone == .denied || microphone == .restricted,
-            accessibilityTrusted: PermissionCenter.accessibilityTrusted(prompt: false),
-            inputMonitoringTrusted: PermissionCenter.inputMonitoringTrusted()
-        )
+    /// Lecture sans aucune demande, sur place : juste après une action (Autoriser, qui demande à macOS ou ouvre Réglages
+    /// Système ; étape suivante ; fenêtre rouverte), dont l'écran montre l'effet aussitôt et dont l'étape Micro dépend
+    /// pour ouvrir son test.
+    var permissions: @MainActor () -> PermissionSnapshot = { PermissionSnapshot.read() }
+    /// Lecture du sondage (deux fois par seconde pendant tout l'affichage), sur la file des autorisations : faite sur le
+    /// fil principal, elle le retiendrait une vingtaine de millisecondes à chaque passage, assez pour faire sauter des
+    /// images aux animations (bulle de l'accueil, vumètre). Nil : `permissions`, sur place (macOS simulé dont les tests
+    /// attendent l'effet dès le retour de `tick`).
+    var pollPermissions: (@Sendable () async -> PermissionSnapshot)? = {
+        await PermissionReads.offMain { PermissionSnapshot.read() }
     }
     var requestMicrophone: @MainActor () async -> Bool = { await PermissionCenter.requestMicrophone() }
     var requestAccessibility: @MainActor () -> Void = { _ = PermissionCenter.accessibilityTrusted(prompt: true) }
@@ -51,6 +65,11 @@ final class OnboardingController {
     let replay: Bool
     /// Aperçu de développement : états fictifs figés, aucune demande au système, aucun sondage.
     private(set) var isPreview = false
+    /// Fenêtre fermée ou parcours quitté : le sondage s'arrête. La fenêtre fermée reste en mémoire avec sa vue,
+    /// dont la tâche de sondage n'est pas forcément annulée par SwiftUI.
+    private(set) var isSuspended = false
+    /// Avance à chaque reprise : la vue relance son sondage à la réouverture, même sans avoir vu la suspension.
+    private(set) var activation = 0
 
     private(set) var step: OnboardingStep
     /// Étapes passées avec « Plus tard ».
@@ -62,6 +81,12 @@ final class OnboardingController {
     private(set) var permissions: [PermissionKind: PermissionState] = [:]
     @ObservationIgnored private var requested: Set<PermissionKind> = []
     @ObservationIgnored private var inputTrustedSince: Date?
+    /// Lecture du sondage en route, hors du fil principal : le sondage n'en lance pas d'autre tant qu'elle n'a pas
+    /// répondu, même lente.
+    @ObservationIgnored private(set) var pollingPermissions = false
+    /// Numéro (`AppModel.startPermissionRead`) de la dernière lecture appliquée : une réponse partie avant ne l'efface
+    /// pas.
+    @ObservationIgnored private var appliedPermissionRead = 0
 
     // Micro
     private(set) var devices: [AudioInputDevice] = []
@@ -70,6 +95,11 @@ final class OnboardingController {
     /// Dernier niveau entendu (dBFS), pour le vumètre.
     private(set) var level = SignalLevel.silence
     private(set) var meterFailed = false
+    /// L'ouverture du micro du test a rendu la main.
+    private(set) var meterOpened = false
+    /// Ouverture du test en cours, à l'horloge : sans voix au bout de `MicrophoneCheck.silenceTimeout`, même sans
+    /// aucun son reçu, l'écran dit quoi vérifier. Nil quand le test ne tourne pas.
+    @ObservationIgnored private var meterStartedAt: Date?
     @ObservationIgnored private var meter: (any MicrophoneMetering)?
     @ObservationIgnored private var meterGeneration = 0
 
@@ -121,7 +151,9 @@ final class OnboardingController {
         case .microphone:
             return MicrophoneCheck.status(permission: permissions[.microphone] ?? .notRequested,
                                           hasInputDevice: !devices.isEmpty || systemInput != nil,
-                                          meterFailed: meterFailed, detector: detector)
+                                          meterFailed: meterFailed, detector: detector,
+                                          listening: meterStartedAt.map { max(0, now.timeIntervalSince($0)) } ?? 0,
+                                          meterStarted: meterOpened)
         case .provider:
             return ProviderCheck.status(voice: voiceKeyCheck)
         case .shortcut:
@@ -159,7 +191,15 @@ final class OnboardingController {
         leave(step)
         step = next
         if !replay, !isPreview {
-            model.settings.onboardingResume = next.rawValue
+            if next == .finish {
+                // Fin atteinte : autorisations et clé sont réussies, les autres étapes faites ou laissées pour plus
+                // tard, et « Retour » n'est plus proposé. La configuration est faite, même si Wispad est quitté
+                // avant « Terminer » : elle ne revient pas depuis Bienvenue au lancement suivant.
+                model.settings.onboardingCompleted = true
+                model.settings.onboardingResume = ""
+            } else {
+                model.settings.onboardingResume = next.rawValue
+            }
             model.saveSettings()
         }
         enter(next)
@@ -171,37 +211,70 @@ final class OnboardingController {
         model.completeOnboarding(openSettings: openSettings)
     }
 
-    /// Fenêtre fermée ou parcours terminé : micro et écoute de la touche rendus.
+    /// Fenêtre fermée ou parcours terminé : micro et écoute de la touche rendus, sondage arrêté.
     func suspend() {
+        isSuspended = true
         leave(step)
     }
 
-    /// Fenêtre (ré)affichée : l'étape courante reprend ses contrôles.
+    /// Fenêtre (ré)affichée : l'étape courante reprend ses contrôles, et la vue son sondage. Une étape déjà réussie
+    /// le reste : voix entendue au micro, essai réussi (les appuis du test de la touche sont déjà gardés).
     func resume() {
-        enter(step)
+        isSuspended = false
+        activation += 1
+        enter(step, resuming: true)
+    }
+
+    /// Sondage de la vue : `tick` toutes les 0,5 s tant que la fenêtre est affichée. Il s'arrête dès la suspension
+    /// (fenêtre fermée) : plus de lecture des autorisations, deux fois par seconde, derrière une fenêtre fermée.
+    func poll(every interval: Duration = .milliseconds(500)) async {
+        while !Task.isCancelled, !isSuspended {
+            tick()
+            try? await Task.sleep(for: interval)
+        }
     }
 
     /// Sondage léger (toutes les 0,5 s pendant l'affichage) : autorisations, attentes, réussite de l'essai.
     func tick() {
         guard !isPreview else { return }
         now = system.now()
-        refreshPermissions()
+        pollPermissions()
         noteStall()
         noteTrialProgress()
+        // Clé enregistrée restée sans résultat (vérification écartée, clé relue) : vérifiée, jamais « Vérification… »
+        // affichée sans vérification en cours.
+        if step == .provider { checkStoredKeys(retryingInconclusive: false) }
     }
 
-    private func enter(_ step: OnboardingStep) {
+    /// Étape « Micro » : accès retiré dans Réglages Système pendant l'écran, le test rend le micro (il n'entendrait
+    /// plus que du silence) ; accès rendu, le test repart de lui-même au lieu d'attendre une voix qu'il n'écoute pas.
+    private func followMicrophonePermission(from previous: PermissionState?) {
+        guard step == .microphone, !isSuspended, let previous else { return }
+        let current = permissions[.microphone]
+        guard current != previous else { return }
+        if current == .granted {
+            startMicrophoneTest()
+        } else if previous == .granted {
+            stopMicrophoneTest()
+        }
+    }
+
+    private func enter(_ step: OnboardingStep, resuming: Bool = false) {
         guard !isPreview else { return }
         now = system.now()
         refreshPermissions()
         switch step {
-        case .microphone: startMicrophoneTest()
+        case .microphone: startMicrophoneTest(keepingVoice: resuming)
         case .provider: checkStoredKeys()
         case .shortcut: startShortcutProbe()
         case .trial:
             // Le test de la touche ne doit jamais survivre à son étape : sinon fn ne dicterait plus.
             stopShortcutProbe()
-            beginTrial()
+            if resuming {
+                // Une dictée arrivée dans le champ pendant que la fenêtre était fermée compte aussi.
+                noteTrialProgress()
+            }
+            if !resuming || trialSummary == nil { beginTrial() }
         case .welcome, .permissions, .finish: break
         }
     }
@@ -217,9 +290,43 @@ final class OnboardingController {
 
     // MARK: - Autorisations
 
+    /// Relecture sur place, juste après une action (Autoriser, étape suivante, fenêtre rouverte) : l'écran en montre
+    /// l'effet aussitôt, et l'étape Micro en dépend pour ouvrir son test.
     func refreshPermissions() {
         guard !isPreview else { return }
-        let snapshot = system.permissions()
+        let serial = model.startPermissionRead()
+        apply(system.permissions(), read: serial)
+    }
+
+    /// Lecture du sondage, faite hors du fil principal (`OnboardingSystem.pollPermissions`) et jamais deux à la fois.
+    /// Sa réponse s'applique à son arrivée, avec ses effets dans le même ordre qu'une relecture sur place (écoute du
+    /// clavier, état affiché, test du micro), sauf si une lecture partie après elle a déjà été appliquée (relecture
+    /// après un clic) ou si la fenêtre s'est fermée entre-temps : l'état n'est plus relu jusqu'à sa réouverture.
+    private func pollPermissions() {
+        guard let read = system.pollPermissions else {
+            let microphone = permissions[.microphone]
+            refreshPermissions()
+            followMicrophonePermission(from: microphone)
+            return
+        }
+        guard !pollingPermissions else { return }
+        pollingPermissions = true
+        let serial = model.startPermissionRead()
+        Task { [weak self] in
+            let snapshot = await read()
+            guard let self else { return }
+            self.pollingPermissions = false
+            guard !self.isSuspended else { return }
+            let microphone = self.permissions[.microphone]
+            self.apply(snapshot, read: serial)
+            self.followMicrophonePermission(from: microphone)
+        }
+    }
+
+    /// Lecture `serial` : appliquée si aucune lecture partie après elle ne l'a déjà été.
+    private func apply(_ snapshot: OnboardingSystem.PermissionSnapshot, read serial: Int) {
+        guard serial > appliedPermissionRead else { return }
+        appliedPermissionRead = serial
         let at = system.now()
         if snapshot.inputMonitoringTrusted {
             if inputTrustedSince == nil {
@@ -242,8 +349,7 @@ final class OnboardingController {
                                                                settling: settling),
         ]
         if fresh != permissions { permissions = fresh }
-        if model.accessibilityTrusted != snapshot.accessibilityTrusted { model.accessibilityTrusted = snapshot.accessibilityTrusted }
-        if model.inputMonitoringTrusted != snapshot.inputMonitoringTrusted { model.inputMonitoringTrusted = snapshot.inputMonitoringTrusted }
+        model.applyTrust(accessibility: snapshot.accessibilityTrusted, inputMonitoring: snapshot.inputMonitoringTrusted, read: serial)
     }
 
     /// Demande système (première fois) ; ensuite, le bon panneau de Réglages Système.
@@ -294,19 +400,23 @@ final class OnboardingController {
     }
 
     /// Ouvre le micro choisi pour le vumètre. Seul le niveau en sort : rien n'est enregistré ni envoyé.
-    func startMicrophoneTest() {
+    /// `keepingVoice` : fenêtre rouverte, une voix déjà entendue reste acquise tant que l'accès au micro est accordé ;
+    /// le vumètre repart quand même.
+    func startMicrophoneTest(keepingVoice: Bool = false) {
         guard !isPreview else { return }
         stopMicrophoneTest()
         devices = system.inputDevices()
         systemInput = system.systemInput()
-        detector = VoiceDetector()
+        if !keepingVoice || !detector.detected || permissions[.microphone] != .granted { detector = VoiceDetector() }
         level = SignalLevel.silence
         meterFailed = false
+        meterOpened = false
         guard permissions[.microphone] == .granted, !devices.isEmpty || systemInput != nil else { return }
         let meter = system.makeMeter()
         self.meter = meter
         meterGeneration += 1
         let generation = meterGeneration
+        meterStartedAt = system.now()
         let uid = effectiveMicrophoneUID
         Task { [weak self] in
             do {
@@ -315,7 +425,11 @@ final class OnboardingController {
                     self.level = level
                     self.detector.add(level: level, seconds: seconds)
                 }
-                if self?.meterGeneration != generation { meter.stop() }
+                guard let self, self.meterGeneration == generation else {
+                    meter.stop()
+                    return
+                }
+                self.meterOpened = true
             } catch {
                 guard let self, self.meterGeneration == generation else { return }
                 self.meterFailed = true
@@ -327,6 +441,7 @@ final class OnboardingController {
         meterGeneration += 1
         meter?.stop()
         meter = nil
+        meterStartedAt = nil
     }
 
     /// Autre micro : retenu pour les dictées, et le test recommence avec lui.
@@ -349,13 +464,35 @@ final class OnboardingController {
         return model.hasKey(account: account) ? .verifying : .missing
     }
 
-    /// Les clés déjà enregistrées sont revérifiées chez leur fournisseur, sans être réécrites.
-    func checkStoredKeys() {
+    /// Les clés déjà enregistrées sont revérifiées chez leur fournisseur, sans être réécrites : celles qui n'ont pas de
+    /// résultat et, sauf `retryingInconclusive` faux (sondage), celles dont la vérification n'a pas abouti (pas de
+    /// réseau, réponse inattendue). Un résultat net (valide, refusée) est gardé.
+    func checkStoredKeys(retryingInconclusive: Bool = true) {
         guard !isPreview else { return }
         for account in [voiceAccount, CleanupModel.deepSeekAccount, ProviderID.openAI.rawValue]
-        where model.keyChecks[account] == nil && model.hasKey(account: account) {
-            Task { await model.recheckStoredKey(account) }
+        where model.hasKey(account: account) {
+            let due: Bool
+            switch model.keyChecks[account] {
+            case nil: due = true
+            case .offline?, .unverified?: due = retryingInconclusive
+            case .missing?, .verifying?, .valid?, .rejected?, .notSaved?: due = false
+            }
+            if due { Task { await model.recheckStoredKey(account) } }
         }
+    }
+
+    /// « Réessayer » sur un problème de clé : utile quand la clé de voix est déjà enregistrée et qu'aucune autre n'est
+    /// en cours de saisie. Sans lui, il faudrait la recoller pour la vérifier de nouveau (réseau revenu, crédit ajouté).
+    var retriesStoredVoiceKey: Bool {
+        let draft = (model.keyDrafts[voiceAccount] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        return draft.isEmpty && model.hasKey(account: voiceAccount)
+    }
+
+    /// La clé de voix enregistrée est revérifiée chez son fournisseur, quel que soit le dernier résultat.
+    func retryVoiceKey() {
+        guard !isPreview else { return }
+        let account = voiceAccount
+        Task { await model.recheckStoredKey(account) }
     }
 
     // MARK: - Touche

@@ -336,4 +336,31 @@ struct UpdateInstallRulesTests {
         #expect(UpdateInstallRules.mountPoints(fromPlist: Data("hdiutil: attach failed".utf8)).isEmpty)
         #expect(UpdateInstallRules.mountPoints(fromPlist: Data()).isEmpty)
     }
+
+    /// Sortie réelle de `diskutil image attach --plist` (repli de hdiutil, macOS 27) : appareils sans `/dev/`,
+    /// conteneur APFS, un seul volume monté.
+    @Test func readsTheMountPointFromDiskutilImageAttach() {
+        let output = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>system-entities</key>
+            <array>
+                <dict><key>content-hint</key><string>GUID_partition_scheme</string><key>dev-entry</key><string>disk6</string></dict>
+                <dict><key>content-hint</key><string>Apple_APFS</string><key>dev-entry</key><string>disk6s1</string></dict>
+                <dict><key>content-hint</key><string>Apple_APFS_Container</string><key>dev-entry</key><string>disk7</string></dict>
+                <dict>
+                    <key>content-hint</key><string>Apple_APFS_Volume</string>
+                    <key>dev-entry</key><string>disk7s1</string>
+                    <key>filesystem-type</key><string>apfs</string>
+                    <key>mount-point</key><string>/private/var/folders/xy/T/WispadUpdate-1/volume</string>
+                    <key>volume-name</key><string>Wispad</string>
+                </dict>
+            </array>
+        </dict>
+        </plist>
+        """
+        #expect(UpdateInstallRules.mountPoints(fromPlist: Data(output.utf8)) == ["/private/var/folders/xy/T/WispadUpdate-1/volume"])
+    }
 }

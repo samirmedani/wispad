@@ -231,12 +231,19 @@ public enum MicrophoneCheck {
     /// Après ce temps d'écoute sans voix, on explique quoi vérifier (l'écoute continue).
     public static let silenceTimeout = 12.0
 
-    public static func status(permission: PermissionState, hasInputDevice: Bool, meterFailed: Bool, detector: VoiceDetector) -> OnboardingStatus {
+    /// `listening` : secondes écoulées depuis l'ouverture du test, à l'horloge ; `meterStarted` : l'ouverture du micro
+    /// a rendu la main. Un micro qui ne livre aucun son (aucun paquet, donc aucune seconde entendue) ou dont
+    /// l'ouverture ne rend jamais la main finit aussi en problème expliqué, au lieu d'attendre une voix sans fin.
+    public static func status(permission: PermissionState, hasInputDevice: Bool, meterFailed: Bool, detector: VoiceDetector,
+                              listening: Double = 0, meterStarted: Bool = true) -> OnboardingStatus {
         if detector.detected { return .succeeded }
         if permission != .granted { return .failed(.permission(.microphone, permission)) }
         if !hasInputDevice { return .failed(.noInputDevice) }
         if meterFailed { return .failed(.microphoneUnavailable) }
-        if detector.heardSeconds >= silenceTimeout { return .failed(.silence) }
+        if max(detector.heardSeconds, listening) >= silenceTimeout {
+            // Un paquet reçu prouve que le micro s'est ouvert, même avant que son ouverture soit notée.
+            return .failed(meterStarted || detector.heardSeconds > 0 ? .silence : .microphoneUnavailable)
+        }
         return detector.heardSeconds > 0 ? .inProgress : .todo
     }
 }
@@ -256,7 +263,7 @@ public enum KeyCheck: Equatable, Sendable {
     case missing
     case verifying
     case valid
-    /// Refusée par le fournisseur (HTTP 401 ou 403).
+    /// Refusée par le fournisseur (HTTP 400, 401 ou 403).
     case rejected(Int)
     /// Réponse inattendue : la clé n'est ni confirmée ni refusée.
     case unverified(Int)
@@ -268,7 +275,9 @@ public enum KeyCheck: Equatable, Sendable {
     public static func from(httpStatus: Int) -> KeyCheck {
         switch httpStatus {
         case 200: return .valid
-        case 401, 403: return .rejected(httpStatus)
+        // xAI répond 400 à une clé fausse (« Incorrect API key provided ») ; la vérification, une simple lecture de la
+        // liste des modèles sans paramètre, ne peut être refusée que pour sa clé. 403 : clé reconnue mais refusée.
+        case 400, 401, 403: return .rejected(httpStatus)
         default: return .unverified(httpStatus)
         }
     }

@@ -765,6 +765,31 @@ final class BandTimelineTests: XCTestCase {
         XCTAssertEqual(timeline.current(at: 0.011), [0.9])
     }
 
+    func testFramesNobodyReadsDoNotPileUp() {
+        // Écran en veille pendant dix minutes de dictée mains libres : le micro continue, le spectre n'est plus lu.
+        var timeline = BandTimeline(bandCount: 1)
+        var arrival = 0.0
+        for packet in 0..<6_000 {
+            timeline.push(Array(repeating: [Float(packet % 100) / 100], count: 6), arrival: arrival, hopSeconds: 0.016)
+            arrival += 0.1
+        }
+        // Une seconde d'images au plus, au lieu des 36 000 de l'écoute.
+        XCTAssertLessThanOrEqual(timeline.pendingFrames, 80)
+        // L'écran revient : la dernière image due s'affiche, comme sans oubli.
+        XCTAssertEqual(timeline.current(at: arrival + 1), [0.99])
+        XCTAssertEqual(timeline.pendingFrames, 0)
+    }
+
+    func testFramesStillReadAreNeverDropped() {
+        var timeline = BandTimeline(bandCount: 1)
+        timeline.push([[0.1], [0.2], [0.3]], arrival: 10, hopSeconds: 0.016)
+        // Paquet suivant juste après : le précédent n'a pas encore été lu, il reste entier dans la file.
+        timeline.push([[0.4]], arrival: 10.05, hopSeconds: 0.016)
+        XCTAssertEqual(timeline.pendingFrames, 4)
+        XCTAssertEqual(timeline.current(at: 10), [0.1])
+        XCTAssertEqual(timeline.current(at: 10.05), [0.4])
+    }
+
     func testAnalyzerSlicesAPacketIntoHops() {
         var samples = (0..<1_600).map { Int16(3_000 * sin(Double($0) * 0.1)) }
         let data = Data(bytes: &samples, count: samples.count * 2)

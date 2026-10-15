@@ -35,7 +35,8 @@ public enum TechVocabulary {
         "errors", "missing", "fail",
     ]
 
-    public static var all: [String] { products + phrases + hardware + shortWords }
+    /// Assemblé une fois : la liste sert à chaque dictée (mots-clés, consigne, garde-fou).
+    public static let all: [String] = products + phrases + hardware + shortWords
 }
 
 /// Mots-clés envoyés à la reconnaissance : d'abord le dictionnaire de l'utilisateur, puis les termes du

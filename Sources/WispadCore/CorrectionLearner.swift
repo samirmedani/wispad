@@ -128,11 +128,15 @@ public enum CorrectionLearner {
 
     /// Mots du champ (après collage) qui viennent de la dictée.
     public static func insertedSpan(of inserted: String, in value: String) -> Range<Int>? {
-        let target = words(in: inserted)
-        let all = words(in: value)
+        insertedSpan(of: words(in: inserted), in: words(in: value))
+    }
+
+    /// Même recherche sur des mots déjà découpés. Chaque position est comparée sur place, sans copier les mots :
+    /// la surveillance la refait quatre fois par seconde sur tout le champ.
+    static func insertedSpan(of target: [String], in all: [String]) -> Range<Int>? {
         guard !target.isEmpty, all.count >= target.count else { return nil }
         let lastStart = all.count - target.count
-        for start in stride(from: lastStart, through: 0, by: -1) where Array(all[start..<(start + target.count)]) == target {
+        for start in stride(from: lastStart, through: 0, by: -1) where all[start..<(start + target.count)].elementsEqual(target) {
             return start..<(start + target.count)
         }
         return nil
@@ -155,8 +159,11 @@ public enum CorrectionLearner {
     // MARK: - Ressemblance
 
     private static func strip(_ word: String) -> String {
-        word.trimmingCharacters(in: .punctuationCharacters.union(.symbols))
+        word.trimmingCharacters(in: punctuationAndSymbols)
     }
+
+    /// Calculé une fois, pas pour chaque mot.
+    private static let punctuationAndSymbols = CharacterSet.punctuationCharacters.union(.symbols)
 
     static func key(_ text: String) -> String {
         text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "fr_FR"))

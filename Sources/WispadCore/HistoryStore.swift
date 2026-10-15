@@ -198,9 +198,17 @@ public final class HistoryStore: @unchecked Sendable {
             );
             """
         )
-        try execute("INSERT OR IGNORE INTO app_metadata (key, value) VALUES ('learning_refusals_v1', '1');")
-        try run("INSERT OR IGNORE INTO app_metadata (key, value) VALUES ('fallback_tracking_started_at', ?);") { statement in
-            sqlite3_bind_double(statement, 1, fallbackTrackingStartedAt.timeIntervalSince1970)
+        // Une base déjà à jour s'ouvre sans rien écrire, donc sans attendre le verrou d'écriture : un autre Wispad ou
+        // un outil qui le tient plus de 2 s n'empêche pas le lancement. Chaque écriture ci-dessous n'a lieu que si
+        // son marqueur manque ; les migrations le relisent dans leur transaction, au cas où une autre instance passe.
+        let metadata = Set(try query("SELECT key FROM app_metadata;") { column(0, $0) })
+        if !metadata.contains("learning_refusals_v1") {
+            try execute("INSERT OR IGNORE INTO app_metadata (key, value) VALUES ('learning_refusals_v1', '1');")
+        }
+        if !metadata.contains("fallback_tracking_started_at") {
+            try run("INSERT OR IGNORE INTO app_metadata (key, value) VALUES ('fallback_tracking_started_at', ?);") { statement in
+                sqlite3_bind_double(statement, 1, fallbackTrackingStartedAt.timeIntervalSince1970)
+            }
         }
         let trackingDates = try query("SELECT value FROM app_metadata WHERE key = 'fallback_tracking_started_at';") {
             Date(timeIntervalSince1970: sqlite3_column_double($0, 0))
@@ -208,9 +216,11 @@ public final class HistoryStore: @unchecked Sendable {
         if let date = trackingDates.first { fallbackTrackingStartedAt = date }
         // Ancienne date de début du suivi financier, sans usage depuis la fin de la séparation
         // Utilisation / Développement. Les appels eux-mêmes restent intacts.
-        try execute("DELETE FROM app_metadata WHERE key = 'financial_tracking_started_at';")
-        try migrateUsageAccuracy()
-        try forgetRetiredValues()
+        if metadata.contains("financial_tracking_started_at") {
+            try execute("DELETE FROM app_metadata WHERE key = 'financial_tracking_started_at';")
+        }
+        if !metadata.contains("usage_accuracy_v1") { try migrateUsageAccuracy() }
+        if !metadata.contains("retired_values_v1") { try forgetRetiredValues() }
     }
 
     /// Répare une seule fois les estimations anciennes, sans reconstruire de jetons perdus.
@@ -294,7 +304,8 @@ public final class HistoryStore: @unchecked Sendable {
             bind(record.finalText, at: 3, statement)
             bind(record.rawText, at: 4, statement)
             sqlite3_bind_double(statement, 5, record.durationSeconds)
-            sqlite3_bind_int(statement, 6, Int32(record.wordCount))
+            // Colonne lue en Int32 : un compte démesuré y est borné au lieu de faire planter l'écriture.
+            sqlite3_bind_int(statement, 6, Int32(clamping: record.wordCount))
             bind(record.provider, at: 7, statement)
             bind(record.model, at: 8, statement)
             bindOptional(record.targetApp, at: 9, statement)
@@ -339,7 +350,7 @@ public final class HistoryStore: @unchecked Sendable {
         try run("UPDATE dictations SET final_text = ?, raw_text = ?, word_count = ? WHERE id = ?;") { statement in
             bind(finalText, at: 1, statement)
             bind(rawText, at: 2, statement)
-            sqlite3_bind_int(statement, 3, Int32(wordCount))
+            sqlite3_bind_int(statement, 3, Int32(clamping: wordCount))
             bind(id, at: 4, statement)
         }
     }
@@ -378,6 +389,19 @@ public final class HistoryStore: @unchecked Sendable {
                 sqlite3_bind_null(statement, 2)
             }
             bind(id, at: 3, statement)
+        }
+    }
+
+    /// Purge : oublie l'audio de plusieurs dictées en une seule transaction, sans toucher au reste. Une écriture par
+    /// audio attendait chaque fois une base occupée (jusqu'à 2 s), sur le fil principal. Tout ou rien.
+    public func clearAudio(ids: [String]) throws {
+        guard !ids.isEmpty else { return }
+        try transaction {
+            for id in ids {
+                try runOnQueue("UPDATE dictations SET audio_path = NULL, audio_expires_at = NULL WHERE id = ?;") { statement in
+                    bind(id, at: 1, statement)
+                }
+            }
         }
     }
 
@@ -705,8 +729,9 @@ public final class HistoryStore: @unchecked Sendable {
         }
     }
 
+    /// Longueur en octets : un caractère nul dans le texte ne le coupe pas (SQLite s'arrêterait au premier).
     private func bind(_ value: String, at index: Int32, _ statement: OpaquePointer?) {
-        sqlite3_bind_text(statement, index, value, -1, transient)
+        sqlite3_bind_text64(statement, index, value, UInt64(value.utf8.count), transient, UInt8(SQLITE_UTF8))
     }
 
     private func bindOptional(_ value: String?, at index: Int32, _ statement: OpaquePointer?) {
@@ -719,7 +744,9 @@ public final class HistoryStore: @unchecked Sendable {
 
     private func column(_ index: Int32, _ statement: OpaquePointer?) -> String {
         guard let pointer = sqlite3_column_text(statement, index) else { return "" }
-        return String(cString: pointer)
+        // Après sqlite3_column_text, comme le demande SQLite : la taille du texte en UTF-8, caractères nuls compris.
+        let bytes = UnsafeBufferPointer(start: pointer, count: Int(sqlite3_column_bytes(statement, index)))
+        return String(decoding: bytes, as: UTF8.self)
     }
 
     private func optionalColumn(_ index: Int32, _ statement: OpaquePointer?) -> String? {

@@ -107,6 +107,83 @@ struct HistoryRowModelTests {
         #expect(cache.overflowCount == 0)
     }
 
+    @Test func cacheFollowsTheHistory() {
+        let cache = HistoryRowCache()
+        let kept = record(id: "k", at: Date(), app: nil, bundle: nil, audio: nil)
+        var changed = record(id: "m", at: Date(), app: nil, bundle: nil, audio: nil)
+        let deleted = record(id: "s", at: Date(), app: nil, bundle: nil, audio: nil)
+        for source in [kept, changed, deleted] {
+            _ = cache.item(for: source)
+            cache.store(.init(text: source.finalText, width: 600, overflows: true), id: source.id)
+        }
+        let before = [kept, changed, deleted]
+        changed.insertionStatus = InsertionStatus.failed.rawValue
+
+        cache.follow([kept, changed], previous: before)
+
+        // Supprimée : plus rien d'elle en mémoire. Modifiée : recalculée à son prochain affichage, sa mesure reste
+        // tant que son texte ne change pas. Inchangée : ni recalculée ni remesurée.
+        #expect(!cache.contains(id: deleted.id))
+        #expect(cache.itemCount == 1)
+        #expect(cache.overflowCount == 2)
+        #expect(cache.item(for: changed).status.text == "Insertion échouée")
+        #expect(cache.overflows(id: changed.id, text: changed.finalText, width: 600) == true)
+        #expect(cache.overflows(id: kept.id, text: kept.finalText, width: 600) == true)
+
+        cache.follow([], previous: [kept, changed])
+        #expect(cache.itemCount == 0)
+        #expect(cache.overflowCount == 0)
+    }
+
+    @Test func deletedDictationsLeaveTheRowCache() throws {
+        let (model, directory) = try makeModel()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let prefix = "deleted-\(UUID().uuidString)-"
+        let first = record(id: prefix + "1", at: Date(), app: nil, bundle: nil, audio: nil)
+        let second = record(id: prefix + "2", at: Date().addingTimeInterval(-60), app: nil, bundle: nil, audio: nil)
+        model.history = [first, second]
+        let cache = HistoryRowCache.shared
+        for shown in model.history {
+            _ = cache.item(for: shown)
+            cache.store(.init(text: shown.finalText, width: 600, overflows: true), id: shown.id)
+        }
+
+        // Le texte d'une dictée supprimée ne reste pas en mémoire jusqu'à la fermeture de l'app.
+        model.deleteHistory(first)
+        #expect(!cache.contains(id: first.id))
+        #expect(cache.overflows(id: first.id, text: first.finalText, width: 600) == nil)
+        #expect(cache.overflows(id: second.id, text: second.finalText, width: 600) == true)
+
+        model.deleteAllHistory()
+        #expect(!cache.contains(id: second.id))
+        #expect(cache.overflows(id: second.id, text: second.finalText, width: 600) == nil)
+    }
+
+    @Test func reloadedHistoryIsNotKeptTwiceByTheRowCache() throws {
+        let (model, directory) = try makeModel()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        var source = record(id: "reloaded-\(UUID().uuidString)", at: Date(), app: "Notes", bundle: "com.apple.Notes",
+                            audio: nil)
+        source.finalText = "Une dictée fictive, assez longue pour que son texte ait sa propre mémoire."
+        try model.store.insert(source)
+        model.reloadHistory()
+        let cache = HistoryRowCache.shared
+        let shown = try #require(model.history.first { $0.id == source.id })
+        _ = cache.item(for: shown)
+        cache.store(.init(text: shown.finalText, width: 600, overflows: true), id: shown.id)
+
+        // Dictée suivante : tout l'historique est relu de la base, dans une nouvelle mémoire.
+        model.reloadHistory()
+        let reloaded = try #require(model.history.first { $0.id == source.id })
+        #expect(reloaded == shown)
+        #expect(address(of: reloaded.finalText) != address(of: shown.finalText))
+
+        // La ligne reste prête (ni recalculée ni remesurée), avec le texte de l'historique relu, pas sa copie.
+        let item = cache.item(for: reloaded)
+        #expect(address(of: item.text) == address(of: reloaded.finalText))
+        #expect(cache.overflows(id: reloaded.id, text: reloaded.finalText, width: 600) == true)
+    }
+
     @Test func renderedLongRowsStoreTheirTruncation() async throws {
         // Ligne réellement rendue hors écran : la mesure cachée doit remplir le cache,
         // sans quoi « Afficher tout » n'apparaîtrait jamais et chaque retour remesurerait.
@@ -146,6 +223,25 @@ struct HistoryRowModelTests {
             insertionStatus: InsertionStatus.inserted.rawValue,
             audioPath: audio
         )
+    }
+
+    private func makeModel() throws -> (AppModel, URL) {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("wispad-history-cache-test-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        var dependencies = AppDependencies()
+        dependencies.copyText = { _ in }
+        dependencies.loadKey = { _ in nil }
+        dependencies.refreshKeys = { false }
+        dependencies.requestMicrophone = { false }
+        let model = try AppModel(supportDirectory: directory, settings: AppSettings(), dependencies: dependencies)
+        model.overlay.displaysPanel = false
+        return (model, directory)
+    }
+
+    /// Adresse des octets d'un texte : deux textes égaux ne la partagent que si l'un est une copie de l'autre.
+    private func address(of text: String) -> UInt? {
+        text.utf8.withContiguousStorageIfAvailable { UInt(bitPattern: $0.baseAddress) }
     }
 
     private func render(count: Int, configure: (Int, inout DictationRecord) -> Void) async throws -> Set<String> {

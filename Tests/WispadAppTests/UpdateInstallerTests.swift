@@ -13,6 +13,10 @@ struct UpdateInstallerTests {
         var removed: [URL] = []
         var relaunched: [String]?
         var terminated = false
+        /// Étape affichée au moment où la fermeture est demandée.
+        var phaseAtTerminate: UpdateInstaller.Phase?
+        /// Fin de l'installation, dans l'ordre : fenêtres refermées, fermeture demandée, arrêt forcé.
+        var quitSteps: [String] = []
         var downloadError: Error?
         var signatureValid = true
         var diskVersion: String? = "0.1.2"
@@ -55,11 +59,20 @@ struct UpdateInstallerTests {
         system.copy = { _, destination in journal.steps.append("copy " + destination.lastPathComponent) }
         system.swap = { staged, app in journal.steps.append("swap \(staged.lastPathComponent) \(app.lastPathComponent)") }
         system.remove = { journal.removed.append($0) }
+        // Verrou entre instances toujours libre ici (le vrai est testé dans UpdateToolsTests) : les tests, lancés en
+        // parallèle, ne se le disputent pas.
+        system.lock = { {} }
         system.relaunch = { _, arguments in
             journal.relaunched = arguments
             return true
         }
-        system.terminate = { journal.terminated = true }
+        // Le vrai NSApp.terminate ne rend la main que si macOS refuse de fermer l'app : ici, il la rend toujours.
+        system.terminate = { [weak installer] in
+            journal.phaseAtTerminate = installer?.phase
+            journal.terminated = true
+            journal.quitSteps.append("fermeture")
+        }
+        system.forceQuit = { journal.quitSteps.append("arrêt forcé") }
         system.open = { journal.opened.append($0) }
         installer.system = system
         return installer
@@ -68,11 +81,13 @@ struct UpdateInstallerTests {
     @discardableResult
     private func install(_ installer: UpdateInstaller, _ journal: Journal) -> Bool {
         installer.install(Self.release, kind: .release, installed: "0.1.1", isIdle: { journal.idle },
-                          relaunchArguments: { ["--updated", "--section", "home"] })
+                          relaunchArguments: { ["--updated", "--section", "home"] },
+                          beforeQuit: { journal.quitSteps.append("fenêtres") })
     }
 
     private func waitUntil(_ condition: @MainActor () -> Bool) async throws {
-        let deadline = Date().addingTimeInterval(3)
+        // Rend la main dès que la condition est vraie ; la marge sert aux machines de CI chargées.
+        let deadline = Date().addingTimeInterval(15)
         while !condition() {
             guard Date() < deadline else {
                 Issue.record("délai dépassé")
@@ -92,11 +107,27 @@ struct UpdateInstallerTests {
         #expect(journal.steps == ["download", "mount", "verify Wispad.app", "copy .Wispad.nouveau.app",
                                   "verify .Wispad.nouveau.app", "detach", "swap .Wispad.nouveau.app Wispad.app"])
         #expect(journal.relaunched == ["--updated", "--section", "home"])
-        #expect(installer.phase == .relaunching)
+        #expect(journal.phaseAtTerminate == .relaunching)
+        // La fenêtre de mise à jour (en feuille) se ferme avant la demande : sinon macOS refuse de quitter.
+        #expect(journal.quitSteps.prefix(2) == ["fenêtres", "fermeture"])
         // L'ancienne version (dans la copie cachée après l'échange) est effacée ; l'app elle-même jamais.
         #expect(journal.removed.contains(Self.staged))
         #expect(!journal.removed.contains(Self.app))
         #expect(journal.opened.isEmpty)
+    }
+
+    /// Fermeture refusée par macOS (feuille ou fenêtre modale restée ouverte) : l'ancienne instance, qui ne peut plus
+    /// dicter, s'arrête de force et l'aide ouvre la nouvelle version, déjà en place. Jamais « Relance… » sans fin.
+    @Test func refusedQuitEndsOnARelaunchFailure() async throws {
+        let journal = Journal()
+        let installer = makeInstaller(journal)
+        install(installer, journal)
+        try await waitUntil { !installer.isBusy }
+        #expect(journal.quitSteps == ["fenêtres", "fermeture", "arrêt forcé"])
+        #expect(journal.steps.last == "swap .Wispad.nouveau.app Wispad.app")
+        // Atteint seulement ici, où l'arrêt forcé rend la main.
+        #expect(installer.phase == .failed(.relaunch))
+        #expect(!installer.canCancel)
     }
 
     /// Dossier non modifiable, app sans signature Developer ID ou build de développement : la page de la release.
@@ -126,6 +157,7 @@ struct UpdateInstallerTests {
         #expect(!journal.steps.contains { $0.hasPrefix("copy") || $0.hasPrefix("swap") })
         #expect(journal.steps.contains("detach"))
         #expect(!journal.terminated)
+        #expect(journal.quitSteps.isEmpty)
         #expect(!journal.removed.contains(Self.app))
     }
 
