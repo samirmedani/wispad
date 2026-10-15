@@ -98,7 +98,8 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 - Un texte coupé à quatre lignes montre « Afficher tout » ; le bouton n'apparaît que si la coupure est réelle à la
   largeur de la fenêtre.
 - Au survol : détails, copier, retranscrire et écouter (si l'audio est gardé), supprimer.
-- La recherche filtre dès que l'on cesse de taper (150 ms) ; l'effacer réaffiche tout aussitôt.
+- La recherche filtre dès que l'on cesse de taper (150 ms) ; l'effacer réaffiche tout aussitôt. Elle porte sur le
+  texte collé et sur ce qui a été entendu : une dictée dont la correction est partie à côté se retrouve par ses mots.
 - Le défilement reste fluide avec des milliers de dictées : seules les lignes visibles sont construites, et une
   ligne déjà vue n'est ni reformatée ni remesurée.
 - Supprimer une dictée, ou tout l'historique, l'efface aussi de la mémoire de Wispad, même ouvert depuis des jours ;
@@ -377,6 +378,10 @@ Après la correction, `FidelityGuard` rejette ou répare :
 - une réponse nettement plus longue que la dictée, ou qui recopie huit mots de suite du contexte. Seuls les mots
   comptent : les guillemets d'une citation, un deux-points ou un tiret isolés ne rallongent rien et ne cachent pas
   une copie ;
+- une réponse qui perd la dictée : sur huit mots dits ou plus, elle n'en garde même pas un quart et se compose
+  surtout de mots que personne n'a dits (texte de la fenêtre, réponse à la question dictée, traduction), ou d'aucun
+  mot. La transcription est collée. Une correction courte faite de mots dits (« … non, oublie tout, écris juste
+  merci » → « Merci. ») et des nombres mis en forme (« vingt-quatre octobre » → « 24/10 ») restent ;
 - un mot traduit (« outils » → « tools ») : le mot entendu est remis ;
 - une marque, un nom ou une référence absents de ce qui a été dit et qui ne lui ressemblent pas à l'oreille, même
   mis entre guillemets ;

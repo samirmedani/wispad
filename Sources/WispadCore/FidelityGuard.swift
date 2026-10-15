@@ -22,6 +22,7 @@ public enum FidelityGuard {
         let spoken = heard.filter(isWord).count
         if written.filter(isWord).count > spoken + max(4, spoken / 4) { return transcript }
         if copiesContext(written: written, heard: heard, context: context, additional: previousDictations) { return transcript }
+        if losesTheDictation(heard: heard, written: written, alsoHeard: alsoHeard) { return transcript }
         let repaired = restoreTranslatedWords(
             heard: heard,
             written: written,
@@ -44,6 +45,29 @@ public enum FidelityGuard {
 
     /// Une dictée de trois mots au plus n'offre aucun contexte au modèle : il ne peut qu'y deviner.
     static let shortDictationWords = 3
+
+    /// À partir de ce nombre de mots dits, on peut juger qu'une correction a perdu la dictée.
+    static let judgedDictationWords = 8
+
+    /// La correction a perdu la dictée : sur au moins `judgedDictationWords` mots dits, elle n'en garde même pas un
+    /// quart, et elle se compose surtout de mots que personne n'a dits, ou d'aucun mot. Le modèle a répondu à côté
+    /// (texte de la fenêtre recopié, réponse à la question dictée, traduction) au lieu de corriger. Le 15 octobre,
+    /// 193 mots dits sont devenus « Travaillez avec Codex », trois mots absents de la dictée.
+    /// Ne comptent pas comme inventés : les mots entendus par l'autre écoute, et les nombres mis en forme
+    /// (« vingt-quatre octobre » → « 24/10 »). Une correction qui ne garde que peu de mots, tous dits (« … non,
+    /// oublie tout, écris juste merci » → « Merci. »), reste.
+    static func losesTheDictation(heard: [String], written: [String], alsoHeard: [String] = []) -> Bool {
+        let said = heard.map { CorrectionLearner.key(strip($0)) }.filter { !$0.isEmpty }
+        guard said.count >= judgedDictationWords else { return false }
+        let writtenKeys = written.map { CorrectionLearner.key(strip($0)) }.filter { !$0.isEmpty }
+        // Plus aucun mot, une ponctuation seule : rien de ce qui a été dit ne reste.
+        guard !writtenKeys.isEmpty else { return true }
+        let kept = Set(writtenKeys)
+        guard said.filter(kept.contains).count * 4 < said.count else { return false }
+        let known = Set(said).union(alsoHeard.map { CorrectionLearner.key(strip($0)) })
+        let words = writtenKeys.filter { !$0.contains(where: \.isNumber) }
+        return words.filter { !known.contains($0) }.count * 2 > words.count
+    }
 
     /// Sur une dictée courte, seules restent la ponctuation, les majuscules, les hésitations retirées, un « ne »
     /// rétabli et les corrections d'écoute qui sonnent comme le mot entendu : écrites presque pareil (« cloud » →
