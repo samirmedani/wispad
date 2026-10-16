@@ -16,12 +16,19 @@ struct UsageView: View {
         let events = model.usageEvents(for: period, now: now)
         let summary = UsageSummary.make(events: events, period: .all, now: now)
         let incomplete = summary.hasUnpricedCalls || model.usageLoadFailed
+        let span = model.usage.last.map { UsageSpan.make(firstUse: $0.createdAt, now: now) }
         ScreenScroll {
             ScreenHeader(title: String(localized: "Consommation"), subtitle: String(localized: "Coûts des API et recours aux relais.")) {
-                PillPicker(selection: Binding(
-                    get: { model.settings.usagePeriod },
-                    set: { model.setDisplayChoice(\.usagePeriod, $0) }
-                ))
+                VStack(alignment: .trailing, spacing: 6) {
+                    PillPicker(selection: Binding(
+                        get: { model.settings.usagePeriod },
+                        set: { model.setDisplayChoice(\.usagePeriod, $0) }
+                    ))
+                    if period == .all, let span {
+                        PeriodSpanCaption(span: span)
+                            .transition(.opacity)
+                    }
+                }
             }
             if let warning = model.usageStorageWarning {
                 HStack(alignment: .top, spacing: 12) {
@@ -51,6 +58,9 @@ struct UsageView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
+            if period == .all, let span, !events.isEmpty {
+                MonthlyComparisonCard(totalUSD: summary.totalUSD, incomplete: incomplete, span: span)
+            }
             FallbackStatsCard(period: period)
             if summary.rows.isEmpty {
                 EmptyState(symbol: "chart.bar", title: String(localized: "Aucun appel API"), message: String(localized: "Aucun appel enregistré sur cette période."))
@@ -72,16 +82,8 @@ struct UsageView: View {
             }
             balances
             if !events.isEmpty {
-                VStack(alignment: .leading, spacing: 10) {
-                    CardTitle(String(localized: "Derniers appels"))
-                    VStack(spacing: 0) {
-                        ForEach(events.prefix(15)) { event in
-                            UsageEventLine(event: event, now: now)
-                        }
-                    }
-                }
-                .padding(16)
-                .card()
+                UsageCallsTable(events: events, now: now)
+                    .id(period)
             }
             Text("Coûts estimés d'après les tarifs publiés de chaque modèle (au survol d'une ligne « Par API »). La facture du fournisseur fait foi.")
                 .font(.footnote)
@@ -383,43 +385,6 @@ struct UsageRowView: View {
         if row.failures > 0 { parts.append(row.failures == 1 ? String(localized: "1 échec") : String(localized: "\(row.failures) échecs")) }
         parts.append(row.models.joined(separator: ", "))
         return parts.joined(separator: " · ")
-    }
-}
-
-struct UsageEventLine: View {
-    var event: UsageEvent
-    var now: Date = Date()
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Circle()
-                .fill(event.succeeded ? Color.green : Color.red)
-                .frame(width: 6, height: 6)
-            VStack(alignment: .leading, spacing: 2) {
-                if UsagePresentation.showsDate(event.createdAt, now: now) {
-                    Text(event.createdAt, format: .dateTime.day().month(.abbreviated).year().locale(appLocale))
-                        .font(.system(size: 10))
-                }
-                Text(event.createdAt, format: .dateTime.hour().minute().second())
-                    .monospacedDigit()
-            }
-            .foregroundStyle(.secondary)
-            .frame(width: 78, alignment: .leading)
-            Text(event.api.label)
-                .lineLimit(1)
-            Text(UsagePresentation.quantities(event))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-            Spacer(minLength: 8)
-            Text("\(event.latencyMs) ms")
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
-            Text(event.costUSD.map { MoneyFormat.usd($0) } ?? String(localized: "coût inconnu"))
-                .monospacedDigit()
-                .frame(minWidth: 70, alignment: .trailing)
-        }
-        .font(.system(size: 12))
-        .padding(.vertical, 5)
     }
 }
 

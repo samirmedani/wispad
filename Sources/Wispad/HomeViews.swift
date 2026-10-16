@@ -16,12 +16,19 @@ struct HomeView: View {
             typingWordsPerMinute: model.settings.typingWPM
         )
         let records = model.records(in: period)
+        let span = model.history.last.map { UsageSpan.make(firstUse: $0.createdAt, now: Date()) }
         ScreenScroll {
             ScreenHeader(title: greeting, subtitle: String(localized: "Ton activité de dictée en un coup d'œil.")) {
-                PillPicker(selection: Binding(
-                    get: { model.settings.homePeriod },
-                    set: { model.setDisplayChoice(\.homePeriod, $0) }
-                ))
+                VStack(alignment: .trailing, spacing: 6) {
+                    PillPicker(selection: Binding(
+                        get: { model.settings.homePeriod },
+                        set: { model.setDisplayChoice(\.homePeriod, $0) }
+                    ))
+                    if period == .all, let span {
+                        PeriodSpanCaption(span: span)
+                            .transition(.opacity)
+                    }
+                }
             }
             ActivityCard(summary: summary, records: records, period: period)
             MetricGrid {

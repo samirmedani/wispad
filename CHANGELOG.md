@@ -3,6 +3,20 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.2.3 — 16 octobre 2026
+
+Combien Wispad te coûte vraiment, face aux abonnements de dictée.
+
+> Depuis la 0.2.0 : si la mise à jour reste sur « Relance… », ferme cette fenêtre, puis quitte Wispad et rouvre-le.
+> La 0.2.3 est déjà installée.
+
+**Nouveau**
+- Consommation › Tout : ta dépense ramenée à un mois, taxe comprise, à côté de Wispr Flow Pro, Willow Voice Pro et Superwhisper Pro au même taux, avec l'économie par mois et par an.
+- Un curseur « Taxes » règle ce taux (20 % par défaut, la TVA française) et affiche le pays au taux le plus proche, des Émirats (5 %) à la Finlande (25,5 %).
+- Accueil et Consommation › Tout : depuis quand tu utilises Wispad, en jours, puis en mois et jours.
+- Derniers appels : un vrai tableau, avec le fournisseur en couleur, le modèle, les jetons (dont ceux en cache), la durée et le coût. Les secours et les échecs sont bien visibles, et « Afficher plus » remonte plus loin.
+- Bas de la barre latérale : la version et son état sur une seule ligne, avec les liens GitHub et X du développeur.
+
 ## 0.2.2 — 15 octobre 2026
 
 Une dictée ne peut plus être remplacée par un texte que tu n'as pas dit.

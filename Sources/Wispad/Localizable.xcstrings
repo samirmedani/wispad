@@ -8554,6 +8554,454 @@
           }
         }
       }
+    },
+    "%@ + %@ en cache → %@ jetons" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ + %2$@ cached → %3$@ tokens"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ + %2$@ en cache → %3$@ jetons"
+          }
+        }
+      }
+    },
+    "%@ disponible" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ available"
+          }
+        }
+      }
+    },
+    "%@ fois plus cher" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@× more expensive"
+          }
+        }
+      }
+    },
+    "%@ s" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ s"
+          }
+        }
+      }
+    },
+    "%lld ans" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld years"
+          }
+        }
+      }
+    },
+    "%lld jours" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld days"
+          }
+        }
+      }
+    },
+    "%lld mois" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld months"
+          }
+        }
+      }
+    },
+    "1 an" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 year"
+          }
+        }
+      }
+    },
+    "1 jour" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 day"
+          }
+        }
+      }
+    },
+    "1 mois" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 month"
+          }
+        }
+      }
+    },
+    "À ce rythme, Wispad te coûte plus cher que %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "At this pace, Wispad costs you more than %@."
+          }
+        }
+      }
+    },
+    "À l'année, par mois et hors taxes : %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Billed yearly, per month and before tax: %@."
+          }
+        }
+      }
+    },
+    "Afficher plus" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show more"
+          }
+        }
+      }
+    },
+    "Coût par mois, face aux abonnements" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Monthly cost vs. subscriptions"
+          }
+        }
+      }
+    },
+    "Depuis le %@ · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Since %1$@ · %2$@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Depuis le %1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "Détail" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Details"
+          }
+        }
+      }
+    },
+    "Du premier jour d'utilisation à aujourd'hui, les deux compris." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "From your first day of use to today, both included."
+          }
+        }
+      }
+    },
+    "Durée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Duration"
+          }
+        }
+      }
+    },
+    "Durée : %lld ms" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Duration: %lld ms"
+          }
+        }
+      }
+    },
+    "Entrée : %@ jetons, en cache : %@, sortie : %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Input: %1$@ tokens, cached: %2$@, output: %3$@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Entrée : %1$@ jetons, en cache : %2$@, sortie : %3$@"
+          }
+        }
+      }
+    },
+    "Face à %@, tu économises environ %@ par mois, soit %@ par an." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compared with %1$@, you save about %2$@ a month, or %3$@ a year."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Face à %1$@, tu économises environ %2$@ par mois, soit %3$@ par an."
+          }
+        }
+      }
+    },
+    "Face à %@, tu économises jusqu'à %@ par mois, soit %@ par an." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compared with %1$@, you save up to %2$@ a month, or %3$@ a year."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Face à %1$@, tu économises jusqu'à %2$@ par mois, soit %3$@ par an."
+          }
+        }
+      }
+    },
+    "Heure" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Time"
+          }
+        }
+      }
+    },
+    "inconnu" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "unknown"
+          }
+        }
+      }
+    },
+    "L'estimation s'affinera avec les jours." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The estimate will get sharper over the coming days."
+          }
+        }
+      }
+    },
+    "Le développeur sur GitHub" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The developer on GitHub"
+          }
+        }
+      }
+    },
+    "Le développeur sur X" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The developer on X"
+          }
+        }
+      }
+    },
+    "Moyenne sur %@ d'utilisation, sans taxe." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Average over %@ of use, without tax."
+          }
+        }
+      }
+    },
+    "Moyenne sur %@ d'utilisation, taxe de %@ comprise." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Average over %1$@ of use, including %2$@ tax."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Moyenne sur %1$@ d'utilisation, taxe de %2$@ comprise."
+          }
+        }
+      }
+    },
+    "par mois avec Wispad" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "per month with Wispad"
+          }
+        }
+      }
+    },
+    "Prix publiés au mois, hors taxes, relevés le %@ ; la taxe choisie s'y ajoute, comme à tes appels d'API, eux aussi facturés hors taxes." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Published monthly prices before tax, checked on %@; the chosen tax is added to them, as it is to your API calls, which are also billed before tax."
+          }
+        }
+      }
+    },
+    "Sans taxe" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No tax"
+          }
+        }
+      }
+    },
+    "Secours après %@ · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fallback after %1$@ · %2$@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Secours après %1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "Secours en échec après %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fallback failed after %@"
+          }
+        }
+      }
+    },
+    "Service" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Service"
+          }
+        }
+      }
+    },
+    "Taxe de %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tax rate of %@"
+          }
+        }
+      }
+    },
+    "Taxe proche de %@ (%@)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close to %1$@ (%2$@)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Taxe proche de %1$@ (%2$@)"
+          }
+        }
+      }
+    },
+    "Taxes" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tax"
+          }
+        }
+      }
+    },
+    "Transcription du fichier" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "File transcription"
+          }
+        }
+      }
+    },
+    "Transcription en direct" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Live transcription"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

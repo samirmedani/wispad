@@ -234,8 +234,9 @@ enum StarBanner: Equatable {
     }
 }
 
-/// Bandeau étoile, version et mise à jour : discret, au-dessus des raccourcis. Pour une release, la dernière version
-/// publiée ; pour un build de développement, le retard sur la branche principale.
+/// Bandeau étoile, puis sur une ligne la version, son état et les liens du développeur (GitHub, X), au-dessus des
+/// raccourcis. Pour une release, la dernière version publiée ; pour un build de développement, le retard sur la branche
+/// principale. Trop long pour une ligne (build de développement en retard), l'état passe dessous.
 struct ProjectFooter: View {
     @Environment(AppModel.self) private var model
     var status = BuildStatus.shared
@@ -249,20 +250,22 @@ struct ProjectFooter: View {
                     .padding(.bottom, 3)
                     .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .bottom)))
             }
-            Text(verbatim: status.versionLine)
-                .font(.system(size: 10.5).monospacedDigit())
-                .foregroundStyle(.tertiary)
-                .lineLimit(1)
-                .textSelection(.enabled)
-            switch status.display {
-            case .development(let freshness):
-                developmentLine(freshness)
-            case .upToDate:
-                line(String(localized: "À jour"), color: .green)
-            case .available(let release):
-                availableLines(release)
-            case .unknown:
-                EmptyView()
+            HStack(spacing: 4) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 7) {
+                        versionText
+                        statusLine
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        versionText
+                        statusLine
+                    }
+                }
+                Spacer(minLength: 4)
+                DeveloperLinks()
+            }
+            if case .available(let release) = status.display {
+                updateControls(release)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -301,18 +304,41 @@ struct ProjectFooter: View {
         }
     }
 
-    /// Release plus récente : « Wispad 0.1.2 est disponible », puis « Mettre à jour » ; les deux ouvrent la fenêtre de
-    /// mise à jour (notes de version), où l'installation se confirme. Pendant l'installation : son avancement, qui
-    /// rouvre la fenêtre.
-    @ViewBuilder private func availableLines(_ release: ReleaseInfo) -> some View {
-        let updater = model.updater
-        Button {
-            model.showUpdate(release)
-        } label: {
-            line(DictationCoordinator.updateMessage(release.version), color: Theme.brand)
+    private var versionText: some View {
+        Text(verbatim: status.versionLine)
+            .font(.system(size: 10.5).monospacedDigit())
+            .foregroundStyle(.tertiary)
+            .lineLimit(1)
+            .fixedSize()
+            .textSelection(.enabled)
+    }
+
+    /// État de la version, à droite du numéro : « À jour », « 0.1.2 disponible » (ouvre les notes de version) ou, pour
+    /// un build de développement, son retard.
+    @ViewBuilder private var statusLine: some View {
+        switch status.display {
+        case .development(let freshness):
+            developmentLine(freshness)
+        case .upToDate:
+            line(String(localized: "À jour"), color: .green)
+        case .available(let release):
+            Button {
+                model.showUpdate(release)
+            } label: {
+                line(String(localized: "\(release.version.description) disponible"), color: Theme.brand)
+            }
+            .buttonStyle(HoverButtonStyle(treatment: .quiet))
+            .help(DictationCoordinator.updateMessage(release.version))
+        case .unknown:
+            EmptyView()
         }
-        .buttonStyle(HoverButtonStyle(treatment: .quiet))
-        .help("Voir les notes de version")
+    }
+
+    /// Release plus récente : « Mettre à jour » sous la ligne de version ; comme l'état, il ouvre la fenêtre de mise à
+    /// jour (notes de version), où l'installation se confirme. Pendant l'installation : son avancement, qui rouvre la
+    /// fenêtre.
+    @ViewBuilder private func updateControls(_ release: ReleaseInfo) -> some View {
+        let updater = model.updater
         if let progress = updater.phase.sidebarText {
             Button {
                 model.showUpdate(updater.release ?? release)

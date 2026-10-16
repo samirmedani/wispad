@@ -24,6 +24,7 @@ struct DisplayChoicesTests {
         let settings = try decode(#"{"provider": "openai", "soundsEnabled": false}"#)
         #expect(settings.homePeriod == .days7)
         #expect(settings.usagePeriod == .today)
+        #expect(settings.usageTaxRate == 20)
         #expect(settings.lastSection == .home)
         #expect(settings.showsOptionalKeys == false)
         #expect(settings.provider == .openAI)
@@ -35,10 +36,11 @@ struct DisplayChoicesTests {
     @Test func unknownChoicesFallBackToTheirDefaultsAlone() throws {
         let settings = try decode(#"""
         {"homePeriod": "days90", "usagePeriod": 30, "lastSection": "section-retiree", "showsOptionalKeys": "oui",
-         "provider": "openai", "learnCorrections": false}
+         "usageTaxRate": 99, "provider": "openai", "learnCorrections": false}
         """#)
         #expect(settings.homePeriod == .days7)
         #expect(settings.usagePeriod == .today)
+        #expect(settings.usageTaxRate == 20)
         #expect(settings.lastSection == .home)
         #expect(settings.showsOptionalKeys == false)
         #expect(settings.provider == .openAI)
@@ -58,6 +60,7 @@ struct DisplayChoicesTests {
         var settings = AppSettings.load(from: defaults)
         settings.homePeriod = .days30
         settings.usagePeriod = .all
+        settings.usageTaxRate = 25.5
         settings.lastSection = .dictionary
         settings.showsOptionalKeys = true
         settings.save(to: defaults)
@@ -65,6 +68,7 @@ struct DisplayChoicesTests {
         let reloaded = AppSettings.load(from: defaults)
         #expect(reloaded.homePeriod == .days30)
         #expect(reloaded.usagePeriod == .all)
+        #expect(reloaded.usageTaxRate == 25.5)
         #expect(reloaded.lastSection == .dictionary)
         #expect(reloaded.showsOptionalKeys)
         #expect(reloaded == settings)
