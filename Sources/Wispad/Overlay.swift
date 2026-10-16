@@ -889,6 +889,8 @@ final class OverlayController {
         panel.collectionBehavior = [.canJoinAllSpaces, .canJoinAllApplications, .fullScreenAuxiliary, .stationary, .ignoresCycle]
         panel.backgroundColor = .clear
         panel.isOpaque = false
+        // Bulle toujours sombre, quelle que soit l'apparence choisie pour l'app ou celle de macOS.
+        panel.appearance = NSAppearance(named: .darkAqua)
         panel.hasShadow = false
         panel.hidesOnDeactivate = false
         panel.canHide = false

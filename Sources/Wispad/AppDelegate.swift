@@ -33,6 +33,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         do {
             let model = try AppModel()
             self.model = model
+            // Avant toute fenêtre (premier lancement guidé compris) : l'apparence choisie, sinon celle de macOS.
+            AppearanceSwitcher.apply(model.settings.appearance, animated: false)
             model.overlay.install(model: model)
             let hotkeys = HotkeyMonitor()
             hotkeys.start(model: model)

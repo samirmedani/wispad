@@ -150,6 +150,12 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   l'on se trouve, même par-dessus une app en plein écran ; déjà visible sur ce bureau, elle ne bouge pas.
 - Une fois affichée, c'est une fenêtre ordinaire : passer à une autre app, cliquer sur le bureau ou changer de
   bureau la laisse à sa place et sur son bureau, simplement derrière l'app active.
+- **Apparence** : Système (par défaut, suit macOS, y compris son passage automatique du clair au sombre), Clair ou
+  Sombre. Choix rapide par le bouton à droite de « Wispad » en haut de la barre latérale (son icône montre le choix
+  en cours, un clic ouvre trois vignettes), ou dans Réglages › Apparence. Toute l'app change aussitôt, en fondu
+  (sans fondu avec « Réduire les animations ») : fenêtre, premier lancement guidé, notes de version, bulles d'aide.
+  La bulle de dictée et le schéma de Réglages › Bulle et messages restent sombres. Le choix est gardé après une
+  relance ou une mise à jour, et posé avant l'ouverture de toute fenêtre.
 - Choix d'affichage mémorisés, retrouvés après avoir quitté et relancé Wispad, chacun enregistré dès qu'il change :
   - période de l'Accueil (7 jours par défaut) ;
   - période de Consommation (Aujourd'hui par défaut), indépendante de celle de l'Accueil ;

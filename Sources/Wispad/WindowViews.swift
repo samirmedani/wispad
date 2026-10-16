@@ -188,6 +188,9 @@ struct BrandHeader: View {
                 DictationStatusLine()
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        // Par-dessus la rangée : l'état garde toute la largeur et tient sur une ligne.
+        .overlay(alignment: .trailing) { AppearanceButton() }
     }
 }
 

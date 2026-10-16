@@ -317,6 +317,11 @@ enum SettingsPresentation {
     static let overlayTitle = String(localized: "Bulle et messages")
     static let overlaySummary = String(localized: "Où la bulle de dictée et ses messages apparaissent à l'écran.")
 
+    // MARK: Apparence
+
+    static let appearanceTitle = String(localized: "Apparence")
+    static let appearanceSummary = String(localized: "« Système » suit macOS. La bulle de dictée reste sombre.")
+
     static let avoidInput = SettingText(
         title: String(localized: "Ne jamais couvrir le champ de saisie"),
         summary: String(localized: "Les messages se placent au-dessus du champ où tu écris."),
