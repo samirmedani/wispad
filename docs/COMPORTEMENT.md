@@ -153,6 +153,7 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 - Choix d'affichage mémorisés, retrouvés après avoir quitté et relancé Wispad, chacun enregistré dès qu'il change :
   - période de l'Accueil (7 jours par défaut) ;
   - période de Consommation (Aujourd'hui par défaut), indépendante de celle de l'Accueil ;
+  - taux du curseur « Taxes » de Consommation (20 % par défaut) ;
   - section, origine et période du Dictionnaire (Mots, Tous et Toute période par défaut) ;
   - dernière section ouverte dans la barre latérale (Accueil par défaut) : la fenêtre rouvre dessus depuis le
     Dock ou « Ouvrir Wispad » ; un raccourci de section ou un menu de section ouvre toujours la sienne ;
@@ -708,6 +709,32 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
   enfin les cinq dernières bascules (date, étape, fournisseurs, raison, secours réussi ou non). Seules deux raisons
   sont enregistrées : « échec ou délai dépassé » et « principal mis de côté ». Chaque passage au secours compte, même
   en échec. Quand la période commence avant le début de l'enregistrement des bascules, sa date est rappelée en petit.
+- Période « Tout », sur l'Accueil comme dans Consommation : sous le sélecteur, depuis quand et combien de temps
+  (« Depuis le 1 oct. 2026 · 16 jours »), du premier jour d'utilisation à aujourd'hui, les deux compris (le jour
+  même compte pour 1 jour). Moins d'un mois : en jours ; au-delà, en mois et jours (« 1 mois et 4 jours »), puis
+  en années (« 1 an, 2 mois et 3 jours »). Premier jour : la plus ancienne dictée (Accueil), le plus ancien appel
+  enregistré (Consommation).
+- Carte « Coût par mois, face aux abonnements », en période « Tout » seulement : la dépense de tous les appels
+  ramenée à un mois moyen (total ÷ jours d'utilisation × 30,44), taxe comprise, en dollars ; « ≥ » si des coûts sont
+  inconnus. Barres comparées aux abonnements de dictée publics, au mois et hors taxes, relevés le 16 octobre 2026 :
+  Wispr Flow Pro (15 $), Willow Voice Pro (15 $), Superwhisper Pro (8,49 $), chacun lié à sa page de tarifs, avec
+  l'écart (« 7,8 fois plus cher ») quand il dépasse 10 %. Une phrase chiffre l'économie face à Wispr Flow Pro, par
+  mois et par an (« jusqu'à » si des coûts sont inconnus), ou dit que Wispad revient plus cher à ce rythme. Moins de
+  7 jours d'utilisation : l'estimation est dite provisoire. Les prix à l'année sont rappelés en note.
+- Curseur « Taxes » de 0 à 27 % (20 % par défaut, la TVA française) : les prix publiés étant hors taxes, le taux
+  s'ajoute aux abonnements comme aux appels d'API. Sous le curseur, le pays de repère au taux le plus proche, avec
+  son drapeau et son nom dans la langue du Mac (« Taxe de 🇫🇷 France », « Taxe proche de 🇷🇴 Roumanie (21 %) »),
+  « Sans taxe » à 0 %. Repères, taux normaux officiels au 16 octobre 2026 : Émirats arabes unis 5 %, Thaïlande 7 %
+  (jusqu'au 30 septembre 2027), Suisse 8,1 %, Singapour 9 %, Japon 10 %, Nouvelle-Zélande 15 %, Mexique 16 %,
+  France 20 %, Roumanie 21 %, Slovaquie 23 %, Estonie 24 %, Finlande 25,5 %. À moins de 0,3 point d'un repère, le
+  curseur s'y place exactement ; ailleurs, au dixième. Le taux est enregistré au relâchement du curseur.
+- Tableau « Derniers appels » : en-têtes (heure, service, détail, durée, coût), lignes alternées ; par appel, son
+  état (pastille verte ou rouge), l'heure (et le jour s'il n'est pas d'aujourd'hui), le fournisseur en couleur
+  (Jev pour TypeSafe), la tâche (transcription en direct, du fichier, correction, dictionnaire) et le modèle, l'audio
+  ou les jetons (« 370 + 4 480 en cache → 30 jetons »), la durée (en secondes au-delà d'une seconde) et le coût
+  (« inconnu » sinon). En couleur sous le détail : « Secours après DeepSeek · échec ou délai dépassé », « Secours en
+  échec après … » ou « Échec ». Au survol : tarif du modèle et compteurs détaillés. 15 appels, puis « Afficher
+  plus » (30 de plus par clic) ; « 15 sur 1 234 » en haut à droite ; changer de période revient à 15.
 - Rien de l'historique n'est effacé ; l'ancienne date de début du suivi financier est retirée au lancement.
 
 ## Clés API
@@ -766,15 +793,19 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
   (« Star on GitHub » en anglais), sur une seule ligne et sans troncature à la largeur fixe de la barre, entièrement
   cliquable. Un clic ouvre la page du dépôt dans le navigateur, affiche « Merci ! » 1,6 s, puis le bandeau
   disparaît pour de bon (réglage `githubStarClicked`, enregistré dès le clic). Wispad ne peut pas savoir si
-  l'étoile a été donnée : le clic suffit. Dessous, toujours visibles : la version, puis l'état de la mise à jour.
+  l'étoile a été donnée : le clic suffit. Dessous, toujours visibles et sur une seule ligne : la version, l'état de
+  la mise à jour juste à sa droite (« Wispad 0.2.3 ● À jour »), puis à droite les logos GitHub et X du développeur
+  (profil GitHub `samirmedani`, compte X `@Mayuu_France`), qui ouvrent ces pages dans le navigateur ; leur nom et
+  l'adresse s'affichent au survol. Trop long pour une ligne (build de développement en retard), l'état passe dessous.
 - **Release ou build de développement** : une release est l'app du `Wispad.dmg` publié sur GitHub ; seul
   `scripts/release.sh` ajoute à son Info.plist la clé `WispadRelease` (vraie), avant de la signer. Sans cette clé,
   c'est un build de développement, compilé depuis les sources (Xcode, `scripts/build.sh`, `scripts/install.sh`). Une
   clé posée par le script de release plutôt que l'absence de signature Developer ID : explicite et testable, couverte
   par la signature de l'app, et un contributeur qui signe son build avec son propre certificat Developer ID reste un
   build de développement.
-- **Release** : la version seule (« Wispad 0.1.1 »), puis « À jour », ou « Wispad 0.1.2 est disponible » (un clic
-  ouvre la fenêtre de mise à jour) et le bouton « Mettre à jour », qui ouvre aussi cette fenêtre : l'installation
+- **Release** : la version seule (« Wispad 0.1.1 »), puis « À jour », ou « 0.1.2 disponible » (un clic ouvre la
+  fenêtre de mise à jour ; « Wispad 0.1.2 est disponible » au survol) et, dessous, le bouton « Mettre à jour », qui
+  ouvre aussi cette fenêtre : l'installation
   ne démarre qu'après lecture des notes, avec son bouton « Mettre à jour ». Le tag de la dernière release
   (« v0.1.2 ») et la version de l'app (`CFBundleShortVersionString`) se comparent en semver : X.Y.Z, une pré-version
   avant la version

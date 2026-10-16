@@ -77,6 +77,8 @@ struct AppSettings: Codable, Equatable {
     /// de Consommation (indépendantes), dernière section ouverte, clés API facultatives et filtres du dictionnaire.
     var homePeriod: StatsPeriod = .days7
     var usagePeriod: StatsPeriod = .today
+    /// Taxe ajoutée aux prix comparés dans Consommation › Tout, en pourcentage (20 % par défaut, la TVA française).
+    var usageTaxRate = SalesTax.defaultRate
     var lastSection: AppSection = .home
     var showsOptionalKeys = false
     var dictionaryOriginFilter: DictionaryFilter = .all
@@ -141,6 +143,7 @@ struct AppSettings: Codable, Equatable {
         updateRemindedVersion = value(.updateRemindedVersion, defaults.updateRemindedVersion)
         homePeriod = value(.homePeriod, defaults.homePeriod)
         usagePeriod = value(.usagePeriod, defaults.usagePeriod)
+        usageTaxRate = number(.usageTaxRate, defaults.usageTaxRate, in: SalesTax.range)
         lastSection = value(.lastSection, defaults.lastSection)
         showsOptionalKeys = value(.showsOptionalKeys, defaults.showsOptionalKeys)
         dictionaryOriginFilter = value(.dictionaryOriginFilter, defaults.dictionaryOriginFilter)
