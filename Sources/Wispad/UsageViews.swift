@@ -160,7 +160,8 @@ struct FallbackStatsCard: View {
     var body: some View {
         let now = Date()
         let summary = model.fallbackSummary(for: period, now: now)
-        let status = FallbackPresentation.status(summary)
+        let failures = model.failureBreakdown(for: period, now: now)
+        let status = FallbackPresentation.status(summary, failedWithoutRelay: summary.total == 0 && failures.failures > 0)
         VStack(alignment: .leading, spacing: 12) {
             CardTitle(title: String(localized: "Bascules vers un fournisseur de secours")) {
                 if summary.total > 0 {
@@ -179,6 +180,15 @@ struct FallbackStatsCard: View {
                 Text(status.message)
                     .font(.system(size: 12.5, weight: .medium))
                     .fixedSize(horizontal: false, vertical: true)
+            }
+            if !failures.providers.isEmpty {
+                Divider()
+                FailureOriginsView(breakdown: failures)
+                if let start = FallbackPresentation.trackingNoteDate(trackingStartedAt: model.store.failureCauseTrackingStartedAt, period: period, now: now) {
+                    Text("Causes des échecs notées depuis le \(start.formatted(.dateTime.day().month(.abbreviated).year().locale(appLocale))).")
+                        .font(.footnote)
+                        .foregroundStyle(.tertiary)
+                }
             }
             if summary.total > 0 {
                 Divider()
@@ -240,7 +250,7 @@ struct FallbackStatsCard: View {
             Text(FallbackPresentation.route(from: entry.fromProvider, to: entry.toProvider))
                 .lineLimit(1)
             Spacer(minLength: 8)
-            Text(FallbackPresentation.reason(entry.reason))
+            Text(entry.cause.map(FailurePresentation.label) ?? FallbackPresentation.reason(entry.reason))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
             Text(entry.succeeded ? String(localized: "secours réussi") : String(localized: "secours en échec"))
@@ -249,6 +259,151 @@ struct FallbackStatsCard: View {
         }
         .font(.system(size: 12))
         .padding(.vertical, 4)
+    }
+}
+
+/// D'où venaient les échecs : trois côtés (connexion du Mac, fournisseurs, clés), puis chaque fournisseur avec ses
+/// causes. Tout fournisseur enregistré apparaît, quel qu'il soit.
+struct FailureOriginsView: View {
+    var breakdown: FailureBreakdown
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("D'où venaient les échecs")
+                .font(.system(size: 12, weight: .semibold))
+            HStack(spacing: 8) {
+                ForEach(FailurePresentation.shownSides(breakdown), id: \.self) { side in
+                    sideTile(side, count: breakdown.count(side))
+                }
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(breakdown.providers) { provider in
+                    providerLine(provider)
+                }
+            }
+            Text("Wispad lit le type d'erreur reçu. Sans internet, c'est ta connexion. Pas de réponse alors qu'un autre service répondait, panne ou limite atteinte : c'est le fournisseur. Une clé refusée se vérifie dans Fournisseurs.")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func sideTile(_ side: APIFailureCause.Side, count: Int) -> some View {
+        let tint = FailurePresentation.tint(side)
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 5) {
+                Image(systemName: FailurePresentation.symbol(side))
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .foregroundStyle(count > 0 ? tint : Color.secondary)
+                Text(FailurePresentation.title(side))
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            Text(UsageText.count(count))
+                .font(.system(size: 17, weight: .semibold).monospacedDigit())
+                .foregroundStyle(count > 0 ? Color.primary : Color.secondary)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(count > 0 ? tint.opacity(0.1) : Theme.subtleFill))
+    }
+
+    private func providerLine(_ provider: FailureBreakdown.Provider) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 7) {
+                Circle().fill(ProviderTint.color(provider.name)).frame(width: 7, height: 7)
+                Text(FallbackPresentation.providerName(provider.name))
+                    .font(.system(size: 12.5, weight: .semibold))
+                if provider.failures > 0 {
+                    Text(FailurePresentation.failures(provider.failures))
+                        .font(.system(size: 12.5))
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+            }
+            ForEach(FailurePresentation.details(provider), id: \.self) { line in
+                Text(line)
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.leading, 14)
+            }
+        }
+    }
+}
+
+/// Textes des causes d'échec : courts, sans jargon, sans contenu d'erreur.
+enum FailurePresentation {
+    static func label(_ cause: APIFailureCause) -> String {
+        switch cause {
+        case .offline: return String(localized: "pas d'internet sur ce Mac")
+        case .timeout: return String(localized: "pas de réponse à temps")
+        case .serverError: return String(localized: "panne du service")
+        case .rateLimited: return String(localized: "limite ou crédit atteint")
+        case .keyRejected: return String(localized: "clé refusée")
+        case .refused: return String(localized: "demande refusée")
+        case .badResponse: return String(localized: "réponse inutilisable")
+        case .cancelled: return String(localized: "annulé")
+        }
+    }
+
+    static func title(_ side: APIFailureCause.Side) -> String {
+        switch side {
+        case .connection: return String(localized: "Ta connexion")
+        case .provider: return String(localized: "Fournisseurs")
+        case .account: return String(localized: "Clés refusées")
+        case .undetermined: return String(localized: "Incertain")
+        }
+    }
+
+    static func symbol(_ side: APIFailureCause.Side) -> String {
+        switch side {
+        case .connection: return "wifi.exclamationmark"
+        case .provider: return "server.rack"
+        case .account: return "key.horizontal"
+        case .undetermined: return "questionmark.circle"
+        }
+    }
+
+    static func tint(_ side: APIFailureCause.Side) -> Color {
+        switch side {
+        case .connection: return .blue
+        case .provider: return .orange
+        case .account: return .red
+        case .undetermined: return .gray
+        }
+    }
+
+    /// Ta connexion et les fournisseurs toujours, pour répondre à « nous ou eux » ; clés et incertain s'il y en a.
+    static func shownSides(_ breakdown: FailureBreakdown) -> [APIFailureCause.Side] {
+        APIFailureCause.Side.allCases.filter { $0 == .connection || $0 == .provider || breakdown.count($0) > 0 }
+    }
+
+    static func failures(_ count: Int) -> String {
+        count == 1 ? String(localized: "1 échec") : String(localized: "\(count) échecs")
+    }
+
+    /// « pas de réponse à temps (6) · panne du service (2) », du plus fréquent au plus rare ; puis, s'il y a lieu, les
+    /// délais sans preuve que la connexion marchait et les mises de côté.
+    static func details(_ provider: FailureBreakdown.Provider) -> [String] {
+        var lines: [String] = []
+        let causes = provider.causes.filter { $0.value > 0 }
+            .sorted { ($0.value, $1.key.rawValue) > ($1.value, $0.key.rawValue) }
+            .map { "\(label($0.key)) (\($0.value))" }
+        if !causes.isEmpty { lines.append(causes.joined(separator: " · ")) }
+        if provider.undeterminedTimeouts > 0 {
+            lines.append(provider.undeterminedTimeouts == 1
+                ? String(localized: "1 délai sans autre appel réussi autour : ta connexion a pu être en cause.")
+                : String(localized: "\(provider.undeterminedTimeouts) délais sans autre appel réussi autour : ta connexion a pu être en cause."))
+        }
+        if provider.paused > 0 {
+            lines.append(provider.paused == 1
+                ? String(localized: "Mis de côté 1 fois après des échecs répétés : le secours a répondu directement.")
+                : String(localized: "Mis de côté \(provider.paused) fois après des échecs répétés : le secours a répondu directement."))
+        }
+        return lines
     }
 }
 
@@ -441,8 +596,12 @@ enum FallbackPresentation {
     }
 
     /// Le plus important d'abord : un secours en échec, puis un fournisseur mis de côté, sinon tout va bien.
-    static func status(_ summary: FallbackSummary) -> Status {
+    /// `failedWithoutRelay` : des appels ont échoué sans qu'aucun secours ne soit tenté (pas de clé de relais).
+    static func status(_ summary: FallbackSummary, failedWithoutRelay: Bool = false) -> Status {
         if summary.total == 0 {
+            if failedWithoutRelay {
+                return Status(level: .watch, message: String(localized: "Aucune bascule, mais des appels ont échoué sans fournisseur de secours pour prendre le relais. Le détail est ci-dessous."))
+            }
             return Status(level: .clear, message: String(localized: "Aucune bascule : tes fournisseurs principaux ont toujours répondu."))
         }
         if summary.failures > 0 {

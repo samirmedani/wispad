@@ -715,6 +715,19 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
   enfin les cinq dernières bascules (date, étape, fournisseurs, raison, secours réussi ou non). Seules deux raisons
   sont enregistrées : « échec ou délai dépassé » et « principal mis de côté ». Chaque passage au secours compte, même
   en échec. Quand la période commence avant le début de l'enregistrement des bascules, sa date est rappelée en petit.
+- « D'où venaient les échecs », dans la même carte, dès qu'un appel a échoué sur la période (avec ou sans bascule) :
+  chaque appel raté garde la cause lue dans l'erreur reçue, jamais son texte. Causes : pas d'internet sur ce Mac
+  (aucune connexion, connexion perdue, nom du service introuvable), pas de réponse à temps (délai du système ou de
+  Wispad), panne du service (erreur 5xx, connexion refusée), limite ou crédit atteint (429), clé refusée (401, 402,
+  403), demande refusée (autre 4xx, erreur annoncée dans le flux), réponse inutilisable (vide, tronquée, illisible).
+  Trois cases : Ta connexion (pas d'internet), Fournisseurs (le reste), Clés refusées, plus Incertain pour un délai
+  dépassé sans aucun autre appel réussi dans la minute autour (la connexion a pu être en cause ; sinon le délai compte
+  pour le fournisseur). Puis chaque fournisseur qui a échoué, quel qu'il soit, avec ses causes du plus fréquent au
+  plus rare et le nombre de fois où il a été mis de côté. Une dictée annulée ou trop courte, ou une correction
+  abandonnée parce que la dictée est annulée, n'est pas un échec. Les appels d'avant ce suivi n'ont pas de cause : ils
+  restent hors de ce détail, et la date de début est rappelée en petit. Les dernières bascules montrent la cause de
+  l'échec du service principal quand elle est connue. Sans bascule mais avec des échecs (aucune clé de secours),
+  l'état le dit au lieu de « tes fournisseurs principaux ont toujours répondu ».
 - Période « Tout », sur l'Accueil comme dans Consommation : sous le sélecteur, depuis quand et combien de temps
   (« Depuis le 1 oct. 2026 · 16 jours »), du premier jour d'utilisation à aujourd'hui, les deux compris (le jour
   même compte pour 1 jour). Moins d'un mois : en jours ; au-delà, en mois et jours (« 1 mois et 4 jours »), puis

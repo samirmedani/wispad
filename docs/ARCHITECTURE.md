@@ -339,7 +339,8 @@ ne réécrit jamais un fichier abîmé (les clés de sa partie intacte servent).
 
 - `scripts/test.sh` : tests locaux, sans micro, réseau, clé ni fenêtre visible.
 - `scripts/check.sh` : tests, traductions, compilation Release.
-- Rendu de l'interface hors écran, sans rien afficher :
+- Rendu de l'interface hors écran, sans rien afficher ni jamais prendre le premier plan (app d'arrière-plan : une
+  dictée en cours garde son app cible) :
   `Wispad --design-preview --offscreen --snapshot fichier.png [--section providers] [--dark] [--size 900x700]`
   avec le build Debug ; options d'état : `--onboarding-step <étape>` (welcome, permissions, microphone, provider,
   shortcut, trial, finish) avec `--onboarding-state done|failed|progress` (états fictifs, aucune autorisation

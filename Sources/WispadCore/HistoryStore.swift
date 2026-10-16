@@ -89,6 +89,8 @@ public final class HistoryStore: @unchecked Sendable {
     private let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
     /// Les appels antérieurs à cette date ne permettent pas de déduire les bascules.
     public private(set) var fallbackTrackingStartedAt = Date()
+    /// Les appels ratés antérieurs à cette date n'ont pas de cause enregistrée.
+    public private(set) var failureCauseTrackingStartedAt = Date()
 
     public init(path: String) throws {
         var connection: OpaquePointer?
@@ -177,14 +179,15 @@ public final class HistoryStore: @unchecked Sendable {
                 succeeded INTEGER NOT NULL,
                 fallback_from_api TEXT,
                 fallback_stage TEXT,
-                fallback_reason TEXT
+                fallback_reason TEXT,
+                failure_cause TEXT
             );
             """
         )
         // Les colonnes restent NULL sur les anciennes lignes : une API de destination
         // ne suffit pas à distinguer un choix explicite d'une bascule automatique.
         let usageColumns = Set(try query("PRAGMA table_info(api_usage);") { column(1, $0) })
-        for name in ["fallback_from_api", "fallback_stage", "fallback_reason"] where !usageColumns.contains(name) {
+        for name in ["fallback_from_api", "fallback_stage", "fallback_reason", "failure_cause"] where !usageColumns.contains(name) {
             try execute("ALTER TABLE api_usage ADD COLUMN \(name) TEXT;")
         }
         try execute("CREATE INDEX IF NOT EXISTS api_usage_created ON api_usage(created_at DESC);")
@@ -214,6 +217,15 @@ public final class HistoryStore: @unchecked Sendable {
             Date(timeIntervalSince1970: sqlite3_column_double($0, 0))
         }
         if let date = trackingDates.first { fallbackTrackingStartedAt = date }
+        if !metadata.contains("failure_cause_tracking_started_at") {
+            try run("INSERT OR IGNORE INTO app_metadata (key, value) VALUES ('failure_cause_tracking_started_at', ?);") { statement in
+                sqlite3_bind_double(statement, 1, failureCauseTrackingStartedAt.timeIntervalSince1970)
+            }
+        }
+        let causeDates = try query("SELECT value FROM app_metadata WHERE key = 'failure_cause_tracking_started_at';") {
+            Date(timeIntervalSince1970: sqlite3_column_double($0, 0))
+        }
+        if let date = causeDates.first { failureCauseTrackingStartedAt = date }
         // Ancienne date de début du suivi financier, sans usage depuis la fin de la séparation
         // Utilisation / Développement. Les appels eux-mêmes restent intacts.
         if metadata.contains("financial_tracking_started_at") {
@@ -503,8 +515,8 @@ public final class HistoryStore: @unchecked Sendable {
             INSERT INTO api_usage (
                 id, created_at, api, model, audio_seconds, input_tokens, cached_tokens,
                 output_tokens, cost_usd, latency_ms, succeeded,
-                fallback_from_api, fallback_stage, fallback_reason
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                fallback_from_api, fallback_stage, fallback_reason, failure_cause
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
             """
         ) { statement in
             bind(event.id, at: 1, statement)
@@ -525,6 +537,7 @@ public final class HistoryStore: @unchecked Sendable {
             bindOptional(event.fallback?.fromAPI.rawValue, at: 12, statement)
             bindOptional(event.fallback?.stage.rawValue, at: 13, statement)
             bindOptional(event.fallback?.reason.rawValue, at: 14, statement)
+            bindOptional(event.failureCause?.rawValue, at: 15, statement)
         }
     }
 
@@ -533,7 +546,7 @@ public final class HistoryStore: @unchecked Sendable {
             """
             SELECT id, created_at, api, model, audio_seconds, input_tokens, cached_tokens,
                 output_tokens, cost_usd, latency_ms, succeeded,
-                fallback_from_api, fallback_stage, fallback_reason
+                fallback_from_api, fallback_stage, fallback_reason, failure_cause
             FROM api_usage ORDER BY created_at DESC;
             """
         ) { statement in
@@ -560,7 +573,8 @@ public final class HistoryStore: @unchecked Sendable {
                 costUSD: sqlite3_column_type(statement, 8) == SQLITE_NULL ? nil : sqlite3_column_double(statement, 8),
                 latencyMs: Int(sqlite3_column_int64(statement, 9)),
                 succeeded: sqlite3_column_int(statement, 10) != 0,
-                fallback: fallback
+                fallback: fallback,
+                failureCause: APIFailureCause(rawValue: column(14, statement))
             )
         }
         return rows.compactMap { $0 }

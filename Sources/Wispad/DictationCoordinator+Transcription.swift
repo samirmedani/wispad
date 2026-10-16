@@ -17,7 +17,8 @@ extension DictationCoordinator {
                     let text = try await model.dependencies.transcribe(url, speech)
                     attempt = FileAttempt(text: text, started: started, latencyMs: Self.milliseconds(since: started), failed: false, called: true)
                 } catch {
-                    attempt = FileAttempt(text: "", started: started, latencyMs: Self.milliseconds(since: started), failed: true, called: true)
+                    attempt = FileAttempt(text: "", started: started, latencyMs: Self.milliseconds(since: started), failed: true, called: true,
+                                          failureCause: APIFailureCause.classify(error))
                 }
             }
             completion.attempt = attempt

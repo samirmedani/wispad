@@ -358,6 +358,11 @@ final class AppModel {
         FallbackSummary.make(events: usageEvents(for: period, now: now, calendar: calendar), period: .all, now: now, calendar: calendar)
     }
 
+    /// Appels ratés de la période, par fournisseur et par cause : la connexion du Mac, le fournisseur, ou une clé.
+    func failureBreakdown(for period: StatsPeriod, now: Date = Date(), calendar: Calendar = .current) -> FailureBreakdown {
+        FailureBreakdown.make(events: usageEvents(for: period, now: now, calendar: calendar), period: .all, now: now, calendar: calendar)
+    }
+
     /// Relecture des clés en cours : une dictée qui attend sa clé la rejoint au lieu d'en relancer une.
     @ObservationIgnored private var keyRefresh: (token: UUID, task: Task<Void, Never>)?
     /// Attente maximale des clés par une dictée : un coffre qui ne répond plus ne retient jamais le raccourci.

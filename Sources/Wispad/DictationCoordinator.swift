@@ -324,6 +324,7 @@ final class DictationCoordinator {
                 current?.streamStarted = true
                 return true
             } catch {
+                current?.streamFailure = APIFailureCause.classify(error)
                 current?.streamStarted = false
                 return false
             }
@@ -492,7 +493,7 @@ final class DictationCoordinator {
             current.correctionClaimed = true
             if let model { accountEarlyCorrections(current, model: model, cancel: true) }
             current.startTask?.cancel()
-            recordStreaming(current, seconds: duration, succeeded: false)
+            recordStreaming(current, seconds: duration, succeeded: false, stoppedByWispad: true)
             current.session?.cancel()
             delete(url)
             if let model { current.run.complete(.noSpeech, model: model) }
@@ -571,7 +572,7 @@ final class DictationCoordinator {
         let stopped = closeMicrophone(current)
         current.pcm.close()
         // L'audio a pu partir, mais une annulation ne confirme ni son traitement ni sa facturation.
-        recordStreaming(current, seconds: stopped?.duration ?? 0, succeeded: false)
+        recordStreaming(current, seconds: stopped?.duration ?? 0, succeeded: false, stoppedByWispad: true)
         current.session?.cancel()
         delete(stopped?.url ?? current.audioURL)
         if let model {
@@ -649,7 +650,10 @@ final class DictationCoordinator {
                 let finish = try await session.finish()
                 streamFinish = finish
                 raw = finish.text
-            } catch { liveBroke = true }
+            } catch {
+                current.streamFailure = APIFailureCause.classify(error)
+                liveBroke = true
+            }
         }
         let streamMs = Self.milliseconds(since: streamClock)
         recordStreaming(current, seconds: job.duration, latencyMs: streamMs, succeeded: !liveBroke)
@@ -1229,19 +1233,24 @@ final class DictationCoordinator {
     }
 
     /// Compte le flux en direct d'une dictée, une seule fois (fin, annulation ou dictée trop courte).
-    private func recordStreaming(_ capture: Capture, seconds: Double, latencyMs: Int = 0, succeeded: Bool? = nil) {
+    /// Sans succès explicite, le flux compte comme réussi s'il a démarré. Un flux arrêté par Wispad (annulation,
+    /// dictée trop courte) est noté « annulé » : il n'entre pas dans les échecs des fournisseurs.
+    private func recordStreaming(_ capture: Capture, seconds: Double, latencyMs: Int = 0, succeeded: Bool? = nil,
+                                 stoppedByWispad: Bool = false) {
         guard !capture.streamUsageRecorded, let started = capture.streamAttemptedAt,
               capture.session != nil, let speech = capture.speech, let model else { return }
         capture.streamUsageRecorded = true
+        let ok = succeeded ?? (capture.streamStarted == true)
         let event = UsageEvent.transcription(
             provider: speech.provider,
             streaming: true,
             model: speech.liveModel,
             audioSeconds: seconds,
             latencyMs: latencyMs,
-            succeeded: succeeded ?? (capture.streamStarted == true),
+            succeeded: ok,
             at: started,
-            fallback: capture.voiceFallback
+            fallback: capture.voiceFallback,
+            failureCause: ok ? nil : (stoppedByWispad ? .cancelled : capture.streamFailure ?? .badResponse)
         )
         capture.run.record(event)
         model.recordUsage(event)
@@ -1262,7 +1271,8 @@ final class DictationCoordinator {
         } catch {
             let event = UsageEvent.transcription(
                 provider: speech.provider, streaming: false, model: speech.liveModel, billedModel: speech.fileModel,
-                audioSeconds: seconds, latencyMs: Self.milliseconds(since: started), succeeded: false, at: started, fallback: fallback
+                audioSeconds: seconds, latencyMs: Self.milliseconds(since: started), succeeded: false, at: started, fallback: fallback,
+                failureCause: APIFailureCause.classify(error)
             )
             run.record(event)
             model?.recordUsage(event)

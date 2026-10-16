@@ -56,9 +56,9 @@ public enum JevJudge {
     static func scores(_ candidates: [CorrectionLearner.Candidate], dictated: String, key: String,
                        transport: @escaping HTTPTransport = httpTransport) async -> ([Double]?, UsageEvent) {
         let started = Date()
-        func failed() -> UsageEvent {
+        func failed(_ cause: APIFailureCause) -> UsageEvent {
             UsageEvent(createdAt: started, api: .typesafeJudge, model: model, costUSD: nil,
-                       latencyMs: Int(Date().timeIntervalSince(started) * 1_000), succeeded: false)
+                       latencyMs: Int(Date().timeIntervalSince(started) * 1_000), succeeded: false, failureCause: cause)
         }
         do {
             var request = URLRequest(url: url)
@@ -68,20 +68,23 @@ public enum JevJudge {
             request.httpBody = try JSONSerialization.data(withJSONObject: body(candidates, dictated: dictated))
             request.timeoutInterval = 5
             let (data, response) = try await transport(request)
-            guard (200..<300).contains((response as? HTTPURLResponse)?.statusCode ?? 0),
-                  let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-                else { return (nil, failed()) }
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            guard (200..<300).contains(status) else { return (nil, failed(APIFailureCause.status(status))) }
+            guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                return (nil, failed(.badResponse))
+            }
             let result = parse(data, count: candidates.count)
             let billedModel = object["model"] as? String ?? model
             let tokens = inputTokens(object).map { TokenUsage(input: $0) }
             let usage = UsageEvent(
                 createdAt: started, api: .typesafeJudge, model: billedModel, tokens: tokens ?? TokenUsage(),
                 costUSD: tokens.flatMap { Pricing.tokenCost(model: billedModel, tokens: $0, at: started) },
-                latencyMs: Int(Date().timeIntervalSince(started) * 1_000), succeeded: result != nil
+                latencyMs: Int(Date().timeIntervalSince(started) * 1_000), succeeded: result != nil,
+                failureCause: result == nil ? .badResponse : nil
             )
             return (result?.scores, usage)
         } catch {
-            return (nil, failed())
+            return (nil, failed(APIFailureCause.classify(error)))
         }
     }
 }
