@@ -68,6 +68,10 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   « Autorisations retirées ou rendues ») ; restée active, elle est recalée sur la touche réelle du raccourci, au cas
   où elle n'aurait rien reçu sans être coupée.
 - L'audio s'initialise sur une file dédiée, la bulle s'affiche tout de suite ; le moteur arrêté est réutilisé.
+- Au lancement (après une mise à jour aussi), Wispad charge en arrière-plan la liste des composants audio de macOS,
+  sans créer de moteur ni ouvrir le micro. Le service système qui la fournit s'arrête seul au repos et peut mettre
+  2 à 3 s à répondre quand il redémarre : sans ce chargement, la première dictée l'attendait, bulle figée, micro
+  ouvert jusqu'à 3,2 s après l'appui. Chargée une fois, la liste reste dans Wispad jusqu'à ce qu'il quitte.
 - Démarrage du micro surveillé, première dictée après un lancement comprise : si macOS reconfigure l'entrée
   (micro Bluetooth qui change de profil, autre fréquence, micro débranché), le moteur repart aussitôt, dans le même
   enregistrement ; au repos, il est remplacé par un neuf à la dictée suivante. Aucun audio 1,5 s après le

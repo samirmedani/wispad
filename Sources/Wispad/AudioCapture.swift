@@ -1,4 +1,5 @@
 import AVFoundation
+import AudioToolbox
 import QuartzCore
 import Foundation
 import WispadCore
@@ -63,6 +64,27 @@ final class AudioCapture: @unchecked Sendable {
         set { interruptionSink.withLock { $0 = newValue } }
     }
     var isRunning: Bool { control.sync { engine?.isRunning == true } }
+
+    /// Lancement de Wispad : charge la liste des composants audio de macOS, sans créer de moteur ni toucher au micro.
+    ///
+    /// Le service système qui la fournit (`AudioComponentRegistrar`) s'arrête seul au repos ; relancé, il refait sa
+    /// recherche de composants et peut mettre 2 à 3 s à répondre. Le 16 octobre 2026, le micro de la première dictée
+    /// après une installation s'est ainsi ouvert 3,2 s après l'appui, bulle figée (7 cas du 3 au 16 octobre, de 2,2 à
+    /// 3,2 s). Une fois chargée, la liste reste dans Wispad : un moteur neuf se crée ensuite en 0,1 s, même service
+    /// arrêté ou figé (mesuré le 16 octobre). Sur sa propre file, jamais celle du micro : une dictée lancée pendant ce
+    /// chargement attend la même liste, ni plus ni moins qu'avant.
+    static func preloadComponents() {
+        DispatchQueue(label: "com.yatofix.wispad.audio-preload", qos: .userInitiated).async {
+            let started = CACurrentMediaTime()
+            var output = AudioComponentDescription(
+                componentType: kAudioUnitType_Output, componentSubType: kAudioUnitSubType_HALOutput,
+                componentManufacturer: kAudioUnitManufacturer_Apple, componentFlags: 0, componentFlagsMask: 0
+            )
+            let found = AudioComponentFindNext(nil, &output) != nil
+            let elapsed = Int((CACurrentMediaTime() - started) * 1_000)
+            log.notice("composants audio chargés en \(elapsed, privacy: .public) ms (sortie trouvée : \(found, privacy: .public))")
+        }
+    }
 
     /// Bandes à afficher maintenant : rejouées tranche par tranche entre deux paquets micro.
     var bands: [Float] {

@@ -30,6 +30,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         RetiredFeatures.runAtLaunch()
         OutputMuter.recoverAfterCrash()
         SoundCues.prepare()
+        // Liste des composants audio de macOS chargée tout de suite, en arrière-plan, sans moteur ni micro : la
+        // première dictée (après une mise à jour aussi) n'attend plus jusqu'à 3 s que le service système réponde.
+        AudioCapture.preloadComponents()
         do {
             let model = try AppModel()
             self.model = model
