@@ -17,7 +17,8 @@ public struct MicrophoneStartWatch: Equatable, Sendable {
     }
 
     /// Le démarrage du moteur doit rendre la main avant ce délai (secondes), sinon la dictée est abandonnée.
-    /// Un démarrage à froid normal prend moins d'une seconde, Bluetooth compris.
+    /// Un démarrage à froid normal prend moins d'une seconde, Bluetooth compris, une fois la liste des composants
+    /// audio de macOS chargée (au lancement de l'app) ; sans elle, son service système peut ajouter 2 à 3 s.
     public static let startLimit = 4.0
     /// Délai (secondes) entre le démarrage du moteur et le premier paquet audio. Un paquet arrive toutes les 10 à
     /// 30 ms : au-delà, le moteur est muet.

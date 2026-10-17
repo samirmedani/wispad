@@ -24,6 +24,8 @@ final class Capture {
     var startTask: Task<Bool, Never>?
     /// Flux en direct branché (true), en échec (false), ou pas encore fixé (nil).
     var streamStarted: Bool?
+    /// Flux en direct en échec : la cause lue dans l'erreur (connexion, délai, refus).
+    var streamFailure: APIFailureCause?
     var streamAttemptedAt: Date?
     var streamUsageRecorded = false
     var voiceFallback: APIFallback?
@@ -91,6 +93,8 @@ struct FileAttempt: Sendable {
     var failed: Bool
     /// Faux si l'appel a été annulé avant d'être envoyé : rien à facturer.
     var called: Bool
+    /// Appel raté : la cause lue dans l'erreur.
+    var failureCause: APIFailureCause? = nil
 }
 
 struct PreparedCorrection: Sendable {
@@ -129,7 +133,7 @@ final class FileLedger {
         let event = UsageEvent.transcription(
             provider: speech.provider, streaming: false, model: speech.liveModel, billedModel: speech.fileModel,
             audioSeconds: seconds, latencyMs: attempt.latencyMs, succeeded: !attempt.failed,
-            at: attempt.started
+            at: attempt.started, failureCause: attempt.failureCause
         )
         run.adopt(event, model: model)
         model.recordUsage(event)

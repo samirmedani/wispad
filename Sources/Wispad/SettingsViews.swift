@@ -104,6 +104,13 @@ struct SettingsView: View {
                     set: { model.settings.learnCorrections = $0; model.saveSettings() }
                 ))
             }
+            Section {
+                AppearancePicker()
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+            } header: {
+                SectionTitle(title: SettingsPresentation.appearanceTitle, summary: SettingsPresentation.appearanceSummary)
+            }
             OverlayPlacementSection()
             Section("Général") {
                 Toggle("Sons de début et de fin", isOn: Binding(

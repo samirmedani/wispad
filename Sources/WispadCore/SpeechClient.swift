@@ -2,10 +2,13 @@ import Foundation
 
 public enum SpeechError: LocalizedError {
     case message(String)
+    /// Échec d'un fournisseur dont la cause est connue (délai, refus, code HTTP) : comptée dans Consommation.
+    case failure(APIFailureCause, String)
 
     public var errorDescription: String? {
         switch self {
         case .message(let message): return message
+        case .failure(_, let message): return message
         }
     }
 }
@@ -142,7 +145,7 @@ public final class LiveSpeechSession: NSObject, URLSessionWebSocketDelegate, @un
             receive()
             Task { [weak self] in
                 try? await Task.sleep(nanoseconds: 2_500_000_000)
-                self?.failReady(SpeechError.message("La transcription temps réel n'a pas démarré."))
+                self?.failReady(SpeechError.failure(.timeout, "La transcription temps réel n'a pas démarré."))
             }
             try await readyResult.value()
             flushPending()
@@ -196,7 +199,7 @@ public final class LiveSpeechSession: NSObject, URLSessionWebSocketDelegate, @un
             let replySeconds = finalReplySeconds
             Task { [weak self] in
                 try? await Task.sleep(nanoseconds: UInt64(replySeconds * 1_000_000_000))
-                self?.finishResult.resolve(.failure(SpeechError.message("La transcription finale n'a pas répondu.")))
+                self?.finishResult.resolve(.failure(SpeechError.failure(.timeout, "La transcription finale n'a pas répondu.")))
             }
             return try await finishResult.value()
         } onCancel: {
@@ -318,7 +321,11 @@ public final class LiveSpeechSession: NSObject, URLSessionWebSocketDelegate, @un
             guard let self else { return }
             switch result {
             case .failure(let error):
-                self.fail(error)
+                // Poignée de main refusée (clé, quota, panne) : le code HTTP dit laquelle.
+                let status = (socket?.response as? HTTPURLResponse)?.statusCode ?? 0
+                self.fail(status >= 400
+                    ? SpeechError.failure(APIFailureCause.status(status), "Le fournisseur a refusé la transcription temps réel (HTTP \(status)).")
+                    : error)
             case .success(let message):
                 self.handle(message)
                 self.receive()
@@ -357,7 +364,7 @@ public final class LiveSpeechSession: NSObject, URLSessionWebSocketDelegate, @un
             let event = TranscriptEventParser.parseXAI(object)
             if case .created = event { markReady() }
             if case .error = event {
-                fail(SpeechError.message("Le fournisseur a refusé la transcription temps réel."))
+                fail(SpeechError.failure(.refused, "Le fournisseur a refusé la transcription temps réel."))
                 return
             }
             lock.lock()
@@ -376,7 +383,7 @@ public final class LiveSpeechSession: NSObject, URLSessionWebSocketDelegate, @un
         case .openAI:
             let event = TranscriptEventParser.parseOpenAI(object)
             if case .error = event {
-                fail(SpeechError.message("Le fournisseur a refusé la transcription temps réel."))
+                fail(SpeechError.failure(.refused, "Le fournisseur a refusé la transcription temps réel."))
                 return
             }
             lock.lock()
@@ -601,7 +608,7 @@ public enum BatchTranscriber {
         let (data, response) = try await transport(request)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard (200..<300).contains(status) else {
-            throw SpeechError.message("Transcription refusée (HTTP \(status)).")
+            throw SpeechError.failure(APIFailureCause.status(status), "Transcription refusée (HTTP \(status)).")
         }
         let object = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         let text = (object?["text"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -673,14 +680,25 @@ public enum TextCleaner {
             return usage.id
         }
 
-        func finish(id: String, route: Route, tokens: TokenUsage?, succeeded: Bool) {
+        func finish(id: String, route: Route, tokens: TokenUsage?, succeeded: Bool, cause: APIFailureCause? = nil) {
             lock.withLock {
                 guard let index = recorded.firstIndex(where: { $0.id == id }) else { return }
                 let previous = recorded[index]
                 var usage = TextCleaner.event(route: route, started: previous.createdAt, tokens: tokens,
                                              succeeded: succeeded, fallback: previous.fallback)
                 usage.id = id
+                usage.failureCause = succeeded ? nil : cause
                 recorded[index] = usage
+            }
+        }
+
+        /// Délai de Wispad dépassé : l'appel en cours de ce service a été coupé (annulé) faute de réponse à temps.
+        func markTimedOut(api: UsageAPI) {
+            lock.withLock {
+                for index in recorded.indices where recorded[index].api == api && !recorded[index].succeeded
+                    && (recorded[index].failureCause == nil || recorded[index].failureCause == .cancelled) {
+                    recorded[index].failureCause = .timeout
+                }
             }
         }
     }
@@ -784,6 +802,8 @@ public enum TextCleaner {
                 return CleanupOutcome(text: settled, usage: usage, failedUsages: failed, fallback: fallback)
             } catch {
                 if isCancellation(error) { break }
+                // Délai de Wispad dépassé : l'appel coupé compte comme « pas de réponse à temps ».
+                if APIFailureCause.classify(error) == .timeout { requests.markTimedOut(api: route.api) }
             }
         }
         var failed = requests.events
@@ -814,6 +834,8 @@ public enum TextCleaner {
                 return CleanupOutcome(text: text, usage: usage, failedUsages: failed, fallback: index > 0 || route.isFallback ? route.provider : nil)
             } catch {
                 if isCancellation(error) { break }
+                // Délai de Wispad dépassé : l'appel coupé compte comme « pas de réponse à temps ».
+                if APIFailureCause.classify(error) == .timeout { requests.markTimedOut(api: route.api) }
             }
         }
         var failed = requests.events
@@ -919,16 +941,18 @@ public enum TextCleaner {
             guard let choices = object?["choices"] as? [[String: Any]],
                   let message = choices.first?["message"] as? [String: Any],
                   let content = message["content"] as? String else {
-                throw SpeechError.message("Réponse de correction vide")
+                throw SpeechError.failure(.badResponse, "Réponse de correction vide")
             }
             // Réponse coupée faute de jetons : la garder ferait perdre la fin de la dictée.
             if !allowTruncated, choices.first?["finish_reason"] as? String == "length" {
-                throw SpeechError.message("Correction tronquée")
+                throw SpeechError.failure(.badResponse, "Correction tronquée")
             }
             requests.finish(id: id, route: route, tokens: tokens, succeeded: true)
             return Reply(content: content, tokens: tokens)
         } catch {
-            requests.finish(id: id, route: route, tokens: tokens, succeeded: false)
+            let cause: APIFailureCause
+            if case ResponseError.status(let code) = error { cause = APIFailureCause.status(code) } else { cause = APIFailureCause.classify(error) }
+            requests.finish(id: id, route: route, tokens: tokens, succeeded: false, cause: cause)
             throw error
         }
     }
@@ -941,7 +965,7 @@ public enum TextCleaner {
             group.addTask { try await operation() }
             group.addTask {
                 try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
-                throw SpeechError.message("Correction trop lente")
+                throw SpeechError.failure(.timeout, "Correction trop lente")
             }
             guard let value = try await group.next() else {
                 throw SpeechError.message("Correction vide")

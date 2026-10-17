@@ -64,6 +64,8 @@ public struct DictationAPICall: Codable, Equatable, Identifiable, Sendable {
     public var latencyMs: Int
     public var succeeded: Bool
     public var fallback: APIFallback?
+    /// Cause d'un appel raté (catégorie seulement) ; absente des traces plus anciennes.
+    public var failureCause: APIFailureCause?
 
     public init(_ event: UsageEvent) {
         id = event.id
@@ -72,10 +74,11 @@ public struct DictationAPICall: Codable, Equatable, Identifiable, Sendable {
         latencyMs = event.latencyMs
         succeeded = event.succeeded
         fallback = event.fallback
+        failureCause = event.failureCause
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, api, model, latencyMs, succeeded, fallback
+        case id, api, model, latencyMs, succeeded, fallback, failureCause
     }
 
     private struct FallbackPayload: Codable {
@@ -102,6 +105,8 @@ public struct DictationAPICall: Codable, Equatable, Identifiable, Sendable {
         } else {
             fallback = nil
         }
+        // Cause inconnue d'une version plus récente : ignorée, la trace reste lisible.
+        failureCause = (try? values.decodeIfPresent(String.self, forKey: .failureCause)).flatMap { $0.flatMap(APIFailureCause.init(rawValue:)) }
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -117,6 +122,7 @@ public struct DictationAPICall: Codable, Equatable, Identifiable, Sendable {
                 forKey: .fallback
             )
         }
+        try values.encodeIfPresent(failureCause?.rawValue, forKey: .failureCause)
     }
 }
 

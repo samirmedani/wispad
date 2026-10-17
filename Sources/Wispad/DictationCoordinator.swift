@@ -324,6 +324,7 @@ final class DictationCoordinator {
                 current?.streamStarted = true
                 return true
             } catch {
+                current?.streamFailure = APIFailureCause.classify(error)
                 current?.streamStarted = false
                 return false
             }
@@ -492,7 +493,7 @@ final class DictationCoordinator {
             current.correctionClaimed = true
             if let model { accountEarlyCorrections(current, model: model, cancel: true) }
             current.startTask?.cancel()
-            recordStreaming(current, seconds: duration, succeeded: false)
+            recordStreaming(current, seconds: duration, succeeded: false, stoppedByWispad: true)
             current.session?.cancel()
             delete(url)
             if let model { current.run.complete(.noSpeech, model: model) }
@@ -571,7 +572,7 @@ final class DictationCoordinator {
         let stopped = closeMicrophone(current)
         current.pcm.close()
         // L'audio a pu partir, mais une annulation ne confirme ni son traitement ni sa facturation.
-        recordStreaming(current, seconds: stopped?.duration ?? 0, succeeded: false)
+        recordStreaming(current, seconds: stopped?.duration ?? 0, succeeded: false, stoppedByWispad: true)
         current.session?.cancel()
         delete(stopped?.url ?? current.audioURL)
         if let model {
@@ -649,7 +650,10 @@ final class DictationCoordinator {
                 let finish = try await session.finish()
                 streamFinish = finish
                 raw = finish.text
-            } catch { liveBroke = true }
+            } catch {
+                current.streamFailure = APIFailureCause.classify(error)
+                liveBroke = true
+            }
         }
         let streamMs = Self.milliseconds(since: streamClock)
         recordStreaming(current, seconds: job.duration, latencyMs: streamMs, succeeded: !liveBroke)
@@ -883,7 +887,8 @@ final class DictationCoordinator {
             job.delivered = true
             if let note = job.announcement { pendingAnnouncement = note.message }
         } else {
-            offerReadyText(finalText, status: status, recordID: record.id, accessibilityRefused: context.accessibilityRefused)
+            offerReadyText(finalText, status: status, recordID: record.id, accessibilityRefused: context.accessibilityRefused,
+                           heldModifiers: context.heldModifiers)
         }
         // La bulle part d'abord ; le ménage des vieux audios vient après.
         settle(job)
@@ -930,8 +935,15 @@ final class DictationCoordinator {
 
     /// Message de la bulle quand le texte n'a pas pu être écrit : court, toujours suivi de Copier. Collage refusé
     /// faute d'accessibilité : la bulle dit laquelle manque, plutôt qu'un texte « pas arrivé » jamais envoyé.
-    static func readyMessage(for status: InsertionStatus, accessibilityRefused: Bool = false) -> String {
+    /// Collage retenu parce qu'une touche modificatrice est restée tenue : la bulle dit laquelle.
+    static func readyMessage(for status: InsertionStatus, accessibilityRefused: Bool = false, heldModifiers: UInt64 = 0) -> String {
         if accessibilityRefused { return String(localized: "Accessibilité non autorisée : le texte est prêt") }
+        if status == .failed, heldModifiers != 0 {
+            let keys = TextInserter.modifierNames(heldModifiers)
+            return (heldModifiers & ModifierMask.relevant).nonzeroBitCount == 1
+                ? String(localized: "Touche \(keys) maintenue : le texte est prêt")
+                : String(localized: "Touches \(keys) maintenues : le texte est prêt")
+        }
         switch status {
         case .noTarget: return String(localized: "Pas de champ où écrire : le texte est prêt")
         case .refusedSecure: return String(localized: "Champ sécurisé : le texte est prêt")
@@ -942,11 +954,12 @@ final class DictationCoordinator {
 
     /// Échec avéré : le texte reste récupérable sans voler le focus. Il est copié, sauf vers un champ sécurisé
     /// où il ne doit pas traîner dans le presse-papiers.
-    private func offerReadyText(_ text: String, status: InsertionStatus, recordID: String?, accessibilityRefused: Bool = false) {
+    private func offerReadyText(_ text: String, status: InsertionStatus, recordID: String?, accessibilityRefused: Bool = false,
+                                heldModifiers: UInt64 = 0) {
         guard let model else { return }
         if status != .refusedSecure { model.dependencies.copyText(text) }
         Self.insertionLog.notice("récupération du collage : \(status.rawValue, privacy: .public)")
-        let message = Self.readyMessage(for: status, accessibilityRefused: accessibilityRefused)
+        let message = Self.readyMessage(for: status, accessibilityRefused: accessibilityRefused, heldModifiers: heldModifiers)
         model.statusBanner = message
         showFailure(message, text: text, recordID: recordID)
     }
@@ -1024,7 +1037,8 @@ final class DictationCoordinator {
             }
             announce(String(localized: "Collé"), relay: false)
         case .cancelled: break
-        default: offerReadyText(text, status: status, recordID: record?.id, accessibilityRefused: target.accessibilityRefused)
+        default: offerReadyText(text, status: status, recordID: record?.id, accessibilityRefused: target.accessibilityRefused,
+                                heldModifiers: target.heldModifiers)
         }
     }
 
@@ -1229,19 +1243,24 @@ final class DictationCoordinator {
     }
 
     /// Compte le flux en direct d'une dictée, une seule fois (fin, annulation ou dictée trop courte).
-    private func recordStreaming(_ capture: Capture, seconds: Double, latencyMs: Int = 0, succeeded: Bool? = nil) {
+    /// Sans succès explicite, le flux compte comme réussi s'il a démarré. Un flux arrêté par Wispad (annulation,
+    /// dictée trop courte) est noté « annulé » : il n'entre pas dans les échecs des fournisseurs.
+    private func recordStreaming(_ capture: Capture, seconds: Double, latencyMs: Int = 0, succeeded: Bool? = nil,
+                                 stoppedByWispad: Bool = false) {
         guard !capture.streamUsageRecorded, let started = capture.streamAttemptedAt,
               capture.session != nil, let speech = capture.speech, let model else { return }
         capture.streamUsageRecorded = true
+        let ok = succeeded ?? (capture.streamStarted == true)
         let event = UsageEvent.transcription(
             provider: speech.provider,
             streaming: true,
             model: speech.liveModel,
             audioSeconds: seconds,
             latencyMs: latencyMs,
-            succeeded: succeeded ?? (capture.streamStarted == true),
+            succeeded: ok,
             at: started,
-            fallback: capture.voiceFallback
+            fallback: capture.voiceFallback,
+            failureCause: ok ? nil : (stoppedByWispad ? .cancelled : capture.streamFailure ?? .badResponse)
         )
         capture.run.record(event)
         model.recordUsage(event)
@@ -1262,7 +1281,8 @@ final class DictationCoordinator {
         } catch {
             let event = UsageEvent.transcription(
                 provider: speech.provider, streaming: false, model: speech.liveModel, billedModel: speech.fileModel,
-                audioSeconds: seconds, latencyMs: Self.milliseconds(since: started), succeeded: false, at: started, fallback: fallback
+                audioSeconds: seconds, latencyMs: Self.milliseconds(since: started), succeeded: false, at: started, fallback: fallback,
+                failureCause: APIFailureCause.classify(error)
             )
             run.record(event)
             model?.recordUsage(event)

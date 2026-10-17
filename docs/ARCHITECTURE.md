@@ -93,9 +93,11 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
    parallèle la lecture du champ actif (`ContextProbe`) et, si la correction et le réglage le permettent, de la
    conversation visible (`WindowTextProbe`). Puis il affiche la bulle et ouvre le micro (`AudioCapture`).
    Le démarrage est surveillé : délai de `audio.start`, puis premier paquet attendu, un redémarrage sur un moteur
-   neuf (même délai), puis abandon expliqué dans la bulle (règle `MicrophoneStartWatch`, WispadCore). `AudioCapture`
-   relance aussi son moteur sur `AVAudioEngineConfigurationChange`, referme seul un démarrage ou un redémarrage
-   abandonné (`abandonStart`, dans l'ordre de sa file) et signale une écoute qui ne peut plus repartir
+   neuf (même délai), puis abandon expliqué dans la bulle (règle `MicrophoneStartWatch`, WispadCore). Au lancement,
+   `AudioCapture.preloadComponents` charge, sur sa propre file, la liste des composants audio de macOS (service
+   `AudioComponentRegistrar`, jusqu'à 3 s quand il redémarre) sans moteur ni micro : la première dictée ne l'attend
+   plus. `AudioCapture` relance aussi son moteur sur `AVAudioEngineConfigurationChange`, referme seul un démarrage
+   ou un redémarrage abandonné (`abandonStart`, dans l'ordre de sa file) et signale une écoute qui ne peut plus repartir
    (`onInterruption`) : le coordinateur termine alors la dictée avec l'audio déjà reçu. Il en fait autant si l'accès
    au micro est retiré pendant l'écoute (`AppDependencies.microphoneAuthorized`, relu chaque seconde pendant
    l'écoute seulement). Autorisations retirées ou rendues : `PermissionRevocationTests`.
@@ -339,7 +341,8 @@ ne réécrit jamais un fichier abîmé (les clés de sa partie intacte servent).
 
 - `scripts/test.sh` : tests locaux, sans micro, réseau, clé ni fenêtre visible.
 - `scripts/check.sh` : tests, traductions, compilation Release.
-- Rendu de l'interface hors écran, sans rien afficher :
+- Rendu de l'interface hors écran, sans rien afficher ni jamais prendre le premier plan (app d'arrière-plan : une
+  dictée en cours garde son app cible) :
   `Wispad --design-preview --offscreen --snapshot fichier.png [--section providers] [--dark] [--size 900x700]`
   avec le build Debug ; options d'état : `--onboarding-step <étape>` (welcome, permissions, microphone, provider,
   shortcut, trial, finish) avec `--onboarding-state done|failed|progress` (états fictifs, aucune autorisation

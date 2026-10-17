@@ -115,6 +115,9 @@ public struct UsageEvent: Identifiable, Equatable, Sendable {
     public var succeeded: Bool
     /// Présent uniquement quand cet appel a été tenté en remplacement d'une autre API.
     public var fallback: APIFallback?
+    /// Appel raté : la cause lue dans l'erreur (connexion, délai, panne, clé…). nil s'il a réussi, ou pour un appel
+    /// enregistré avant le suivi des causes.
+    public var failureCause: APIFailureCause?
 
     public init(
         id: String = UUID().uuidString,
@@ -126,7 +129,8 @@ public struct UsageEvent: Identifiable, Equatable, Sendable {
         costUSD: Double?,
         latencyMs: Int = 0,
         succeeded: Bool = true,
-        fallback: APIFallback? = nil
+        fallback: APIFallback? = nil,
+        failureCause: APIFailureCause? = nil
     ) {
         self.id = id
         self.createdAt = createdAt
@@ -138,6 +142,7 @@ public struct UsageEvent: Identifiable, Equatable, Sendable {
         self.latencyMs = latencyMs
         self.succeeded = succeeded
         self.fallback = fallback
+        self.failureCause = succeeded ? nil : failureCause
     }
 
     public static func transcription(
@@ -149,7 +154,8 @@ public struct UsageEvent: Identifiable, Equatable, Sendable {
         latencyMs: Int = 0,
         succeeded: Bool = true,
         at date: Date = Date(),
-        fallback: APIFallback? = nil
+        fallback: APIFallback? = nil,
+        failureCause: APIFailureCause? = nil
     ) -> UsageEvent {
         UsageEvent(
             createdAt: date,
@@ -159,7 +165,8 @@ public struct UsageEvent: Identifiable, Equatable, Sendable {
             costUSD: succeeded ? Pricing.audioCost(provider: provider, model: model, streaming: streaming, seconds: audioSeconds) : nil,
             latencyMs: latencyMs,
             succeeded: succeeded,
-            fallback: fallback
+            fallback: fallback,
+            failureCause: failureCause
         )
     }
 }

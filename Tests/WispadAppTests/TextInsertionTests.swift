@@ -23,7 +23,7 @@ private final class InsertionFixture {
         s.frontmostPID = { self.pid }
         s.bundleID = { _ in "com.google.Chrome" }
         s.secureInput = { false }
-        s.modifiersReleased = { self.modifiers }
+        s.modifiersStillHeld = { self.modifiers ? 0 : ModifierMask.shift }
         s.read = { _ in self.reads += 1; return self.field }
         s.postPaste = { _ in
             self.keys += 1
@@ -100,6 +100,24 @@ struct TextInsertionTests {
         f.modifiers = false
         #expect(await f.insert() == .failed)
         #expect(f.keys == 0 && f.sent == 0)
+        // La bulle dira quelle touche était tenue, et sa carte évitera le champ, repéré même sans ⌘V.
+        #expect(f.context.heldModifiers == ModifierMask.shift)
+        #expect(f.events == ["locate"])
+        #expect(InputZoneTracker.zone(frontmost: f.pid) == CGRect(x: 100, y: 40, width: 600, height: 80))
+        #expect(f.board.string(forType: .string) == "Copie conservée")
+        InputZoneTracker.reset()
+    }
+
+    @Test func theReadyCardNamesTheHeldKeys() {
+        #expect(DictationCoordinator.readyMessage(for: .failed, heldModifiers: ModifierMask.shift)
+                == "Touche ⇧ maintenue : le texte est prêt")
+        #expect(DictationCoordinator.readyMessage(for: .failed, heldModifiers: ModifierMask.command | ModifierMask.shift)
+                == "Touches ⇧⌘ maintenues : le texte est prêt")
+        #expect(DictationCoordinator.readyMessage(for: .failed, heldModifiers: ModifierMask.function)
+                == "Touche fn maintenue : le texte est prêt")
+        #expect(DictationCoordinator.readyMessage(for: .failed, heldModifiers: ModifierMask.option | ModifierMask.function)
+                == "Touches ⌥ fn maintenues : le texte est prêt")
+        #expect(DictationCoordinator.readyMessage(for: .failed) == "Le texte n'est pas arrivé dans le champ")
     }
 
     @Test func failureToSendIsStillAnActualFailure() async {

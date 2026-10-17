@@ -32,7 +32,11 @@ import SwiftUI
 enum DesignPreview {
     static func run(arguments: [String]) {
         let app = NSApplication.shared
-        app.setActivationPolicy(.accessory)
+        let offscreen = arguments.contains("--offscreen") || arguments.contains("--background") || !arguments.contains("--show-window")
+        // Hors écran : app d'arrière-plan, qui ne peut jamais passer au premier plan. En « accessoire », macOS
+        // l'activait au lancement : le 16 octobre, chaque aperçu prenait le focus 1 à 2 s et une dictée en cours
+        // perdait son app cible (collage retenu, ⌘V parti dans l'aperçu).
+        app.setActivationPolicy(offscreen ? .prohibited : .accessory)
         if arguments.contains("--dark") { app.appearance = NSAppearance(named: .darkAqua) }
         if arguments.contains("--light") { app.appearance = NSAppearance(named: .aqua) }
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("wispad-design-preview-\(UUID().uuidString)")
@@ -127,7 +131,6 @@ enum DesignPreview {
         if let index = arguments.firstIndex(of: "--shortcut-preview"), arguments.indices.contains(index + 1) {
             previewShortcuts(model, state: arguments[index + 1])
         }
-        let offscreen = arguments.contains("--offscreen") || arguments.contains("--background") || !arguments.contains("--show-window")
         let renderedRows = HistoryProbeRenderCount()
         let rowDidRender: HistoryRowRenderCallback?
         if performanceProbe {
@@ -411,20 +414,33 @@ enum DesignPreview {
     private static let statuses: [InsertionStatus] = [.inserted, .inserted, .inserted, .pasteSent, .inserted, .pending, .inserted, .transcriptionFailed]
 
     private static func seedFallbacks(_ store: HistoryStore) throws {
+        // Échecs fictifs du service principal, avec leur cause, juste avant chaque bascule après échec.
+        let causes: [APIFailureCause] = [.timeout, .serverError, .offline, .timeout, .rateLimited, .keyRejected, .timeout, .serverError, .timeout, .timeout]
+        let now = Date()
         for index in 0..<10 {
             let stage: FallbackStage = index < 3 ? .transcription : (index < 8 ? .correction : .dictionary)
             let from: UsageAPI = stage == .transcription ? .xaiFile : (stage == .dictionary ? .typesafeJudge : .deepSeekCleanup)
             let to: UsageAPI = stage == .transcription ? .openAIFile : .openAICleanup
+            let reason: FallbackReason = stage == .correction && index >= 6 ? .servicePaused : .requestFailed
+            let at = now.addingTimeInterval(Double(-index * 300))
+            if reason == .requestFailed {
+                try store.insertUsage(UsageEvent(createdAt: at.addingTimeInterval(-2.5), api: from, model: "fixture", costUSD: nil,
+                                                 latencyMs: 2_500, succeeded: false, failureCause: causes[index]))
+            }
             try store.insertUsage(UsageEvent(
+                createdAt: at,
                 api: to,
                 model: stage == .transcription ? "gpt-transcribe" : CleanupModel.openAIFallback,
                 audioSeconds: stage == .transcription ? 12 : 0,
                 costUSD: 0.0004,
                 latencyMs: 450,
                 succeeded: index != 7,
-                fallback: APIFallback(fromAPI: from, stage: stage, reason: stage == .correction && index >= 6 ? .servicePaused : .requestFailed)
+                fallback: APIFallback(fromAPI: from, stage: stage, reason: reason)
             ))
         }
+        // Un délai sans aucun appel réussi autour (réseau peut-être coupé) : « incertain ».
+        try store.insertUsage(UsageEvent(createdAt: now.addingTimeInterval(-7_200), api: .deepSeekCleanup, model: "fixture",
+                                         costUSD: nil, latencyMs: 2_500, succeeded: false, failureCause: .timeout))
     }
 
     private static func seedDetails(_ store: HistoryStore) throws {

@@ -181,7 +181,28 @@ struct CleanupFallbackTests {
         #expect(result.usage?.api == .deepSeekCleanup)
         #expect(result.usage?.fallback == nil)
         #expect(result.usage?.costUSD == nil)
+        // Dictée annulée : pas un échec du fournisseur.
+        #expect(result.usage?.failureCause == .cancelled)
         #expect(await stub.hosts == ["api.deepseek.com"])
+    }
+
+    @Test func failedCallsKeepTheCauseReadInTheError() async {
+        let outage = await Self.clean(CleanupHTTPStub([.reply(status: 503), .reply()]))
+        #expect(outage.failedUsages.map(\.failureCause) == [.serverError])
+        #expect(outage.usage?.failureCause == nil)
+        let key = await Self.clean(CleanupHTTPStub([.reply(status: 401), .reply()]))
+        #expect(key.failedUsages.map(\.failureCause) == [.keyRejected])
+        let slow = await Self.clean(CleanupHTTPStub([.failure, .reply()]))
+        #expect(slow.failedUsages.map(\.failureCause) == [.timeout])
+    }
+
+    /// Wispad coupe un service trop lent : l'appel coupé compte comme « pas de réponse à temps », pas comme annulé.
+    @Test(.timeLimit(.minutes(1))) func wispadDeadlineCountsAsTimeout() async {
+        let stub = CleanupHTTPStub([.suspended(AsyncResult<Void>()), .reply()])
+        let result = await Self.clean(stub)
+        #expect(result.failedUsages.map(\.failureCause) == [.timeout])
+        #expect(result.usage?.api == .openAICleanup)
+        #expect(result.usage?.succeeded == true)
     }
 
     @Test(.timeLimit(.minutes(1))) func relayStartedBeforeCancellationRemainsCounted() async throws {

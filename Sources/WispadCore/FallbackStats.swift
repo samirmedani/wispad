@@ -52,6 +52,8 @@ public struct FallbackEntry: Identifiable, Equatable, Sendable {
     public var toProvider: String
     public var reason: FallbackReason
     public var succeeded: Bool
+    /// Cause de l'échec du service principal juste avant cette bascule, quand elle est connue.
+    public var cause: APIFailureCause? = nil
 }
 
 public struct FallbackSummary: Equatable, Sendable {
@@ -81,6 +83,16 @@ public struct FallbackSummary: Equatable, Sendable {
         var entries: [FallbackEntry] = []
         var afterFailure = 0
         var servicePaused = 0
+        // Appels ratés par API, du plus ancien au plus récent : la bascule suit l'échec du service qu'elle remplace.
+        var failedByAPI: [UsageAPI: [UsageEvent]] = [:]
+        for event in events where !event.succeeded { failedByAPI[event.api, default: []].append(event) }
+        for api in failedByAPI.keys { failedByAPI[api]?.sort { $0.createdAt < $1.createdAt } }
+        func primaryCause(of fallback: APIFallback, before date: Date) -> APIFailureCause? {
+            guard fallback.reason == .requestFailed else { return nil }
+            return failedByAPI[fallback.fromAPI]?.last {
+                $0.createdAt <= date && date.timeIntervalSince($0.createdAt) <= primaryFailureWindow
+            }?.failureCause
+        }
 
         for event in events {
             guard start == nil || event.createdAt >= start!,
@@ -105,7 +117,8 @@ public struct FallbackSummary: Equatable, Sendable {
             routes[id] = route
             entries.append(FallbackEntry(
                 id: event.id, date: event.createdAt, stage: fallback.stage, fromProvider: source,
-                toProvider: destination, reason: fallback.reason, succeeded: event.succeeded
+                toProvider: destination, reason: fallback.reason, succeeded: event.succeeded,
+                cause: primaryCause(of: fallback, before: event.createdAt)
             ))
             switch fallback.reason {
             case .requestFailed: afterFailure += 1
@@ -126,4 +139,7 @@ public struct FallbackSummary: Equatable, Sendable {
             recent: Array(entries.sorted { $0.date == $1.date ? $0.id < $1.id : $0.date > $1.date }.prefix(recentLimit))
         )
     }
+
+    /// Écart maximal entre l'échec du service principal et l'appel de secours qui le remplace.
+    static let primaryFailureWindow: TimeInterval = 30
 }

@@ -15,6 +15,9 @@ final class DictationContext: @unchecked Sendable {
     /// Le collage n'a pas été tenté : l'accessibilité n'est pas autorisée (retirée dans Réglages Système, ou jamais
     /// donnée). Noté par l'insertion, pour que la bulle dise pourquoi le texte reste à copier.
     var accessibilityRefused = false
+    /// Le collage n'a pas été tenté : ces touches modificatrices (masques `ModifierMask`) étaient encore tenues au
+    /// bout de l'attente. Noté par l'insertion, pour que la bulle dise laquelle.
+    var heldModifiers: UInt64 = 0
     /// Le champ actif a été lu (ou sa lecture a échoué) : rien de plus à attendre.
     private(set) var fieldRead = false
 

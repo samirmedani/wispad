@@ -3,6 +3,21 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.2.4 — 17 octobre 2026
+
+Mode clair ou sombre, première dictée immédiate, et un collage qui ne rate plus quand une touche est tenue.
+
+> Depuis la 0.2.0 : si la mise à jour reste sur « Relance… », ferme cette fenêtre, puis quitte Wispad et rouvre-le.
+> La 0.2.4 est déjà installée.
+
+**Nouveau**
+- Apparence Système, Clair ou Sombre : un bouton en haut de la barre latérale, à droite de « Wispad », ou Réglages › Apparence. « Système » suit macOS ; la bulle de dictée reste sombre.
+- Consommation › Bascules : « D'où venaient les échecs » sépare ta connexion, les fournisseurs et les clés refusées, puis donne pour chaque fournisseur, quel qu'il soit, ses causes (pas de réponse à temps, panne, limite atteinte, pas d'internet). Chaque dernière bascule dit aussi pourquoi le fournisseur principal a échoué.
+
+**Corrigé**
+- Première dictée après un lancement ou une mise à jour : la bulle pouvait rester figée jusqu'à 3 s avant que le micro s'ouvre, le temps qu'un service de macOS réponde. Wispad le prépare maintenant dès son lancement, sans ouvrir le micro.
+- Collage : une touche ⌘, ⇧, ⌥, ⌃ ou fn tenue au moment de coller le faisait échouer. Wispad attend maintenant qu'elle soit relâchée, jusqu'à 5 s ; au-delà, la carte « Texte prêt » dit quelle touche était tenue et ne couvre plus le champ de saisie.
+
 ## 0.2.3 — 16 octobre 2026
 
 Combien Wispad te coûte vraiment, face aux abonnements de dictée.

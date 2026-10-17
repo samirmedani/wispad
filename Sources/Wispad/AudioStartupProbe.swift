@@ -12,7 +12,8 @@ import os
 enum AudioStartupProbe {
     static func run() {
         let app = NSApplication.shared
-        app.setActivationPolicy(.accessory)
+        // Sans fenêtre : app d'arrière-plan, jamais au premier plan (une app « accessoire » est activée au lancement).
+        app.setActivationPolicy(.prohibited)
         guard PermissionCenter.microphoneStatus() == .authorized else {
             print("audio_probe_skipped=microphone_not_authorized")
             exit(2)

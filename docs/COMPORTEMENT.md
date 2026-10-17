@@ -41,7 +41,8 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   collage raté, champ sécurisé), sinon la dernière dictée. Jamais une dictée annulée, vide ou sans transcription.
   Rien à coller : la bulle le dit (« Aucune dictée à coller »).
 - Même insertion qu'une dictée, dans l'app au premier plan. Les touches modificatrices doivent être relâchées
-  (0,8 s au plus) ; sinon le texte reste prêt à copier, aucun raccourci parasite n'est envoyé.
+  (attendues 5 s au plus, voir « Insertion ») ; sinon le texte reste prêt à copier, aucun raccourci parasite n'est
+  envoyé.
 - Insertion confirmée, il se termine comme une dictée : la bulle affiche « Collé » (coche verte, sans
   bouton, disparaît seule), le champ est surveillé 30 s pour apprendre les mots corrigés (mêmes règles qu'après
   une dictée, voir « Dictionnaire et apprentissage »), et la dictée non insérée passe à « Inséré »
@@ -68,6 +69,10 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   « Autorisations retirées ou rendues ») ; restée active, elle est recalée sur la touche réelle du raccourci, au cas
   où elle n'aurait rien reçu sans être coupée.
 - L'audio s'initialise sur une file dédiée, la bulle s'affiche tout de suite ; le moteur arrêté est réutilisé.
+- Au lancement (après une mise à jour aussi), Wispad charge en arrière-plan la liste des composants audio de macOS,
+  sans créer de moteur ni ouvrir le micro. Le service système qui la fournit s'arrête seul au repos et peut mettre
+  2 à 3 s à répondre quand il redémarre : sans ce chargement, la première dictée l'attendait, bulle figée, micro
+  ouvert jusqu'à 3,2 s après l'appui. Chargée une fois, la liste reste dans Wispad jusqu'à ce qu'il quitte.
 - Démarrage du micro surveillé, première dictée après un lancement comprise : si macOS reconfigure l'entrée
   (micro Bluetooth qui change de profil, autre fréquence, micro débranché), le moteur repart aussitôt, dans le même
   enregistrement ; au repos, il est remplacé par un neuf à la dictée suivante. Aucun audio 1,5 s après le
@@ -129,7 +134,8 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   ligne du curseur ; pour un champ invisible à l'accessibilité (Codex, apps Electron), les 22 % du bas de la fenêtre
   active (90 à 200 points). Les messages qui couvriraient cette zone se placent 12 points au-dessus, sinon en
   dessous ; la bulle de dictée garde sa place. Cette lecture suit l'envoi du texte (au plus 0,3 s, hors du fil
-  principal) : ni la bulle ni le collage ne l'attendent. Elle vaut pour cette app pendant 2 minutes, tant que les
+  principal) : ni la bulle ni le collage ne l'attendent. Un collage retenu sans ⌘V (touche modificatrice restée
+  tenue) lit aussi la zone, avant d'afficher sa carte. Elle vaut pour cette app pendant 2 minutes, tant que les
   écrans ne changent pas (branché, débranché, autre résolution). Une zone illisible (coordonnées infinies, NaN ou
   démesurées) est ignorée.
 - **Écrans qui changent** (écran externe branché ou débranché, autre résolution ou échelle, autre écran principal) :
@@ -150,6 +156,12 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   l'on se trouve, même par-dessus une app en plein écran ; déjà visible sur ce bureau, elle ne bouge pas.
 - Une fois affichée, c'est une fenêtre ordinaire : passer à une autre app, cliquer sur le bureau ou changer de
   bureau la laisse à sa place et sur son bureau, simplement derrière l'app active.
+- **Apparence** : Système (par défaut, suit macOS, y compris son passage automatique du clair au sombre), Clair ou
+  Sombre. Choix rapide par le bouton à droite de « Wispad » en haut de la barre latérale (son icône montre le choix
+  en cours, un clic ouvre trois vignettes), ou dans Réglages › Apparence. Toute l'app change aussitôt, en fondu
+  (sans fondu avec « Réduire les animations ») : fenêtre, premier lancement guidé, notes de version, bulles d'aide.
+  La bulle de dictée et le schéma de Réglages › Bulle et messages restent sombres. Le choix est gardé après une
+  relance ou une mise à jour, et posé avant l'ouverture de toute fenêtre.
 - Choix d'affichage mémorisés, retrouvés après avoir quitté et relancé Wispad, chacun enregistré dès qu'il change :
   - période de l'Accueil (7 jours par défaut) ;
   - période de Consommation (Aujourd'hui par défaut), indépendante de celle de l'Accueil ;
@@ -642,6 +654,12 @@ Wispad relit ces autorisations sans jamais les redemander : une demande de macOS
   relâchée, envoyés au système une fois l'app cible vérifiée au premier plan et les modificateurs relâchés. Le
   13 octobre 2026, l'écriture par `AXSelectedText` dans Chrome et un ⌘V adressé au seul processus cible laissaient
   le champ vide : ces deux voies sont retirées. Tous les chemins d'insertion partagent une file.
+- Touche modificatrice (⌃ ⌥ ⇧ ⌘ fn) tenue au moment de coller (raccourci de capture d'écran, touche gardée
+  enfoncée) : le collage l'attend 5 s au plus et part dès qu'elle est relâchée, toujours dans la même app (sinon
+  « Pas de champ où écrire »). Le 17 octobre 2026, une touche tenue 2,4 s juste après une dictée faisait échouer le
+  collage, qui n'attendait que 0,8 s. Toujours tenue au bout des 5 s : aucun ⌘V, la carte « Texte prêt » nomme la
+  touche (« Touche ⇧ maintenue : le texte est prêt ») et Coller la colle d'un clic. Échap pendant l'attente annule la
+  dictée.
 - Une app qui a perdu le premier plan n'est pas réactivée de force : la bulle propose de récupérer le texte.
 - Lectures d'accessibilité bornées au collage : champ actif 0,3 s avant ⌘V, confirmation 1 s après. Une app qui
   construit encore son arbre (Chrome à la première dictée) ne retarde ni le texte ni la dictée suivante.
@@ -709,6 +727,19 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
   enfin les cinq dernières bascules (date, étape, fournisseurs, raison, secours réussi ou non). Seules deux raisons
   sont enregistrées : « échec ou délai dépassé » et « principal mis de côté ». Chaque passage au secours compte, même
   en échec. Quand la période commence avant le début de l'enregistrement des bascules, sa date est rappelée en petit.
+- « D'où venaient les échecs », dans la même carte, dès qu'un appel a échoué sur la période (avec ou sans bascule) :
+  chaque appel raté garde la cause lue dans l'erreur reçue, jamais son texte. Causes : pas d'internet sur ce Mac
+  (aucune connexion, connexion perdue, nom du service introuvable), pas de réponse à temps (délai du système ou de
+  Wispad), panne du service (erreur 5xx, connexion refusée), limite ou crédit atteint (429), clé refusée (401, 402,
+  403), demande refusée (autre 4xx, erreur annoncée dans le flux), réponse inutilisable (vide, tronquée, illisible).
+  Trois cases : Ta connexion (pas d'internet), Fournisseurs (le reste), Clés refusées, plus Incertain pour un délai
+  dépassé sans aucun autre appel réussi dans la minute autour (la connexion a pu être en cause ; sinon le délai compte
+  pour le fournisseur). Puis chaque fournisseur qui a échoué, quel qu'il soit, avec ses causes du plus fréquent au
+  plus rare et le nombre de fois où il a été mis de côté. Une dictée annulée ou trop courte, ou une correction
+  abandonnée parce que la dictée est annulée, n'est pas un échec. Les appels d'avant ce suivi n'ont pas de cause : ils
+  restent hors de ce détail, et la date de début est rappelée en petit. Les dernières bascules montrent la cause de
+  l'échec du service principal quand elle est connue. Sans bascule mais avec des échecs (aucune clé de secours),
+  l'état le dit au lieu de « tes fournisseurs principaux ont toujours répondu ».
 - Période « Tout », sur l'Accueil comme dans Consommation : sous le sélecteur, depuis quand et combien de temps
   (« Depuis le 1 oct. 2026 · 16 jours »), du premier jour d'utilisation à aujourd'hui, les deux compris (le jour
   même compte pour 1 jour). Moins d'un mois : en jours ; au-delà, en mois et jours (« 1 mois et 4 jours »), puis

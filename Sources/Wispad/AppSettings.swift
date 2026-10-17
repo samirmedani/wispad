@@ -87,6 +87,8 @@ struct AppSettings: Codable, Equatable {
     var dictionarySort: DictionarySort = .newest
     /// Place de la bulle et de ses messages, et décalage hors du champ de saisie (Réglages › Bulle et messages).
     var overlayPlacement = OverlayPlacement()
+    /// Apparence de l'app (Réglages › Apparence, ou le bouton de la barre latérale) : celle de macOS par défaut.
+    var appearance: AppAppearance = .system
 
     init() {}
 
@@ -151,6 +153,7 @@ struct AppSettings: Codable, Equatable {
         dictionaryKind = value(.dictionaryKind, defaults.dictionaryKind)
         dictionarySort = value(.dictionarySort, defaults.dictionarySort)
         overlayPlacement = value(.overlayPlacement, defaults.overlayPlacement)
+        appearance = value(.appearance, defaults.appearance)
     }
 
     /// Bornes des réglages de conservation, partagées avec leurs contrôles dans Réglages.

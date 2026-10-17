@@ -9002,6 +9002,276 @@
           }
         }
       }
+    },
+    "Apparence" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appearance"
+          }
+        }
+      }
+    },
+    "Apparence : %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appearance: %@"
+          }
+        }
+      }
+    },
+    "Clair" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Light"
+          }
+        }
+      }
+    },
+    "Sombre" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dark"
+          }
+        }
+      }
+    },
+    "Système" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "System"
+          }
+        }
+      }
+    },
+    "« Système » suit macOS. La bulle de dictée reste sombre." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“System” follows macOS. The dictation bubble stays dark."
+          }
+        }
+      }
+    },
+    "%lld délais sans autre appel réussi autour : ta connexion a pu être en cause." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld timeouts with no other successful call nearby: your connection may have been the cause."
+          }
+        }
+      }
+    },
+    "1 délai sans autre appel réussi autour : ta connexion a pu être en cause." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 timeout with no other successful call nearby: your connection may have been the cause."
+          }
+        }
+      }
+    },
+    "Aucune bascule, mais des appels ont échoué sans fournisseur de secours pour prendre le relais. Le détail est ci-dessous." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No fallback, but some calls failed with no backup provider to take over. Details below."
+          }
+        }
+      }
+    },
+    "Causes des échecs notées depuis le %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failure causes recorded since %@."
+          }
+        }
+      }
+    },
+    "Clés refusées" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rejected keys"
+          }
+        }
+      }
+    },
+    "D'où venaient les échecs" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Where the failures came from"
+          }
+        }
+      }
+    },
+    "Incertain" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uncertain"
+          }
+        }
+      }
+    },
+    "Mis de côté %lld fois après des échecs répétés : le secours a répondu directement." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set aside %lld times after repeated failures: the backup answered directly."
+          }
+        }
+      }
+    },
+    "Mis de côté 1 fois après des échecs répétés : le secours a répondu directement." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set aside once after repeated failures: the backup answered directly."
+          }
+        }
+      }
+    },
+    "Ta connexion" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your connection"
+          }
+        }
+      }
+    },
+    "Wispad lit le type d'erreur reçu. Sans internet, c'est ta connexion. Pas de réponse alors qu'un autre service répondait, panne ou limite atteinte : c'est le fournisseur. Une clé refusée se vérifie dans Fournisseurs." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wispad reads the type of error it receives. No internet means your connection. No answer while another service was answering, an outage or a reached limit means the provider. A rejected key can be checked in Providers."
+          }
+        }
+      }
+    },
+    "annulé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "cancelled"
+          }
+        }
+      }
+    },
+    "clé refusée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "key rejected"
+          }
+        }
+      }
+    },
+    "demande refusée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "request rejected"
+          }
+        }
+      }
+    },
+    "limite ou crédit atteint" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "limit or credit reached"
+          }
+        }
+      }
+    },
+    "panne du service" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "service outage"
+          }
+        }
+      }
+    },
+    "pas d'internet sur ce Mac" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "no internet on this Mac"
+          }
+        }
+      }
+    },
+    "pas de réponse à temps" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "no answer in time"
+          }
+        }
+      }
+    },
+    "réponse inutilisable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "unusable response"
+          }
+        }
+      }
+    },
+    "Touche %@ maintenue : le texte est prêt" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ key held: your text is ready"
+          }
+        }
+      }
+    },
+    "Touches %@ maintenues : le texte est prêt" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ keys held: your text is ready"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"
