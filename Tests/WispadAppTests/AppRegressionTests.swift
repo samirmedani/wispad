@@ -2071,6 +2071,7 @@ struct AppRegressionTests {
         #expect(f.audio.starts == 0)
         #expect(f.model.coordinator.phase == .idle)
         #expect(f.model.selectedSection == .settings)
+        #expect(f.model.settings.settingsTab == .permissions)
     }
 
     @Test func newDictationStartsWhileThePreviousOneIsStillFinishing() async throws {

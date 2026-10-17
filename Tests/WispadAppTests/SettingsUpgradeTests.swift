@@ -82,6 +82,7 @@ struct SettingsUpgradeTests {
         settings.usagePeriod = .all
         settings.usageTaxRate = 8.1
         settings.lastSection = .dictionary
+        settings.settingsTab = .permissions
         settings.showsOptionalKeys = true
         settings.dictionaryOriginFilter = .learned
         settings.dictionaryPeriod = .days30

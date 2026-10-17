@@ -121,7 +121,7 @@ curseur : messagerie, e-mail, éditeur de code, terminal, navigateur.
 - **Rien n'est perdu** : sans connexion ou en cas d'erreur, l'audio reste dans l'historique pour **Retranscrire** ;
   un collage raté laisse le texte prêt à **Copier**.
 - **La bulle ne cache pas ton champ** : ses messages se placent au-dessus de la zone où tu écris, et chaque bulle se
-  place à la main dans Réglages › Bulle et messages.
+  place à la main dans Réglages › Bulle, en noir profond ou en verre transparent (Liquid Glass).
 - **Contexte facultatif** : Wispad peut lire la fenêtre active pour bien écrire les noms d'une conversation
   (désactivé par défaut, jamais enregistré).
 

@@ -307,17 +307,20 @@ struct OverlayCluster: View {
     }
 
     var body: some View {
+        let style = model.settings.bubbleStyle
         ZStack {
             if mode.isMessage {
                 // Messages : leur propre fond (noir profond ou verre), sans le contour de la bulle de dictée.
                 MessageBubble(mode: mode)
                     .transition(Self.swap)
             } else {
+                // Verre fumé noir, ou verre transparent clair ou sombre comme l'app.
                 dictation
-                    .environment(\.colorScheme, .dark)
+                    .modifier(BubbleScheme(style: style))
                     .transition(Self.swap)
             }
         }
+        .environment(\.bubbleStyle, style)
     }
 
     /// De la bulle de dictée à un message, et retour : fondu avec un léger rebond depuis le bas.
@@ -343,7 +346,8 @@ struct OverlayCluster: View {
         return ZStack {
             // Mouvement réduit : les boutons paraissent en fondu à leur place, sans glisser.
             if Self.showsOrbs(mode, reduceMotion: reduceMotion) {
-                OverlayOrbButton(symbol: "xmark", tint: .white.opacity(0.78), help: String(localized: "Annuler (Échap)"), glassID: "cancel", namespace: glass, revealed: handsFree) {
+                OverlayOrbButton(symbol: "xmark", tint: model.settings.bubbleStyle == .glass ? Color.primary.opacity(0.75) : .white.opacity(0.78),
+                                 help: String(localized: "Annuler (Échap)"), glassID: "cancel", namespace: glass, revealed: handsFree) {
                     coordinator.cancel()
                 }
                 .scaleEffect(orbScale)
@@ -400,6 +404,7 @@ extension View {
 private struct OverlayGlass<S: InsettableShape>: ViewModifier {
     @Environment(\.overlayGlass) private var glassEnabled
     @Environment(\.overlayReduceMotion) private var reduceMotion
+    @Environment(\.bubbleStyle) private var style
     var shape: S
     var id: String
     var namespace: Namespace.ID
@@ -407,19 +412,23 @@ private struct OverlayGlass<S: InsettableShape>: ViewModifier {
     var rim: Bool
 
     func body(content: Content) -> some View {
+        // Verre transparent : ses propres reflets, sans le liseré du verre fumé.
+        let clear = style == .glass
         // Le contenu reste dans la forme pendant qu'elle s'étire : il se dévoile au lieu de déborder.
         let clipped = content
             .clipShape(shape)
             .overlay(
                 shape.strokeBorder(OverlayStyle.rim, lineWidth: 0.7)
-                    .opacity(rim ? 1 : 0)
+                    .opacity(rim && !clear ? 1 : 0)
                     .animation(.easeOut(duration: 0.12), value: rim)
             )
         if #available(macOS 26, *), glassEnabled {
             clipped
-                .glassEffect(.clear.tint(OverlayStyle.glassTint).interactive(interactive), in: shape)
+                .glassEffect((clear ? Glass.regular : Glass.clear.tint(OverlayStyle.glassTint)).interactive(interactive), in: shape)
                 .glassEffectID(id, in: namespace)
                 .glassEffectTransition(reduceMotion ? .materialize : .matchedGeometry)
+        } else if clear {
+            clipped.background(shape.fill(.regularMaterial))
         } else {
             clipped
                 .background(shape.fill(OverlayStyle.background))
@@ -475,12 +484,14 @@ struct SpectrumBars: View {
 /// Vague grise discrète pendant la transcription et la correction.
 struct ProcessingBars: View {
     @Environment(\.overlayReduceMotion) private var reduceMotion
+    @Environment(\.bubbleStyle) private var style
     @Environment(AppModel.self) private var model
 
     var body: some View {
         TimelineView(.animation) { timeline in
             let levels = Self.levels(at: timeline.date.timeIntervalSinceReferenceDate, reduceMotion: reduceMotion)
-            SpectrumBars(levels: levels, color: model.coordinator.relay == nil ? .white.opacity(0.55) : OverlayStyle.relay.opacity(0.8))
+            let idle = style == .glass ? Color.primary.opacity(0.5) : Color.white.opacity(0.55)
+            SpectrumBars(levels: levels, color: model.coordinator.relay == nil ? idle : OverlayStyle.relay.opacity(0.8))
         }
     }
 
@@ -614,7 +625,7 @@ struct MessageBubble: View {
             content
         }
         .environment(\.bubbleStyle, style)
-        .modifier(MessageScheme(style: style))
+        .modifier(BubbleScheme(style: style))
     }
 
     @ViewBuilder private var content: some View {
@@ -698,8 +709,9 @@ struct MessageBubble: View {
     }
 }
 
-/// Le noir profond est toujours sombre ; le verre suit l'apparence du panneau, donc celle de l'app.
-private struct MessageScheme: ViewModifier {
+/// Le noir profond et le verre fumé sont toujours sombres ; le verre transparent suit l'apparence du panneau, donc
+/// celle de l'app.
+struct BubbleScheme: ViewModifier {
     var style: BubbleStyle
 
     @ViewBuilder func body(content: Content) -> some View {
@@ -1038,8 +1050,8 @@ final class OverlayController {
         }
     }
 
-    /// Sombre pour le noir profond ; pour le verre, celle de l'app, qui le fait clair ou sombre comme elle. La bulle de
-    /// dictée garde ses couleurs sombres dans les deux cas.
+    /// Sombre pour le noir profond ; pour le verre, celle de l'app, qui le rend clair ou sombre comme elle (bulle de
+    /// dictée comprise).
     private var panelAppearance: NSAppearance? {
         model?.settings.bubbleStyle == .glass ? nil : NSAppearance(named: .darkAqua)
     }

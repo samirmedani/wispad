@@ -8175,22 +8175,42 @@
         }
       }
     },
-    "Style des messages, et où la bulle et ses messages apparaissent à l'écran." : {
+    "Style de la bulle, et où elle et ses messages apparaissent à l'écran." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Message style, and where the bubble and its messages appear on screen."
+            "value" : "Bubble style, and where it and its messages appear on screen."
           }
         }
       }
     },
-    "Style des messages" : {
+    "Style de la bulle" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Message style"
+            "value" : "Bubble style"
+          }
+        }
+      }
+    },
+    "Audio" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audio"
+          }
+        }
+      }
+    },
+    "Bulle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bubble"
           }
         }
       }
@@ -8215,12 +8235,12 @@
         }
       }
     },
-    "La bulle de dictée et son spectre ne changent pas." : {
+    "Il vaut pour la bulle de dictée comme pour ses messages ; le spectre garde ses couleurs." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The dictation bubble and its spectrum don't change."
+            "value" : "It applies to the dictation bubble and its messages; the spectrum keeps its colors."
           }
         }
       }
@@ -9103,12 +9123,12 @@
         }
       }
     },
-    "« Système » suit macOS. La bulle de dictée reste sombre." : {
+    "« Système » suit macOS. La bulle garde son style, choisi dans l'onglet Bulle." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“System” follows macOS. The dictation bubble stays dark."
+            "value" : "“System” follows macOS. The bubble keeps its own style, chosen in the Bubble tab."
           }
         }
       }

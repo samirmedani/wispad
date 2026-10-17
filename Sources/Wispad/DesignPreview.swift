@@ -26,6 +26,7 @@ import SwiftUI
 /// `--onboarding-step <étape> [--onboarding-state done|failed|progress]` : une étape du premier lancement guidé
 /// avec un état fictif (réussi, problème, en cours), sans aucune demande d'autorisation.
 /// `--shortcut-preview custom|long|disabled|recording` : Réglages › Raccourci avec des raccourcis fictifs.
+/// `--settings-tab general|dictation|formatting|bubble|privacy|permissions|help` : onglet de Réglages.
 /// `--period today|days7|days30|all` : période de l'Accueil et de Consommation (« all » : durée d'utilisation, coût par
 /// mois face aux abonnements).
 @MainActor
@@ -96,6 +97,10 @@ enum DesignPreview {
         }
         if arguments.contains("--fallback-preview") || arguments.contains("--usage-accuracy-preview") { model.selectedSection = .usage }
         if arguments.contains("--blur-recent") { model.settings.blurRecentDictations = true }
+        if let index = arguments.firstIndex(of: "--settings-tab"), arguments.indices.contains(index + 1),
+           let tab = SettingsTab(rawValue: arguments[index + 1]) {
+            model.settings.settingsTab = tab
+        }
         if let index = arguments.firstIndex(of: "--period"), arguments.indices.contains(index + 1),
            let period = StatsPeriod(rawValue: arguments[index + 1]) {
             model.settings.homePeriod = period

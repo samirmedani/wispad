@@ -33,11 +33,11 @@ enum AppAppearance: String, Codable, CaseIterable, Identifiable {
     }
 }
 
-/// Style des messages de la bulle (Réglages › Bulle et messages). La bulle de dictée et son spectre ne changent pas.
+/// Style de la bulle (Réglages › Bulle et messages). Le spectre garde ses couleurs dans les deux.
 enum BubbleStyle: String, Codable, CaseIterable, Identifiable {
-    /// Noir profond, comme la Dynamic Island : lisible sur tous les fonds.
+    /// Messages noir profond, comme la Dynamic Island ; bulle de dictée en verre fumé noir. Lisible sur tous les fonds.
     case black
-    /// Liquid Glass transparent d'Apple, clair ou sombre comme l'app.
+    /// Liquid Glass transparent d'Apple pour la bulle de dictée et ses messages, clair ou sombre comme l'app.
     case glass
 
     var id: String { rawValue }

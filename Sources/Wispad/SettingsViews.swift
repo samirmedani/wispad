@@ -3,10 +3,13 @@ import AppKit
 import WispadCore
 import UniformTypeIdentifiers
 
-/// Écran réglages : en-tête fixe, formulaire groupé natif dessous.
-struct FormScreen<Content: View>: View {
+/// Écran réglages : en-tête fixe (et, au besoin, une barre sous le titre), formulaire groupé natif dessous.
+struct FormScreen<Accessory: View, Content: View>: View {
     var title: String
     var subtitle: String
+    /// Change : le formulaire repart d'en haut (onglet de Réglages).
+    var resetID: AnyHashable?
+    @ViewBuilder var accessory: Accessory
     @ViewBuilder var content: Content
 
     var body: some View {
@@ -16,169 +19,216 @@ struct FormScreen<Content: View>: View {
                 .padding(.top, 14)
                 .frame(maxWidth: 920)
                 .frame(maxWidth: .infinity)
+            accessory
+                .padding(.horizontal, 32)
+                .frame(maxWidth: 920, alignment: .leading)
+                .frame(maxWidth: .infinity)
             Form { content }
                 .formStyle(.grouped)
                 .scrollContentBackground(.hidden)
                 .padding(.horizontal, 12)
                 .frame(maxWidth: 920)
                 .frame(maxWidth: .infinity)
+                .id(resetID)
         }
+    }
+}
+
+extension FormScreen where Accessory == EmptyView {
+    init(title: String, subtitle: String, @ViewBuilder content: () -> Content) {
+        self.init(title: title, subtitle: subtitle, resetID: nil, accessory: { EmptyView() }, content: content)
     }
 }
 
 // MARK: - Réglages
 
+extension AppModel {
+    /// Réglages, sur l'onglet voulu (un micro refusé ouvre Autorisations).
+    func openSettings(_ tab: SettingsTab) {
+        setDisplayChoice(\.settingsTab, tab)
+        open(.settings)
+    }
+}
+
+/// Réglages en onglets : un thème par page, l'onglet choisi est retrouvé au lancement suivant.
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        FormScreen(title: String(localized: "Réglages"), subtitle: String(localized: "Raccourci, correction, audio et autorisations.")) {
-            Section("Raccourci") {
-                DictationShortcutRow()
-                PasteShortcutRow()
+        let tab = model.settings.settingsTab
+        FormScreen(title: String(localized: "Réglages"), subtitle: String(localized: "Raccourci, correction, audio et autorisations."),
+                   resetID: tab) {
+            SettingsTabBar()
+                .padding(.top, 12)
+        } content: {
+            switch tab {
+            case .general: general
+            case .dictation: dictation
+            case .formatting:
+                FormattingSection()
+                ToneSection()
+            case .bubble: OverlayPlacementSection()
+            case .privacy: privacy
+            case .permissions: permissions
+            case .help:
+                DiagnosticsSection()
+                HelpSection()
             }
-            Section("Transcription") {
-                SettingRow(text: SettingsPresentation.language) {
-                    Picker(SettingsPresentation.language.title, selection: Binding(
-                        get: { model.settings.language },
-                        set: { model.settings.language = $0; model.saveSettings() }
-                    )) {
-                        ForEach(DictationLanguage.allCases) { language in
-                            Text(language.label).tag(language)
-                        }
-                    }
-                    .labelsHidden()
-                    .fixedSize()
-                }
-                SettingToggle(text: SettingsPresentation.verifyWithFile, isOn: Binding(
-                    get: { model.settings.verifyWithFile },
-                    set: { model.settings.verifyWithFile = $0; model.saveSettings() }
-                ))
-            }
-            Section("Correction") {
-                SettingToggle(text: cleanupText, isOn: Binding(
-                    get: { model.settings.cleanupEnabled },
-                    set: { model.settings.cleanupEnabled = $0; model.saveSettings() }
-                ))
-                SettingToggle(text: structureText, isOn: Binding(
-                    get: { model.settings.structureDictation },
-                    set: { model.settings.structureDictation = $0; model.saveSettings() }
-                ))
-                SettingToggle(text: SettingsPresentation.selectionCommands, isOn: Binding(
-                    get: { model.settings.selectionCommands },
-                    set: { model.settings.selectionCommands = $0; model.saveSettings() }
-                ), enabled: model.settings.cleanupEnabled)
-            }
-            FormattingSection()
-            ToneSection()
-            Section("Confidentialité") {
-                SettingRow(text: SettingsPresentation.sentData)
-                SettingToggle(text: SettingsPresentation.windowContext, isOn: Binding(
-                    get: { model.settings.useWindowContext },
-                    set: { model.settings.useWindowContext = $0; model.saveSettings() }
-                ), enabled: model.settings.cleanupEnabled)
-                SettingRow(text: SettingsPresentation.retention) {
-                    Picker(SettingsPresentation.retention.title, selection: Binding(
-                        get: { model.settings.retention },
-                        set: { model.settings.retention = $0; model.saveSettings(); model.purgeAudio() }
-                    )) {
-                        ForEach(RetentionMode.allCases, id: \.self) { mode in
-                            Text(mode.label).tag(mode)
-                        }
-                    }
-                    .labelsHidden()
-                    .fixedSize()
-                }
-                Stepper("Durée : \(model.settings.temporaryHours) h", value: Binding(
-                    get: { model.settings.temporaryHours },
-                    set: { model.settings.temporaryHours = $0; model.saveSettings() }
-                ), in: AppSettings.temporaryHoursRange)
-                Stepper("Plafond audio : \(model.settings.maxStorageMB) Mo", value: Binding(
-                    get: { model.settings.maxStorageMB },
-                    set: { model.settings.maxStorageMB = $0; model.saveSettings(); model.purgeAudio() }
-                ), in: AppSettings.maxStorageMBRange, step: 10)
-            }
-            Section("Apprentissage") {
-                SettingToggle(text: learningText, isOn: Binding(
-                    get: { model.settings.learnCorrections },
-                    set: { model.settings.learnCorrections = $0; model.saveSettings() }
-                ))
-            }
-            Section {
-                AppearancePicker()
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
-            } header: {
-                SectionTitle(title: SettingsPresentation.appearanceTitle, summary: SettingsPresentation.appearanceSummary)
-            }
-            OverlayPlacementSection()
-            Section("Général") {
-                Toggle("Sons de début et de fin", isOn: Binding(
-                    get: { model.settings.soundsEnabled },
-                    set: { model.settings.soundsEnabled = $0; model.saveSettings() }
-                ))
-                SettingToggle(text: SettingsPresentation.mute, isOn: Binding(
-                    get: { model.settings.muteWhileDictating },
-                    set: { model.settings.muteWhileDictating = $0; model.saveSettings() }
-                ))
-                if model.settings.muteWhileDictating {
-                    SettingRow(text: SettingsPresentation.muteMode) {
-                        Picker(SettingsPresentation.muteMode.title, selection: Binding(
-                            get: { model.settings.muteMode },
-                            set: { model.settings.muteMode = $0; model.saveSettings() }
-                        )) {
-                            ForEach(OutputMuteMode.allCases, id: \.self) { mode in
-                                Text(mode.label).tag(mode)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                        .labelsHidden()
-                        .fixedSize()
-                    }
-                }
-                Toggle("Ouvrir à la connexion", isOn: Binding(
-                    get: { model.settings.launchAtLogin },
-                    set: { model.setLaunchAtLogin($0) }
-                ))
-                MicrophonePicker()
-                SettingToggle(text: SettingsPresentation.voiceIsolation(refused: voiceIsolationRefused,
-                                                                        otherMicrophone: voiceIsolationOtherMicrophone), isOn: Binding(
-                    get: { model.settings.voiceIsolation },
-                    set: { model.settings.voiceIsolation = $0; model.saveSettings(); model.prepareVoiceIsolation() }
-                ))
-                LabeledContent("Configuration guidée") {
-                    Button("Revoir la configuration") { model.replayOnboarding() }
-                        .hoverFeedback()
-                }
-            }
-            Section("Autorisations") {
-                PermissionRow(symbol: "mic.fill", title: String(localized: "Microphone"), detail: microphoneLabel,
-                              granted: model.microphoneStatus == .authorized) {
-                    Task {
-                        _ = await PermissionCenter.requestMicrophone()
-                        model.refreshPermissions()
-                    }
-                }
-                PermissionRow(symbol: "accessibility", title: String(localized: "Accessibilité"),
-                              detail: model.accessibilityTrusted ? String(localized: "Autorisée") : String(localized: "Requise pour insérer le texte"),
-                              granted: model.accessibilityTrusted) {
-                    _ = PermissionCenter.accessibilityTrusted(prompt: true)
-                    model.refreshPermissions()
-                }
-                PermissionRow(symbol: "keyboard", title: String(localized: "Surveillance des entrées"),
-                              detail: model.inputMonitoringTrusted ? String(localized: "Autorisée") : String(localized: "Requise pour le raccourci"),
-                              granted: model.inputMonitoringTrusted) {
-                    PermissionCenter.requestInputMonitoring()
-                    model.hotkeys?.installTap()
-                    model.refreshPermissions()
-                }
-            }
-            DiagnosticsSection()
-            HelpSection()
         }
         // Autorisations relues hors du fil principal, qui anime l'écran qui s'ouvre ; un clic sur une rangée les relit,
         // lui, sur place.
         .onAppear { model.refreshPermissionsInBackground() }
+    }
+
+    @ViewBuilder private var general: some View {
+        Section("Raccourci") {
+            DictationShortcutRow()
+            PasteShortcutRow()
+        }
+        Section("Général") {
+            Toggle("Sons de début et de fin", isOn: Binding(
+                get: { model.settings.soundsEnabled },
+                set: { model.settings.soundsEnabled = $0; model.saveSettings() }
+            ))
+            SettingToggle(text: SettingsPresentation.mute, isOn: Binding(
+                get: { model.settings.muteWhileDictating },
+                set: { model.settings.muteWhileDictating = $0; model.saveSettings() }
+            ))
+            if model.settings.muteWhileDictating {
+                SettingRow(text: SettingsPresentation.muteMode) {
+                    Picker(SettingsPresentation.muteMode.title, selection: Binding(
+                        get: { model.settings.muteMode },
+                        set: { model.settings.muteMode = $0; model.saveSettings() }
+                    )) {
+                        ForEach(OutputMuteMode.allCases, id: \.self) { mode in
+                            Text(mode.label).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .fixedSize()
+                }
+            }
+            Toggle("Ouvrir à la connexion", isOn: Binding(
+                get: { model.settings.launchAtLogin },
+                set: { model.setLaunchAtLogin($0) }
+            ))
+            LabeledContent("Configuration guidée") {
+                Button("Revoir la configuration") { model.replayOnboarding() }
+                    .hoverFeedback()
+            }
+        }
+        Section {
+            AppearancePicker()
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 6)
+        } header: {
+            SectionTitle(title: SettingsPresentation.appearanceTitle, summary: SettingsPresentation.appearanceSummary)
+        }
+    }
+
+    @ViewBuilder private var dictation: some View {
+        Section("Audio") {
+            MicrophonePicker()
+            SettingToggle(text: SettingsPresentation.voiceIsolation(refused: voiceIsolationRefused,
+                                                                    otherMicrophone: voiceIsolationOtherMicrophone), isOn: Binding(
+                get: { model.settings.voiceIsolation },
+                set: { model.settings.voiceIsolation = $0; model.saveSettings(); model.prepareVoiceIsolation() }
+            ))
+        }
+        Section("Transcription") {
+            SettingRow(text: SettingsPresentation.language) {
+                Picker(SettingsPresentation.language.title, selection: Binding(
+                    get: { model.settings.language },
+                    set: { model.settings.language = $0; model.saveSettings() }
+                )) {
+                    ForEach(DictationLanguage.allCases) { language in
+                        Text(language.label).tag(language)
+                    }
+                }
+                .labelsHidden()
+                .fixedSize()
+            }
+            SettingToggle(text: SettingsPresentation.verifyWithFile, isOn: Binding(
+                get: { model.settings.verifyWithFile },
+                set: { model.settings.verifyWithFile = $0; model.saveSettings() }
+            ))
+        }
+        Section("Correction") {
+            SettingToggle(text: cleanupText, isOn: Binding(
+                get: { model.settings.cleanupEnabled },
+                set: { model.settings.cleanupEnabled = $0; model.saveSettings() }
+            ))
+            SettingToggle(text: structureText, isOn: Binding(
+                get: { model.settings.structureDictation },
+                set: { model.settings.structureDictation = $0; model.saveSettings() }
+            ))
+            SettingToggle(text: SettingsPresentation.selectionCommands, isOn: Binding(
+                get: { model.settings.selectionCommands },
+                set: { model.settings.selectionCommands = $0; model.saveSettings() }
+            ), enabled: model.settings.cleanupEnabled)
+        }
+        Section("Apprentissage") {
+            SettingToggle(text: learningText, isOn: Binding(
+                get: { model.settings.learnCorrections },
+                set: { model.settings.learnCorrections = $0; model.saveSettings() }
+            ))
+        }
+    }
+
+    private var privacy: some View {
+        Section("Confidentialité") {
+            SettingRow(text: SettingsPresentation.sentData)
+            SettingToggle(text: SettingsPresentation.windowContext, isOn: Binding(
+                get: { model.settings.useWindowContext },
+                set: { model.settings.useWindowContext = $0; model.saveSettings() }
+            ), enabled: model.settings.cleanupEnabled)
+            SettingRow(text: SettingsPresentation.retention) {
+                Picker(SettingsPresentation.retention.title, selection: Binding(
+                    get: { model.settings.retention },
+                    set: { model.settings.retention = $0; model.saveSettings(); model.purgeAudio() }
+                )) {
+                    ForEach(RetentionMode.allCases, id: \.self) { mode in
+                        Text(mode.label).tag(mode)
+                    }
+                }
+                .labelsHidden()
+                .fixedSize()
+            }
+            Stepper("Durée : \(model.settings.temporaryHours) h", value: Binding(
+                get: { model.settings.temporaryHours },
+                set: { model.settings.temporaryHours = $0; model.saveSettings() }
+            ), in: AppSettings.temporaryHoursRange)
+            Stepper("Plafond audio : \(model.settings.maxStorageMB) Mo", value: Binding(
+                get: { model.settings.maxStorageMB },
+                set: { model.settings.maxStorageMB = $0; model.saveSettings(); model.purgeAudio() }
+            ), in: AppSettings.maxStorageMBRange, step: 10)
+        }
+    }
+
+    private var permissions: some View {
+        Section("Autorisations") {
+            PermissionRow(symbol: "mic.fill", title: String(localized: "Microphone"), detail: microphoneLabel,
+                          granted: model.microphoneStatus == .authorized) {
+                Task {
+                    _ = await PermissionCenter.requestMicrophone()
+                    model.refreshPermissions()
+                }
+            }
+            PermissionRow(symbol: "accessibility", title: String(localized: "Accessibilité"),
+                          detail: model.accessibilityTrusted ? String(localized: "Autorisée") : String(localized: "Requise pour insérer le texte"),
+                          granted: model.accessibilityTrusted) {
+                _ = PermissionCenter.accessibilityTrusted(prompt: true)
+                model.refreshPermissions()
+            }
+            PermissionRow(symbol: "keyboard", title: String(localized: "Surveillance des entrées"),
+                          detail: model.inputMonitoringTrusted ? String(localized: "Autorisée") : String(localized: "Requise pour le raccourci"),
+                          granted: model.inputMonitoringTrusted) {
+                PermissionCenter.requestInputMonitoring()
+                model.hotkeys?.installTap()
+                model.refreshPermissions()
+            }
+        }
     }
 
     /// Correction réellement faite, d'après les clés du coffre.
@@ -219,6 +269,83 @@ struct SettingsView: View {
         case .notDetermined: return String(localized: "Pas encore demandé")
         @unknown default: return String(localized: "Inconnu")
         }
+    }
+}
+
+/// Onglets de Réglages : icône et nom, l'onglet ouvert surligné ; point orange sur Autorisations s'il en manque une.
+/// Fenêtre étroite : les icônes seules, leur nom en bulle d'aide.
+struct SettingsTabBar: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.interactionReduceMotion) private var reduceMotion
+    @Namespace private var highlight
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            tabs(labeled: true)
+            tabs(labeled: false)
+        }
+    }
+
+    private func tabs(labeled: Bool) -> some View {
+        HStack(spacing: 4) {
+            ForEach(SettingsTab.allCases) { tab in
+                SettingsTabButton(tab: tab, selected: tab == model.settings.settingsTab, labeled: labeled,
+                                  alert: tab == .permissions && model.missingPermissions, namespace: highlight) {
+                    withAnimation(reduceMotion ? nil : Theme.spring) { model.setDisplayChoice(\.settingsTab, tab) }
+                }
+            }
+        }
+        .fixedSize()
+    }
+}
+
+private struct SettingsTabButton: View {
+    var tab: SettingsTab
+    var selected: Bool
+    var labeled: Bool
+    var alert: Bool
+    var namespace: Namespace.ID
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 3) {
+                Image(systemName: tab.symbol)
+                    .symbolVariant(selected ? .fill : .none)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(selected ? Theme.brand : Color.secondary)
+                    .frame(height: 19)
+                    .overlay(alignment: .topTrailing) {
+                        if alert {
+                            Circle().fill(Color.orange).frame(width: 7, height: 7)
+                                .offset(x: 6, y: -2)
+                                .help("Une autorisation manque")
+                        }
+                    }
+                if labeled {
+                    Text(tab.title)
+                        .font(.system(size: 11, weight: selected ? .semibold : .medium))
+                        .foregroundStyle(selected ? Color.primary : Color.secondary)
+                        .lineLimit(1)
+                        .fixedSize()
+                }
+            }
+            .padding(.horizontal, labeled ? 10 : 9)
+            .frame(minWidth: labeled ? 64 : 38)
+            .frame(height: labeled ? 48 : 34)
+            .background {
+                if selected {
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .fill(Theme.brand.opacity(0.13))
+                        .matchedGeometryEffect(id: "tab", in: namespace)
+                }
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+        }
+        .buttonStyle(HoverButtonStyle())
+        .help(labeled ? "" : tab.title)
+        .accessibilityLabel(tab.title)
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
 

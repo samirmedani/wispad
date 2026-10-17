@@ -214,7 +214,7 @@ final class DictationCoordinator {
         guard microphone else {
             discard(current, outcome: .microphoneDenied)
             model.statusBanner = String(localized: "Le microphone n'est pas autorisé.")
-            model.open(.settings)
+            model.openSettings(.permissions)
             return
         }
         let audio = model.dependencies.makeCapture()

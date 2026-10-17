@@ -114,8 +114,9 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 
 ## Bulle
 
-- Verre noir (Liquid Glass sur macOS 26+) au-dessus du Dock, sur le bureau comme au-dessus d'une app en plein
-  écran, avec le spectre de la voix (graves au centre) à la cadence de l'écran (120 Hz en ProMotion).
+- Verre fumé noir (Liquid Glass sur macOS 26+), ou verre transparent (voir « Style de la bulle »), au-dessus du
+  Dock, sur le bureau comme au-dessus d'une app en plein écran, avec le spectre de la voix (graves au centre) à la
+  cadence de l'écran (120 Hz en ProMotion).
 - Elle laisse passer les clics, sauf sur ses boutons : ✕ / ■ en mains libres, Copier et Coller d'un texte non
   écrit, Voir / Annuler l'ajout d'un mot appris, ✕ d'un message.
 - Messages, sans contour : sur une ligne (erreur, « Collé », relais, nouvelle version), 42 points de haut, texte de
@@ -128,10 +129,12 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   droite. Rien ne bouge. Un message qui paraît sous le pointeur attend aussi. La ✕ ferme le message tout de suite,
   sans prendre le focus ni le premier plan à l'app active. La bulle d'enregistrement (spectre, finalisation) n'a ni
   ✕ ni décompte.
-- **Style des messages** (Réglages › Bulle et messages) : **Noir profond** (par défaut), noir avec un reflet doux
-  sur le haut et une ombre, lisible sur tous les fonds ; ou **Verre**, le Liquid Glass transparent de macOS 26
-  (matériau translucide avant), clair ou sombre comme l'apparence de l'app. Le changement vaut tout de suite. La
-  bulle de dictée et son spectre ne changent pas.
+- **Style de la bulle** (Réglages › Bulle) : **Noir profond** (par défaut) : messages noirs avec un reflet doux sur
+  le haut et une ombre, bulle de dictée en verre fumé noir ; lisible sur tous les fonds. Ou **Verre** : la bulle de
+  dictée (spectre, mains libres et ses boutons, finalisation) et tous les messages passent en Liquid Glass
+  transparent de macOS 26 (matériau translucide avant), sans liseré, clairs ou sombres comme l'apparence de l'app ;
+  le spectre garde ses couleurs, la vague de finalisation et la ✕ se foncent sur un verre clair. Le changement vaut
+  tout de suite.
 - **Place à l'écran** (Réglages › Bulle et messages) : trois places réglables à main levée sur un schéma quadrillé
   de l'écran, la grille aimantant légèrement les bulles. **Dictée** (spectre et finalisation), **Alertes de
   collage** (texte prêt à copier) et **Messages** (« Collé », mot appris, relais, nouvelle version). Par défaut :
@@ -169,8 +172,7 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   Sombre. Choix rapide par le bouton à droite de « Wispad » en haut de la barre latérale (son icône montre le choix
   en cours, un clic ouvre trois vignettes), ou dans Réglages › Apparence. Toute l'app change aussitôt, en fondu
   (sans fondu avec « Réduire les animations ») : fenêtre, premier lancement guidé, notes de version, bulles d'aide.
-  La bulle de dictée, les messages en noir profond et le schéma de Réglages › Bulle et messages restent sombres ;
-  les messages en verre suivent l'apparence. Le choix est gardé après une
+  La bulle en noir profond et le schéma de Réglages › Bulle restent sombres ; la bulle en verre suit l'apparence. Le choix est gardé après une
   relance ou une mise à jour, et posé avant l'ouverture de toute fenêtre.
 - Choix d'affichage mémorisés, retrouvés après avoir quitté et relancé Wispad, chacun enregistré dès qu'il change :
   - période de l'Accueil (7 jours par défaut) ;
@@ -187,8 +189,12 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 
 ## Réglages
 
-Sections, dans l'ordre : Raccourci, Transcription, Correction, Mise en forme, Ton selon l'app, Confidentialité, Apprentissage,
-Général, Autorisations, Diagnostic, Aide et retours. Aucun bloc de texte sous une liste : chaque réglage porte, dans
+Sept onglets en haut de la page, un thème par page : plus besoin de tout faire défiler. **Général** (Raccourci,
+Général, Apparence), **Dictée** (Audio, Transcription, Correction, Apprentissage), **Mise en forme** (Mise en forme,
+Ton selon l'app), **Bulle** (Bulle et messages), **Confidentialité**, **Autorisations**, **Aide** (Diagnostic, Aide et
+retours). Chaque onglet s'ouvre en haut de sa page ; le dernier ouvert est retrouvé au lancement suivant. Un micro
+refusé au moment de dicter ouvre Autorisations, et un point orange y signale une autorisation manquante. Fenêtre
+étroite : les icônes seules, leur nom en bulle d'aide. Aucun bloc de texte sous une liste : chaque réglage porte, dans
 sa rangée, une explication d'une ligne sous son libellé, en langage simple (ni montant, ni chiffre, ni nom de
 modèle). Les détails (fournisseurs et modèles réellement utilisés, coût, délais, ce qui est envoyé ou gardé)
 s'ouvrent dans un popover avec le bouton ⓘ de la rangée ; ceux de la correction suivent les clés enregistrées.
@@ -241,7 +247,7 @@ réussie. « Plus tard » est proposé seulement pour le micro, la touche et l'e
   clavier impossible après 3 s : macOS attend une relance, « Relancer Wispad » rouvre l'app à la même étape (si macOS
   refuse de la fermer, elle s'arrête d'elle-même après le rangement habituel).
 - **Micro** : choix du micro (celui du système par défaut ; le micro choisi sert ensuite aux dictées tant qu'il est
-  branché, sinon celui du système ; Réglages › Général › Micro) et vumètre réel. ✓ quand une vraie voix est
+  branché, sinon celui du système ; Réglages › Dictée › Audio) et vumètre réel. ✓ quand une vraie voix est
   entendue : au moins 0,6 s au-dessus de −48 dBFS et 10 dB au-dessus du bruit de la pièce (un clic, un souffle ou
   un ventilateur ne suffisent pas). Sans voix après 12 s, l'écran dit quoi vérifier, avec « Réessayer » : aussi
   quand le micro ne livre aucun son, ou que son ouverture ne rend pas la main (« Le micro n'a pas pu s'ouvrir ») ;
@@ -318,7 +324,7 @@ et fichier, l'usage de la correction préparée pendant l'écoute et le report d
 
 ### Micro
 
-**Réduire le bruit et l'écho du micro** (Réglages › Général, désactivé par défaut) : les dictées passent par le
+**Réduire le bruit et l'écho du micro** (Réglages › Dictée › Audio, désactivé par défaut) : les dictées passent par le
 traitement de la voix de macOS, celui des appels FaceTime (bruit de fond et écho réduits, gain automatique), pour
 parler loin du Mac ou dans une pièce qui résonne. Pendant une dictée, Centre de contrôle › Mode micro propose aussi
 « Isolation de la voix ». Les autres sons du Mac ne baissent pas (« Couper le son du Mac » reste le seul à le faire).
@@ -537,11 +543,11 @@ Réglages › Mise en forme : **Montants et unités** (symboles, par défaut, ou
 
 ## Ton et consignes
 
-- **Ton selon l'app** (Réglages › Ton selon l'app) : par catégorie (e-mails, messageries, documents, notes, code et
+- **Ton selon l'app** (Réglages › Mise en forme › Ton selon l'app) : par catégorie (e-mails, messageries, documents, notes, code et
   terminal, navigateur, autres apps), « Comme dicté » (par défaut, comportement d'origine), « Soigné » (tournures familières écrites
   en forme standard, « ne » rétabli) ou « Détendu » (tournures gardées, pas de point final pour un message court).
   Le ton ne change que le registre, jamais les mots ni le sens ; le garde-fou de fidélité s'applique toujours.
-- **Consigne sur la sélection** (Réglages › Correction › « Réécrire la sélection sur consigne », actif par défaut) : avec du texte
+- **Consigne sur la sélection** (Réglages › Dictée › Correction › « Réécrire la sélection sur consigne », actif par défaut) : avec du texte
   sélectionné, une dictée qui commence par une consigne d'écriture (« reformule », « traduis », « résume », « corrige »,
   « raccourcis », « rends-le… », « mets ça en… », « rewrite », « translate », « make it… ») réécrit la sélection
   (6 000 caractères au plus) avec les fournisseurs de correction, sans garde-fou de fidélité. Une autre dictée remplace
@@ -995,7 +1001,7 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
 
 ## Aide et retours
 
-Réglages › Aide et retours, en bas de l'écran : une ligne d'explication (« Sur GitHub : seules les versions de
+Réglages › Aide › Aide et retours : une ligne d'explication (« Sur GitHub : seules les versions de
 Wispad et de macOS sont préremplies. ») et trois liens. « Signaler un problème » et « Proposer une idée » sont
 aussi dans le menu de la barre des menus, juste avant Quitter, et dans le menu Aide. Chaque lien ouvre sa page dans
 le navigateur ; depuis un menu, la fenêtre de Wispad ne s'ouvre pas.
@@ -1010,5 +1016,5 @@ le navigateur ; depuis un menu, la fenêtre de Wispad ne s'ouvre pas.
 
 ## Diagnostic
 
-Réglages › Diagnostic exporte un JSON local : autorisations, raccourci, bulle, durées et API des 50 dernières
+Réglages › Aide › Diagnostic exporte un JSON local : autorisations, raccourci, bulle, durées et API des 50 dernières
 tentatives. Aucun texte dicté, audio, contexte, chemin ni clé. Rien n'est envoyé automatiquement.
