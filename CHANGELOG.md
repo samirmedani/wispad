@@ -3,6 +3,16 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.2.7 — 17 octobre 2026
+
+Chaque dictée se colle un peu plus tôt.
+
+> Depuis la 0.2.0 : si la mise à jour reste sur « Relance… », ferme cette fenêtre, puis quitte Wispad et rouvre-le.
+> La 0.2.7 est déjà installée.
+
+**Plus rapide**
+- Fin de dictée : Wispad garde le texte final de la transcription dès qu'il arrive, sans attendre la confirmation qui suit 0,1 à 0,15 s plus tard. Le texte est le même qu'avant, et la correction démarre plus tôt.
+
 ## 0.2.6 — 17 octobre 2026
 
 Un bouton pour chercher une mise à jour quand tu veux.

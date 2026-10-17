@@ -313,6 +313,11 @@ retenue part à la correction. Une correction déjà préparée sur ce même tex
 correction du flux continue à se préparer en parallèle du fichier. La vérification audio n'est pas sautée,
 même pour une dictée de quelques mots.
 
+Fin du flux xAI : à l'arrêt, Wispad envoie `finalize`. Le texte final est retenu dès que xAI renvoie le segment de fin
+de parole qui couvre tout l'audio envoyé, à 0,1 s près. Wispad n'attend plus `transcript.done`, qui répète ce texte
+environ 0,1 s plus tard (vérifié le 17 octobre 2026). Si le segment est plus court que l'audio ou s'il manque la fin de
+parole, Wispad attend `transcript.done`, comme avant.
+
 **Sans connexion** : rien n'est transcrit sur le Mac. Si la connexion manque ou se perd pendant la dictée (flux et
 fichier en échec, puis le relais de voix s'il a une clé et que la connexion est revenue), l'audio reste dans
 l'historique pour **Retranscrire** une fois la connexion revenue. Hors connexion, le relais n'est pas tenté : il

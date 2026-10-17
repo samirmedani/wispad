@@ -83,6 +83,77 @@ struct StreamEndTests {
         #expect(finish.endingFinalized)
         #expect(finish.coveredSeconds == 1.6)
     }
+
+    @Test func aSpeechFinalCoveringAllTheAudioEndsWithoutWaitingForDone() async throws {
+        let session = xaiSession()
+        defer { session.cancel() }
+        session.tailFinalWaitSeconds = 2
+        let log = OutboundLog()
+        session.onOutbound = { log.add($0) }
+        session.handle(.string(#"{"type":"transcript.created"}"#))
+        session.send(Data(count: 32_000))
+        session.handle(.string(#"{"type":"transcript.partial","text":"D'accord","is_final":false,"speech_final":false}"#))
+        let task = Task { try await session.finish() }
+        _ = await log.wait { $0.contains("finalize") }
+        session.handle(.string(#"{"type":"transcript.partial","text":"D'accord, parfait.","is_final":true,"speech_final":false,"start":0,"duration":1.0}"#))
+        session.handle(.string(#"{"type":"transcript.partial","text":"D'accord, parfait.","is_final":true,"speech_final":true,"start":0,"duration":1.0}"#))
+        // Aucun transcript.done : le segment final couvre la seconde envoyée, la fin est tranchée.
+        let finish = try await task.value
+        #expect(finish.text == "D'accord, parfait.")
+        #expect(finish.endingFinalized)
+        #expect(finish.coveredSeconds == 1.0)
+        let kinds = await log.wait { $0.contains("audio.done") }
+        #expect(kinds == ["audio:32000", "finalize", "audio.done"])
+    }
+
+    @Test func aFinalShorterThanTheAudioStillWaitsForDone() async throws {
+        let session = xaiSession()
+        defer { session.cancel() }
+        session.tailFinalWaitSeconds = 2
+        let log = OutboundLog()
+        session.onOutbound = { log.add($0) }
+        session.handle(.string(#"{"type":"transcript.created"}"#))
+        session.send(Data(count: 64_000))
+        let resolved = OSAllocatedUnfairLock(initialState: false)
+        let task = Task { () throws -> StreamFinish in
+            let finish = try await session.finish()
+            resolved.withLock { $0 = true }
+            return finish
+        }
+        _ = await log.wait { $0.contains("finalize") }
+        session.handle(.string(#"{"type":"transcript.partial","text":"Début","is_final":true,"speech_final":true,"start":0,"duration":1.0}"#))
+        _ = await log.wait { $0.contains("audio.done") }
+        // La seconde restante peut encore porter des mots : rien n'est tranché avant transcript.done.
+        try await Task.sleep(nanoseconds: 100_000_000)
+        #expect(!resolved.withLock { $0 })
+        session.handle(.string(#"{"type":"transcript.done","text":"Début et la suite.","duration":2.0}"#))
+        let finish = try await task.value
+        #expect(finish.text == "Début et la suite.")
+    }
+
+    @Test func anIntermediateFinalWithoutSpeechFinalWaitsForDone() async throws {
+        let session = xaiSession()
+        defer { session.cancel() }
+        session.tailFinalWaitSeconds = 2
+        let log = OutboundLog()
+        session.onOutbound = { log.add($0) }
+        session.handle(.string(#"{"type":"transcript.created"}"#))
+        session.send(Data(count: 32_000))
+        let resolved = OSAllocatedUnfairLock(initialState: false)
+        let task = Task { () throws -> StreamFinish in
+            let finish = try await session.finish()
+            resolved.withLock { $0 = true }
+            return finish
+        }
+        _ = await log.wait { $0.contains("finalize") }
+        session.handle(.string(#"{"type":"transcript.partial","text":"Un segment","is_final":true,"speech_final":false,"start":0,"duration":1.0}"#))
+        _ = await log.wait { $0.contains("audio.done") }
+        try await Task.sleep(nanoseconds: 100_000_000)
+        #expect(!resolved.withLock { $0 })
+        session.handle(.string(#"{"type":"transcript.done","text":"Un segment","duration":1.0}"#))
+        let finish = try await task.value
+        #expect(finish.text == "Un segment")
+    }
 }
 
 private func xaiSession() -> LiveSpeechSession {
