@@ -264,6 +264,7 @@ struct ProjectFooter: View {
                         statusLine
                     }
                 }
+                UpdateCheckButton(status: status)
                 Spacer(minLength: 4)
                 DeveloperLinks()
             }
@@ -383,6 +384,48 @@ struct ProjectFooter: View {
                 .lineLimit(1)
         }
         .transition(.opacity)
+    }
+}
+
+/// Recherche de mise à jour à la main, à droite de l'état de la version : une flèche, une roue pendant la recherche,
+/// puis le résultat quelques secondes. Grisée pendant la pause qui suit une recherche.
+struct UpdateCheckButton: View {
+    @Environment(AppModel.self) private var model
+    var status = BuildStatus.shared
+
+    var body: some View {
+        Group {
+            switch status.manualPhase {
+            case .checking:
+                ProgressView()
+                    .controlSize(.mini)
+                    .help("Recherche en cours…")
+            case .finished(let outcome):
+                Image(systemName: outcome.symbol)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(outcome.tint)
+                    .help(outcome.message)
+                    .accessibilityLabel(outcome.message)
+            case .idle:
+                Button {
+                    model.checkForUpdates()
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 9.5, weight: .semibold))
+                        .foregroundStyle(.tertiary)
+                        .frame(width: 18, height: 18)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(HoverButtonStyle(treatment: .icon))
+                .disabled(status.coolingDown)
+                .help(status.coolingDown ? String(localized: "Recherche faite à l'instant : réessaie un peu plus tard")
+                                         : String(localized: "Rechercher une mise à jour"))
+                .accessibilityLabel("Rechercher une mise à jour")
+            }
+        }
+        .frame(width: 18, height: 18)
+        .transition(.opacity)
+        .animation(Theme.quick, value: status.manualPhase)
     }
 }
 

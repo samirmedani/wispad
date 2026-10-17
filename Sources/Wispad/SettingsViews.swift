@@ -71,6 +71,7 @@ struct SettingsView: View {
             case .privacy: privacy
             case .permissions: permissions
             case .help:
+                UpdatesSection()
                 DiagnosticsSection()
                 HelpSection()
             }
@@ -632,6 +633,43 @@ struct DiagnosticsSection: View {
                 }
                 exporting = false
             }
+        }
+    }
+}
+
+/// Réglages › Aide › Mises à jour : la version installée, son état, et la recherche à la main (même pause que la
+/// flèche de la barre latérale). Une version plus récente se propose ici aussi.
+struct UpdatesSection: View {
+    @Environment(AppModel.self) private var model
+    var status = BuildStatus.shared
+
+    var body: some View {
+        Section("Mises à jour") {
+            SettingRow(text: SettingText(title: status.versionLine, summary: summary)) {
+                if case .available(let release) = status.display {
+                    Button("Mettre à jour") { model.showUpdate(release) }
+                        .buttonStyle(.borderedProminent)
+                        .hoverFeedback()
+                } else {
+                    Button(status.manualPhase == .checking ? "Recherche…" : "Rechercher une mise à jour") {
+                        model.checkForUpdates()
+                    }
+                    .disabled(status.manualPhase == .checking || status.coolingDown)
+                    .hoverFeedback()
+                }
+            }
+        }
+    }
+
+    /// Le résultat d'une recherche à la main, sinon l'état connu et le rythme de la vérification automatique.
+    private var summary: String {
+        if case .finished(let outcome) = status.manualPhase { return outcome.message }
+        switch status.display {
+        case .available(let release): return DictationCoordinator.updateMessage(release.version)
+        case .upToDate: return String(localized: "À jour. Wispad vérifie aussi seul au lancement, puis toutes les 6 heures.")
+        case .development(let freshness):
+            return freshness.label ?? String(localized: "Wispad vérifie seul au lancement, puis toutes les 6 heures.")
+        case .unknown: return String(localized: "Wispad vérifie seul au lancement, puis toutes les 6 heures.")
         }
     }
 }

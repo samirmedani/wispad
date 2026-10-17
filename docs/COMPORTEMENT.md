@@ -196,8 +196,8 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 
 Sept onglets en haut de la page, un thème par page : plus besoin de tout faire défiler. **Général** (Raccourci,
 Général, Apparence), **Dictée** (Audio, Transcription, Correction, Apprentissage), **Mise en forme** (Mise en forme,
-Ton selon l'app), **Bulle** (Bulle et messages), **Confidentialité**, **Autorisations**, **Aide** (Diagnostic, Aide et
-retours). Chaque onglet s'ouvre en haut de sa page ; le dernier ouvert est retrouvé au lancement suivant. Un micro
+Ton selon l'app), **Bulle** (Bulle et messages), **Confidentialité**, **Autorisations**, **Aide** (Mises à jour,
+Diagnostic, Aide et retours). Chaque onglet s'ouvre en haut de sa page ; le dernier ouvert est retrouvé au lancement suivant. Un micro
 refusé au moment de dicter ouvre Autorisations, et un point orange y signale une autorisation manquante. Fenêtre
 étroite : les icônes seules, leur nom en bulle d'aide. Aucun bloc de texte sous une liste : chaque réglage porte, dans
 sa rangée, une explication d'une ligne sous son libellé, en langage simple (ni montant, ni chiffre, ni nom de
@@ -943,7 +943,15 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
   API publique, sans clé ni cookie, avec l'en-tête User-Agent demandé par GitHub ; 5 s après le lancement, puis
   toutes les 6 heures, 8 s au plus. Rien d'autre n'est envoyé (pour un build de développement, le commit de la
   version, dans l'adresse). Ni le démarrage ni la dictée n'attendent cette requête.
-- **Échecs silencieux**, sans message : hors ligne, délai dépassé ou GitHub en panne (5xx) → nouvel essai dans
+- **Rechercher une mise à jour** : la flèche ↻ à droite de l'état de la version (barre latérale) et Réglages › Aide ›
+  Mises à jour lancent tout de suite la même requête ; la vérification automatique continue à son rythme. Une
+  recherche à la fois, au plus une par minute (boutons grisés pendant la pause) ; limite de l'API atteinte : pas avant
+  l'heure annoncée par GitHub (un quart d'heure sans indication, six heures au plus). Pendant la recherche, une roue ;
+  puis, 4 s : « Wispad est à jour », « Nouvelle version trouvée » (la fenêtre de mise à jour s'ouvre sur les notes,
+  sans rappel dans la bulle ensuite), « Recherche impossible : réessaie plus tard » ou « GitHub limite les
+  recherches : réessaie plus tard ». Réglages › Aide › Mises à jour montre aussi la version installée, son état, et
+  « Mettre à jour » quand une version plus récente est publiée.
+- **Échecs silencieux** de la vérification automatique, sans message : hors ligne, délai dépassé ou GitHub en panne (5xx) → nouvel essai dans
   30 minutes ; limite de l'API (403, 429) → nouvel essai à l'heure annoncée par GitHub (`Retry-After` ou
   `X-RateLimit-Reset`), entre 5 minutes et 6 heures, une heure sans indication ; aucune release (404), tag mal formé
   (autre chose que vX.Y.Z), brouillon, pré-version ou réponse illisible → rien de nouveau. Ce qui était affiché reste ;

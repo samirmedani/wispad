@@ -364,3 +364,25 @@ struct UpdateInstallRulesTests {
         #expect(UpdateInstallRules.mountPoints(fromPlist: Data(output.utf8)) == ["/private/var/folders/xy/T/WispadUpdate-1/volume"])
     }
 }
+
+struct ManualUpdateCheckTests {
+    /// Une recherche à la main par minute ; limite de GitHub : l'heure annoncée, un quart d'heure sans indication, six
+    /// heures au plus.
+    @Test func waitsAMinuteOrTheTimeGitHubAnnounces() {
+        let now = Date(timeIntervalSince1970: 1_000_000)
+        var check = ManualUpdateCheck()
+        #expect(check.remaining(at: now) == 0)
+        check.record(.unreachable, at: now)
+        #expect(check.remaining(at: now) == 60)
+        #expect(check.remaining(at: now.addingTimeInterval(45)) == 15)
+        #expect(check.remaining(at: now.addingTimeInterval(90)) == 0)
+        check.record(.rateLimited(retryAfter: 600), at: now)
+        #expect(check.remaining(at: now) == 600)
+        check.record(.rateLimited(retryAfter: nil), at: now)
+        #expect(check.remaining(at: now) == 15 * 60)
+        check.record(.rateLimited(retryAfter: 86_400), at: now)
+        #expect(check.remaining(at: now) == ReleaseCheck.interval)
+        check.record(nil, at: now)
+        #expect(check.remaining(at: now) == 60)
+    }
+}
