@@ -76,6 +76,10 @@ struct InsertionSystem {
     var frontmostPID: () -> pid_t? = { NSWorkspace.shared.frontmostApplication?.processIdentifier }
     var bundleID: (pid_t) -> String? = { NSRunningApplication(processIdentifier: $0)?.bundleIdentifier }
     var secureInput: () -> Bool = { IsSecureEventInputEnabled() }
+    /// App qui tient la saisie sécurisée de macOS (champ de mot de passe, gestionnaire de mots de passe…), nil si
+    /// macOS ne le dit pas. Demandée par un outil en ligne de commande, elle est attribuée à l'app au premier plan
+    /// (mesuré le 17 octobre 2026).
+    var secureInputHolder: () -> pid_t? = { TextInserter.secureInputHolder() }
     /// Attend que les touches modificatrices soient relâchées ; rend celles encore tenues au bout de l'attente
     /// (masques `ModifierMask`), 0 si toutes le sont.
     var modifiersStillHeld: () async -> UInt64 = { await TextInserter.waitForModifierRelease() }
@@ -146,7 +150,8 @@ enum TextInserter {
         var releasesLater = false
         defer { if !releasesLater { finishTurn(done) } }
         guard shouldProceed(), !Task.isCancelled else { return .cancelled }
-        if context.isSecure || system.secureInput() { return .refusedSecure }
+        // Saisie sécurisée active : jugée plus bas, une fois l'app et son champ connus.
+        if context.isSecure { return .refusedSecure }
         guard system.trusted() else {
             // Accessibilité retirée (ou jamais donnée) : ni ⌘V ni lecture du champ, le texte reste à copier.
             log.notice("collage retenu : accessibilité non autorisée")
@@ -176,7 +181,7 @@ enum TextInserter {
         let field = await system.read(pid)
         guard shouldProceed(), !Task.isCancelled else { return .cancelled }
         guard system.frontmostPID() == pid else { return .noTarget }
-        guard !field.isSecure, !system.secureInput() else { return .refusedSecure }
+        guard !field.isSecure, !Self.secureInputBlocks(target: pid, field: field, system: system) else { return .refusedSecure }
         let kind = field.kind(bundleID: bundle)
         guard kind != .notText else { return .noTarget }
         let memory = previousMemory(pid: pid, element: field.element)
@@ -280,6 +285,25 @@ enum TextInserter {
     /// ⌘V comme au clavier : ⌘ enfoncée, V, puis ⌘ relâchée, envoyés au système (l'app au premier plan, vérifiée
     /// juste avant). Chrome et les apps Electron ignorent parfois un ⌘V adressé à leur processus ou porté par la
     /// seule touche V (régression du 13 octobre 2026 : texte absent du champ).
+    /// La saisie sécurisée de macOS s'allume pour tout le Mac dès qu'une app l'active (un champ de mot de passe dans
+    /// Chrome, un gestionnaire de mots de passe). Elle ne concerne le collage que si l'app visée la tient, ou si
+    /// macOS ne dit pas qui la tient. Le 17 octobre 2026, Chrome la tenait encore et Wispad refusait de coller dans
+    /// Codex. L'app visée qui la tient laisse coller seulement dans un champ lu, non sécurisé, avec un curseur de texte :
+    /// un champ illisible (Electron) peut être un mot de passe.
+    static func secureInputBlocks(target pid: pid_t, field: InsertionField, system: InsertionSystem) -> Bool {
+        guard system.secureInput() else { return false }
+        guard let holder = system.secureInputHolder() else { return true }
+        guard holder == pid else { return false }
+        return field.element == nil || field.isSecure || !field.hasTextCursor
+    }
+
+    /// PID annoncé par macOS pour la saisie sécurisée, nil sans saisie sécurisée ou sans réponse.
+    nonisolated static func secureInputHolder() -> pid_t? {
+        guard let session = CGSessionCopyCurrentDictionary() as? [String: Any],
+              let pid = session["kCGSSessionSecureInputPID"] as? NSNumber, pid.int32Value > 0 else { return nil }
+        return pid.int32Value
+    }
+
     @MainActor static func postCommandV() -> Bool {
         guard let events = pasteEvents() else { return false }
         for event in events { event.post(tap: .cghidEventTap) }

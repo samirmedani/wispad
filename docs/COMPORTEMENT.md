@@ -669,6 +669,13 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
   presse-papiers et confirme « Copié » (1,5 s), **Coller** le colle dans le champ de l'app active (même collage que
   « Coller la dernière dictée »). Le collage garde tous les formats du presse-papiers précédent et refuse les champs
   sécurisés.
+- Champ sécurisé : un champ de mot de passe lu comme tel par l'accessibilité, ou la saisie sécurisée de macOS tenue
+  par l'app où l'on dicte (sauf dans un champ lu, non sécurisé, avec curseur de texte), ou tenue par une app que macOS
+  ne nomme pas. Tenue par une autre app (un champ de mot de passe resté actif dans Chrome, un gestionnaire de mots de
+  passe), elle ne bloque pas le collage ailleurs : le 17 octobre 2026, Chrome la tenait et Wispad refusait de coller
+  dans Codex. L'app qui la tient vient de macOS (`kCGSSessionSecureInputPID`) ; demandée par un outil en ligne de
+  commande, elle est attribuée à l'app au premier plan, donc toujours refusée. Le champ est lu avant ce test : sans
+  champ où écrire, la carte le dit au lieu de parler de champ sécurisé.
 - Champ illisible (Codex, apps Electron, éditeurs dessinés) ou remplacé par un autre pendant la relecture : rien ne
   prouve un échec. Le statut reste « Collage envoyé », sans carte ni copie : la bulle ne revient pas à chaque dictée.
   Si le texte manque, « Coller la dernière dictée » et l'historique le gardent. Aucun apprentissage sur une
