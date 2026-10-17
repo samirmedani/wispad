@@ -53,6 +53,9 @@ struct AppSettings: Codable, Equatable {
     var onboardingResume = ""
     /// Micro choisi (identifiant CoreAudio). Vide, ou micro débranché : celui du système.
     var microphoneUID = ""
+    /// Réduire le bruit et l'écho du micro (traitement de la voix de macOS). Désactivé par défaut : il retarde le
+    /// premier démarrage du micro d'environ une seconde.
+    var voiceIsolation = false
     var retention: RetentionMode = .temporary
     var temporaryHours = 24
     var maxStorageMB = 250
@@ -127,6 +130,7 @@ struct AppSettings: Codable, Equatable {
         onboardingCompleted = value(.onboardingCompleted, true)
         onboardingResume = value(.onboardingResume, defaults.onboardingResume)
         microphoneUID = value(.microphoneUID, defaults.microphoneUID)
+        voiceIsolation = value(.voiceIsolation, defaults.voiceIsolation)
         retention = value(.retention, defaults.retention)
         temporaryHours = number(.temporaryHours, defaults.temporaryHours, in: Self.temporaryHoursRange)
         maxStorageMB = number(.maxStorageMB, defaults.maxStorageMB, in: Self.maxStorageMBRange)

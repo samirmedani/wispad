@@ -927,6 +927,15 @@ final class AppModel {
         }
     }
 
+    /// Réduire le bruit et l'écho du micro : le traitement de la voix se prépare au repos, sans ouvrir le micro, pour
+    /// que la dictée suivante démarre aussi vite qu'avec le micro standard. Sans le réglage, rien.
+    func prepareVoiceIsolation() {
+        let audio = dependencies.makeCapture()
+        audio.inputDeviceUID = settings.microphoneUID.isEmpty ? nil : settings.microphoneUID
+        audio.voiceIsolation = settings.voiceIsolation
+        audio.prepareVoiceIsolation()
+    }
+
     /// Ajout à la main dans l'écran Dictionnaire : le mot est noté « ajouté par toi ».
     func addTerm(_ term: String) {
         persist("ajout au dictionnaire") { try store.addTerm(term, origin: .user) }

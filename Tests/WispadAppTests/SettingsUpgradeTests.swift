@@ -62,6 +62,7 @@ struct SettingsUpgradeTests {
         settings.onboardingCompleted = false
         settings.onboardingResume = OnboardingStep.permissions.rawValue
         settings.microphoneUID = "fixture-usb-mic"
+        settings.voiceIsolation = true
         settings.retention = .keepWithHistory
         settings.temporaryHours = 72
         settings.maxStorageMB = 400

@@ -306,6 +306,29 @@ téléchargés par Wispad et les réglages devenus inutiles sont effacés.
 La trace de chaque dictée donne la source retenue, la raison, les durées, le nombre de mots en désaccord entre flux
 et fichier, l'usage de la correction préparée pendant l'écoute et le report des mots du fichier, jamais le texte.
 
+### Micro
+
+**Réduire le bruit et l'écho du micro** (Réglages › Général, désactivé par défaut) : les dictées passent par le
+traitement de la voix de macOS, celui des appels FaceTime (bruit de fond et écho réduits, gain automatique), pour
+parler loin du Mac ou dans une pièce qui résonne. Pendant une dictée, Centre de contrôle › Mode micro propose aussi
+« Isolation de la voix ». Les autres sons du Mac ne baissent pas (« Couper le son du Mac » reste le seul à le faire).
+Mesures du 17 octobre 2026 sur un MacBook Pro :
+
+- activer le traitement prend environ 0,7 s et change une fois la configuration de l'entrée, 0,3 s plus tard. Wispad
+  l'active au repos, au lancement et quand le réglage s'allume, sans ouvrir le micro (voyant éteint, aucune demande
+  d'autorisation), et attend ce changement avant d'écouter. La première dictée démarre alors en 0,05 s (premier son
+  à 0,16 s, contre 0,6 s au micro standard) ; sans préparation, en 1,1 s. Un changement de configuration au repos
+  garde ce moteur prêt ; pendant l'écoute, il ne la relance que si le moteur s'est arrêté ;
+- le traitement rend la même voix sur 9 voies : une seule est gardée, jamais leur somme. Il livre des paquets de
+  0,1 s ;
+- brancher la sortie du moteur l'empêche de démarrer (erreur -10875) : elle reste débranchée ;
+- refusé (activation ou démarrage impossible, même après un moteur neuf) : la dictée continue au micro standard, et
+  le traitement reste de côté jusqu'à ce que le réglage change ; la rangée le dit. Il ne vaut que pour le micro du
+  système : un autre micro choisi dans Wispad reste en micro standard (le traitement règle aussi la sortie), et la
+  rangée le dit aussi.
+
+Le micro standard, réglage coupé, ne change pas.
+
 ## Correction
 
 - Automatique : deux services au plus, DeepSeek (`deepseek-flash`, sans raisonnement) d'abord s'il a une clé.

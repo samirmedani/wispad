@@ -11,6 +11,12 @@ protocol AudioRecording: AnyObject, Sendable {
     var bands: [Float] { get }
     /// Micro choisi (identifiant CoreAudio) pour la prochaine écoute ; nil : celui du système.
     var inputDeviceUID: String? { get set }
+    /// Réduire le bruit et l'écho (traitement de la voix de macOS) pour la prochaine écoute.
+    var voiceIsolation: Bool { get set }
+    /// Le traitement de la voix a refusé de démarrer : les dictées passent par le micro standard.
+    var voiceIsolationRefused: Bool { get }
+    /// Au repos, prépare le traitement de la voix pour que la dictée suivante démarre vite.
+    func prepareVoiceIsolation()
     func start(directory: URL) async throws -> URL
     func stop() -> (url: URL?, duration: Double)
     /// Écoute en cours mais muette : redémarre le micro sur un moteur neuf, dans le même fichier.
@@ -36,6 +42,16 @@ extension AudioRecording {
         get { nil }
         set {}
     }
+
+    /// Un enregistreur sans traitement de la voix (tests) : micro standard.
+    var voiceIsolation: Bool {
+        get { false }
+        set {}
+    }
+
+    var voiceIsolationRefused: Bool { false }
+
+    func prepareVoiceIsolation() {}
 }
 
 protocol SpeechStreaming: AnyObject, Sendable {

@@ -141,6 +141,11 @@ struct SettingsView: View {
                     set: { model.setLaunchAtLogin($0) }
                 ))
                 MicrophonePicker()
+                SettingToggle(text: SettingsPresentation.voiceIsolation(refused: voiceIsolationRefused,
+                                                                        otherMicrophone: voiceIsolationOtherMicrophone), isOn: Binding(
+                    get: { model.settings.voiceIsolation },
+                    set: { model.settings.voiceIsolation = $0; model.saveSettings(); model.prepareVoiceIsolation() }
+                ))
                 LabeledContent("Configuration guidée") {
                     Button("Revoir la configuration") { model.replayOnboarding() }
                         .hoverFeedback()
@@ -191,6 +196,19 @@ struct SettingsView: View {
 
     private var learningText: SettingText {
         SettingsPresentation.learning(hasTypeSafeKey: model.dependencies.loadKey("typesafe").map { !$0.isEmpty } == true)
+    }
+
+    /// Le traitement de la voix demandé n'a pas démarré avec ce micro (lu à l'affichage des Réglages).
+    private var voiceIsolationRefused: Bool {
+        model.settings.voiceIsolation && model.dependencies.makeCapture().voiceIsolationRefused
+    }
+
+    /// Le traitement est demandé mais un autre micro que celui du système est choisi et branché : micro standard.
+    private var voiceIsolationOtherMicrophone: Bool {
+        let saved = model.settings.microphoneUID
+        guard model.settings.voiceIsolation, !saved.isEmpty,
+              let chosen = InputDeviceChoice.effectiveUID(saved: saved, available: AudioInputDevices.all().map(\.uid)) else { return false }
+        return chosen != AudioInputDevices.systemDefault()?.uid
     }
 
     private var microphoneLabel: String {

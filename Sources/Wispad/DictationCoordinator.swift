@@ -217,6 +217,7 @@ final class DictationCoordinator {
         }
         let audio = model.dependencies.makeCapture()
         audio.inputDeviceUID = model.settings.microphoneUID.isEmpty ? nil : model.settings.microphoneUID
+        audio.voiceIsolation = model.settings.voiceIsolation
         let pcm = current.pcm
         let firstPacket = OSAllocatedUnfairLock<Int?>(initialState: nil)
         audio.onPCM = { [weak self, weak current] data in

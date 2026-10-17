@@ -285,6 +285,29 @@ enum SettingsPresentation {
         )
     }
 
+    // MARK: Micro
+
+    /// `refused` : le traitement n'a pas démarré avec ce micro, les dictées passent par le micro standard.
+    /// `otherMicrophone` : un autre micro que celui du système est choisi dans Wispad, sans traitement.
+    static func voiceIsolation(refused: Bool = false, otherMicrophone: Bool = false) -> SettingText {
+        var details = [
+            String(localized: "Utilise le traitement de la voix de macOS, celui des appels FaceTime : bruit de fond et écho réduits, volume de la voix ajusté."),
+            String(localized: "Pendant une dictée, Centre de contrôle › Mode micro propose aussi « Isolation de la voix », plus marquée."),
+            String(localized: "Wispad le prépare au repos, sans ouvrir le micro : la dictée démarre aussi vite qu'avant."),
+            String(localized: "Si ce micro ne le permet pas, Wispad reprend le micro standard.")
+        ]
+        if otherMicrophone {
+            details.insert(String(localized: "Le micro choisi dans Wispad n'est pas celui du système : il reste en micro standard."), at: 0)
+        } else if refused {
+            details.insert(String(localized: "Indisponible avec ce micro : les dictées passent par le micro standard."), at: 0)
+        }
+        return SettingText(
+            title: String(localized: "Réduire le bruit et l'écho du micro"),
+            summary: String(localized: "Utile quand tu parles loin du Mac ou dans une pièce qui résonne."),
+            details: details
+        )
+    }
+
     // MARK: Général
 
     static let mute = SettingText(
