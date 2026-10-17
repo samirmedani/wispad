@@ -41,7 +41,8 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   collage raté, champ sécurisé), sinon la dernière dictée. Jamais une dictée annulée, vide ou sans transcription.
   Rien à coller : la bulle le dit (« Aucune dictée à coller »).
 - Même insertion qu'une dictée, dans l'app au premier plan. Les touches modificatrices doivent être relâchées
-  (0,8 s au plus) ; sinon le texte reste prêt à copier, aucun raccourci parasite n'est envoyé.
+  (attendues 5 s au plus, voir « Insertion ») ; sinon le texte reste prêt à copier, aucun raccourci parasite n'est
+  envoyé.
 - Insertion confirmée, il se termine comme une dictée : la bulle affiche « Collé » (coche verte, sans
   bouton, disparaît seule), le champ est surveillé 30 s pour apprendre les mots corrigés (mêmes règles qu'après
   une dictée, voir « Dictionnaire et apprentissage »), et la dictée non insérée passe à « Inséré »
@@ -133,7 +134,8 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   ligne du curseur ; pour un champ invisible à l'accessibilité (Codex, apps Electron), les 22 % du bas de la fenêtre
   active (90 à 200 points). Les messages qui couvriraient cette zone se placent 12 points au-dessus, sinon en
   dessous ; la bulle de dictée garde sa place. Cette lecture suit l'envoi du texte (au plus 0,3 s, hors du fil
-  principal) : ni la bulle ni le collage ne l'attendent. Elle vaut pour cette app pendant 2 minutes, tant que les
+  principal) : ni la bulle ni le collage ne l'attendent. Un collage retenu sans ⌘V (touche modificatrice restée
+  tenue) lit aussi la zone, avant d'afficher sa carte. Elle vaut pour cette app pendant 2 minutes, tant que les
   écrans ne changent pas (branché, débranché, autre résolution). Une zone illisible (coordonnées infinies, NaN ou
   démesurées) est ignorée.
 - **Écrans qui changent** (écran externe branché ou débranché, autre résolution ou échelle, autre écran principal) :
@@ -652,6 +654,12 @@ Wispad relit ces autorisations sans jamais les redemander : une demande de macOS
   relâchée, envoyés au système une fois l'app cible vérifiée au premier plan et les modificateurs relâchés. Le
   13 octobre 2026, l'écriture par `AXSelectedText` dans Chrome et un ⌘V adressé au seul processus cible laissaient
   le champ vide : ces deux voies sont retirées. Tous les chemins d'insertion partagent une file.
+- Touche modificatrice (⌃ ⌥ ⇧ ⌘ fn) tenue au moment de coller (raccourci de capture d'écran, touche gardée
+  enfoncée) : le collage l'attend 5 s au plus et part dès qu'elle est relâchée, toujours dans la même app (sinon
+  « Pas de champ où écrire »). Le 17 octobre 2026, une touche tenue 2,4 s juste après une dictée faisait échouer le
+  collage, qui n'attendait que 0,8 s. Toujours tenue au bout des 5 s : aucun ⌘V, la carte « Texte prêt » nomme la
+  touche (« Touche ⇧ maintenue : le texte est prêt ») et Coller la colle d'un clic. Échap pendant l'attente annule la
+  dictée.
 - Une app qui a perdu le premier plan n'est pas réactivée de force : la bulle propose de récupérer le texte.
 - Lectures d'accessibilité bornées au collage : champ actif 0,3 s avant ⌘V, confirmation 1 s après. Une app qui
   construit encore son arbre (Chrome à la première dictée) ne retarde ni le texte ni la dictée suivante.

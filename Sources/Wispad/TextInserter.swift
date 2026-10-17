@@ -76,7 +76,9 @@ struct InsertionSystem {
     var frontmostPID: () -> pid_t? = { NSWorkspace.shared.frontmostApplication?.processIdentifier }
     var bundleID: (pid_t) -> String? = { NSRunningApplication(processIdentifier: $0)?.bundleIdentifier }
     var secureInput: () -> Bool = { IsSecureEventInputEnabled() }
-    var modifiersReleased: () async -> Bool = { await TextInserter.waitForModifierRelease() }
+    /// Attend que les touches modificatrices soient relâchées ; rend celles encore tenues au bout de l'attente
+    /// (masques `ModifierMask`), 0 si toutes le sont.
+    var modifiersStillHeld: () async -> UInt64 = { await TextInserter.waitForModifierRelease() }
     var read: (pid_t) async -> InsertionField = { pid in
         await InsertionField.read(pid: pid, within: TextInserter.fieldReadLimit)
     }
@@ -156,9 +158,19 @@ enum TextInserter {
             log.notice("collage retenu : app cible plus au premier plan")
             return .noTarget
         }
-        guard await system.modifiersReleased() else {
-            log.notice("collage retenu : touches modificatrices encore maintenues")
+        let waitStarted = Date()
+        let held = await system.modifiersStillHeld()
+        guard shouldProceed(), !Task.isCancelled else { return .cancelled }
+        guard held == 0 else {
+            log.notice("collage retenu : touches \(TextInserter.modifierNames(held), privacy: .public) encore maintenues")
+            context.heldModifiers = held
+            // Pas de ⌘V : la zone de saisie est quand même repérée, pour que la carte « Texte prêt » ne la couvre pas.
+            InputZoneTracker.note(await system.locate(pid), pid: pid)
             return .failed
+        }
+        let waited = Date().timeIntervalSince(waitStarted)
+        if waited > 0.3 {
+            log.notice("collage attendu \(Int(waited * 1_000), privacy: .public) ms : touches modificatrices relâchées")
         }
         let bundle = system.bundleID(pid)
         let field = await system.read(pid)
@@ -233,16 +245,29 @@ enum TextInserter {
         if tail === done { tail = nil }
     }
 
-    /// Un délai expiré est un échec récupérable, jamais une permission d'envoyer ⌃⌥⌘V.
-    @discardableResult
-    static func waitForModifierRelease(limit: Double = 0.8) async -> Bool {
-        let held: CGEventFlags = [.maskControl, .maskAlternate, .maskShift, .maskCommand, .maskSecondaryFn]
+    /// Attente des touches modificatrices tenues au moment de coller (raccourci de capture d'écran, touche gardée
+    /// enfoncée). Le 17 octobre 2026, une touche tenue 2,4 s juste après une dictée faisait échouer le collage, qui
+    /// n'attendait que 0,8 s : le texte part maintenant dès qu'elle est relâchée.
+    static let modifierReleaseLimit = 5.0
+
+    /// Un délai expiré est un échec récupérable, jamais une permission d'envoyer ⌃⌥⌘V. Rend les touches encore tenues
+    /// (masques `ModifierMask`), 0 si toutes sont relâchées.
+    static func waitForModifierRelease(limit: Double = modifierReleaseLimit) async -> UInt64 {
+        let watched: CGEventFlags = [.maskControl, .maskAlternate, .maskShift, .maskCommand, .maskSecondaryFn]
         let deadline = Date().addingTimeInterval(limit)
-        while !CGEventSource.flagsState(.hidSystemState).intersection(held).isEmpty {
-            guard Date() < deadline, !Task.isCancelled else { return false }
+        var held = CGEventSource.flagsState(.hidSystemState).intersection(watched)
+        while !held.isEmpty, Date() < deadline, !Task.isCancelled {
             try? await Task.sleep(nanoseconds: 20_000_000)
+            held = CGEventSource.flagsState(.hidSystemState).intersection(watched)
         }
-        return !Task.isCancelled
+        return held.rawValue & ModifierMask.relevant
+    }
+
+    /// « ⇧ », « ⇧⌘ », « ⌥ fn » : les touches modificatrices dans l'ordre des menus de macOS.
+    nonisolated static func modifierNames(_ flags: UInt64) -> String {
+        let symbols = PasteShortcut.modifierSymbols(flags).joined()
+        guard flags & ModifierMask.function != 0 else { return symbols }
+        return symbols.isEmpty ? "fn" : symbols + " fn"
     }
 
     private static func previousMemory(pid: pid_t, element: AXUIElement?) -> Memory? {

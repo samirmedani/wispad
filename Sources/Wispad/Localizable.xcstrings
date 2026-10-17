@@ -9252,6 +9252,26 @@
           }
         }
       }
+    },
+    "Touche %@ maintenue : le texte est prêt" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ key held: your text is ready"
+          }
+        }
+      }
+    },
+    "Touches %@ maintenues : le texte est prêt" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ keys held: your text is ready"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"
