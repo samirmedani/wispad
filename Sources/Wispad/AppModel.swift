@@ -13,9 +13,24 @@ final class AppModel {
     }
     var history: [DictationRecord] = [] {
         // Le cache des lignes ne garde ni dictée supprimée ni copie de l'historique relu.
-        didSet { HistoryRowCache.shared.follow(history, previous: oldValue) }
+        didSet {
+            HistoryRowCache.shared.follow(history, previous: oldValue)
+            insightsInputsRevision &+= 1
+        }
     }
-    var dictionary: [DictionaryEntry] = []
+    var dictionary: [DictionaryEntry] = [] {
+        didSet { insightsInputsRevision &+= 1 }
+    }
+    /// Suggestions et usage de l'écran Dictionnaire, calculés hors du fil principal (`refreshDictionaryInsights`).
+    private(set) var dictionaryInsights = DictionaryInsights.Report()
+    /// Change avec l'historique, le dictionnaire ou les refus : l'écran Dictionnaire recalcule alors ses suggestions.
+    private(set) var insightsInputsRevision = 0
+    /// Réparations déjà extraites de chaque dictée récente : seules les nouvelles dictées sont analysées.
+    @ObservationIgnored private var insightFixes: [String: [DictionaryInsights.Fix]] = [:]
+    /// Calcul en cours des suggestions (exposé pour les tests).
+    @ObservationIgnored private(set) var insightsTask: Task<Void, Never>?
+    /// Noms réparés que le juge a écartés depuis le lancement : ils ne lui sont pas resoumis à chaque dictée.
+    @ObservationIgnored private var judgedOut: Set<String> = []
     /// Appels API, du plus récent au plus ancien.
     var usage: [UsageEvent] = []
     /// Appels déjà comptés à l'écran mais dont l'écriture SQLite doit être réessayée.
@@ -259,15 +274,61 @@ final class AppModel {
             }
             guard !Task.isCancelled, settings.learnCorrections else { return }
             // Une réponse ne peut introduire un terme qui n'avait pas été proposé.
-            learn(judgement.kept.filter { kept in fresh.contains { $0.corrected == kept.term } })
+            learn(judgement.kept.filter { kept in fresh.contains { $0.corrected == kept.term } }, source: .fieldCorrection, candidates: fresh)
+        }
+    }
+
+    /// Noms que la correction vient de réparer (« revenu quatre » → « RevenueCat ») : ceux qu'elle avait déjà réparés
+    /// dans une autre dictée récente passent par le même juge que les mots corrigés à la main, puis sont appris.
+    /// L'analyse de l'historique tourne hors du fil principal ; seules les nouvelles dictées sont analysées.
+    func considerRepeatedFixes(raw: String, final: String, dictationID: String, speech: SpeechRequest, traceID: String? = nil) {
+        guard settings.learnCorrections, raw != final else { return }
+        let previous = learning
+        learning = Task {
+            await previous?.value
+            guard !Task.isCancelled, settings.learnCorrections,
+                  let refused = try? store.refusedTerms() else { return }
+            let recent = DictionaryInsights.recent(history.map(DictionaryInsights.Dictation.init))
+            let known = insightFixes
+            // Même une longue dictée s'analyse hors du fil principal : la bulle ne doit pas saccader.
+            let (index, fixes) = await Task.detached(priority: .utility) {
+                let index = DictionaryInsights.fixIndex(recent, known: known)
+                return (index, index[dictationID] ?? DictionaryInsights.fixes(raw: raw, final: final))
+            }.value
+            guard !Task.isCancelled, settings.learnCorrections else { return }
+            insightFixes = index
+            guard !fixes.isEmpty else { return }
+            let ready = DictionaryInsights.learnable(fixes, currentID: dictationID, recent: recent, fixes: index,
+                                                     dictionary: dictionary, refused: refused)
+                .filter { !judgedOut.contains(DictionaryInsights.key($0.written)) }
+            guard !ready.isEmpty else { return }
+            let candidates = ready.prefix(CorrectionLearner.maxTermsPerDictation)
+                .map { CorrectionLearner.Candidate(heard: $0.heard, corrected: $0.written) }
+            let judgement = await dependencies.judgeTerms(candidates, raw, speech)
+            for usage in judgement.usages { recordUsage(usage) }
+            if let traceID, !judgement.usages.isEmpty {
+                if (try? store.appendTraceCalls(id: traceID, calls: judgement.usages.map(DictationAPICall.init))) != nil {
+                    traceRevision += 1
+                }
+            }
+            guard !Task.isCancelled, settings.learnCorrections else { return }
+            let kept = judgement.kept.filter { kept in candidates.contains { $0.corrected == kept.term } }
+            // Un juge qui a répondu a tranché : ses refus valent jusqu'au prochain lancement. Sans réponse, rien n'est noté.
+            if judgement.usages.contains(where: \.succeeded) {
+                for candidate in candidates where !kept.contains(where: { $0.term == candidate.corrected }) {
+                    judgedOut.insert(DictionaryInsights.key(candidate.corrected))
+                }
+            }
+            learn(kept, source: .repeatedFix, candidates: candidates)
         }
     }
 
     /// Mots appris seuls depuis le lancement, du plus récent au plus ancien : le menu propose de les retirer.
     private(set) var recentlyLearned: [String] = []
 
-    /// Mots retenus après une dictée, ajoutés au dictionnaire avec le juge qui les a retenus.
-    func learn(_ terms: [LearnedTerm]) {
+    /// Mots retenus après une dictée, ajoutés au dictionnaire avec le juge qui les a retenus, ce qui avait été
+    /// entendu (`candidates`) et d'où ils viennent.
+    func learn(_ terms: [LearnedTerm], source: DictionarySource = .fieldCorrection, candidates: [CorrectionLearner.Candidate] = []) {
         guard settings.learnCorrections, let refused = try? store.refusedTerms() else { return }
         var known = Set(dictionary.map { $0.term.lowercased() })
         var added: [String] = []
@@ -275,7 +336,8 @@ final class AppModel {
             let term = learned.term.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !term.isEmpty, !known.contains(term.lowercased()),
                   !refused.contains(where: { $0.caseInsensitiveCompare(term) == .orderedSame }) else { continue }
-            if persist("ajout au dictionnaire", { try store.addTerm(term, origin: .learned(learned.judge)) }) {
+            let heard = candidates.first { $0.corrected == learned.term }?.heard
+            if persist("ajout au dictionnaire", { try store.addTerm(term, origin: .learned(learned.judge), heard: heard, source: source) }) {
                 known.insert(term.lowercased())
                 added.append(term)
             }
@@ -303,6 +365,64 @@ final class AppModel {
     func refuseLearnedTerm(_ term: String) {
         removeTerm(named: term)
         persist("refus d'un mot") { try store.rememberRefusal(term) }
+        insightsInputsRevision &+= 1
+    }
+
+    // MARK: Suggestions du dictionnaire
+
+    /// Recalcule suggestions et usage hors du fil principal ; un calcul en cours est abandonné au profit du nouveau.
+    func refreshDictionaryInsights() {
+        insightsTask?.cancel()
+        let dictations = history.map(DictionaryInsights.Dictation.init)
+        let entries = dictionary
+        let refused = (try? store.refusedTerms()) ?? []
+        let known = insightFixes
+        insightsTask = Task {
+            let result = await Task.detached(priority: .utility) {
+                DictionaryInsights.analyze(dictations, dictionary: entries, refused: refused, known: known)
+            }.value
+            guard !Task.isCancelled else { return }
+            insightFixes = result.fixes
+            if dictionaryInsights != result.report { dictionaryInsights = result.report }
+        }
+    }
+
+    /// « Ajouter » ou « Corriger » sur une suggestion : le terme entre au dictionnaire comme ajouté par toi, ou
+    /// l'entrée prend la nouvelle écriture.
+    func acceptSuggestion(_ suggestion: DictionaryInsights.Suggestion) {
+        switch suggestion.reason {
+        case .respell(let entryID, _, _, _):
+            guard let entry = dictionary.first(where: { $0.id == entryID }) else { return }
+            _ = renameTerm(entry, to: suggestion.term)
+        case .repeatedFix(let heard, _):
+            persist("ajout au dictionnaire") {
+                try store.addTerm(suggestion.term, origin: .user, heard: heard.first, source: .suggestion)
+            }
+            reloadDictionary()
+        case .spellings:
+            persist("ajout au dictionnaire") { try store.addTerm(suggestion.term, origin: .user, source: .suggestion) }
+            reloadDictionary()
+        }
+        dictionaryInsights.suggestions.removeAll { $0.id == suggestion.id }
+    }
+
+    /// « Ignorer » : le terme proposé est refusé, comme « Non » dans la bulle ; il ne sera ni reproposé ni appris.
+    func ignoreSuggestion(_ suggestion: DictionaryInsights.Suggestion) {
+        persist("refus d'une suggestion") { try store.rememberRefusal(suggestion.term) }
+        dictionaryInsights.suggestions.removeAll { $0.id == suggestion.id }
+        insightsInputsRevision &+= 1
+    }
+
+    /// Nouvelle écriture d'une entrée, origine et date gardées. false : vide, ou déjà prise par une autre entrée.
+    @discardableResult
+    func renameTerm(_ entry: DictionaryEntry, to term: String) -> Bool {
+        let cleaned = term.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else { return false }
+        guard cleaned != entry.term else { return true }
+        var renamed = false
+        persist("modification d'un mot") { renamed = try store.renameTerm(id: entry.id, to: cleaned) }
+        if renamed { reloadDictionary() }
+        return renamed
     }
 
     /// Services mis de côté et relais pris à leur place, en clair (menu, Fournisseurs).

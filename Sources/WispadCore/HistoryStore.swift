@@ -63,14 +63,22 @@ public struct DictionaryEntry: Identifiable, Equatable, Sendable {
     public var origin: DictionaryOrigin
     /// « Oui » dans la bulle « Le garder ? » : l'utilisateur a gardé ce mot appris. L'origine ne change pas.
     public var confirmedAt: Date?
+    /// Ce que la reconnaissance avait écrit à la place du terme (« revenu quatre » pour « RevenueCat »), quand le
+    /// terme vient d'une correction ; nil sinon.
+    public var heard: String?
+    /// D'où vient le terme, en plus de qui l'a décidé ; nil pour un mot tapé ou d'avant ce suivi.
+    public var source: DictionarySource?
 
     public init(id: String = UUID().uuidString, term: String, createdAt: Date = Date(),
-                origin: DictionaryOrigin = .unknown, confirmedAt: Date? = nil) {
+                origin: DictionaryOrigin = .unknown, confirmedAt: Date? = nil,
+                heard: String? = nil, source: DictionarySource? = nil) {
         self.id = id
         self.term = term
         self.createdAt = createdAt
         self.origin = origin
         self.confirmedAt = confirmedAt
+        self.heard = heard
+        self.source = source
     }
 }
 
@@ -151,7 +159,9 @@ public final class HistoryStore: @unchecked Sendable {
                 origin TEXT,
                 judge_provider TEXT,
                 judge_model TEXT,
-                confirmed_at REAL
+                confirmed_at REAL,
+                heard TEXT,
+                source TEXT
             );
             """
         )
@@ -159,7 +169,8 @@ public final class HistoryStore: @unchecked Sendable {
         // les mots d'avant ce suivi (origine inconnue) : l'historique ne relie aucun appel de jugement à un mot,
         // rien ne permet de la retrouver de façon sûre.
         let dictionaryColumns = Set(try query("PRAGMA table_info(dictionary);") { column(1, $0) })
-        let originColumns = [("origin", "TEXT"), ("judge_provider", "TEXT"), ("judge_model", "TEXT"), ("confirmed_at", "REAL")]
+        let originColumns = [("origin", "TEXT"), ("judge_provider", "TEXT"), ("judge_model", "TEXT"), ("confirmed_at", "REAL"),
+                             ("heard", "TEXT"), ("source", "TEXT")]
         for (name, type) in originColumns where !dictionaryColumns.contains(name) {
             try execute("ALTER TABLE dictionary ADD COLUMN \(name) \(type);")
         }
@@ -583,7 +594,7 @@ public final class HistoryStore: @unchecked Sendable {
     public func dictionary() throws -> [DictionaryEntry] {
         try query(
             """
-            SELECT id, term, created_at, origin, judge_provider, judge_model, confirmed_at
+            SELECT id, term, created_at, origin, judge_provider, judge_model, confirmed_at, heard, source
             FROM dictionary ORDER BY term COLLATE NOCASE;
             """
         ) { statement in
@@ -598,20 +609,26 @@ public final class HistoryStore: @unchecked Sendable {
                 ),
                 confirmedAt: sqlite3_column_type(statement, 6) == SQLITE_NULL
                     ? nil
-                    : Date(timeIntervalSince1970: sqlite3_column_double(statement, 6))
+                    : Date(timeIntervalSince1970: sqlite3_column_double(statement, 6)),
+                heard: optionalColumn(7, statement).flatMap { $0.isEmpty ? nil : $0 },
+                // Une source inconnue (écrite par une version plus récente) se lit comme absente.
+                source: optionalColumn(8, statement).flatMap(DictionarySource.init(rawValue:))
             )
         }
     }
 
     /// Ajoute un mot avec son origine. Sans origine précisée, il est noté comme d'avant le suivi : jamais « ajouté
     /// par toi » ni un juge par défaut. Un mot déjà présent, à la casse près, garde son entrée et son origine.
-    public func addTerm(_ term: String, origin: DictionaryOrigin = .unknown) throws {
+    /// `heard` et `source` : ce que la reconnaissance avait écrit, et d'où vient le terme.
+    public func addTerm(_ term: String, origin: DictionaryOrigin = .unknown, heard: String? = nil,
+                        source: DictionarySource? = nil) throws {
         let cleaned = term.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleaned.isEmpty else { return }
+        let heard = heard?.trimmingCharacters(in: .whitespacesAndNewlines)
         try run(
             """
-            INSERT OR IGNORE INTO dictionary (id, term, created_at, origin, judge_provider, judge_model)
-            VALUES (?, ?, ?, ?, ?, ?);
+            INSERT OR IGNORE INTO dictionary (id, term, created_at, origin, judge_provider, judge_model, heard, source)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?);
             """
         ) { statement in
             bind(UUID().uuidString, at: 1, statement)
@@ -620,6 +637,28 @@ public final class HistoryStore: @unchecked Sendable {
             bindOptional(origin.storedValue, at: 4, statement)
             bindOptional(origin.judge?.provider, at: 5, statement)
             bindOptional(origin.judge?.model, at: 6, statement)
+            bindOptional(heard?.isEmpty == false ? heard : nil, at: 7, statement)
+            bindOptional(source?.rawValue, at: 8, statement)
+        }
+    }
+
+    /// Change l'écriture d'une entrée (« codex » → « Codex ») sans toucher à son origine ni à sa date. Refusé (false)
+    /// quand une autre entrée porte déjà ce terme, à la casse près.
+    @discardableResult
+    public func renameTerm(id: String, to term: String) throws -> Bool {
+        let cleaned = term.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else { return false }
+        return try transaction {
+            let taken = try !queryOnQueue("SELECT id FROM dictionary WHERE term = ? AND id <> ? LIMIT 1;", bind: { statement in
+                bind(cleaned, at: 1, statement)
+                bind(id, at: 2, statement)
+            }) { column(0, $0) }.isEmpty
+            guard !taken else { return false }
+            try runOnQueue("UPDATE dictionary SET term = ? WHERE id = ?;") { statement in
+                bind(cleaned, at: 1, statement)
+                bind(id, at: 2, statement)
+            }
+            return true
         }
     }
 

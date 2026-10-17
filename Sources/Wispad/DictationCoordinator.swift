@@ -872,6 +872,12 @@ final class DictationCoordinator {
             LatencyLog.line(current.marks, mode: current.mode, status: status.rawValue),
             to: model.supportURL.appendingPathComponent(LatencyLog.fileName)
         )
+        // Noms réparés par la correction : appris s'ils l'avaient déjà été dans une autre dictée récente. Jamais
+        // d'une sélection réécrite sur consigne ni de l'essai du premier lancement.
+        if commandSelection == nil, trial == nil {
+            model.considerRepeatedFixes(raw: transcript, final: finalText, dictationID: record.id, speech: speech,
+                                        traceID: current.run.trace.id)
+        }
         if status.delivered {
             // Apprentissage seulement sur un texte vu dans le champ ; un champ illisible ne dit rien de plus.
             if status == .inserted {

@@ -381,16 +381,6 @@
         }
       }
     },
-    "Ajoute au dictionnaire les noms que tu corriges après une dictée." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Adds the names you fix after a dictation to the dictionary."
-          }
-        }
-      }
-    },
     "Ajouté le %@" : {
       "localizations" : {
         "en" : {
@@ -9269,6 +9259,346 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ keys held: your text is ready"
+          }
+        }
+      }
+    },
+    "« %@ »" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@”"
+          }
+        }
+      }
+    },
+    "« %@ » %lld fois" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%1$@” %2$lld times"
+          }
+        }
+      }
+    },
+    "« %@ » est déjà dans le dictionnaire." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” is already in the dictionary."
+          }
+        }
+      }
+    },
+    "Afficher les %lld autres" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show %lld more"
+          }
+        }
+      }
+    },
+    "Afficher moins" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show less"
+          }
+        }
+      }
+    },
+    "Ajoute au dictionnaire les noms que tu corriges ou que la correction répare souvent." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adds names you correct, or that correction often fixes, to the dictionary."
+          }
+        }
+      }
+    },
+    "Ajouté depuis les suggestions" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Added from suggestions"
+          }
+        }
+      }
+    },
+    "Ajouter « %@ » au dictionnaire" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add “%@” to the dictionary"
+          }
+        }
+      }
+    },
+    "Aucune dictée ne contient ce terme" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No dictation contains this term"
+          }
+        }
+      }
+    },
+    "Calculé sur ce Mac à partir de tes dictées des 90 derniers jours. Rien n'est envoyé." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Computed on this Mac from your dictations of the last 90 days. Nothing is sent."
+          }
+        }
+      }
+    },
+    "Corrigé par toi juste après une dictée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Corrected by you right after a dictation"
+          }
+        }
+      }
+    },
+    "Corriger" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fix"
+          }
+        }
+      }
+    },
+    "D'après tes dictées" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Based on your dictations"
+          }
+        }
+      }
+    },
+    "Dans %lld dictées" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In %lld dictations"
+          }
+        }
+      }
+    },
+    "Dans 1 dictée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In 1 dictation"
+          }
+        }
+      }
+    },
+    "Écrire « %@ » au lieu de « %@ »" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Write “%1$@” instead of “%2$@”"
+          }
+        }
+      }
+    },
+    "Écrit ainsi dans %lld dictées sur %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Written this way in %1$lld of %2$lld dictations"
+          }
+        }
+      }
+    },
+    "Écrit de plusieurs façons : %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Written several ways: %@"
+          }
+        }
+      }
+    },
+    "Écriture" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spelling"
+          }
+        }
+      }
+    },
+    "entendu « %@ »" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "heard as “%@”"
+          }
+        }
+      }
+    },
+    "Entendu « %@ »" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Heard as “%@”"
+          }
+        }
+      }
+    },
+    "Ignorer : « %@ » ne sera plus proposé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ignore: “%@” won't be suggested again"
+          }
+        }
+      }
+    },
+    "Ignorer « %@ »" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ignore “%@”"
+          }
+        }
+      }
+    },
+    "Jamais" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Never"
+          }
+        }
+      }
+    },
+    "Jamais dicté" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Never dictated"
+          }
+        }
+      }
+    },
+    "Mal écrit dans %lld dictées : %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Misspelled in %1$lld dictations: %2$@"
+          }
+        }
+      }
+    },
+    "Mal entendu dans %lld dictées : %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Misheard in %1$lld dictations: %2$@"
+          }
+        }
+      }
+    },
+    "Modifier cette expression" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit this phrase"
+          }
+        }
+      }
+    },
+    "Modifier l'écriture" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit spelling"
+          }
+        }
+      }
+    },
+    "Modifier l'écriture de « %@ »" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit the spelling of “%@”"
+          }
+        }
+      }
+    },
+    "Nombre de dictées où le terme apparaît" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Number of dictations containing the term"
+          }
+        }
+      }
+    },
+    "Réparé par la correction dans plusieurs dictées" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fixed by correction in several dictations"
+          }
+        }
+      }
+    },
+    "Suggestions" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suggestions"
+          }
+        }
+      }
+    },
+    "Un nom que la correction répare dans deux dictées (« revenu quatre » → « RevenueCat ») passe par le même juge." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A name that correction fixes in two dictations (“revenue cut” → “RevenueCat”) goes through the same judge."
           }
         }
       }

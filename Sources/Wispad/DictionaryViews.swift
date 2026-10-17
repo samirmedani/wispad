@@ -20,6 +20,10 @@ struct DictionaryView: View {
         ScreenScroll {
             ScreenHeader(title: String(localized: "Dictionnaire"), subtitle: String(localized: "Les noms, marques et acronymes que Wispad doit reconnaître."))
             VStack(alignment: .leading, spacing: 16) {
+                if !model.dictionaryInsights.suggestions.isEmpty {
+                    DictionarySuggestionsCard(suggestions: model.dictionaryInsights.suggestions)
+                        .transition(.opacity)
+                }
                 Picker("Type d'entrée", selection: Binding(
                     get: { kind }, set: { model.setDisplayChoice(\.dictionaryKind, $0) }
                 )) {
@@ -31,12 +35,15 @@ struct DictionaryView: View {
                 addField
                 dictionaryTable
             }
-            .frame(maxWidth: kind == .word ? 600 : 660, alignment: .leading)
+            .frame(maxWidth: 660, alignment: .leading)
+            .animation(Theme.spring, value: model.dictionaryInsights.suggestions.map(\.id))
             Label("Ces termes aident ton fournisseur à mieux te comprendre.", systemImage: "info.circle")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .help("Ces termes sont envoyés comme indices au fournisseur choisi, puis relus par la correction.")
         }
+        // Suggestions et usage suivent l'historique, le dictionnaire et les refus, calculés hors du fil principal.
+        .task(id: model.insightsInputsRevision) { model.refreshDictionaryInsights() }
     }
 
     private var addField: some View {
@@ -81,7 +88,8 @@ struct DictionaryView: View {
     }
 
     private var dictionaryTable: some View {
-        let entries = origin.matchingEntries(in: sectionEntries, period: period, search: search, sort: sort)
+        let usage = model.dictionaryInsights.usage
+        let entries = origin.matchingEntries(in: sectionEntries, period: period, search: search, sort: sort, usage: usage)
         return VStack(spacing: 0) {
             originFilters
                 .padding(12)
@@ -106,9 +114,9 @@ struct DictionaryView: View {
                 LazyVStack(spacing: 0) {
                     ForEach(entries) { entry in
                         if kind == .word {
-                            DictionaryRow(entry: entry) { model.deleteTerm(entry) }
+                            DictionaryRow(entry: entry, usage: usage[entry.id] ?? 0) { model.deleteTerm(entry) }
                         } else {
-                            DictionaryPhraseRow(entry: entry) { model.deleteTerm(entry) }
+                            DictionaryPhraseRow(entry: entry, usage: usage[entry.id] ?? 0) { model.deleteTerm(entry) }
                         }
                         Divider().padding(.horizontal, 16)
                     }
@@ -209,7 +217,10 @@ struct DictionaryView: View {
                 .frame(width: DictionaryColumns.origin, alignment: .leading)
             sortHeader(String(localized: "Ajouté le"), column: .date)
                 .frame(width: DictionaryColumns.date, alignment: .leading)
-            Color.clear.frame(width: DictionaryColumns.action, height: 1)
+            sortHeader(String(localized: "Dictées"), column: .usage)
+                .frame(width: DictionaryColumns.usage, alignment: .trailing)
+                .help("Nombre de dictées où le terme apparaît")
+            Color.clear.frame(width: DictionaryColumns.actions, height: 1)
         }
         .font(.system(size: 11, weight: .semibold))
         .foregroundStyle(.secondary)
@@ -255,9 +266,12 @@ struct DictionaryView: View {
 }
 
 private enum DictionaryColumns {
-    static let origin: CGFloat = 145
-    static let date: CGFloat = 85
+    static let origin: CGFloat = 130
+    static let date: CGFloat = 80
+    static let usage: CGFloat = 72
     static let action: CGFloat = 26
+    /// Modifier et supprimer.
+    static let actions: CGFloat = 56
 }
 
 private extension DictionaryFilter {
@@ -282,16 +296,28 @@ private extension DictionaryFilter {
 
 private struct DictionaryRow: View {
     var entry: DictionaryEntry
+    var usage: Int
     var onDelete: () -> Void
     @State private var hovering = false
+    @State private var editing = false
 
     var body: some View {
         HStack(spacing: 12) {
-            Text(entry.term)
-                .font(.system(size: 13, weight: .medium))
-                .textSelection(.enabled)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(entry.term)
+                    .font(.system(size: 13, weight: .medium))
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let heard = entry.heard {
+                    Text("entendu « \(heard) »")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .help(DictionaryOriginText.detail(entry))
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
             VStack(alignment: .leading, spacing: 4) {
                 OriginBadge(origin: entry.origin)
                 if let judge = entry.origin.judge {
@@ -308,16 +334,34 @@ private struct DictionaryRow: View {
                 .foregroundStyle(.secondary)
                 .frame(width: DictionaryColumns.date, alignment: .leading)
                 .help(DictionaryOriginText.date(entry.createdAt))
-            Button(action: onDelete) {
-                Image(systemName: "trash")
-                    .font(.system(size: 12))
-                    .foregroundStyle(hovering ? Theme.brand : .secondary)
-                    .frame(width: DictionaryColumns.action, height: 30)
-                    .contentShape(Rectangle())
+            UsageCount(count: usage)
+                .frame(width: DictionaryColumns.usage, alignment: .trailing)
+            HStack(spacing: 4) {
+                Button { editing = true } label: {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .frame(width: DictionaryColumns.action, height: 30)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(HoverButtonStyle(treatment: .icon))
+                .help("Modifier l'écriture de « \(entry.term) »")
+                .accessibilityLabel("Modifier l'écriture de « \(entry.term) »")
+                .popover(isPresented: $editing, arrowEdge: .bottom) {
+                    RenameTermPopover(entry: entry, isPresented: $editing)
+                }
+                Button(action: onDelete) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 12))
+                        .foregroundStyle(hovering ? Theme.brand : .secondary)
+                        .frame(width: DictionaryColumns.action, height: 30)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(HoverButtonStyle(treatment: .icon))
+                .help("Supprimer « \(entry.term) »")
+                .accessibilityLabel("Supprimer « \(entry.term) »")
             }
-            .buttonStyle(HoverButtonStyle(treatment: .icon))
-            .help("Supprimer « \(entry.term) »")
-            .accessibilityLabel("Supprimer « \(entry.term) »")
+            .frame(width: DictionaryColumns.actions, alignment: .trailing)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -331,16 +375,26 @@ private struct DictionaryRow: View {
 /// Les expressions ont toute la largeur ; leur contenu reste lisible, même sur plusieurs lignes.
 private struct DictionaryPhraseRow: View {
     var entry: DictionaryEntry
+    var usage: Int
     var onDelete: () -> Void
+    @State private var editing = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(entry.term)
-                .font(.system(size: 13, weight: .medium))
-                .lineSpacing(3)
-                .textSelection(.enabled)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(entry.term)
+                    .font(.system(size: 13, weight: .medium))
+                    .lineSpacing(3)
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let heard = entry.heard {
+                    Text("entendu « \(heard) »")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
             HStack(spacing: 8) {
                 OriginBadge(origin: entry.origin)
                     .help(DictionaryOriginText.detail(entry))
@@ -350,9 +404,19 @@ private struct DictionaryPhraseRow: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 4)
+                UsageCount(count: usage, spelledOut: true)
                 Text(entry.createdAt.formatted(.dateTime.day().month(.abbreviated).year().locale(appLocale)))
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
+                Button { editing = true } label: {
+                    Image(systemName: "pencil").frame(width: 26, height: 26)
+                }
+                .buttonStyle(HoverButtonStyle(treatment: .icon))
+                .help("Modifier cette expression")
+                .accessibilityLabel("Modifier cette expression")
+                .popover(isPresented: $editing, arrowEdge: .bottom) {
+                    RenameTermPopover(entry: entry, isPresented: $editing)
+                }
                 Button(action: onDelete) {
                     Image(systemName: "trash").frame(width: 26, height: 26)
                 }
@@ -363,6 +427,89 @@ private struct DictionaryPhraseRow: View {
         }
         .padding(16)
         .accessibilityElement(children: .contain)
+    }
+}
+
+/// Nombre de dictées où apparaît un terme ; « Jamais » quand aucune ne le contient.
+private struct UsageCount: View {
+    var count: Int
+    /// « 12 dictées » plutôt que « 12 », hors de la colonne du tableau.
+    var spelledOut = false
+
+    var body: some View {
+        Group {
+            if count == 0 {
+                Text(spelledOut ? String(localized: "Jamais dicté") : String(localized: "Jamais"))
+                    .foregroundStyle(.tertiary)
+            } else if spelledOut {
+                Text(count == 1 ? String(localized: "1 dictée") : String(localized: "\(count) dictées"))
+                    .foregroundStyle(.secondary)
+            } else {
+                Text(count, format: .number)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
+        }
+        .font(.system(size: 11))
+        .lineLimit(1)
+        .help(count == 0 ? String(localized: "Aucune dictée ne contient ce terme") : count == 1 ? String(localized: "Dans 1 dictée") : String(localized: "Dans \(count) dictées"))
+    }
+}
+
+/// Nouvelle écriture d'une entrée : origine et date sont gardées.
+private struct RenameTermPopover: View {
+    @Environment(AppModel.self) private var model
+    var entry: DictionaryEntry
+    @Binding var isPresented: Bool
+    @State private var draft: String
+    @State private var problem: String?
+    @FocusState private var focused: Bool
+
+    init(entry: DictionaryEntry, isPresented: Binding<Bool>) {
+        self.entry = entry
+        _isPresented = isPresented
+        _draft = State(initialValue: entry.term)
+    }
+
+    private var cleaned: String { draft.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Modifier l'écriture")
+                .font(.system(size: 13, weight: .semibold))
+            TextField("Écriture", text: $draft, axis: .vertical)
+                .textFieldStyle(.roundedBorder)
+                .lineLimit(1...6)
+                .focused($focused)
+                .onSubmit(save)
+                .frame(width: 280)
+                .onChange(of: draft) { problem = nil }
+            if let problem {
+                Text(problem)
+                    .font(.system(size: 11))
+                    .foregroundStyle(Theme.brand)
+            }
+            HStack {
+                Spacer()
+                Button("Annuler") { isPresented = false }
+                    .keyboardShortcut(.cancelAction)
+                Button("Enregistrer", action: save)
+                    .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(cleaned.isEmpty)
+            }
+        }
+        .padding(14)
+        .onAppear { focused = true }
+    }
+
+    private func save() {
+        guard !cleaned.isEmpty else { return }
+        if model.renameTerm(entry, to: cleaned) {
+            isPresented = false
+        } else {
+            problem = String(localized: "« \(cleaned) » est déjà dans le dictionnaire.")
+        }
     }
 }
 
@@ -408,11 +555,18 @@ enum DictionaryOriginText {
     /// tranché, puis « Gardé par toi » s'il a été confirmé par « Oui ».
     static func detail(_ entry: DictionaryEntry, locale: Locale = appLocale) -> String {
         let added = date(entry.createdAt, locale: locale)
+        var lines: [String]
         switch entry.origin {
         case .user:
-            return String(localized: "Ajouté par toi le \(added)")
-        case .learned(let judge):
-            var lines = [String(localized: "Appris automatiquement le \(added)")]
+            lines = [String(localized: "Ajouté par toi le \(added)")]
+        case .learned:
+            lines = [String(localized: "Appris automatiquement le \(added)")]
+        case .unknown:
+            lines = [String(localized: "Avant le suivi : origine inconnue"), String(localized: "Ajouté le \(added)")]
+        }
+        if let source = entry.source { lines.append(sourceText(source)) }
+        if let heard = entry.heard { lines.append(String(localized: "Entendu « \(heard) »")) }
+        if case .learned(let judge) = entry.origin {
             switch judge.kind {
             case .jev:
                 lines.append(String(localized: "Juge : Jev (fournisseur \(judge.provider), modèle \(judge.model))"))
@@ -422,9 +576,16 @@ enum DictionaryOriginText {
             if let confirmed = entry.confirmedAt {
                 lines.append(String(localized: "Gardé par toi le \(date(confirmed, locale: locale))"))
             }
-            return lines.joined(separator: "\n")
-        case .unknown:
-            return [String(localized: "Avant le suivi : origine inconnue"), String(localized: "Ajouté le \(added)")].joined(separator: "\n")
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    /// D'où vient le terme, en une ligne.
+    static func sourceText(_ source: DictionarySource) -> String {
+        switch source {
+        case .fieldCorrection: return String(localized: "Corrigé par toi juste après une dictée")
+        case .repeatedFix: return String(localized: "Réparé par la correction dans plusieurs dictées")
+        case .suggestion: return String(localized: "Ajouté depuis les suggestions")
         }
     }
 

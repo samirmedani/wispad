@@ -535,13 +535,27 @@ Réglages › Mise en forme : **Montants et unités** (symboles, par défaut, ou
   entre-temps. Un résultat ne peut ajouter que les candidats effectivement soumis, sans doublons.
 - Un nom à graphie distinctive ressemblant à une simple flexion (« terraforme » → « Terraform ») est transmis
   au juge, pas ajouté aveuglément. Les accords ordinaires restent exclus par le filtre local.
+- Les noms que la correction répare sont appris aussi, même sans retouche à la main (la plupart des dictées partent
+  sans être relues, et un champ de chat se vide à l'envoi). À la fin de chaque dictée, le texte transcrit et le texte
+  final sont comparés sur ce Mac (`DictionaryInsights`). Un nom réparé dans au moins deux dictées des 90 derniers
+  jours (« revenu quatre » → « RevenueCat ») passe par le même juge, puis la même bulle. Seuls comptent un ou deux mots
+  à graphie de nom (majuscule hors début de phrase, majuscule intérieure, sigle, lettres et chiffres, au moins deux
+  lettres) qui sonnent comme ce qui avait été entendu, avec les mêmes chiffres. Changement de casse seul : graphie
+  marquée seulement (« cli » → « CLI », « openai » → « OpenAI »), jamais une espace retirée (« 12 h » → « 12h »).
+  La grammaire, la ponctuation, l'élision (« que Opus » → « qu'Opus »), les accords, les hésitations, les
+  mots-outils en bord et les mots courants sont ignorés, ainsi qu'une dictée trop réécrite (moins de la moitié des
+  mots gardés). Le juge lit la phrase telle qu'elle a été entendue. Les noms déjà au dictionnaire, refusés, du
+  vocabulaire intégré ou isolés d'une expression connue ne lui sont pas soumis ; un nom qu'il écarte ne lui est
+  plus resoumis avant le prochain lancement (un juge muet n'écarte rien). Jamais avec « Apprendre de mes
+  corrections » coupé, après une sélection réécrite sur consigne, ni pour l'essai du premier lancement. L'analyse
+  de l'historique tourne hors du fil principal ; chaque dictée n'est analysée qu'une fois par lancement.
 - Seuls la phrase dictée et le mot corrigé sont envoyés (à Jev et au modèle de correction) ; le journal ne contient ni mot ni texte.
 
 ### Origine des mots
 
 Chaque mot garde, sur ce Mac, qui l'a ajouté :
 
-- **Toi** : mot ajouté à la main dans l'écran Dictionnaire.
+- **Toi** : mot ajouté à la main dans l'écran Dictionnaire, ou depuis ses suggestions.
 - **Appris automatiquement** : mot corrigé après une dictée et retenu par un juge. Jev (TypeSafe) quand sa note
   suffit (cas net, ou modèle de correction sans réponse) ; sinon le modèle de correction qui a répondu (sans clé
   TypeSafe ou sans réponse de Jev, ou mot douteux pour Jev). Le fournisseur et le modèle notés sont ceux de l'appel
@@ -555,8 +569,8 @@ Chaque mot garde, sur ce Mac, qui l'a ajouté :
   mot ni ne garde le verdict de chaque mot : l'origine n'est pas devinée.
 
 Le dictionnaire affiche par défaut les entrées les plus récentes en haut, dans tous les filtres et dans les deux
-sections. Les en-têtes **Mot / Expression**, **Origine** et **Ajouté le** trient la liste ; un second clic inverse
-le sens, indiqué par une flèche. Le choix reste mémorisé après relance. Le tri par origine groupe Par toi,
+sections. Les en-têtes **Mot / Expression**, **Origine**, **Ajouté le** et **Dictées** trient la liste ; un second
+clic inverse le sens, indiqué par une flèche. **Dictées** trie d'abord les plus dictées. Le choix reste mémorisé après relance. Le tri par origine groupe Par toi,
 Automatique puis Avant le suivi (ou l'inverse), avec les plus récents en tête de chaque groupe. Il ne change ni
 les données conservées ni l'ordre des termes transmis aux fournisseurs.
 
@@ -565,8 +579,8 @@ un seul élément sans espace reste un mot, plusieurs éléments (espaces ou ret
 expression. Les termes existants sont répartis sans être modifiés. Les noms composés peuvent donc être dans
 Expressions et phrases ; ce n'est pas une décision du modèle. Aucune limite de longueur n'est ajoutée.
 
-Les mots utilisent une table compacte Mot / Origine / Ajouté le. Les expressions ont toute la largeur, avec
-retour à la ligne et métadonnées dessous. Leur saisie accepte plusieurs lignes. Ajouter un terme ouvre sa section
+Les mots utilisent une table compacte Mot / Origine / Ajouté le / Dictées. Les expressions ont toute la largeur,
+avec retour à la ligne et métadonnées dessous. Leur saisie accepte plusieurs lignes. Ajouter un terme ouvre sa section
 et remet les filtres à Tous / Toute période pour qu'il reste visible. La recherche est temporaire ; origine et
 période sont mémorisées. Les filtres se croisent, avec un compteur de résultats et un bouton de réinitialisation.
 
@@ -574,6 +588,33 @@ Badges : bleu « Par toi », violet « Automatique », gris « Avant le suivi »
 (« Jev », « DeepSeek », « OpenAI », « xAI »…) reste visible ; l'info-bulle précise le fournisseur, le modèle et
 les dates. La corbeille retire une entrée. L'apprentissage automatique reste ciblé sur les corrections de noms,
 marques et jargon ; il ne mémorise pas des paragraphes entiers.
+
+**Dictées** : nombre de dictées de l'historique dont le texte final contient le terme, en mots entiers, sans
+tenir compte de la casse, des accents ni de la ponctuation ; « Jamais » (« Jamais dicté » pour une expression)
+quand aucune ne le contient. Sous un terme venu d'une correction, « entendu « … » » rappelle ce que la
+reconnaissance avait écrit ; l'info-bulle de l'origine dit aussi d'où il vient (corrigé par toi après une dictée,
+réparé par la correction dans plusieurs dictées, ajouté depuis les suggestions). Le crayon change l'écriture d'une
+entrée (« codex » → « Codex ») sans toucher à son origine ni à sa date ; un terme déjà présent, à la casse près,
+est refusé avec un message.
+
+### Suggestions
+
+En tête de l'écran Dictionnaire, une carte **Suggestions** propose, d'après les dictées des 90 derniers jours,
+calculé sur ce Mac sans rien envoyer et hors du fil principal :
+
+- **Mal entendu dans N dictées** (ou **Mal écrit** pour un changement de casse) : un nom réparé par la correction
+  dans au moins deux dictées et pas encore appris, avec ce qui avait été entendu. **Ajouter** l'ajoute comme
+  « Par toi », avec ce mot entendu.
+- **Écrit ainsi dans N dictées sur M** : une entrée d'un seul mot écrite autrement dans au moins trois dictées et
+  les trois quarts de celles qui la contiennent (« codex » → « Codex »). **Corriger** change son écriture.
+- **Écrit de plusieurs façons** : un nom absent du dictionnaire écrit de plusieurs façons, chacune dans au moins
+  deux dictées, dont une graphie marquée (« TestFlight » / « Testflight »). **Ajouter** ajoute la graphie marquée
+  la plus fréquente.
+
+Une majuscule de début de phrase ne compte jamais. Les noms déjà au dictionnaire, refusés, du vocabulaire intégré
+ou isolés d'une expression connue ne sont pas proposés. ✕ (**Ignorer**) mémorise un refus, comme « Annuler
+l'ajout » dans la bulle : le nom n'est ni reproposé ni appris. Trois suggestions sont affichées, les autres derrière
+« Afficher les N autres » ; jusqu'à quatre, tout est affiché. La carte disparaît quand il n'y a rien à proposer.
 
 Le banc synthétique `scripts/learning-bench.sh` vérifie l'extraction et mesure sa latence. `--live` demande une
 clé dédiée `WISPAD_TEST_TYPESAFE_API_KEY` (et éventuellement `WISPAD_TEST_DEEPSEEK_API_KEY`) et mesure les

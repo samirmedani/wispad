@@ -275,9 +275,10 @@ enum SettingsPresentation {
             : String(localized: "le modèle de correction juge s'il mérite le dictionnaire")
         return SettingText(
             title: String(localized: "Apprendre de mes corrections"),
-            summary: String(localized: "Ajoute au dictionnaire les noms que tu corriges après une dictée."),
+            summary: String(localized: "Ajoute au dictionnaire les noms que tu corriges ou que la correction répare souvent."),
             details: [
                 String(localized: "Pendant 30 s après une dictée, si tu corriges un mot mal entendu (« Sidance » → « Seedance »), \(judge) : marques, noms et jargon oui, mots courants et fautes de frappe non."),
+                String(localized: "Un nom que la correction répare dans deux dictées (« revenu quatre » → « RevenueCat ») passe par le même juge."),
                 String(localized: "Le mot est ajouté, puis la bulle te demande si tu le gardes."),
                 String(localized: "Seuls l'extrait dicté et le mot corrigé sont envoyés ; le reste du champ n'est ni enregistré ni envoyé.")
             ]
