@@ -134,7 +134,12 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   dictée (spectre, mains libres et ses boutons, finalisation) et tous les messages passent en Liquid Glass
   transparent de macOS 26 (matériau translucide avant), sans liseré, clairs ou sombres comme l'apparence de l'app ;
   le spectre garde ses couleurs, la vague de finalisation et la ✕ se foncent sur un verre clair. Le changement vaut
-  tout de suite.
+  tout de suite. En Verre, deux réglages de plus, les deux verres natifs d'Apple : **Verre** Transparent (par
+  défaut, le plus transparent) ou Dépoli (plus flou, plus lisible sur un fond chargé), et **Intensité**, la teinte
+  posée sur ce verre (25 % par défaut ; à zéro, le verre seul ; au maximum, 70 % d'opacité), sombre en apparence
+  sombre et claire en apparence claire. Un aperçu sous ces réglages montre la bulle de dictée et un message avec le
+  vrai verre, au-dessus d'une page claire et d'un fond sombre ; il suit le curseur, comme la bulle affichée.
+  L'intensité s'enregistre au relâchement du curseur.
 - **Place à l'écran** (Réglages › Bulle et messages) : trois places réglables à main levée sur un schéma quadrillé
   de l'écran, la grille aimantant légèrement les bulles. **Dictée** (spectre et finalisation), **Alertes de
   collage** (texte prêt à copier) et **Messages** (« Collé », mot appris, relais, nouvelle version). Par défaut :

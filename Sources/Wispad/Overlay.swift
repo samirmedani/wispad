@@ -321,6 +321,7 @@ struct OverlayCluster: View {
             }
         }
         .environment(\.bubbleStyle, style)
+        .environment(\.bubbleGlass, model.settings.bubbleGlass)
     }
 
     /// De la bulle de dictée à un message, et retour : fondu avec un léger rebond depuis le bas.
@@ -405,6 +406,8 @@ private struct OverlayGlass<S: InsettableShape>: ViewModifier {
     @Environment(\.overlayGlass) private var glassEnabled
     @Environment(\.overlayReduceMotion) private var reduceMotion
     @Environment(\.bubbleStyle) private var style
+    @Environment(\.bubbleGlass) private var glassSettings
+    @Environment(\.colorScheme) private var scheme
     var shape: S
     var id: String
     var namespace: Namespace.ID
@@ -424,11 +427,13 @@ private struct OverlayGlass<S: InsettableShape>: ViewModifier {
             )
         if #available(macOS 26, *), glassEnabled {
             clipped
-                .glassEffect((clear ? Glass.regular : Glass.clear.tint(OverlayStyle.glassTint)).interactive(interactive), in: shape)
+                .glassEffect((clear ? glassSettings.glass(for: scheme) : Glass.clear.tint(OverlayStyle.glassTint)).interactive(interactive), in: shape)
                 .glassEffectID(id, in: namespace)
                 .glassEffectTransition(reduceMotion ? .materialize : .matchedGeometry)
         } else if clear {
-            clipped.background(shape.fill(.regularMaterial))
+            clipped
+                .background(shape.fill(glassSettings.tint(for: scheme) ?? .clear))
+                .background(shape.fill(glassSettings.variant == .clear ? Material.ultraThinMaterial : Material.regularMaterial))
         } else {
             clipped
                 .background(shape.fill(OverlayStyle.background))
@@ -579,8 +584,9 @@ struct MessageAction {
 }
 
 extension EnvironmentValues {
-    /// Style des messages, posé par MessageBubble depuis Réglages › Bulle et messages.
+    /// Style de la bulle et verre du style Verre, posés par OverlayCluster depuis Réglages › Bulle.
     @Entry var bubbleStyle = BubbleStyle.black
+    @Entry var bubbleGlass = BubbleGlass()
 }
 
 /// Couleurs d'un message : blanc sur le noir profond, couleurs de macOS sur le verre (clair ou sombre).
@@ -747,6 +753,8 @@ private struct MessageWidth: Layout {
 /// (macOS 26 ; matériau translucide avant).
 private struct MessageSurface<S: Shape>: ViewModifier {
     @Environment(\.bubbleStyle) private var style
+    @Environment(\.bubbleGlass) private var glassSettings
+    @Environment(\.colorScheme) private var scheme
     @Environment(\.overlayGlass) private var glassEnabled
     var shape: S
 
@@ -761,10 +769,11 @@ private struct MessageSurface<S: Shape>: ViewModifier {
             }
         case .glass:
             if #available(macOS 26, *), glassEnabled {
-                content.glassEffect(.regular, in: shape)
+                content.glassEffect(glassSettings.glass(for: scheme), in: shape)
             } else {
                 content.background {
-                    shape.fill(.regularMaterial)
+                    shape.fill(glassSettings.variant == .clear ? Material.ultraThinMaterial : Material.regularMaterial)
+                        .overlay(shape.fill(glassSettings.tint(for: scheme) ?? .clear))
                         .shadow(color: .black.opacity(0.18), radius: 8, y: 3)
                 }
             }

@@ -134,8 +134,9 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
    (`DictationCoordinator.holdMessages`) et la ✕ appelle `closeMessage`. `OverlayCluster` montre la bulle de dictée
    (verre fumé, `OverlayPill`) ou un message (`MessageBubble` : `MessageLine` ou `MessageCard`, pastille
    `CountdownBadge` dont l'anneau lit le décompte). Leur fond (`MessageSurface`) suit `AppSettings.bubbleStyle` :
-   noir profond, ou Liquid Glass ; en verre, la bulle de dictée aussi (`OverlayGlass` sans teinte ni liseré) et le
-   panneau prend l'apparence de l'app.
+   noir profond, ou Liquid Glass ; en verre, la bulle de dictée aussi (`OverlayGlass` sans liseré) et le panneau
+   prend l'apparence de l'app. Le verre vient de `AppSettings.bubbleGlass` (`BubbleGlass` : `Glass.clear` ou
+   `Glass.regular`, et `.tint` dont l'opacité suit l'intensité), passé par l'environnement à tous les éléments.
    Le callback final de `AppDependencies.insert` signale ⌘V avant la relecture d'accessibilité :
    `FinishJob.pasteSent` retire le spectre lorsque seule la confirmation reste. Le job reste dans la file jusqu'à
    la restauration du presse-papiers ; une autre dictée en cours garde l'overlay. Un échec reconnu ensuite affiche
@@ -352,7 +353,8 @@ ne réécrit jamais un fichier abîmé (les clés de sa partie intacte servent).
   shortcut, trial, finish) avec `--onboarding-state done|failed|progress` (états fictifs, aucune autorisation
   demandée ni micro ouvert), `--shortcut-preview custom|long|disabled|recording` (Réglages › Raccourci avec des
   raccourcis fictifs), `--settings-tab general|dictation|formatting|bubble|privacy|permissions|help` (onglet de
-  Réglages, `SettingsTab`), `--customer-preview`, `-AppleLanguages "(en)"`.
+  Réglages, `SettingsTab`), `--glass-bubble` (style Verre et ses réglages ; le verre lui-même ne se rend qu'à
+  l'écran), `--customer-preview`, `-AppleLanguages "(en)"`.
 - Toutes les bulles et leurs messages, hors écran : `Wispad --bubble-gallery <dossier>` avec le build Debug. Une
   planche PNG par famille (dictée, texte prêt, erreurs, messages, survol), rendue avec les vues et les textes de l'app,
   sans l'effet de verre de macOS 26.

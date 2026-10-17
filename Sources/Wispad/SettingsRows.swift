@@ -350,6 +350,22 @@ enum SettingsPresentation {
         ]
     )
 
+    static let glassVariant = SettingText(
+        title: String(localized: "Verre"),
+        summary: String(localized: "Les deux verres d'Apple : transparent ou dépoli."),
+        details: [
+            String(localized: "Transparent laisse le plus voir ce qu'il y a derrière. Dépoli floute davantage et se lit mieux sur un fond chargé.")
+        ]
+    )
+
+    static let glassIntensity = SettingText(
+        title: String(localized: "Intensité"),
+        summary: String(localized: "Teinte du verre ; à zéro, le verre seul."),
+        details: [
+            String(localized: "Plus forte, elle assombrit le verre (ou l'éclaircit en apparence claire) et rend le texte plus lisible.")
+        ]
+    )
+
     // MARK: Apparence
 
     static let appearanceTitle = String(localized: "Apparence")

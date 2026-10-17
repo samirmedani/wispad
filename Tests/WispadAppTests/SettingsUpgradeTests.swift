@@ -92,7 +92,15 @@ struct SettingsUpgradeTests {
         settings.overlayPlacement.setAnchor(OverlayAnchor(x: 0.25, y: 0.75), for: .info)
         settings.appearance = .dark
         settings.bubbleStyle = .glass
+        settings.bubbleGlass = BubbleGlass(variant: .regular, intensity: 0.6)
         return settings
+    }
+
+    /// Verre de la bulle lu champ par champ : une intensité hors bornes reprend son défaut, le verre choisi reste.
+    @Test func bubbleGlassKeepsItsReadableField() throws {
+        let read = try decode(#"{"bubbleStyle":"glass","bubbleGlass":{"variant":"regular","intensity":5}}"#)
+        #expect(read.bubbleStyle == .glass)
+        #expect(read.bubbleGlass == BubbleGlass(variant: .regular, intensity: BubbleGlass.defaultIntensity))
     }
 
     /// La fixture couvre tous les réglages, y compris ceux ajoutés plus tard.

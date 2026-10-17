@@ -50,6 +50,61 @@ enum BubbleStyle: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+/// Les deux verres d'Apple (Liquid Glass) du style Verre.
+enum GlassVariant: String, Codable, CaseIterable, Identifiable {
+    /// Glass.clear : le plus transparent, comme « Transparent » dans les réglages d'iOS.
+    case clear
+    /// Glass.regular : dépoli, plus lisible sur un fond chargé.
+    case regular
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .clear: return String(localized: "Transparent")
+        case .regular: return String(localized: "Dépoli")
+        }
+    }
+}
+
+/// Verre de la bulle (style Verre) : un des deux verres d'Apple, plus ou moins teinté.
+struct BubbleGlass: Codable, Equatable {
+    var variant: GlassVariant = .clear
+    /// Teinte, de 0 (le verre seul) à 1 (la plus forte) : sombre en apparence sombre, claire en apparence claire.
+    var intensity = BubbleGlass.defaultIntensity
+
+    static let defaultIntensity = 0.25
+    static let intensityRange = 0.0...1.0
+    /// Opacité de la teinte au maximum : au-delà, ce ne serait plus du verre.
+    static let maxTint = 0.7
+
+    init() {}
+
+    init(variant: GlassVariant, intensity: Double) {
+        self.variant = variant
+        self.intensity = intensity
+    }
+
+    /// Lecture tolérante, champ par champ : une valeur illisible ou hors bornes reprend son défaut, seule.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        variant = (try? container.decodeIfPresent(GlassVariant.self, forKey: .variant)) ?? .clear
+        let stored = (try? container.decodeIfPresent(Double.self, forKey: .intensity)) ?? Self.defaultIntensity
+        intensity = Self.intensityRange.contains(stored) ? stored : Self.defaultIntensity
+    }
+
+    /// Teinte posée sur le verre pour cette apparence ; nil à zéro.
+    func tint(for scheme: ColorScheme) -> Color? {
+        guard intensity > 0 else { return nil }
+        return (scheme == .dark ? Color.black : Color.white).opacity(intensity * Self.maxTint)
+    }
+
+    @available(macOS 26, *)
+    func glass(for scheme: ColorScheme) -> Glass {
+        (variant == .clear ? Glass.clear : Glass.regular).tint(tint(for: scheme))
+    }
+}
+
 /// Applique l'apparence à toute l'app. Changée à la main, les fenêtres ouvertes passent de l'une à l'autre en fondu
 /// (sauf avec « Réduire les animations ») ; au lancement, elle est posée avant toute fenêtre.
 @MainActor

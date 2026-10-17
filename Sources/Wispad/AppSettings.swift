@@ -133,6 +133,8 @@ struct AppSettings: Codable, Equatable {
     var appearance: AppAppearance = .system
     /// Style de la bulle et de ses messages (Réglages › Bulle et messages) : noir profond par défaut, ou verre.
     var bubbleStyle: BubbleStyle = .black
+    /// Verre du style Verre : transparent ou dépoli, et intensité de sa teinte.
+    var bubbleGlass = BubbleGlass()
 
     init() {}
 
@@ -201,6 +203,7 @@ struct AppSettings: Codable, Equatable {
         overlayPlacement = value(.overlayPlacement, defaults.overlayPlacement)
         appearance = value(.appearance, defaults.appearance)
         bubbleStyle = value(.bubbleStyle, defaults.bubbleStyle)
+        bubbleGlass = value(.bubbleGlass, defaults.bubbleGlass)
     }
 
     /// Bornes des réglages de conservation, partagées avec leurs contrôles dans Réglages.

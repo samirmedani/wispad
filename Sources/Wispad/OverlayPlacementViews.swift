@@ -21,6 +21,37 @@ struct OverlayPlacementSection: View {
                 .labelsHidden()
                 .fixedSize()
             }
+            if model.settings.bubbleStyle == .glass {
+                SettingRow(text: SettingsPresentation.glassVariant) {
+                    Picker(SettingsPresentation.glassVariant.title, selection: Binding(
+                        get: { model.settings.bubbleGlass.variant },
+                        set: { model.settings.bubbleGlass.variant = $0; model.saveSettings() }
+                    )) {
+                        ForEach(GlassVariant.allCases) { variant in
+                            Text(variant.title).tag(variant)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .fixedSize()
+                }
+                SettingRow(text: SettingsPresentation.glassIntensity) {
+                    // La bulle et l'aperçu suivent le curseur ; le réglage s'enregistre au relâchement.
+                    Slider(value: Binding(
+                        get: { model.settings.bubbleGlass.intensity },
+                        set: { model.settings.bubbleGlass.intensity = $0 }
+                    ), in: BubbleGlass.intensityRange) { editing in
+                        if !editing { model.saveSettings() }
+                    }
+                    .labelsHidden()
+                    .frame(width: 170)
+                    Text(model.settings.bubbleGlass.intensity, format: .percent.precision(.fractionLength(0)))
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                        .frame(width: 42, alignment: .trailing)
+                }
+                BubbleGlassPreview()
+            }
             SettingToggle(text: SettingsPresentation.avoidInput, isOn: Binding(
                 get: { model.settings.overlayPlacement.avoidsInput },
                 set: { model.settings.overlayPlacement.avoidsInput = $0; model.saveSettings() }
@@ -29,6 +60,46 @@ struct OverlayPlacementSection: View {
         } header: {
             SectionTitle(title: SettingsPresentation.overlayTitle, summary: SettingsPresentation.overlaySummary)
         }
+    }
+}
+
+/// Aperçu du verre dans Réglages › Bulle : la bulle de dictée et un message, rendus avec le vrai verre au-dessus
+/// d'une page claire et d'un fond sombre, comme des apps derrière la bulle. Il suit le réglage en direct.
+struct BubbleGlassPreview: View {
+    @Environment(AppModel.self) private var model
+    @Namespace private var glass
+
+    private static let levels: [Float] = [0.18, 0.3, 0.5, 0.72, 0.9, 1, 0.86, 0.66, 0.44, 0.26, 0.14]
+    private static let lines: [CGFloat] = [190, 150, 210, 120, 175, 160, 200, 130, 180]
+
+    var body: some View {
+        ZStack {
+            HStack(spacing: 0) {
+                ZStack(alignment: .topLeading) {
+                    Color(white: 0.97)
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(Self.lines.indices, id: \.self) { index in
+                            Capsule().fill(Color.black.opacity(0.2)).frame(width: Self.lines[index], height: 6)
+                        }
+                    }
+                    .padding(16)
+                }
+                LinearGradient(colors: [Color(red: 0.13, green: 0.2, blue: 0.48), Color(red: 0.58, green: 0.17, blue: 0.42)],
+                               startPoint: .topLeading, endPoint: .bottomTrailing)
+            }
+            VStack(spacing: 14) {
+                SpectrumBars(levels: Self.levels, color: OverlayStyle.red)
+                    .padding(.horizontal, OverlayLayout.spectrumPadding)
+                    .frame(height: OverlayLayout.pillHeight)
+                    .overlayGlass(RoundedRectangle(cornerRadius: 15, style: .continuous), id: "preview-pill", in: glass)
+                MessageLine(kind: .success, message: String(localized: "Collé"), countdown: nil, onDismiss: nil)
+            }
+        }
+        .frame(height: 170)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .environment(\.bubbleStyle, .glass)
+        .environment(\.bubbleGlass, model.settings.bubbleGlass)
+        .accessibilityHidden(true)
     }
 }
 

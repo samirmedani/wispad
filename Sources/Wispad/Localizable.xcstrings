@@ -8245,6 +8245,76 @@
         }
       }
     },
+    "Transparent" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear"
+          }
+        }
+      }
+    },
+    "Dépoli" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frosted"
+          }
+        }
+      }
+    },
+    "Intensité" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Intensity"
+          }
+        }
+      }
+    },
+    "Les deux verres d'Apple : transparent ou dépoli." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple's two glasses: clear or frosted."
+          }
+        }
+      }
+    },
+    "Transparent laisse le plus voir ce qu'il y a derrière. Dépoli floute davantage et se lit mieux sur un fond chargé." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear lets the most of what's behind show through. Frosted blurs more and reads better over a busy background."
+          }
+        }
+      }
+    },
+    "Teinte du verre ; à zéro, le verre seul." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Glass tint; at zero, the glass alone."
+          }
+        }
+      }
+    },
+    "Plus forte, elle assombrit le verre (ou l'éclaircit en apparence claire) et rend le texte plus lisible." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stronger, it darkens the glass (or lightens it in light appearance) and makes text easier to read."
+          }
+        }
+      }
+    },
     "Noir profond" : {
       "localizations" : {
         "en" : {
