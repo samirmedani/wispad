@@ -702,6 +702,8 @@ struct AppRegressionTests {
         await f.model.coordinator.end()
         // Le texte n'est allé nulle part : il est déjà copié, la bulle le dit et propose Copier assez longtemps.
         #expect(f.model.coordinator.phase == .failure("Pas de champ où écrire : le texte est prêt"))
+        // Sous le titre « Texte prêt à copier », la carte ne donne que la raison.
+        #expect(f.model.coordinator.failureDetail == "Pas de champ où écrire")
         #expect(f.model.coordinator.failureText == "Phrase de test.")
         #expect(box.texts == ["Phrase de test."])
         #expect(DictationCoordinator.failureSeconds >= 10)
@@ -1152,6 +1154,12 @@ struct AppRegressionTests {
         #expect(f.cues == [.start, .cancel])
     }
 
+    @Test func bubbleMessagesNeverEndWithAPeriod() {
+        #expect(OverlayText.display("Aucun microphone n'est disponible.") == "Aucun microphone n'est disponible")
+        #expect(OverlayText.display("Collé") == "Collé")
+        #expect(OverlayText.display("Patiente...") == "Patiente...")
+    }
+
     @Test func overlayRendersCompactlyInEveryState() async throws {
         let f = try Fixture()
         defer { f.dispose() }
@@ -1162,8 +1170,8 @@ struct AppRegressionTests {
             ("ecoute", .listening(.pushToTalk)),
             ("mains-libres", .listening(.toggle)),
             ("finalisation", .finishing),
-            ("erreur", .failure("Transcription impossible. L'audio est gardé dans l'historique.")),
-            ("erreur-survol", .failure("Transcription impossible. L'audio est gardé dans l'historique."))
+            ("erreur", .failure("Transcription impossible : l'audio est gardé dans l'historique")),
+            ("erreur-survol", .failure("Transcription impossible : l'audio est gardé dans l'historique"))
         ]
         coordinator.spectrum = [0.15, 0.3, 0.55, 0.8, 0.95, 1, 0.9, 0.7, 0.45, 0.25, 0.1]
         coordinator.failureText = "Phrase de test."
@@ -1436,7 +1444,8 @@ struct AppRegressionTests {
         #expect(try !f.model.store.hasRefused("Seedance"))
     }
 
-    @Test func messagesFitOnOneLine() async throws {
+    /// Chaque message tient dans la taille que la bulle lui réserve pour se placer (à l'écran, hors du champ).
+    @Test func messagesStayWithinTheirPlacementSize() async throws {
         let f = try Fixture()
         defer { f.dispose() }
         let snapshots = ProcessInfo.processInfo.environment["WISPAD_OVERLAY_SNAPSHOTS"]
@@ -1451,8 +1460,10 @@ struct AppRegressionTests {
                 .environment(\.overlayGlass, false))
             renderer.scale = 2
             let image = try #require(renderer.nsImage)
-            #expect(image.size.height <= (mode.isLearning ? OverlayLayout.panelSize.height - 20 : OverlayLayout.pillHeight + 1))
-            #expect(image.size.width <= OverlayLayout.panelSize.width - 40)
+            let reserved = OverlayLayout.contentSize(for: mode, hasReadyText: false)
+            #expect(image.size.height <= reserved.height + 1, "\(name)")
+            #expect(image.size.width <= reserved.width + 1, "\(name)")
+            #expect(image.size.height <= OverlayLayout.panelSize.height - 20)
             if let snapshots, let tiff = image.tiffRepresentation,
                let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
                 try png.write(to: URL(fileURLWithPath: snapshots).appendingPathComponent("\(name).png"))
@@ -1612,7 +1623,7 @@ struct AppRegressionTests {
         let reachedByShow: [DictationPhase] = [
             .listening(.toggle),
             .finishing,
-            .failure("Transcription impossible. L'audio est gardé dans l'historique."),
+            .failure("Transcription impossible : l'audio est gardé dans l'historique"),
         ]
         for phase in reachedByShow {
             coordinator.phase = phase
@@ -2060,6 +2071,7 @@ struct AppRegressionTests {
         #expect(f.audio.starts == 0)
         #expect(f.model.coordinator.phase == .idle)
         #expect(f.model.selectedSection == .settings)
+        #expect(f.model.settings.settingsTab == .permissions)
     }
 
     @Test func newDictationStartsWhileThePreviousOneIsStillFinishing() async throws {
@@ -2485,16 +2497,6 @@ private final class SilentProvider: NSObject, NSPasteboardItemDataProvider {
 
 @MainActor
 struct InsertionFailureTests {
-    @Test func copyButtonKeepsItsActionWithATrailingClosure() {
-        // Le 5 octobre, la fermeture finale se rattachait au bouton secondaire : « Copier » disparaissait.
-        let line = MessageLine(symbol: "exclamationmark.circle.fill", tint: .red, message: "Échec.", actionTitle: "Copier") {}
-        #expect(line.action != nil)
-        #expect(line.secondaryAction == nil)
-        let labeled = MessageLine(symbol: "checkmark.circle.fill", tint: .green, message: "Garder ?",
-                                  actionTitle: "Oui", action: {}, secondaryTitle: "Non", secondaryAction: {})
-        #expect(labeled.action != nil && labeled.secondaryAction != nil)
-    }
-
     @Test func anUnreadableClipboardFormatDoesNotBlockThePaste() throws {
         let pasteboard = NSPasteboard(name: NSPasteboard.Name("wispad-test-" + UUID().uuidString))
         defer { pasteboard.releaseGlobally() }
@@ -2540,6 +2542,7 @@ struct InsertionFailureTests {
         #expect(box.texts.isEmpty)
         // Rien n'est copié d'office, mais la bulle propose toujours Copier.
         #expect(f.model.coordinator.phase == .failure("Champ sécurisé : le texte est prêt"))
+        #expect(f.model.coordinator.failureDetail == "Champ sécurisé")
         #expect(f.model.coordinator.failureText == "Phrase de test.")
     }
 

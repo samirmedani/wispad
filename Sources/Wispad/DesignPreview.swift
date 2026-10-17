@@ -26,6 +26,7 @@ import SwiftUI
 /// `--onboarding-step <étape> [--onboarding-state done|failed|progress]` : une étape du premier lancement guidé
 /// avec un état fictif (réussi, problème, en cours), sans aucune demande d'autorisation.
 /// `--shortcut-preview custom|long|disabled|recording` : Réglages › Raccourci avec des raccourcis fictifs.
+/// `--settings-tab general|dictation|formatting|bubble|privacy|permissions|help` : onglet de Réglages.
 /// `--period today|days7|days30|all` : période de l'Accueil et de Consommation (« all » : durée d'utilisation, coût par
 /// mois face aux abonnements).
 @MainActor
@@ -68,6 +69,10 @@ enum DesignPreview {
                 audioURL = url
             }
             try seed(model.store, historyCount: historyCount, audioURL: audioURL)
+            if let index = arguments.firstIndex(of: "--section"), arguments.indices.contains(index + 1),
+               arguments[index + 1] == AppSection.dictionary.rawValue {
+                try seedDictionaryInsights(model.store)
+            }
             if arguments.contains("--details-preview") { try seedDetails(model.store) }
             if arguments.contains("--fallback-preview") { try seedFallbacks(model.store) }
             if arguments.contains("--usage-accuracy-preview") {
@@ -92,6 +97,12 @@ enum DesignPreview {
         }
         if arguments.contains("--fallback-preview") || arguments.contains("--usage-accuracy-preview") { model.selectedSection = .usage }
         if arguments.contains("--blur-recent") { model.settings.blurRecentDictations = true }
+        // `--glass-bubble` : style Verre, pour voir ses réglages et leur aperçu.
+        if arguments.contains("--glass-bubble") { model.settings.bubbleStyle = .glass }
+        if let index = arguments.firstIndex(of: "--settings-tab"), arguments.indices.contains(index + 1),
+           let tab = SettingsTab(rawValue: arguments[index + 1]) {
+            model.settings.settingsTab = tab
+        }
         if let index = arguments.firstIndex(of: "--period"), arguments.indices.contains(index + 1),
            let period = StatsPeriod(rawValue: arguments[index + 1]) {
             model.settings.homePeriod = period
@@ -531,9 +542,51 @@ enum DesignPreview {
             ("Kubernetes", .unknown), ("DeepSeek", .user), ("xAI", .unknown), ("Supabase", .learned(openAI)),
             ("Next.js", .unknown), ("PostgreSQL", .learned(jev)), ("Terraform", .user), ("Figma", .unknown)
         ]
+        // Ce que la reconnaissance avait écrit, pour deux mots appris : l'un corrigé à la main, l'autre réparé souvent.
+        let learnedFrom: [String: (heard: String, source: DictionarySource)] = [
+            "Seedance": ("Sidance", .fieldCorrection), "Grafana": ("grafa na", .repeatedFix)
+        ]
         for (term, origin) in terms {
-            try store.addTerm(term, origin: origin)
+            try store.addTerm(term, origin: origin, heard: learnedFrom[term]?.heard, source: learnedFrom[term]?.source)
         }
+    }
+
+    /// Dictées fictives de l'écran Dictionnaire : deux noms réparés par la correction dans deux dictées, une entrée
+    /// écrite autrement dans les dictées, un nom écrit de deux façons, et quelques termes connus pour la colonne
+    /// « Dictées ».
+    private static func seedDictionaryInsights(_ store: HistoryStore) throws {
+        let now = Date()
+        let dictations: [(raw: String, final: String)] = [
+            ("on branche sentri sur l'app mobile", "On branche Sentry sur l'app mobile."),
+            ("j'ai vu l'erreur dans sentri ce matin", "J'ai vu l'erreur dans Sentry ce matin."),
+            ("les mails partent avec ri send", "Les mails partent avec Resend."),
+            ("il faut une clé ri send pour la prod", "Il faut une clé Resend pour la prod."),
+            ("La build part sur TestFlight ce soir.", "La build part sur TestFlight ce soir."),
+            ("Les testeurs ont reçu TestFlight hier.", "Les testeurs ont reçu TestFlight hier."),
+            ("On attend la revue TestFlight.", "On attend la revue TestFlight."),
+            ("Je relance Testflight demain.", "Je relance Testflight demain."),
+            ("Le lien Testflight a expiré.", "Le lien Testflight a expiré."),
+            ("Les événements arrivent dans PostHog.", "Les événements arrivent dans PostHog."),
+            ("On suit le tunnel dans PostHog chaque lundi.", "On suit le tunnel dans PostHog chaque lundi."),
+            ("Le tableau PostHog montre la rétention.", "Le tableau PostHog montre la rétention."),
+            ("Le composant SwiftUI est prêt, la table vient de Supabase.", "Le composant SwiftUI est prêt, la table vient de Supabase."),
+            ("La maquette Figma est à jour avec SwiftUI.", "La maquette Figma est à jour avec SwiftUI."),
+        ]
+        for (index, dictation) in dictations.enumerated() {
+            try store.insert(DictationRecord(
+                createdAt: now.addingTimeInterval(Double(-(index + 1) * 3_600)),
+                finalText: dictation.final,
+                rawText: dictation.raw,
+                durationSeconds: 4,
+                wordCount: WordCount.count(dictation.final),
+                provider: "xAI",
+                model: "grok-voice-transcribe-2.0",
+                targetApp: "Notes",
+                targetBundle: "com.apple.Notes",
+                insertionStatus: InsertionStatus.inserted.rawValue
+            ))
+        }
+        try store.addTerm("posthog", origin: .user)
     }
 }
 

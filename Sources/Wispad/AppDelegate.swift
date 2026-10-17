@@ -39,6 +39,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             // Avant toute fenêtre (premier lancement guidé compris) : l'apparence choisie, sinon celle de macOS.
             AppearanceSwitcher.apply(model.settings.appearance, animated: false)
             model.overlay.install(model: model)
+            // Réduire le bruit et l'écho : traitement préparé au repos, micro fermé, pour une première dictée rapide.
+            model.prepareVoiceIsolation()
             let hotkeys = HotkeyMonitor()
             hotkeys.start(model: model)
             model.hotkeys = hotkeys

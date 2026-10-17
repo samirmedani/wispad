@@ -18,7 +18,8 @@ struct SettingsPresentationTests {
             SettingsPresentation.selectionCommands, SettingsPresentation.sentData, SettingsPresentation.windowContext,
             SettingsPresentation.retention, SettingsPresentation.learning(hasTypeSafeKey: true),
             SettingsPresentation.learning(hasTypeSafeKey: false), SettingsPresentation.mute,
-            SettingsPresentation.muteMode, SettingsPresentation.diagnostics
+            SettingsPresentation.muteMode, SettingsPresentation.diagnostics, SettingsPresentation.voiceIsolation(),
+            SettingsPresentation.voiceIsolation(refused: true), SettingsPresentation.voiceIsolation(otherMicrophone: true)
         ] + formattingRows
     }
 
@@ -60,7 +61,7 @@ struct SettingsPresentationTests {
             SettingsPresentation.structure(smart: true), SettingsPresentation.selectionCommands,
             SettingsPresentation.sentData, SettingsPresentation.windowContext, SettingsPresentation.retention,
             SettingsPresentation.learning(hasTypeSafeKey: false), SettingsPresentation.mute,
-            SettingsPresentation.muteMode, SettingsPresentation.diagnostics
+            SettingsPresentation.muteMode, SettingsPresentation.diagnostics, SettingsPresentation.voiceIsolation()
         ] + formattingRows
         let sentences = unique.flatMap { [$0.summary].compactMap { $0 } + $0.details }
         #expect(Set(sentences).count == sentences.count)

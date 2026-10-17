@@ -59,7 +59,8 @@ struct DictionaryOriginTests {
                 DictionaryEntry(id: "ancien-1", term: "Seedance", createdAt: Date(timeIntervalSince1970: 1_790_000_000.5), origin: .unknown)
             ])
             #expect(try store.hasRefused("commande"))
-            #expect(try columns(at: path) == ["id", "term", "created_at", "origin", "judge_provider", "judge_model", "confirmed_at"])
+            #expect(try columns(at: path) == ["id", "term", "created_at", "origin", "judge_provider", "judge_model", "confirmed_at",
+                                               "heard", "source"])
 
             // Un mot ajouté ensuite porte son origine ; un mot déjà là garde la sienne, même rouvert.
             try store.addTerm("Vercel", origin: .user)

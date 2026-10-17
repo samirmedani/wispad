@@ -114,15 +114,32 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 
 ## Bulle
 
-- Verre noir (Liquid Glass sur macOS 26+) au-dessus du Dock, sur le bureau comme au-dessus d'une app en plein
-  écran, avec le spectre de la voix (graves au centre) à la cadence de l'écran (120 Hz en ProMotion).
+- Verre fumé noir (Liquid Glass sur macOS 26+), ou verre transparent (voir « Style de la bulle »), au-dessus du
+  Dock, sur le bureau comme au-dessus d'une app en plein écran, avec le spectre de la voix (graves au centre) à la
+  cadence de l'écran (120 Hz en ProMotion).
 - Elle laisse passer les clics, sauf sur ses boutons : ✕ / ■ en mains libres, Copier et Coller d'un texte non
-  écrit, Oui / Non d'un mot appris, ✕ d'un message.
-- Messages (erreur, « Collé », mot appris, relais, texte prêt à copier) sur une ligne, avec une barre qui se vide
-  de droite à gauche avant leur départ. Pointeur sur la bulle, sans clic préalable : une petite ✕ paraît en fondu à
-  droite et le décompte (barre comprise) s'arrête ; il reprend où il en était à la sortie. Un message qui paraît
-  sous le pointeur attend aussi. La ✕ ferme le message tout de suite, sans prendre le focus ni le premier plan à
-  l'app active. La bulle d'enregistrement (spectre, finalisation) n'a ni ✕ ni décompte.
+  écrit, Voir / Annuler l'ajout d'un mot appris, ✕ d'un message.
+- Messages, sans contour : sur une ligne (erreur, « Collé », relais, nouvelle version), 42 points de haut, texte de
+  13 points sur deux lignes au plus, 520 points de large au plus ; en carte de 392 points (texte prêt à copier, mots
+  appris), avec les boutons sur leur propre ligne. Brefs et sans point final (une erreur de macOS terminée par un
+  point le perd). À gauche, une pastille de la couleur du message (rouge : erreur, vert : réussite, vert d'eau :
+  relais, bleu : nouvelle version, orange : texte prêt, violet : mots appris, gris : information) ; son anneau se
+  vide pendant le décompte. Pointeur sur la bulle, sans clic préalable : le décompte (anneau compris) s'arrête et
+  reprend où il en était à la sortie ; sur une ligne, la pastille devient la ✕, sur une carte la ✕ paraît en haut à
+  droite. Rien ne bouge. Un message qui paraît sous le pointeur attend aussi. La ✕ ferme le message tout de suite,
+  sans prendre le focus ni le premier plan à l'app active. La bulle d'enregistrement (spectre, finalisation) n'a ni
+  ✕ ni décompte.
+- **Style de la bulle** (Réglages › Bulle) : **Noir profond** (par défaut) : messages noirs avec un reflet doux sur
+  le haut et une ombre, bulle de dictée en verre fumé noir ; lisible sur tous les fonds. Ou **Verre** : la bulle de
+  dictée (spectre, mains libres et ses boutons, finalisation) et tous les messages passent en Liquid Glass
+  transparent de macOS 26 (matériau translucide avant), sans liseré, clairs ou sombres comme l'apparence de l'app ;
+  le spectre garde ses couleurs, la vague de finalisation et la ✕ se foncent sur un verre clair. Le changement vaut
+  tout de suite. En Verre, deux réglages de plus, les deux verres natifs d'Apple : **Verre** Transparent (par
+  défaut, le plus transparent) ou Dépoli (plus flou, plus lisible sur un fond chargé), et **Intensité**, la teinte
+  posée sur ce verre (25 % par défaut ; à zéro, le verre seul ; au maximum, 70 % d'opacité), sombre en apparence
+  sombre et claire en apparence claire. Un aperçu sous ces réglages montre la bulle de dictée et un message avec le
+  vrai verre, au-dessus d'une page claire et d'un fond sombre ; il suit le curseur, comme la bulle affichée.
+  L'intensité s'enregistre au relâchement du curseur.
 - **Place à l'écran** (Réglages › Bulle et messages) : trois places réglables à main levée sur un schéma quadrillé
   de l'écran, la grille aimantant légèrement les bulles. **Dictée** (spectre et finalisation), **Alertes de
   collage** (texte prêt à copier) et **Messages** (« Collé », mot appris, relais, nouvelle version). Par défaut :
@@ -160,7 +177,7 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   Sombre. Choix rapide par le bouton à droite de « Wispad » en haut de la barre latérale (son icône montre le choix
   en cours, un clic ouvre trois vignettes), ou dans Réglages › Apparence. Toute l'app change aussitôt, en fondu
   (sans fondu avec « Réduire les animations ») : fenêtre, premier lancement guidé, notes de version, bulles d'aide.
-  La bulle de dictée et le schéma de Réglages › Bulle et messages restent sombres. Le choix est gardé après une
+  La bulle en noir profond et le schéma de Réglages › Bulle restent sombres ; la bulle en verre suit l'apparence. Le choix est gardé après une
   relance ou une mise à jour, et posé avant l'ouverture de toute fenêtre.
 - Choix d'affichage mémorisés, retrouvés après avoir quitté et relancé Wispad, chacun enregistré dès qu'il change :
   - période de l'Accueil (7 jours par défaut) ;
@@ -177,8 +194,12 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 
 ## Réglages
 
-Sections, dans l'ordre : Raccourci, Transcription, Correction, Mise en forme, Ton selon l'app, Confidentialité, Apprentissage,
-Général, Autorisations, Diagnostic, Aide et retours. Aucun bloc de texte sous une liste : chaque réglage porte, dans
+Sept onglets en haut de la page, un thème par page : plus besoin de tout faire défiler. **Général** (Raccourci,
+Général, Apparence), **Dictée** (Audio, Transcription, Correction, Apprentissage), **Mise en forme** (Mise en forme,
+Ton selon l'app), **Bulle** (Bulle et messages), **Confidentialité**, **Autorisations**, **Aide** (Diagnostic, Aide et
+retours). Chaque onglet s'ouvre en haut de sa page ; le dernier ouvert est retrouvé au lancement suivant. Un micro
+refusé au moment de dicter ouvre Autorisations, et un point orange y signale une autorisation manquante. Fenêtre
+étroite : les icônes seules, leur nom en bulle d'aide. Aucun bloc de texte sous une liste : chaque réglage porte, dans
 sa rangée, une explication d'une ligne sous son libellé, en langage simple (ni montant, ni chiffre, ni nom de
 modèle). Les détails (fournisseurs et modèles réellement utilisés, coût, délais, ce qui est envoyé ou gardé)
 s'ouvrent dans un popover avec le bouton ⓘ de la rangée ; ceux de la correction suivent les clés enregistrées.
@@ -231,7 +252,7 @@ réussie. « Plus tard » est proposé seulement pour le micro, la touche et l'e
   clavier impossible après 3 s : macOS attend une relance, « Relancer Wispad » rouvre l'app à la même étape (si macOS
   refuse de la fermer, elle s'arrête d'elle-même après le rangement habituel).
 - **Micro** : choix du micro (celui du système par défaut ; le micro choisi sert ensuite aux dictées tant qu'il est
-  branché, sinon celui du système ; Réglages › Général › Micro) et vumètre réel. ✓ quand une vraie voix est
+  branché, sinon celui du système ; Réglages › Dictée › Audio) et vumètre réel. ✓ quand une vraie voix est
   entendue : au moins 0,6 s au-dessus de −48 dBFS et 10 dB au-dessus du bruit de la pièce (un clic, un souffle ou
   un ventilateur ne suffisent pas). Sans voix après 12 s, l'écran dit quoi vérifier, avec « Réessayer » : aussi
   quand le micro ne livre aucun son, ou que son ouverture ne rend pas la main (« Le micro n'a pas pu s'ouvrir ») ;
@@ -305,6 +326,29 @@ téléchargés par Wispad et les réglages devenus inutiles sont effacés.
 
 La trace de chaque dictée donne la source retenue, la raison, les durées, le nombre de mots en désaccord entre flux
 et fichier, l'usage de la correction préparée pendant l'écoute et le report des mots du fichier, jamais le texte.
+
+### Micro
+
+**Réduire le bruit et l'écho du micro** (Réglages › Dictée › Audio, désactivé par défaut) : les dictées passent par le
+traitement de la voix de macOS, celui des appels FaceTime (bruit de fond et écho réduits, gain automatique), pour
+parler loin du Mac ou dans une pièce qui résonne. Pendant une dictée, Centre de contrôle › Mode micro propose aussi
+« Isolation de la voix ». Les autres sons du Mac ne baissent pas (« Couper le son du Mac » reste le seul à le faire).
+Mesures du 17 octobre 2026 sur un MacBook Pro :
+
+- activer le traitement prend environ 0,7 s et change une fois la configuration de l'entrée, 0,3 s plus tard. Wispad
+  l'active au repos, au lancement et quand le réglage s'allume, sans ouvrir le micro (voyant éteint, aucune demande
+  d'autorisation), et attend ce changement avant d'écouter. La première dictée démarre alors en 0,05 s (premier son
+  à 0,16 s, contre 0,6 s au micro standard) ; sans préparation, en 1,1 s. Un changement de configuration au repos
+  garde ce moteur prêt ; pendant l'écoute, il ne la relance que si le moteur s'est arrêté ;
+- le traitement rend la même voix sur 9 voies : une seule est gardée, jamais leur somme. Il livre des paquets de
+  0,1 s ;
+- brancher la sortie du moteur l'empêche de démarrer (erreur -10875) : elle reste débranchée ;
+- refusé (activation ou démarrage impossible, même après un moteur neuf) : la dictée continue au micro standard, et
+  le traitement reste de côté jusqu'à ce que le réglage change ; la rangée le dit. Il ne vaut que pour le micro du
+  système : un autre micro choisi dans Wispad reste en micro standard (le traitement règle aussi la sortie), et la
+  rangée le dit aussi.
+
+Le micro standard, réglage coupé, ne change pas.
 
 ## Correction
 
@@ -504,11 +548,11 @@ Réglages › Mise en forme : **Montants et unités** (symboles, par défaut, ou
 
 ## Ton et consignes
 
-- **Ton selon l'app** (Réglages › Ton selon l'app) : par catégorie (e-mails, messageries, documents, notes, code et
+- **Ton selon l'app** (Réglages › Mise en forme › Ton selon l'app) : par catégorie (e-mails, messageries, documents, notes, code et
   terminal, navigateur, autres apps), « Comme dicté » (par défaut, comportement d'origine), « Soigné » (tournures familières écrites
   en forme standard, « ne » rétabli) ou « Détendu » (tournures gardées, pas de point final pour un message court).
   Le ton ne change que le registre, jamais les mots ni le sens ; le garde-fou de fidélité s'applique toujours.
-- **Consigne sur la sélection** (Réglages › Correction › « Réécrire la sélection sur consigne », actif par défaut) : avec du texte
+- **Consigne sur la sélection** (Réglages › Dictée › Correction › « Réécrire la sélection sur consigne », actif par défaut) : avec du texte
   sélectionné, une dictée qui commence par une consigne d'écriture (« reformule », « traduis », « résume », « corrige »,
   « raccourcis », « rends-le… », « mets ça en… », « rewrite », « translate », « make it… ») réécrit la sélection
   (6 000 caractères au plus) avec les fournisseurs de correction, sans garde-fou de fidélité. Une autre dictée remplace
@@ -535,13 +579,27 @@ Réglages › Mise en forme : **Montants et unités** (symboles, par défaut, ou
   entre-temps. Un résultat ne peut ajouter que les candidats effectivement soumis, sans doublons.
 - Un nom à graphie distinctive ressemblant à une simple flexion (« terraforme » → « Terraform ») est transmis
   au juge, pas ajouté aveuglément. Les accords ordinaires restent exclus par le filtre local.
+- Les noms que la correction répare sont appris aussi, même sans retouche à la main (la plupart des dictées partent
+  sans être relues, et un champ de chat se vide à l'envoi). À la fin de chaque dictée, le texte transcrit et le texte
+  final sont comparés sur ce Mac (`DictionaryInsights`). Un nom réparé dans au moins deux dictées des 90 derniers
+  jours (« revenu quatre » → « RevenueCat ») passe par le même juge, puis la même bulle. Seuls comptent un ou deux mots
+  à graphie de nom (majuscule hors début de phrase, majuscule intérieure, sigle, lettres et chiffres, au moins deux
+  lettres) qui sonnent comme ce qui avait été entendu, avec les mêmes chiffres. Changement de casse seul : graphie
+  marquée seulement (« cli » → « CLI », « openai » → « OpenAI »), jamais une espace retirée (« 12 h » → « 12h »).
+  La grammaire, la ponctuation, l'élision (« que Opus » → « qu'Opus »), les accords, les hésitations, les
+  mots-outils en bord et les mots courants sont ignorés, ainsi qu'une dictée trop réécrite (moins de la moitié des
+  mots gardés). Le juge lit la phrase telle qu'elle a été entendue. Les noms déjà au dictionnaire, refusés, du
+  vocabulaire intégré ou isolés d'une expression connue ne lui sont pas soumis ; un nom qu'il écarte ne lui est
+  plus resoumis avant le prochain lancement (un juge muet n'écarte rien). Jamais avec « Apprendre de mes
+  corrections » coupé, après une sélection réécrite sur consigne, ni pour l'essai du premier lancement. L'analyse
+  de l'historique tourne hors du fil principal ; chaque dictée n'est analysée qu'une fois par lancement.
 - Seuls la phrase dictée et le mot corrigé sont envoyés (à Jev et au modèle de correction) ; le journal ne contient ni mot ni texte.
 
 ### Origine des mots
 
 Chaque mot garde, sur ce Mac, qui l'a ajouté :
 
-- **Toi** : mot ajouté à la main dans l'écran Dictionnaire.
+- **Toi** : mot ajouté à la main dans l'écran Dictionnaire, ou depuis ses suggestions.
 - **Appris automatiquement** : mot corrigé après une dictée et retenu par un juge. Jev (TypeSafe) quand sa note
   suffit (cas net, ou modèle de correction sans réponse) ; sinon le modèle de correction qui a répondu (sans clé
   TypeSafe ou sans réponse de Jev, ou mot douteux pour Jev). Le fournisseur et le modèle notés sont ceux de l'appel
@@ -555,8 +613,8 @@ Chaque mot garde, sur ce Mac, qui l'a ajouté :
   mot ni ne garde le verdict de chaque mot : l'origine n'est pas devinée.
 
 Le dictionnaire affiche par défaut les entrées les plus récentes en haut, dans tous les filtres et dans les deux
-sections. Les en-têtes **Mot / Expression**, **Origine** et **Ajouté le** trient la liste ; un second clic inverse
-le sens, indiqué par une flèche. Le choix reste mémorisé après relance. Le tri par origine groupe Par toi,
+sections. Les en-têtes **Mot / Expression**, **Origine**, **Ajouté le** et **Dictées** trient la liste ; un second
+clic inverse le sens, indiqué par une flèche. **Dictées** trie d'abord les plus dictées. Le choix reste mémorisé après relance. Le tri par origine groupe Par toi,
 Automatique puis Avant le suivi (ou l'inverse), avec les plus récents en tête de chaque groupe. Il ne change ni
 les données conservées ni l'ordre des termes transmis aux fournisseurs.
 
@@ -565,8 +623,8 @@ un seul élément sans espace reste un mot, plusieurs éléments (espaces ou ret
 expression. Les termes existants sont répartis sans être modifiés. Les noms composés peuvent donc être dans
 Expressions et phrases ; ce n'est pas une décision du modèle. Aucune limite de longueur n'est ajoutée.
 
-Les mots utilisent une table compacte Mot / Origine / Ajouté le. Les expressions ont toute la largeur, avec
-retour à la ligne et métadonnées dessous. Leur saisie accepte plusieurs lignes. Ajouter un terme ouvre sa section
+Les mots utilisent une table compacte Mot / Origine / Ajouté le / Dictées. Les expressions ont toute la largeur,
+avec retour à la ligne et métadonnées dessous. Leur saisie accepte plusieurs lignes. Ajouter un terme ouvre sa section
 et remet les filtres à Tous / Toute période pour qu'il reste visible. La recherche est temporaire ; origine et
 période sont mémorisées. Les filtres se croisent, avec un compteur de résultats et un bouton de réinitialisation.
 
@@ -574,6 +632,33 @@ Badges : bleu « Par toi », violet « Automatique », gris « Avant le suivi »
 (« Jev », « DeepSeek », « OpenAI », « xAI »…) reste visible ; l'info-bulle précise le fournisseur, le modèle et
 les dates. La corbeille retire une entrée. L'apprentissage automatique reste ciblé sur les corrections de noms,
 marques et jargon ; il ne mémorise pas des paragraphes entiers.
+
+**Dictées** : nombre de dictées de l'historique dont le texte final contient le terme, en mots entiers, sans
+tenir compte de la casse, des accents ni de la ponctuation ; « Jamais » (« Jamais dicté » pour une expression)
+quand aucune ne le contient. Sous un terme venu d'une correction, « entendu « … » » rappelle ce que la
+reconnaissance avait écrit ; l'info-bulle de l'origine dit aussi d'où il vient (corrigé par toi après une dictée,
+réparé par la correction dans plusieurs dictées, ajouté depuis les suggestions). Le crayon change l'écriture d'une
+entrée (« codex » → « Codex ») sans toucher à son origine ni à sa date ; un terme déjà présent, à la casse près,
+est refusé avec un message.
+
+### Suggestions
+
+En tête de l'écran Dictionnaire, une carte **Suggestions** propose, d'après les dictées des 90 derniers jours,
+calculé sur ce Mac sans rien envoyer et hors du fil principal :
+
+- **Mal entendu dans N dictées** (ou **Mal écrit** pour un changement de casse) : un nom réparé par la correction
+  dans au moins deux dictées et pas encore appris, avec ce qui avait été entendu. **Ajouter** l'ajoute comme
+  « Par toi », avec ce mot entendu.
+- **Écrit ainsi dans N dictées sur M** : une entrée d'un seul mot écrite autrement dans au moins trois dictées et
+  les trois quarts de celles qui la contiennent (« codex » → « Codex »). **Corriger** change son écriture.
+- **Écrit de plusieurs façons** : un nom absent du dictionnaire écrit de plusieurs façons, chacune dans au moins
+  deux dictées, dont une graphie marquée (« TestFlight » / « Testflight »). **Ajouter** ajoute la graphie marquée
+  la plus fréquente.
+
+Une majuscule de début de phrase ne compte jamais. Les noms déjà au dictionnaire, refusés, du vocabulaire intégré
+ou isolés d'une expression connue ne sont pas proposés. ✕ (**Ignorer**) mémorise un refus, comme « Annuler
+l'ajout » dans la bulle : le nom n'est ni reproposé ni appris. Trois suggestions sont affichées, les autres derrière
+« Afficher les N autres » ; jusqu'à quatre, tout est affiché. La carte disparaît quand il n'y a rien à proposer.
 
 Le banc synthétique `scripts/learning-bench.sh` vérifie l'extraction et mesure sa latence. `--live` demande une
 clé dédiée `WISPAD_TEST_TYPESAFE_API_KEY` (et éventuellement `WISPAD_TEST_DEEPSEEK_API_KEY`) et mesure les
@@ -593,18 +678,26 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
 ## Reprise après erreur
 
 - Erreur réseau, de clé ou de quota : l'audio reste dans l'historique ; **Retranscrire** puis **Copier**.
-- Texte qui n'a pas pu être écrit : jamais en silence. La bulle le dit dans une carte avec un titre de 14 points,
-  une explication de 12 points et des boutons de 30 points sur une ligne séparée, avec **Copier** en évidence et
-  **Coller** : « Pas de champ où écrire : le texte est prêt » (focus sur une liste, un bouton, un menu, ou le bureau
-  et les fenêtres du Finder, avant l'envoi), « Le texte n'est pas arrivé dans le champ » (champ lisible resté
-  identique 1 s après ⌘V), « Accessibilité non autorisée : le texte est prêt » (accessibilité retirée dans Réglages
-  Système, ou jamais donnée : ni ⌘V ni lecture du champ), « Collage impossible : le texte est prêt » (app cible
-  fermée ou qui a perdu le premier plan, presse-papiers non modifiable, ⌘V non envoyé), « Champ sécurisé : le texte
-  est prêt ». Le texte est déjà copié, sauf pour un champ sécurisé. 12 s, avec une barre qui se vide (en pause au
-  survol) ; ✕ au survol ou Échap la ferment. Elle ne prend jamais le focus : **Copier** remet le texte au
+- Texte qui n'a pas pu être écrit : jamais en silence. La bulle le dit dans une carte « Texte prêt à copier »
+  (titre de 14 points), avec sous le titre la seule raison (12 points) et des boutons de 30 points sur une ligne
+  séparée, **Copier** en évidence et **Coller** : « Pas de champ où écrire » (focus sur une liste, un bouton, un
+  menu, ou le bureau et les fenêtres du Finder, avant l'envoi), « Le texte n'est pas arrivé dans le champ » (champ
+  lisible resté identique 1 s après ⌘V), « Accessibilité non autorisée » (accessibilité retirée dans Réglages
+  Système, ou jamais donnée : ni ⌘V ni lecture du champ), « Collage impossible » (app cible fermée ou qui a perdu le
+  premier plan, presse-papiers non modifiable, ⌘V non envoyé), « Champ sécurisé ». Le menu de Wispad et le bandeau
+  de la fenêtre, sans ce titre, ajoutent « : le texte est prêt » (« Pas de champ où écrire : le texte est prêt »).
+  Le texte est déjà copié, sauf pour un champ sécurisé. 12 s, avec un anneau qui se vide autour de la pastille
+  orange (en pause au survol) ; ✕ au survol ou Échap la ferment. Elle ne prend jamais le focus : **Copier** remet le texte au
   presse-papiers et confirme « Copié » (1,5 s), **Coller** le colle dans le champ de l'app active (même collage que
   « Coller la dernière dictée »). Le collage garde tous les formats du presse-papiers précédent et refuse les champs
   sécurisés.
+- Champ sécurisé : un champ de mot de passe lu comme tel par l'accessibilité, ou la saisie sécurisée de macOS tenue
+  par l'app où l'on dicte (sauf dans un champ lu, non sécurisé, avec curseur de texte), ou tenue par une app que macOS
+  ne nomme pas. Tenue par une autre app (un champ de mot de passe resté actif dans Chrome, un gestionnaire de mots de
+  passe), elle ne bloque pas le collage ailleurs : le 17 octobre 2026, Chrome la tenait et Wispad refusait de coller
+  dans Codex. L'app qui la tient vient de macOS (`kCGSSessionSecureInputPID`) ; demandée par un outil en ligne de
+  commande, elle est attribuée à l'app au premier plan, donc toujours refusée. Le champ est lu avant ce test : sans
+  champ où écrire, la carte le dit au lieu de parler de champ sécurisé.
 - Champ illisible (Codex, apps Electron, éditeurs dessinés) ou remplacé par un autre pendant la relecture : rien ne
   prouve un échec. Le statut reste « Collage envoyé », sans carte ni copie : la bulle ne revient pas à chaque dictée.
   Si le texte manque, « Coller la dernière dictée » et l'historique le gardent. Aucun apprentissage sur une
@@ -636,8 +729,8 @@ Wispad relit ces autorisations sans jamais les redemander : une demande de macOS
   retiré, la dictée s'arrête comme si on l'avait terminée et la bulle affiche « Accès au micro retiré : dictée
   arrêtée ». Au repos, comme avant, la dictée suivante ne s'ouvre pas et Réglages s'affiche (« Le microphone n'est
   pas autorisé. »).
-- **Accessibilité au moment du collage** : ni ⌘V ni lecture du champ ; le texte est copié et la bulle affiche
-  « Accessibilité non autorisée : le texte est prêt » (voir « Reprise après erreur »). Même chose pour **Coller** et
+- **Accessibilité au moment du collage** : ni ⌘V ni lecture du champ ; le texte est copié et la carte « Texte prêt
+  à copier » affiche « Accessibilité non autorisée » (voir « Reprise après erreur »). Même chose pour **Coller** et
   « Coller la dernière dictée ».
 - **Affichage** : Réglages › Autorisations et l'alerte de la barre latérale sont relus à l'ouverture de la fenêtre ou
   de Réglages et à chaque retour dans Wispad (par exemple depuis Réglages Système) ; le premier lancement guidé les
@@ -658,7 +751,7 @@ Wispad relit ces autorisations sans jamais les redemander : une demande de macOS
   enfoncée) : le collage l'attend 5 s au plus et part dès qu'elle est relâchée, toujours dans la même app (sinon
   « Pas de champ où écrire »). Le 17 octobre 2026, une touche tenue 2,4 s juste après une dictée faisait échouer le
   collage, qui n'attendait que 0,8 s. Toujours tenue au bout des 5 s : aucun ⌘V, la carte « Texte prêt » nomme la
-  touche (« Touche ⇧ maintenue : le texte est prêt ») et Coller la colle d'un clic. Échap pendant l'attente annule la
+  touche (« Touche ⇧ maintenue ») et Coller la colle d'un clic. Échap pendant l'attente annule la
   dictée.
 - Une app qui a perdu le premier plan n'est pas réactivée de force : la bulle propose de récupérer le texte.
 - Lectures d'accessibilité bornées au collage : champ actif 0,3 s avant ⌘V, confirmation 1 s après. Une app qui
@@ -913,7 +1006,7 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
 
 ## Aide et retours
 
-Réglages › Aide et retours, en bas de l'écran : une ligne d'explication (« Sur GitHub : seules les versions de
+Réglages › Aide › Aide et retours : une ligne d'explication (« Sur GitHub : seules les versions de
 Wispad et de macOS sont préremplies. ») et trois liens. « Signaler un problème » et « Proposer une idée » sont
 aussi dans le menu de la barre des menus, juste avant Quitter, et dans le menu Aide. Chaque lien ouvre sa page dans
 le navigateur ; depuis un menu, la fenêtre de Wispad ne s'ouvre pas.
@@ -928,5 +1021,5 @@ le navigateur ; depuis un menu, la fenêtre de Wispad ne s'ouvre pas.
 
 ## Diagnostic
 
-Réglages › Diagnostic exporte un JSON local : autorisations, raccourci, bulle, durées et API des 50 dernières
+Réglages › Aide › Diagnostic exporte un JSON local : autorisations, raccourci, bulle, durées et API des 50 dernières
 tentatives. Aucun texte dicté, audio, contexte, chemin ni clé. Rien n'est envoyé automatiquement.

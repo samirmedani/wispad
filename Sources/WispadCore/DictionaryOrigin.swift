@@ -40,6 +40,16 @@ public enum DictionaryOrigin: Equatable, Sendable {
     }
 }
 
+/// D'où vient un terme, en plus de qui l'a décidé (`DictionaryOrigin`).
+public enum DictionarySource: String, CaseIterable, Sendable {
+    /// Corrigé à la main dans le champ, juste après une dictée.
+    case fieldCorrection = "field"
+    /// Réparé par la correction dans plusieurs dictées (`DictionaryInsights`).
+    case repeatedFix = "fix"
+    /// Ajouté depuis les suggestions de l'écran Dictionnaire.
+    case suggestion
+}
+
 extension DictionaryOrigin {
     static let userValue = "user"
 
@@ -114,44 +124,57 @@ public enum DictionaryKind: String, CaseIterable, Codable, Sendable {
 
 extension DictionaryFilter {
     /// Les filtres se croisent ; les compteurs d’origine restent ceux du dictionnaire complet.
+    /// `usage` : nombre de dictées par identifiant d'entrée, pour le tri par usage.
     public func matchingEntries(in entries: [DictionaryEntry], period: DictionaryPeriod, search: String,
-                                sort: DictionarySort = .newest,
+                                sort: DictionarySort = .newest, usage: [String: Int] = [:],
                                 now: Date = Date(), calendar: Calendar = .current) -> [DictionaryEntry] {
         let query = search.trimmingCharacters(in: .whitespacesAndNewlines)
         let start = period.startDate(now: now, calendar: calendar)
         return entries.filter { entry in
             includes(entry) && (start.map { entry.createdAt >= $0 } ?? true) &&
                 (query.isEmpty || entry.term.localizedStandardContains(query))
-        }.sorted(by: sort.precedes)
+        }.sorted { sort.precedes($0, $1, usage: usage) }
     }
 }
 
 /// Tri d'affichage seulement : ne change ni le stockage ni l'ordre des indices envoyés aux fournisseurs.
 public enum DictionarySort: String, Codable, CaseIterable, Sendable {
     case newest, oldest, originAscending, originDescending, termAscending, termDescending
+    /// Nombre de dictées où apparaît l'entrée : les plus dictées d'abord, ou les moins dictées.
+    case usageDescending, usageAscending
 
-    public enum Column: Sendable { case date, origin, term }
+    public enum Column: Sendable { case date, origin, term, usage }
 
     public var column: Column {
         switch self {
         case .newest, .oldest: return .date
         case .originAscending, .originDescending: return .origin
         case .termAscending, .termDescending: return .term
+        case .usageDescending, .usageAscending: return .usage
         }
     }
 
-    public var ascending: Bool { self == .oldest || self == .originAscending || self == .termAscending }
+    public var ascending: Bool { self == .oldest || self == .originAscending || self == .termAscending || self == .usageAscending }
 
     public func selecting(_ column: Column) -> Self {
         switch column {
         case .date: return self == .newest ? .oldest : .newest
         case .origin: return self == .originAscending ? .originDescending : .originAscending
         case .term: return self == .termAscending ? .termDescending : .termAscending
+        case .usage: return self == .usageDescending ? .usageAscending : .usageDescending
         }
     }
 
     public func precedes(_ lhs: DictionaryEntry, _ rhs: DictionaryEntry) -> Bool {
+        precedes(lhs, rhs, usage: [:])
+    }
+
+    /// `usage` : nombre de dictées par identifiant d'entrée ; une entrée absente n'apparaît dans aucune.
+    public func precedes(_ lhs: DictionaryEntry, _ rhs: DictionaryEntry, usage: [String: Int]) -> Bool {
         switch column {
+        case .usage:
+            let left = usage[lhs.id] ?? 0, right = usage[rhs.id] ?? 0
+            if left != right { return ascending ? left < right : left > right }
         case .date:
             if lhs.createdAt != rhs.createdAt {
                 return ascending ? lhs.createdAt < rhs.createdAt : lhs.createdAt > rhs.createdAt

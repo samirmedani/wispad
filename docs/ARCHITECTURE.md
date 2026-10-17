@@ -131,7 +131,12 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
    la zone et replace la bulle affichée sur son écran (retenu par son numéro) ; `FrameTicker` refait le lien
    d'affichage du spectre si son écran a disparu. Les messages de la bulle partent seuls (`MessageTimer`, décompte
    `MessageCountdown` de WispadCore) ; `OverlayController` met ce décompte en pause pendant le survol
-   (`DictationCoordinator.holdMessages`) et la ✕ appelle `closeMessage`.
+   (`DictationCoordinator.holdMessages`) et la ✕ appelle `closeMessage`. `OverlayCluster` montre la bulle de dictée
+   (verre fumé, `OverlayPill`) ou un message (`MessageBubble` : `MessageLine` ou `MessageCard`, pastille
+   `CountdownBadge` dont l'anneau lit le décompte). Leur fond (`MessageSurface`) suit `AppSettings.bubbleStyle` :
+   noir profond, ou Liquid Glass ; en verre, la bulle de dictée aussi (`OverlayGlass` sans liseré) et le panneau
+   prend l'apparence de l'app. Le verre vient de `AppSettings.bubbleGlass` (`BubbleGlass` : `Glass.clear` ou
+   `Glass.regular`, et `.tint` dont l'opacité suit l'intensité), passé par l'environnement à tous les éléments.
    Le callback final de `AppDependencies.insert` signale ⌘V avant la relecture d'accessibilité :
    `FinishJob.pasteSent` retire le spectre lorsque seule la confirmation reste. Le job reste dans la file jusqu'à
    la restauration du presse-papiers ; une autre dictée en cours garde l'overlay. Un échec reconnu ensuite affiche
@@ -163,8 +168,8 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
   `DictionaryKind` classe le texte sans changer la base. Section, origine et période sont dans `AppSettings` ;
   recherche éphémère, filtrage pur dans `DictionaryFilter.matchingEntries`.
 - **Notification** : `DictationCoordinator` regroupe jusqu'à trois ajouts dans `learningOfferedTerms` ;
-  `LearningNoticePill` les annonce avec Voir / Annuler l'ajout. Le panneau reste fixe, assez haut pour cette carte,
-  tandis que les autres messages gardent leur pilule compacte. Une dictée suspend et remet en file le groupe.
+  `MessageBubble` les annonce dans une `MessageCard` avec Voir / Annuler l'ajout. Le panneau reste fixe, assez haut
+  pour cette carte, tandis que les autres messages tiennent sur une ligne. Une dictée suspend et remet en file le groupe.
 - **Concurrence** : `AppModel.considerLearning` revalide les candidats après l'attente puis `learn` relit les
   refus et déduplique avant écriture. Couper l'apprentissage pendant le jugement empêche un ajout tardif.
 
@@ -347,7 +352,12 @@ ne réécrit jamais un fichier abîmé (les clés de sa partie intacte servent).
   avec le build Debug ; options d'état : `--onboarding-step <étape>` (welcome, permissions, microphone, provider,
   shortcut, trial, finish) avec `--onboarding-state done|failed|progress` (états fictifs, aucune autorisation
   demandée ni micro ouvert), `--shortcut-preview custom|long|disabled|recording` (Réglages › Raccourci avec des
-  raccourcis fictifs), `--customer-preview`, `-AppleLanguages "(en)"`.
+  raccourcis fictifs), `--settings-tab general|dictation|formatting|bubble|privacy|permissions|help` (onglet de
+  Réglages, `SettingsTab`), `--glass-bubble` (style Verre et ses réglages ; le verre lui-même ne se rend qu'à
+  l'écran), `--customer-preview`, `-AppleLanguages "(en)"`.
+- Toutes les bulles et leurs messages, hors écran : `Wispad --bubble-gallery <dossier>` avec le build Debug. Une
+  planche PNG par famille (dictée, texte prêt, erreurs, messages, survol), rendue avec les vues et les textes de l'app,
+  sans l'effet de verre de macOS 26.
 - Fluidité de l'historique, hors écran : `Wispad --design-preview --offscreen --history-count 1000
   --performance-probe [--scroll-steps 240]` avec le build Debug. Lignes `PERFORMANCE` : deux ouvertures de l'écran
   (temps, vues natives, lignes rendues), puis un défilement simulé vers le bas et vers le haut (temps par étape :

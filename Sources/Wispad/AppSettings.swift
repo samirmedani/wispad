@@ -24,6 +24,43 @@ enum AppSection: String, CaseIterable, Identifiable, Codable {
     }
 }
 
+/// Onglets de Réglages : chaque thème tient sur sa page, sans faire défiler tous les réglages.
+enum SettingsTab: String, CaseIterable, Identifiable, Codable {
+    case general
+    case dictation
+    case formatting
+    case bubble
+    case privacy
+    case permissions
+    case help
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .general: return String(localized: "Général")
+        case .dictation: return String(localized: "Dictée")
+        case .formatting: return String(localized: "Mise en forme")
+        case .bubble: return String(localized: "Bulle")
+        case .privacy: return String(localized: "Confidentialité")
+        case .permissions: return String(localized: "Autorisations")
+        case .help: return String(localized: "Aide")
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .general: return "gearshape"
+        case .dictation: return "waveform"
+        case .formatting: return "textformat"
+        case .bubble: return "bubble.left"
+        case .privacy: return "hand.raised"
+        case .permissions: return "checkmark.shield"
+        case .help: return "questionmark.circle"
+        }
+    }
+}
+
 struct AppSettings: Codable, Equatable {
     var provider: ProviderID = .xai
     var xaiModel = ProviderID.xai.defaultLiveModel
@@ -53,6 +90,9 @@ struct AppSettings: Codable, Equatable {
     var onboardingResume = ""
     /// Micro choisi (identifiant CoreAudio). Vide, ou micro débranché : celui du système.
     var microphoneUID = ""
+    /// Réduire le bruit et l'écho du micro (traitement de la voix de macOS). Désactivé par défaut : il retarde le
+    /// premier démarrage du micro d'environ une seconde.
+    var voiceIsolation = false
     var retention: RetentionMode = .temporary
     var temporaryHours = 24
     var maxStorageMB = 250
@@ -80,6 +120,8 @@ struct AppSettings: Codable, Equatable {
     /// Taxe ajoutée aux prix comparés dans Consommation › Tout, en pourcentage (20 % par défaut, la TVA française).
     var usageTaxRate = SalesTax.defaultRate
     var lastSection: AppSection = .home
+    /// Dernier onglet ouvert dans Réglages.
+    var settingsTab: SettingsTab = .general
     var showsOptionalKeys = false
     var dictionaryOriginFilter: DictionaryFilter = .all
     var dictionaryPeriod: DictionaryPeriod = .all
@@ -89,6 +131,10 @@ struct AppSettings: Codable, Equatable {
     var overlayPlacement = OverlayPlacement()
     /// Apparence de l'app (Réglages › Apparence, ou le bouton de la barre latérale) : celle de macOS par défaut.
     var appearance: AppAppearance = .system
+    /// Style de la bulle et de ses messages (Réglages › Bulle et messages) : noir profond par défaut, ou verre.
+    var bubbleStyle: BubbleStyle = .black
+    /// Verre du style Verre : transparent ou dépoli, et intensité de sa teinte.
+    var bubbleGlass = BubbleGlass()
 
     init() {}
 
@@ -127,6 +173,7 @@ struct AppSettings: Codable, Equatable {
         onboardingCompleted = value(.onboardingCompleted, true)
         onboardingResume = value(.onboardingResume, defaults.onboardingResume)
         microphoneUID = value(.microphoneUID, defaults.microphoneUID)
+        voiceIsolation = value(.voiceIsolation, defaults.voiceIsolation)
         retention = value(.retention, defaults.retention)
         temporaryHours = number(.temporaryHours, defaults.temporaryHours, in: Self.temporaryHoursRange)
         maxStorageMB = number(.maxStorageMB, defaults.maxStorageMB, in: Self.maxStorageMBRange)
@@ -147,6 +194,7 @@ struct AppSettings: Codable, Equatable {
         usagePeriod = value(.usagePeriod, defaults.usagePeriod)
         usageTaxRate = number(.usageTaxRate, defaults.usageTaxRate, in: SalesTax.range)
         lastSection = value(.lastSection, defaults.lastSection)
+        settingsTab = value(.settingsTab, defaults.settingsTab)
         showsOptionalKeys = value(.showsOptionalKeys, defaults.showsOptionalKeys)
         dictionaryOriginFilter = value(.dictionaryOriginFilter, defaults.dictionaryOriginFilter)
         dictionaryPeriod = value(.dictionaryPeriod, defaults.dictionaryPeriod)
@@ -154,6 +202,8 @@ struct AppSettings: Codable, Equatable {
         dictionarySort = value(.dictionarySort, defaults.dictionarySort)
         overlayPlacement = value(.overlayPlacement, defaults.overlayPlacement)
         appearance = value(.appearance, defaults.appearance)
+        bubbleStyle = value(.bubbleStyle, defaults.bubbleStyle)
+        bubbleGlass = value(.bubbleGlass, defaults.bubbleGlass)
     }
 
     /// Bornes des réglages de conservation, partagées avec leurs contrôles dans Réglages.

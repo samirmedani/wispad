@@ -67,7 +67,8 @@ struct OverlayPlacementAppTests {
         defer { box.model.coordinator.failureText = nil }
         let frame = try #require(box.model.overlay.targetFrame(for: .failure("Le texte n'est pas arrivé dans le champ")))
         let visible = screen.visibleFrame
-        let bubble = CGRect(x: frame.midX - 210, y: frame.minY + OverlayLayout.bottomMargin, width: 420, height: 122)
+        let size = OverlayLayout.contentSize(for: .failure(""), hasReadyText: true)
+        let bubble = CGRect(x: frame.midX - size.width / 2, y: frame.minY + OverlayLayout.bottomMargin, width: size.width, height: size.height)
         #expect(visible.insetBy(dx: -1, dy: -1).contains(bubble))
         #expect(bubble.maxX > visible.midX && bubble.maxY > visible.midY)
     }

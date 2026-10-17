@@ -381,16 +381,6 @@
         }
       }
     },
-    "Ajoute au dictionnaire les noms que tu corriges après une dictée." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Adds the names you fix after a dictation to the dictionary."
-          }
-        }
-      }
-    },
     "Ajouté le %@" : {
       "localizations" : {
         "en" : {
@@ -3439,12 +3429,12 @@
         }
       }
     },
-    "Historique indisponible. Copie le texte avant de fermer." : {
+    "Historique indisponible : copie le texte avant de fermer" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "History unavailable. Copy the text before closing."
+            "value" : "History unavailable: copy the text before closing"
           }
         }
       }
@@ -3909,32 +3899,32 @@
         }
       }
     },
-    "Pas de champ où écrire : le texte est prêt" : {
+    "Pas de champ où écrire" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No field to write in: the text is ready"
+            "value" : "No field to write in"
           }
         }
       }
     },
-    "Champ sécurisé : le texte est prêt" : {
+    "%@ : le texte est prêt" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Secure field: the text is ready"
+            "value" : "%@: the text is ready"
           }
         }
       }
     },
-    "Collage impossible : le texte est prêt" : {
+    "Collage impossible" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't paste: the text is ready"
+            "value" : "Couldn't paste"
           }
         }
       }
@@ -5361,12 +5351,12 @@
         }
       }
     },
-    "Transcription impossible. L'audio est gardé dans l'historique." : {
+    "Transcription impossible : l'audio est gardé dans l'historique" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Transcription failed. The audio is kept in History."
+            "value" : "Transcription failed: the audio is kept in History"
           }
         }
       }
@@ -8185,12 +8175,162 @@
         }
       }
     },
-    "Où la bulle de dictée et ses messages apparaissent à l'écran." : {
+    "Style de la bulle, et où elle et ses messages apparaissent à l'écran." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Where the dictation bubble and its messages appear on screen."
+            "value" : "Bubble style, and where it and its messages appear on screen."
+          }
+        }
+      }
+    },
+    "Style de la bulle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bubble style"
+          }
+        }
+      }
+    },
+    "Audio" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audio"
+          }
+        }
+      }
+    },
+    "Bulle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bubble"
+          }
+        }
+      }
+    },
+    "Noir profond, ou verre transparent comme macOS." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deep black, or clear glass like macOS."
+          }
+        }
+      }
+    },
+    "Le verre laisse voir ce qu'il y a derrière et suit l'apparence de l'app, claire ou sombre." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Glass lets what's behind show through and follows the app's light or dark appearance."
+          }
+        }
+      }
+    },
+    "Il vaut pour la bulle de dictée comme pour ses messages ; le spectre garde ses couleurs." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "It applies to the dictation bubble and its messages; the spectrum keeps its colors."
+          }
+        }
+      }
+    },
+    "Transparent" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear"
+          }
+        }
+      }
+    },
+    "Dépoli" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frosted"
+          }
+        }
+      }
+    },
+    "Intensité" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Intensity"
+          }
+        }
+      }
+    },
+    "Les deux verres d'Apple : transparent ou dépoli." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple's two glasses: clear or frosted."
+          }
+        }
+      }
+    },
+    "Transparent laisse le plus voir ce qu'il y a derrière. Dépoli floute davantage et se lit mieux sur un fond chargé." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear lets the most of what's behind show through. Frosted blurs more and reads better over a busy background."
+          }
+        }
+      }
+    },
+    "Teinte du verre ; à zéro, le verre seul." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Glass tint; at zero, the glass alone."
+          }
+        }
+      }
+    },
+    "Plus forte, elle assombrit le verre (ou l'éclaircit en apparence claire) et rend le texte plus lisible." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stronger, it darkens the glass (or lightens it in light appearance) and makes text easier to read."
+          }
+        }
+      }
+    },
+    "Noir profond" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deep black"
+          }
+        }
+      }
+    },
+    "Verre" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Glass"
           }
         }
       }
@@ -8545,12 +8685,12 @@
         }
       }
     },
-    "Accessibilité non autorisée : le texte est prêt" : {
+    "Accessibilité non autorisée" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Accessibility not allowed: the text is ready"
+            "value" : "Accessibility not allowed"
           }
         }
       }
@@ -9053,12 +9193,12 @@
         }
       }
     },
-    "« Système » suit macOS. La bulle de dictée reste sombre." : {
+    "« Système » suit macOS. La bulle garde son style, choisi dans l'onglet Bulle." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“System” follows macOS. The dictation bubble stays dark."
+            "value" : "“System” follows macOS. The bubble keeps its own style, chosen in the Bubble tab."
           }
         }
       }
@@ -9253,22 +9393,442 @@
         }
       }
     },
-    "Touche %@ maintenue : le texte est prêt" : {
+    "Touche %@ maintenue" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ key held: your text is ready"
+            "value" : "%@ key held"
           }
         }
       }
     },
-    "Touches %@ maintenues : le texte est prêt" : {
+    "Touches %@ maintenues" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ keys held: your text is ready"
+            "value" : "%@ keys held"
+          }
+        }
+      }
+    },
+    "« %@ »" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@”"
+          }
+        }
+      }
+    },
+    "« %@ » %lld fois" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%1$@” %2$lld times"
+          }
+        }
+      }
+    },
+    "« %@ » est déjà dans le dictionnaire." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” is already in the dictionary."
+          }
+        }
+      }
+    },
+    "Afficher les %lld autres" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show %lld more"
+          }
+        }
+      }
+    },
+    "Afficher moins" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show less"
+          }
+        }
+      }
+    },
+    "Ajoute au dictionnaire les noms que tu corriges ou que la correction répare souvent." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adds names you correct, or that correction often fixes, to the dictionary."
+          }
+        }
+      }
+    },
+    "Ajouté depuis les suggestions" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Added from suggestions"
+          }
+        }
+      }
+    },
+    "Ajouter « %@ » au dictionnaire" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add “%@” to the dictionary"
+          }
+        }
+      }
+    },
+    "Aucune dictée ne contient ce terme" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No dictation contains this term"
+          }
+        }
+      }
+    },
+    "Calculé sur ce Mac à partir de tes dictées des 90 derniers jours. Rien n'est envoyé." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Computed on this Mac from your dictations of the last 90 days. Nothing is sent."
+          }
+        }
+      }
+    },
+    "Corrigé par toi juste après une dictée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Corrected by you right after a dictation"
+          }
+        }
+      }
+    },
+    "Corriger" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fix"
+          }
+        }
+      }
+    },
+    "D'après tes dictées" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Based on your dictations"
+          }
+        }
+      }
+    },
+    "Dans %lld dictées" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In %lld dictations"
+          }
+        }
+      }
+    },
+    "Dans 1 dictée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In 1 dictation"
+          }
+        }
+      }
+    },
+    "Écrire « %@ » au lieu de « %@ »" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Write “%1$@” instead of “%2$@”"
+          }
+        }
+      }
+    },
+    "Écrit ainsi dans %lld dictées sur %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Written this way in %1$lld of %2$lld dictations"
+          }
+        }
+      }
+    },
+    "Écrit de plusieurs façons : %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Written several ways: %@"
+          }
+        }
+      }
+    },
+    "Écriture" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spelling"
+          }
+        }
+      }
+    },
+    "entendu « %@ »" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "heard as “%@”"
+          }
+        }
+      }
+    },
+    "Entendu « %@ »" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Heard as “%@”"
+          }
+        }
+      }
+    },
+    "Ignorer : « %@ » ne sera plus proposé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ignore: “%@” won't be suggested again"
+          }
+        }
+      }
+    },
+    "Ignorer « %@ »" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ignore “%@”"
+          }
+        }
+      }
+    },
+    "Jamais" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Never"
+          }
+        }
+      }
+    },
+    "Jamais dicté" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Never dictated"
+          }
+        }
+      }
+    },
+    "Mal écrit dans %lld dictées : %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Misspelled in %1$lld dictations: %2$@"
+          }
+        }
+      }
+    },
+    "Mal entendu dans %lld dictées : %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Misheard in %1$lld dictations: %2$@"
+          }
+        }
+      }
+    },
+    "Modifier cette expression" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit this phrase"
+          }
+        }
+      }
+    },
+    "Modifier l'écriture" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit spelling"
+          }
+        }
+      }
+    },
+    "Modifier l'écriture de « %@ »" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit the spelling of “%@”"
+          }
+        }
+      }
+    },
+    "Nombre de dictées où le terme apparaît" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Number of dictations containing the term"
+          }
+        }
+      }
+    },
+    "Réparé par la correction dans plusieurs dictées" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fixed by correction in several dictations"
+          }
+        }
+      }
+    },
+    "Suggestions" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suggestions"
+          }
+        }
+      }
+    },
+    "Un nom que la correction répare dans deux dictées (« revenu quatre » → « RevenueCat ») passe par le même juge." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A name that correction fixes in two dictations (“revenue cut” → “RevenueCat”) goes through the same judge."
+          }
+        }
+      }
+    },
+    "Indisponible avec ce micro : les dictées passent par le micro standard." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unavailable with this microphone: dictations use the standard microphone."
+          }
+        }
+      }
+    },
+    "Le micro choisi dans Wispad n'est pas celui du système : il reste en micro standard." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The microphone chosen in Wispad isn't the system one: it stays a standard microphone."
+          }
+        }
+      }
+    },
+    "Wispad le prépare au repos, sans ouvrir le micro : la dictée démarre aussi vite qu'avant." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wispad prepares it while idle, without opening the microphone: dictation starts as fast as before."
+          }
+        }
+      }
+    },
+    "Pendant une dictée, Centre de contrôle › Mode micro propose aussi « Isolation de la voix », plus marquée." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "During a dictation, Control Center › Mic Mode also offers the stronger “Voice Isolation”."
+          }
+        }
+      }
+    },
+    "Réduire le bruit et l'écho du micro" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reduce microphone noise and echo"
+          }
+        }
+      }
+    },
+    "Si ce micro ne le permet pas, Wispad reprend le micro standard." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "If this microphone doesn't support it, Wispad goes back to the standard microphone."
+          }
+        }
+      }
+    },
+    "Utile quand tu parles loin du Mac ou dans une pièce qui résonne." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Helps when you speak far from the Mac or in a room with echo."
+          }
+        }
+      }
+    },
+    "Utilise le traitement de la voix de macOS, celui des appels FaceTime : bruit de fond et écho réduits, volume de la voix ajusté." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uses macOS voice processing, the one FaceTime calls use: less background noise and echo, voice level adjusted."
           }
         }
       }

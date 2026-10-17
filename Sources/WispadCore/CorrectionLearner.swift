@@ -158,7 +158,7 @@ public enum CorrectionLearner {
 
     // MARK: - Ressemblance
 
-    private static func strip(_ word: String) -> String {
+    static func strip(_ word: String) -> String {
         word.trimmingCharacters(in: punctuationAndSymbols)
     }
 
@@ -178,7 +178,7 @@ public enum CorrectionLearner {
         return first.isUppercase || innerCapital || digit
     }
 
-    private static func isInflection(_ old: String, _ new: String) -> Bool {
+    static func isInflection(_ old: String, _ new: String) -> Bool {
         let (short, long) = old.count <= new.count ? (old, new) : (new, old)
         guard long.hasPrefix(short) else { return false }
         return ["s", "x", "e", "es", "ent", "er", "ez"].contains(String(long.dropFirst(short.count)))

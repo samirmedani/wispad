@@ -118,6 +118,10 @@ struct TextInsertionTests {
         #expect(DictationCoordinator.readyMessage(for: .failed, heldModifiers: ModifierMask.option | ModifierMask.function)
                 == "Touches ⌥ fn maintenues : le texte est prêt")
         #expect(DictationCoordinator.readyMessage(for: .failed) == "Le texte n'est pas arrivé dans le champ")
+        // La carte a déjà le titre « Texte prêt à copier » : sa ligne ne le répète pas.
+        #expect(DictationCoordinator.readyReason(for: .failed, heldModifiers: ModifierMask.shift) == "Touche ⇧ maintenue")
+        #expect(DictationCoordinator.readyReason(for: .noTarget) == "Pas de champ où écrire")
+        #expect(DictationCoordinator.readyReason(for: .pending, accessibilityRefused: true) == "Accessibilité non autorisée")
     }
 
     @Test func failureToSendIsStillAnActualFailure() async {
@@ -154,6 +158,34 @@ struct TextInsertionTests {
         f.pid = 42_424; f.field.isSecure = true
         #expect(await f.insert() == .refusedSecure)
         #expect(f.keys == 0)
+    }
+
+    /// La saisie sécurisée tenue par une autre app (Chrome et un champ de mot de passe) ne bloque pas le collage ici.
+    @Test func secureInputHeldByAnotherAppDoesNotBlockThePaste() async {
+        let f = InsertionFixture(); defer { f.dispose() }
+        var system = f.system
+        system.secureInput = { true }
+        system.secureInputHolder = { 69_232 }
+        #expect(await f.insert(system: system) == .inserted)
+        #expect(f.keys == 1)
+    }
+
+    /// Tenue par l'app visée, ou par une app que macOS ne nomme pas : un champ illisible peut être un mot de passe,
+    /// rien n'est collé ; un champ lu, non sécurisé, avec curseur, reçoit le texte.
+    @Test func secureInputHeldByTheTargetOrAnUnknownAppStillProtects() async {
+        let f = InsertionFixture(); defer { f.dispose() }
+        var system = f.system
+        system.secureInput = { true }
+        system.secureInputHolder = { nil }
+        #expect(await f.insert(system: system) == .refusedSecure)
+        system.secureInputHolder = { 42_424 }
+        let readable = f.field
+        f.field = InsertionField()
+        #expect(await f.insert(system: system) == .refusedSecure)
+        #expect(f.keys == 0)
+        f.field = readable
+        #expect(await f.insert(system: system) == .inserted)
+        #expect(f.keys == 1)
     }
 
     @Test func aFocusChangeWhileReadingDoesNotStealTheForeground() async {

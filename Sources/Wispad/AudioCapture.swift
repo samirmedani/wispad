@@ -30,10 +30,15 @@ final class AudioCapture: @unchecked Sendable {
     private var wav: WAVStream?
     private var analyzer = SpectrumAnalyzer()
     private let inputChoice = OSAllocatedUnfairLock<String?>(initialState: nil)
+    private let isolationChoice = OSAllocatedUnfairLock(initialState: false)
+    /// Le traitement de la voix a refusé de démarrer : micro standard jusqu'à ce que le réglage change.
+    private let isolationRefusal = OSAllocatedUnfairLock(initialState: false)
     private let pcmSink = OSAllocatedUnfairLock<(@Sendable (Data) -> Void)?>(initialState: nil)
     private let interruptionSink = OSAllocatedUnfairLock<(@Sendable () -> Void)?>(initialState: nil)
     /// Micro réellement réglé sur le moteur (file `control` seulement) ; nil : celui du système.
     private var appliedInput: String?
+    /// Traitement de la voix réellement actif sur le moteur (file `control` seulement).
+    private var appliedIsolation = false
     /// Écoute des reconfigurations du moteur actuel (file `control` seulement).
     private var configurationObserver: NSObjectProtocol?
     /// Démarrages demandés et abandonnés (délai dépassé) : un démarrage abandonné se referme seul.
@@ -50,6 +55,22 @@ final class AudioCapture: @unchecked Sendable {
         get { inputChoice.withLock { $0 } }
         set { inputChoice.withLock { $0 = newValue } }
     }
+
+    /// Réduire le bruit et l'écho (Réglages) pour la prochaine écoute : traitement de la voix de macOS, celui des
+    /// appels FaceTime. Changer ce choix redonne sa chance à un traitement refusé.
+    var voiceIsolation: Bool {
+        get { isolationChoice.withLock { $0 } }
+        set {
+            let changed = isolationChoice.withLock { current -> Bool in
+                defer { current = newValue }
+                return current != newValue
+            }
+            if changed { isolationRefusal.withLock { $0 = false } }
+        }
+    }
+
+    /// Le traitement de la voix n'a pas démarré avec ce micro : les dictées passent par le micro standard.
+    var voiceIsolationRefused: Bool { isolationRefusal.withLock { $0 } }
 
     /// Posé sur le fil principal, appelé sur le fil du micro : sous verrou, car un démarrage abandonné (micro trop
     /// lent) peut encore livrer un paquet pendant que la dictée suivante pose le sien.
@@ -182,31 +203,48 @@ final class AudioCapture: @unchecked Sendable {
     }
 
     /// File `control` : règle le micro, lit son format, branche la conversion et démarre le moteur.
-    private func runEngine(fresh: Bool) throws {
+    /// `retried` : un moteur neuf a déjà remplacé un moteur préparé qui refusait de démarrer.
+    private func runEngine(fresh: Bool, retried: Bool = false) throws {
         // Micro choisi et toujours branché ; sinon celui du système. Sans choix, rien n'est lu ni changé.
         let wanted = inputDeviceUID.flatMap { InputDeviceChoice.effectiveUID(saved: $0, available: AudioInputDevices.all().map(\.uid)) }
-        if fresh || wanted != appliedInput {
-            // Autre micro ou moteur muet : un moteur neuf, réglé avant de lire son format.
+        let isolate = isolationApplies(to: wanted)
+        if fresh || wanted != appliedInput || isolate != appliedIsolation {
+            // Autre micro, autre traitement ou moteur muet : un moteur neuf, réglé avant de lire son format.
             dropEngine()
         }
         let reused = self.engine != nil
         let engine = self.engine ?? AVAudioEngine()
         if !reused {
             self.engine = engine
-            observeConfiguration(of: engine)
-            if let wanted { AudioInputDevices.use(wanted, in: engine) }
+            if isolate {
+                do {
+                    try Self.enableVoiceProcessing(on: engine)
+                } catch {
+                    return try fallBackWithoutIsolation()
+                }
+                // Après l'activation : le changement de configuration qu'elle provoque n'est pas une panne.
+                observeConfiguration(of: engine)
+            } else {
+                observeConfiguration(of: engine)
+                if let wanted { AudioInputDevices.use(wanted, in: engine) }
+            }
         }
         appliedInput = wanted
+        appliedIsolation = isolate
         let input = engine.inputNode
         let hardware = input.outputFormat(forBus: 0)
         guard hardware.sampleRate > 0, hardware.channelCount > 0 else {
             dropEngine()
+            if isolate { return try fallBackWithoutIsolation() }
             throw AudioCaptureError.noInput
         }
         guard let target = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: 16_000, channels: 1, interleaved: true) else {
             throw AudioCaptureError.engine(String(localized: "Format audio 16 kHz indisponible."))
         }
         let next = AVAudioConverter(from: hardware, to: target)
+        // Le traitement de la voix rend la même voix traitée sur plusieurs voies (9 sur un MacBook Pro, mesuré le
+        // 17 octobre 2026) : une seule est gardée, jamais leur somme. Sans lui, les voies restent mêlées comme avant.
+        if isolate, hardware.channelCount > 1 { next?.channelMap = [0] }
         processingLock.lock()
         converter = next
         processingLock.unlock()
@@ -220,8 +258,77 @@ final class AudioCapture: @unchecked Sendable {
         } catch {
             input.removeTap(onBus: 0)
             dropEngine()
+            if isolate {
+                // Moteur préparé devenu inutilisable (sortie changée entre-temps…) : un moteur neuf, puis le micro standard.
+                if reused, !retried { return try runEngine(fresh: true, retried: true) }
+                return try fallBackWithoutIsolation()
+            }
             throw AudioCaptureError.engine(error.localizedDescription)
         }
+    }
+
+    /// Traitement de la voix de macOS : bruit et écho réduits, gain automatique. Les autres sons du Mac ne baissent
+    /// pas pendant la dictée (« Couper le son du Mac » s'en charge s'il est réglé). La sortie du moteur reste
+    /// débranchée : branchée, elle empêche le démarrage (erreur -10875, mesurée le 17 octobre 2026).
+    /// L'activation change une fois la configuration de l'entrée, environ 0,3 s après (mesuré le 17 octobre 2026) ; le
+    /// moteur reste utilisable. On attend ce changement (1 s au plus) avant d'écouter : arrivé pendant l'écoute, il
+    /// la ferait redémarrer sur un moteur neuf, qui le provoquerait à son tour.
+    private static func enableVoiceProcessing(on engine: AVAudioEngine) throws {
+        let settled = DispatchSemaphore(value: 0)
+        let observer = NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange, object: engine, queue: nil
+        ) { _ in settled.signal() }
+        defer { NotificationCenter.default.removeObserver(observer) }
+        let input = engine.inputNode
+        try input.setVoiceProcessingEnabled(true)
+        input.voiceProcessingOtherAudioDuckingConfiguration = AVAudioVoiceProcessingOtherAudioDuckingConfiguration(
+            enableAdvancedDucking: false, duckingLevel: .min
+        )
+        engine.prepare()
+        _ = settled.wait(timeout: .now() + 1)
+    }
+
+    /// Le traitement de la voix vaut pour le micro du système seulement. Un autre micro choisi dans Wispad reste en
+    /// micro standard : ce traitement règle aussi la sortie du Mac, et y choisir un micro n'est pas sûr.
+    private func isolationApplies(to wanted: String?) -> Bool {
+        guard voiceIsolation, !voiceIsolationRefused else { return false }
+        guard let wanted else { return true }
+        return wanted == AudioInputDevices.systemDefault()?.uid
+    }
+
+    /// Au repos, prépare le traitement de la voix sans ouvrir le micro (le voyant ne s'allume pas) : son activation,
+    /// environ 0,7 s, ne retarde plus le début de la dictée suivante, qui démarre alors en 0,2 s. Rien sans le
+    /// réglage, sans l'accès au micro déjà accordé (aucune demande d'autorisation ici), ni pendant une écoute.
+    func prepareVoiceIsolation() {
+        guard voiceIsolation, AVCaptureDevice.authorizationStatus(for: .audio) == .authorized else { return }
+        control.async {
+            guard self.wav == nil, self.engine == nil else { return }
+            let wanted = self.inputDeviceUID.flatMap {
+                InputDeviceChoice.effectiveUID(saved: $0, available: AudioInputDevices.all().map(\.uid))
+            }
+            guard self.isolationApplies(to: wanted) else { return }
+            let engine = AVAudioEngine()
+            do {
+                try Self.enableVoiceProcessing(on: engine)
+            } catch {
+                Self.log.error("traitement de la voix refusé : micro standard")
+                self.isolationRefusal.withLock { $0 = true }
+                return
+            }
+            self.engine = engine
+            self.observeConfiguration(of: engine)
+            self.appliedInput = wanted
+            self.appliedIsolation = true
+        }
+    }
+
+    /// File `control` : le traitement de la voix n'a pas démarré avec ce micro. La dictée continue au micro standard,
+    /// sur un moteur neuf, et le traitement reste de côté jusqu'à ce que le réglage change.
+    private func fallBackWithoutIsolation() throws {
+        Self.log.error("traitement de la voix refusé : micro standard")
+        isolationRefusal.withLock { $0 = true }
+        dropEngine()
+        try runEngine(fresh: true)
     }
 
     /// File `control` : oublie le moteur actuel (arrêté), pour en créer un neuf au prochain démarrage.
@@ -234,6 +341,7 @@ final class AudioCapture: @unchecked Sendable {
         engine?.stop()
         engine = nil
         appliedInput = nil
+        appliedIsolation = false
     }
 
     /// macOS a reconfiguré l'entrée (micro Bluetooth qui change de profil, autre fréquence, micro débranché) :
@@ -253,9 +361,14 @@ final class AudioCapture: @unchecked Sendable {
     private func engineReconfigured(_ observed: ObjectIdentifier) {
         guard let engine, ObjectIdentifier(engine) == observed else { return }
         guard wav != nil else {
+            // Au repos, un moteur du traitement de la voix reste prêt : il se reconfigure au prochain démarrage, et
+            // le refaire coûterait son activation au début de la dictée suivante.
+            if appliedIsolation { return }
             dropEngine()
             return
         }
+        // Le traitement de la voix peut signaler un changement sans s'arrêter : l'écoute continue telle quelle.
+        if appliedIsolation, engine.isRunning { return }
         guard reconfigurations < Self.maxReconfigurations else {
             // Arrêté par cette reconfiguration, le moteur ne sera plus relancé : la dictée doit le savoir.
             guard !engine.isRunning else { return }

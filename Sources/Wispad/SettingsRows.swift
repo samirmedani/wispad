@@ -275,12 +275,36 @@ enum SettingsPresentation {
             : String(localized: "le modèle de correction juge s'il mérite le dictionnaire")
         return SettingText(
             title: String(localized: "Apprendre de mes corrections"),
-            summary: String(localized: "Ajoute au dictionnaire les noms que tu corriges après une dictée."),
+            summary: String(localized: "Ajoute au dictionnaire les noms que tu corriges ou que la correction répare souvent."),
             details: [
                 String(localized: "Pendant 30 s après une dictée, si tu corriges un mot mal entendu (« Sidance » → « Seedance »), \(judge) : marques, noms et jargon oui, mots courants et fautes de frappe non."),
+                String(localized: "Un nom que la correction répare dans deux dictées (« revenu quatre » → « RevenueCat ») passe par le même juge."),
                 String(localized: "Le mot est ajouté, puis la bulle te demande si tu le gardes."),
                 String(localized: "Seuls l'extrait dicté et le mot corrigé sont envoyés ; le reste du champ n'est ni enregistré ni envoyé.")
             ]
+        )
+    }
+
+    // MARK: Micro
+
+    /// `refused` : le traitement n'a pas démarré avec ce micro, les dictées passent par le micro standard.
+    /// `otherMicrophone` : un autre micro que celui du système est choisi dans Wispad, sans traitement.
+    static func voiceIsolation(refused: Bool = false, otherMicrophone: Bool = false) -> SettingText {
+        var details = [
+            String(localized: "Utilise le traitement de la voix de macOS, celui des appels FaceTime : bruit de fond et écho réduits, volume de la voix ajusté."),
+            String(localized: "Pendant une dictée, Centre de contrôle › Mode micro propose aussi « Isolation de la voix », plus marquée."),
+            String(localized: "Wispad le prépare au repos, sans ouvrir le micro : la dictée démarre aussi vite qu'avant."),
+            String(localized: "Si ce micro ne le permet pas, Wispad reprend le micro standard.")
+        ]
+        if otherMicrophone {
+            details.insert(String(localized: "Le micro choisi dans Wispad n'est pas celui du système : il reste en micro standard."), at: 0)
+        } else if refused {
+            details.insert(String(localized: "Indisponible avec ce micro : les dictées passent par le micro standard."), at: 0)
+        }
+        return SettingText(
+            title: String(localized: "Réduire le bruit et l'écho du micro"),
+            summary: String(localized: "Utile quand tu parles loin du Mac ou dans une pièce qui résonne."),
+            details: details
         )
     }
 
@@ -315,12 +339,37 @@ enum SettingsPresentation {
     // MARK: Bulle et messages
 
     static let overlayTitle = String(localized: "Bulle et messages")
-    static let overlaySummary = String(localized: "Où la bulle de dictée et ses messages apparaissent à l'écran.")
+    static let overlaySummary = String(localized: "Style de la bulle, et où elle et ses messages apparaissent à l'écran.")
+
+    static let bubbleStyle = SettingText(
+        title: String(localized: "Style de la bulle"),
+        summary: String(localized: "Noir profond, ou verre transparent comme macOS."),
+        details: [
+            String(localized: "Le verre laisse voir ce qu'il y a derrière et suit l'apparence de l'app, claire ou sombre."),
+            String(localized: "Il vaut pour la bulle de dictée comme pour ses messages ; le spectre garde ses couleurs.")
+        ]
+    )
+
+    static let glassVariant = SettingText(
+        title: String(localized: "Verre"),
+        summary: String(localized: "Les deux verres d'Apple : transparent ou dépoli."),
+        details: [
+            String(localized: "Transparent laisse le plus voir ce qu'il y a derrière. Dépoli floute davantage et se lit mieux sur un fond chargé.")
+        ]
+    )
+
+    static let glassIntensity = SettingText(
+        title: String(localized: "Intensité"),
+        summary: String(localized: "Teinte du verre ; à zéro, le verre seul."),
+        details: [
+            String(localized: "Plus forte, elle assombrit le verre (ou l'éclaircit en apparence claire) et rend le texte plus lisible.")
+        ]
+    )
 
     // MARK: Apparence
 
     static let appearanceTitle = String(localized: "Apparence")
-    static let appearanceSummary = String(localized: "« Système » suit macOS. La bulle de dictée reste sombre.")
+    static let appearanceSummary = String(localized: "« Système » suit macOS. La bulle garde son style, choisi dans l'onglet Bulle.")
 
     static let avoidInput = SettingText(
         title: String(localized: "Ne jamais couvrir le champ de saisie"),
