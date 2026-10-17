@@ -3,6 +3,25 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.2.5 — 17 octobre 2026
+
+Une bulle redessinée, en noir profond ou en verre transparent, des Réglages en onglets, et un dictionnaire qui
+apprend seul les noms que la correction répare.
+
+> Depuis la 0.2.0 : si la mise à jour reste sur « Relance… », ferme cette fenêtre, puis quitte Wispad et rouvre-le.
+> La 0.2.5 est déjà installée.
+
+**Nouveau**
+- Bulle : messages redessinés en noir profond, sans contour. Une pastille de couleur dit de quoi il s'agit (erreur, collé, relais, nouvelle version, texte prêt, mots appris) et son anneau fait le décompte. Pointeur dessus, le décompte s'arrête et la pastille devient la ✕.
+- Style Verre : toute la bulle, spectre compris, passe en Liquid Glass d'Apple. Réglages › Bulle propose les deux verres natifs, Transparent ou Dépoli, et leur intensité, avec un aperçu en direct.
+- Réglages en sept onglets : Général, Dictée, Mise en forme, Bulle, Confidentialité, Autorisations et Aide. Plus besoin de tout faire défiler, et Wispad rouvre le dernier onglet.
+- Dictionnaire : un nom que la correction répare dans au moins deux dictées est appris comme ceux que tu corriges à la main. Une carte Suggestions propose aussi d'ajouter ou de corriger des mots (Ajouter, Corriger, Ignorer), et chaque mot montre dans combien de dictées il sert et ce qui avait été entendu. Un crayon le renomme.
+- Réglages › Dictée › Audio : « Réduire le bruit et l'écho du micro », pour parler loin du Mac ou dans une pièce qui résonne (désactivé par défaut).
+
+**Corrigé**
+- Collage : un champ de mot de passe resté actif dans une autre app (Chrome par exemple) faisait croire à un « Champ sécurisé » partout, et le texte n'était pas collé. Seule l'app où tu dictes compte maintenant.
+- La carte « Texte prêt à copier » ne répète plus « le texte est prêt » : elle donne seulement la raison. Les messages de la bulle ne finissent plus par un point.
+
 ## 0.2.4 — 17 octobre 2026
 
 Mode clair ou sombre, première dictée immédiate, et un collage qui ne rate plus quand une touche est tenue.
