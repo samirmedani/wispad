@@ -339,7 +339,16 @@ enum SettingsPresentation {
     // MARK: Bulle et messages
 
     static let overlayTitle = String(localized: "Bulle et messages")
-    static let overlaySummary = String(localized: "Où la bulle de dictée et ses messages apparaissent à l'écran.")
+    static let overlaySummary = String(localized: "Style des messages, et où la bulle et ses messages apparaissent à l'écran.")
+
+    static let bubbleStyle = SettingText(
+        title: String(localized: "Style des messages"),
+        summary: String(localized: "Noir profond, ou verre transparent comme macOS."),
+        details: [
+            String(localized: "Le verre laisse voir ce qu'il y a derrière et suit l'apparence de l'app, claire ou sombre."),
+            String(localized: "La bulle de dictée et son spectre ne changent pas.")
+        ]
+    )
 
     // MARK: Apparence
 

@@ -131,7 +131,10 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
    la zone et replace la bulle affichée sur son écran (retenu par son numéro) ; `FrameTicker` refait le lien
    d'affichage du spectre si son écran a disparu. Les messages de la bulle partent seuls (`MessageTimer`, décompte
    `MessageCountdown` de WispadCore) ; `OverlayController` met ce décompte en pause pendant le survol
-   (`DictationCoordinator.holdMessages`) et la ✕ appelle `closeMessage`.
+   (`DictationCoordinator.holdMessages`) et la ✕ appelle `closeMessage`. `OverlayCluster` montre la bulle de dictée
+   (verre fumé, `OverlayPill`) ou un message (`MessageBubble` : `MessageLine` ou `MessageCard`, pastille
+   `CountdownBadge` dont l'anneau lit le décompte). Leur fond (`MessageSurface`) suit `AppSettings.bubbleStyle` :
+   noir profond, ou Liquid Glass ; en verre, le panneau prend l'apparence de l'app.
    Le callback final de `AppDependencies.insert` signale ⌘V avant la relecture d'accessibilité :
    `FinishJob.pasteSent` retire le spectre lorsque seule la confirmation reste. Le job reste dans la file jusqu'à
    la restauration du presse-papiers ; une autre dictée en cours garde l'overlay. Un échec reconnu ensuite affiche
@@ -163,8 +166,8 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
   `DictionaryKind` classe le texte sans changer la base. Section, origine et période sont dans `AppSettings` ;
   recherche éphémère, filtrage pur dans `DictionaryFilter.matchingEntries`.
 - **Notification** : `DictationCoordinator` regroupe jusqu'à trois ajouts dans `learningOfferedTerms` ;
-  `LearningNoticePill` les annonce avec Voir / Annuler l'ajout. Le panneau reste fixe, assez haut pour cette carte,
-  tandis que les autres messages gardent leur pilule compacte. Une dictée suspend et remet en file le groupe.
+  `MessageBubble` les annonce dans une `MessageCard` avec Voir / Annuler l'ajout. Le panneau reste fixe, assez haut
+  pour cette carte, tandis que les autres messages tiennent sur une ligne. Une dictée suspend et remet en file le groupe.
 - **Concurrence** : `AppModel.considerLearning` revalide les candidats après l'attente puis `learn` relit les
   refus et déduplique avant écriture. Couper l'apprentissage pendant le jugement empêche un ajout tardif.
 

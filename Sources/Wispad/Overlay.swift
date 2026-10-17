@@ -86,8 +86,15 @@ final class OverlayState {
 @MainActor
 enum OverlayLayout {
     /// Assez grand pour l'état d'erreur, l'ombre et le rebond d'apparition : le panneau ne bouge plus.
-    static let panelSize = CGSize(width: 560, height: 156)
+    static let panelSize = CGSize(width: 560, height: 176)
     static let pillHeight: CGFloat = 30
+    /// Message sur une ligne : pastille de 26 pt dans 42 pt de haut ; deux lignes de texte au plus.
+    static let messageHeight: CGFloat = 42
+    static let messageBadge: CGFloat = 26
+    /// Largeur maximale d'un message : un texte long passe à la ligne avant le bord du panneau et son ombre.
+    static let messageMaxWidth: CGFloat = 520
+    /// Cartes : texte prêt à copier, mots appris.
+    static let cardWidth: CGFloat = 392
     /// Espace transparent sous la pilule, pour l'ombre.
     static let bottomMargin: CGFloat = 10
     static let space = "wispad-overlay"
@@ -131,9 +138,10 @@ enum OverlayLayout {
         switch mode {
         case .listening, .finishing: return CGSize(width: spectrumPillWidth, height: pillHeight)
         case .handsFree: return CGSize(width: handsFreeWidth, height: pillHeight)
-        case .failure: return hasReadyText ? CGSize(width: 420, height: 122) : CGSize(width: 470, height: pillHeight)
-        case .learning: return CGSize(width: 470, height: 112)
-        case .notice, .update: return CGSize(width: 470, height: pillHeight)
+        case .failure: return hasReadyText ? CGSize(width: cardWidth, height: 128) : CGSize(width: messageMaxWidth, height: 52)
+        // Mots appris sur deux lignes compris.
+        case .learning: return CGSize(width: cardWidth, height: 156)
+        case .notice, .update: return CGSize(width: messageMaxWidth, height: 52)
         }
     }
 
@@ -229,7 +237,6 @@ struct OverlayBar: View {
         .onPreferenceChange(OverlayPillFrameKey.self) { frame in
             state.pillFrame = frame
         }
-        .environment(\.colorScheme, .dark)
         .environment(\.overlayReduceMotion, reduceMotion)
     }
 }
@@ -300,6 +307,25 @@ struct OverlayCluster: View {
     }
 
     var body: some View {
+        ZStack {
+            if mode.isMessage {
+                // Messages : leur propre fond (noir profond ou verre), sans le contour de la bulle de dictée.
+                MessageBubble(mode: mode)
+                    .transition(Self.swap)
+            } else {
+                dictation
+                    .environment(\.colorScheme, .dark)
+                    .transition(Self.swap)
+            }
+        }
+    }
+
+    /// De la bulle de dictée à un message, et retour : fondu avec un léger rebond depuis le bas.
+    private static var swap: AnyTransition {
+        .opacity.combined(with: .scale(scale: 0.94, anchor: .bottom))
+    }
+
+    @ViewBuilder private var dictation: some View {
         if #available(macOS 26, *), glassEnabled {
             GlassEffectContainer(spacing: OverlayLayout.orbGap - 2) { cluster(glassy: true) }
         } else {
@@ -334,16 +360,15 @@ struct OverlayCluster: View {
                 .transition(.opacity)
             }
             OverlayPill(mode: mode)
-                .overlayGlass(RoundedRectangle(cornerRadius: mode.isLearning ? 18 : 15, style: .continuous), id: "pill", in: glass)
+                .overlayGlass(RoundedRectangle(cornerRadius: 15, style: .continuous), id: "pill", in: glass)
         }
         // La mise en page suit les boutons sortis : centrage et zone cliquable couvrent ✕ et ■.
         .frame(width: handsFree ? OverlayLayout.handsFreeWidth : nil)
     }
 }
 
-/// Contenu de la pilule : spectre, vague de finalisation ou message d'erreur, en fondu enchaîné.
+/// Contenu de la bulle de dictée : spectre ou vague de finalisation, en fondu enchaîné. Les messages ont leur bulle.
 struct OverlayPill: View {
-    @Environment(AppModel.self) private var model
     var mode: OverlayMode
 
     var body: some View {
@@ -357,40 +382,8 @@ struct OverlayPill: View {
                 ProcessingBars()
                     .padding(.horizontal, OverlayLayout.spectrumPadding)
                     .transition(.opacity.combined(with: .scale(scale: 0.85)))
-            case .failure(let message):
-                FailurePill(message: message)
-                    .id(message)
-                    .transition(.opacity)
-            case .notice(let message):
-                let relay = model.coordinator.noticeIsRelay
-                let info = model.coordinator.noticeIsInfo
-                MessageLine(
-                    symbol: relay ? "arrow.triangle.branch" : info ? "info.circle.fill" : "checkmark.circle.fill",
-                    tint: relay ? OverlayStyle.relay : info ? Color.white.opacity(0.7) : OverlayStyle.green,
-                    message: message,
-                    countdown: model.coordinator.noticeTimer.countdown,
-                    onDismiss: model.coordinator.closeMessage
-                )
-                    .id(message)
-                    .transition(.opacity)
-            case .learning(let message):
-                LearningNoticePill(fallbackMessage: message)
-                    .id(message)
-                    .transition(.opacity)
-            case .update(let message):
-                MessageLine(
-                    symbol: "arrow.down.circle.fill",
-                    tint: OverlayStyle.update,
-                    message: message,
-                    countdown: model.coordinator.noticeTimer.countdown,
-                    onDismiss: model.coordinator.closeMessage,
-                    actionTitle: String(localized: "Voir"),
-                    action: { model.coordinator.openUpdateOffer() },
-                    secondaryTitle: String(localized: "Ne plus me rappeler"),
-                    secondaryAction: { model.coordinator.declineUpdateOffer() }
-                )
-                .id(message)
-                .transition(.opacity)
+            case .failure, .notice, .learning, .update:
+                EmptyView()
             }
         }
         .frame(minHeight: OverlayLayout.pillHeight)
@@ -535,136 +528,159 @@ struct OverlayOrbButton: View {
     }
 }
 
-/// Le texte récupérable a sa propre carte : titre lisible, explication et actions sur deux lignes.
-struct FailurePill: View {
+// MARK: - Messages
+
+/// Genre d'un message : son icône et sa couleur.
+enum MessageKind {
+    case success, info, relay, error, update, ready, learning
+
+    var symbol: String {
+        switch self {
+        case .success: return "checkmark"
+        case .info: return "info"
+        case .relay: return "arrow.triangle.branch"
+        case .error: return "exclamationmark"
+        case .update: return "arrow.down"
+        case .ready: return "doc.on.clipboard"
+        case .learning: return "sparkles"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .success: return OverlayStyle.green
+        case .info: return Color(nsColor: .systemGray)
+        case .relay: return OverlayStyle.relay
+        case .error: return OverlayStyle.red
+        case .update: return OverlayStyle.update
+        case .ready: return Color(red: 1, green: 0.62, blue: 0.16)
+        case .learning: return Color(red: 0.72, green: 0.49, blue: 1)
+        }
+    }
+}
+
+/// Bouton d'un message : un titre, une action, le premier plan pour l'action à ne pas manquer.
+struct MessageAction {
+    var title: String
+    var prominent = false
+    var help: String?
+    var perform: () -> Void
+}
+
+extension EnvironmentValues {
+    /// Style des messages, posé par MessageBubble depuis Réglages › Bulle et messages.
+    @Entry var bubbleStyle = BubbleStyle.black
+}
+
+/// Couleurs d'un message : blanc sur le noir profond, couleurs de macOS sur le verre (clair ou sombre).
+struct MessagePalette {
+    let primary: Color
+    let secondary: Color
+    let tertiary: Color
+    /// Fond d'un bouton secondaire et de la ✕.
+    let control: Color
+    let prominent: Color
+    let onProminent: Color
+
+    init(_ style: BubbleStyle) {
+        switch style {
+        case .black:
+            primary = .white.opacity(0.95)
+            secondary = .white.opacity(0.62)
+            tertiary = .white.opacity(0.42)
+            control = .white.opacity(0.13)
+            prominent = .white
+            onProminent = .black.opacity(0.9)
+        case .glass:
+            primary = .primary
+            secondary = .secondary
+            tertiary = Color(nsColor: .tertiaryLabelColor)
+            control = .primary.opacity(0.09)
+            prominent = .primary
+            onProminent = Color(nsColor: .windowBackgroundColor)
+        }
+    }
+}
+
+/// Messages de la bulle : une ligne (erreur, confirmation, relais, nouvelle version) ou une carte (texte prêt à
+/// copier, mots appris), dans le style choisi.
+struct MessageBubble: View {
     @Environment(AppModel.self) private var model
-    var message: String
+    var mode: OverlayMode
 
     var body: some View {
+        let style = model.settings.bubbleStyle
+        MessageWidth(maxWidth: OverlayLayout.messageMaxWidth) {
+            content
+        }
+        .environment(\.bubbleStyle, style)
+        .modifier(MessageScheme(style: style))
+    }
+
+    @ViewBuilder private var content: some View {
+        let coordinator = model.coordinator
+        switch mode {
+        case .failure(let message):
+            failure(message)
+                .id(message)
+                .transition(.opacity)
+        case .notice(let message):
+            MessageLine(kind: coordinator.noticeIsRelay ? .relay : coordinator.noticeIsInfo ? .info : .success,
+                        message: message, countdown: coordinator.noticeTimer.countdown, onDismiss: coordinator.closeMessage)
+                .id(message)
+                .transition(.opacity)
+        case .learning(let message):
+            learning(fallback: message)
+                .id(message)
+                .transition(.opacity)
+        case .update(let message):
+            MessageLine(kind: .update, message: message, countdown: coordinator.noticeTimer.countdown,
+                        onDismiss: coordinator.closeMessage, actions: [
+                            MessageAction(title: String(localized: "Voir")) { coordinator.openUpdateOffer() },
+                            MessageAction(title: String(localized: "Ne plus me rappeler")) { coordinator.declineUpdateOffer() },
+                        ])
+                .id(message)
+                .transition(.opacity)
+        case .listening, .handsFree, .finishing:
+            EmptyView()
+        }
+    }
+
+    /// Texte prêt à copier en carte ; « Copié » après Copier ; erreur sur une ligne, avec Historique si la dictée y est.
+    @ViewBuilder private func failure(_ message: String) -> some View {
         let coordinator = model.coordinator
         let countdown = coordinator.failureTimer.countdown
         if coordinator.failureCopied {
-            MessageLine(symbol: "checkmark.circle.fill", tint: OverlayStyle.green, message: message, countdown: countdown, onDismiss: coordinator.closeMessage)
+            MessageLine(kind: .success, message: message, countdown: countdown, onDismiss: coordinator.closeMessage)
         } else if coordinator.failureText != nil {
-            RecoveryMessageCard(
-                message: coordinator.failureDetail ?? message,
-                hovered: model.overlay.state.isHovered,
-                countdown: countdown,
-                onDismiss: coordinator.closeMessage,
-                onCopy: { coordinator.copyReadyText() },
-                onPaste: { coordinator.pasteReadyText() }
-            )
+            MessageCard(kind: .ready, title: String(localized: "Texte prêt à copier"),
+                        message: coordinator.failureDetail ?? message, countdown: countdown,
+                        onDismiss: coordinator.closeMessage, actions: [
+                            MessageAction(title: String(localized: "Coller")) { coordinator.pasteReadyText() },
+                            MessageAction(title: String(localized: "Copier"), prominent: true) { coordinator.copyReadyText() },
+                        ])
         } else if !coordinator.failureOffersHistory {
-            MessageLine(symbol: "exclamationmark.circle.fill", tint: OverlayStyle.red, message: message, countdown: countdown, onDismiss: coordinator.closeMessage)
+            MessageLine(kind: .error, message: message, countdown: countdown, onDismiss: coordinator.closeMessage)
         } else {
-            MessageLine(symbol: "exclamationmark.circle.fill", tint: OverlayStyle.red, message: message, countdown: countdown, onDismiss: coordinator.closeMessage, actionTitle: String(localized: "Historique"), action: {
-                coordinator.dismissFailure()
-                model.open(.history)
-            })
+            MessageLine(kind: .error, message: message, countdown: countdown, onDismiss: coordinator.closeMessage, actions: [
+                MessageAction(title: String(localized: "Historique")) {
+                    coordinator.dismissFailure()
+                    model.open(.history)
+                },
+            ])
         }
     }
-}
 
-struct RecoveryMessageCard: View {
-    var message: String
-    var hovered: Bool
-    var countdown: MessageCountdown?
-    var onDismiss: () -> Void
-    var onCopy: () -> Void
-    var onPaste: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top, spacing: 10) {
-                Image(systemName: "doc.on.clipboard")
-                    .font(.system(size: 17, weight: .medium))
-                    .foregroundStyle(Color.orange)
-                    .frame(width: 28, height: 28)
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("Texte prêt à copier")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.white)
-                    Text(OverlayText.display(message))
-                        .font(.system(size: 12))
-                        .foregroundStyle(.white.opacity(0.78))
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                Button(action: onDismiss) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.85))
-                        .frame(width: 26, height: 26)
-                        .background(Circle().fill(.white.opacity(0.12)))
-                }
-                .buttonStyle(.plain)
-                .opacity(hovered ? 1 : 0)
-                .allowsHitTesting(hovered)
-                .accessibilityLabel("Fermer le message")
-            }
-            HStack(spacing: 8) {
-                Spacer()
-                Button(action: onPaste) { Label("Coller", systemImage: "arrow.turn.down.right").padding(.horizontal, 12).frame(height: 30) }
-                    .background(RoundedRectangle(cornerRadius: 8).fill(.white.opacity(0.12)))
-                    .foregroundStyle(.white)
-                Button(action: onCopy) { Label("Copier", systemImage: "doc.on.doc").padding(.horizontal, 12).frame(height: 30) }
-                    .background(RoundedRectangle(cornerRadius: 8).fill(.white))
-                    .foregroundStyle(.black.opacity(0.9))
-            }
-            .buttonStyle(.plain)
-            .font(.system(size: 13, weight: .medium))
-        }
-        .padding(14)
-        .frame(width: 420)
-        .overlay(alignment: .bottom) {
-            TimelineView(.animation(paused: countdown?.isPaused ?? true)) { timeline in
-                GeometryReader { proxy in
-                    Capsule().fill(.white.opacity(0.4))
-                        .frame(width: proxy.size.width * CGFloat(countdown?.fraction(at: timeline.date) ?? 0), height: 2)
-                }
-            }
-            .frame(height: 2)
-            .padding(.horizontal, 16)
-            .padding(.bottom, 4)
-        }
-    }
-}
-
-/// Une confirmation groupée, lisible et indépendante de la ligne des erreurs de dictée.
-struct LearningNoticePill: View {
-    @Environment(AppModel.self) private var model
-    var fallbackMessage: String
-
-    var body: some View {
+    /// Ajouts groupés au dictionnaire : les mots d'abord, puis Voir ou Annuler l'ajout.
+    private func learning(fallback: String) -> some View {
         let coordinator = model.coordinator
         let terms = coordinator.learningOfferedTerms
         let title = terms.count > 1 ? String(localized: "\(terms.count) ajouts au dictionnaire") : String(localized: "Ajout au dictionnaire")
-        VStack(alignment: .leading, spacing: 9) {
-            HStack(spacing: 8) {
-                Image(systemName: "sparkles").foregroundStyle(.purple)
-                Text(title).font(.system(size: 12, weight: .semibold))
-                Spacer()
-                Button { coordinator.closeMessage() } label: {
-                    Image(systemName: "xmark").font(.system(size: 10, weight: .semibold))
-                        .frame(width: 22, height: 22)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(.white.opacity(0.65))
-                .opacity(model.overlay.state.isHovered ? 1 : 0)
-                .allowsHitTesting(model.overlay.state.isHovered)
-                .accessibilityLabel("Fermer le message")
-            }
-            Text(terms.isEmpty ? OverlayText.display(fallbackMessage) : terms.joined(separator: " · "))
-                .font(.system(size: 13, weight: .medium))
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
-                .help(terms.joined(separator: "\n"))
-            HStack(spacing: 8) {
-                Text("Appris de tes corrections")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.white.opacity(0.6))
-                Spacer(minLength: 6)
-                Button("Voir") {
+        return MessageCard(
+            kind: .learning, title: title, message: terms.isEmpty ? fallback : terms.joined(separator: " · "),
+            footnote: String(localized: "Appris de tes corrections"), emphasizesMessage: true,
+            countdown: coordinator.noticeTimer.countdown, onDismiss: coordinator.closeMessage, actions: [
+                MessageAction(title: String(localized: "Voir")) {
                     if let term = terms.first {
                         model.setDisplayChoice(\.dictionaryKind, DictionaryKind.classify(term))
                     }
@@ -672,125 +688,262 @@ struct LearningNoticePill: View {
                     model.setDisplayChoice(\.dictionaryPeriod, .all)
                     coordinator.acceptLearning()
                     model.open(.dictionary)
-                }
-                .buttonStyle(.plain)
-                Button("Annuler l'ajout") { coordinator.declineLearning() }
-                    .buttonStyle(.plain)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 5)
-                    .background(Capsule().fill(.white.opacity(0.12)))
-                    .help("Retirer ces ajouts et ne plus les apprendre automatiquement")
-            }
-            .font(.system(size: 11, weight: .medium))
-        }
-        .foregroundStyle(.white.opacity(0.94))
-        .padding(.horizontal, 16)
-        .padding(.top, 10)
-        .padding(.bottom, 14)
-        .frame(width: 460)
-        .overlay(alignment: .bottomLeading) {
-            TimelineView(.animation(paused: coordinator.noticeTimer.countdown?.isPaused ?? true)) { timeline in
-                GeometryReader { proxy in
-                    Capsule().fill(.purple.opacity(0.7))
-                        .frame(width: proxy.size.width * CGFloat(coordinator.noticeTimer.countdown?.fraction(at: timeline.date) ?? 0), height: 2)
-                }
-            }
-            .frame(height: 2)
-            .padding(.horizontal, 18)
-            .padding(.bottom, 5)
+                },
+                MessageAction(title: String(localized: "Annuler l'ajout"),
+                              help: String(localized: "Retirer ces ajouts et ne plus les apprendre automatiquement")) {
+                    coordinator.declineLearning()
+                },
+            ]
+        )
+    }
+}
+
+/// Le noir profond est toujours sombre ; le verre suit l'apparence du panneau, donc celle de l'app.
+private struct MessageScheme: ViewModifier {
+    var style: BubbleStyle
+
+    @ViewBuilder func body(content: Content) -> some View {
+        if style == .black {
+            content.environment(\.colorScheme, .dark)
+        } else {
+            content
         }
     }
 }
 
-/// Une ligne centrée, petite, avec une fine barre qui se vide de droite à gauche avant le départ du message.
-/// Au survol, une petite ✕ paraît en fondu à droite et la barre s'arrête avec le décompte.
-struct MessageLine: View {
-    @Environment(AppModel.self) private var model
-    var symbol: String
-    var tint: Color
-    var message: String
-    /// Décompte du message, lu par la barre ; nil : barre vide (message qui s'en va).
-    var countdown: MessageCountdown? = nil
-    /// ✕ au survol : ferme le message tout de suite.
-    var onDismiss: (() -> Void)? = nil
-    var actionTitle: String? = nil
-    /// Action du premier bouton. Déclarée avant le bouton secondaire et toujours nommée aux appels :
-    /// une fermeture en fin d'appel se rattachait sinon au bouton secondaire, et « Copier » disparaissait.
-    var action: (() -> Void)? = nil
-    var secondaryTitle: String? = nil
-    var secondaryAction: (() -> Void)? = nil
-    /// Premier bouton en blanc plein : l'action à ne pas manquer (Copier un texte qui n'a pas été collé).
-    var emphasizesAction = false
+/// Propose au plus `maxWidth` à son contenu et prend sa taille : un message long passe à la ligne avant le bord du
+/// panneau, un message court garde sa largeur (la zone cliquable de la bulle reste celle du message).
+private struct MessageWidth: Layout {
+    var maxWidth: CGFloat
 
-    var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: symbol)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(tint)
-            Text(OverlayText.display(message))
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(.white.opacity(0.92))
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .frame(maxWidth: 360)
-                .fixedSize(horizontal: true, vertical: false)
-            if let actionTitle, let action {
-                messageButton(actionTitle, prominent: emphasizesAction, action: action)
-            }
-            if let secondaryTitle, let secondaryAction {
-                messageButton(secondaryTitle, action: secondaryAction)
-            }
-            if let onDismiss {
-                // Discrète : petite croix grise sur un cercle à peine visible, en fondu au survol.
-                Button(action: onDismiss) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 8, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.6))
-                        .frame(width: 16, height: 16)
-                        .background(Circle().fill(.white.opacity(0.1)))
-                        .contentShape(Circle())
-                }
-                .buttonStyle(.plain)
-                // Place réservée : le message ne bouge pas quand le curseur entre ou sort.
-                .opacity(model.overlay.state.isHovered ? 1 : 0)
-                .allowsHitTesting(model.overlay.state.isHovered)
-                .animation(OverlayStyle.fade, value: model.overlay.state.isHovered)
-                .help("Fermer le message")
-                .accessibilityLabel("Fermer le message")
-                // VoiceOver doit pouvoir fermer le message même sans déplacer le pointeur.
-                .accessibilityHidden(false)
-            }
-        }
-        .padding(.horizontal, 12)
-        .frame(height: OverlayLayout.pillHeight)
-        .overlay(alignment: .bottomLeading) {
-            // Linéaire, lue sur le décompte à chaque image : une minuterie qui s'écoule, figée en pause.
-            TimelineView(.animation(minimumInterval: nil, paused: countdown?.isPaused ?? true)) { timeline in
-                let remaining = CGFloat(countdown?.fraction(at: timeline.date) ?? 0)
-                GeometryReader { proxy in
-                    Capsule()
-                        .fill(Color.white.opacity(0.4))
-                        .frame(width: max(0, proxy.size.width * remaining), height: 2)
-                        .frame(maxHeight: .infinity, alignment: .bottom)
-                }
-            }
-            .padding(.horizontal, 14)
-            .padding(.bottom, 3)
-        }
+    private func proposal(for proposal: ProposedViewSize, in width: CGFloat? = nil) -> ProposedViewSize {
+        let offered = width ?? proposal.width ?? maxWidth
+        return ProposedViewSize(width: min(offered, maxWidth), height: proposal.height)
     }
 
-    private func messageButton(_ title: String, prominent: Bool = false, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(size: 10.5, weight: .semibold))
-                .foregroundStyle(prominent ? Color.black.opacity(0.88) : Color.white.opacity(0.92))
-                .padding(.horizontal, prominent ? 9 : 7)
-                .frame(height: 18)
-                .background(Capsule().fill(Color.white.opacity(prominent ? 0.92 : 0.14)))
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        subviews.first?.sizeThatFits(self.proposal(for: proposal)) ?? .zero
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        subviews.first?.place(at: CGPoint(x: bounds.midX, y: bounds.midY), anchor: .center,
+                              proposal: self.proposal(for: proposal, in: bounds.width))
+    }
+}
+
+/// Fond d'un message, sans contour : noir profond avec un reflet doux et une ombre, ou Liquid Glass transparent
+/// (macOS 26 ; matériau translucide avant).
+private struct MessageSurface<S: Shape>: ViewModifier {
+    @Environment(\.bubbleStyle) private var style
+    @Environment(\.overlayGlass) private var glassEnabled
+    var shape: S
+
+    @ViewBuilder func body(content: Content) -> some View {
+        switch style {
+        case .black:
+            content.background {
+                shape.fill(Color.black)
+                    .overlay(shape.fill(LinearGradient(colors: [.white.opacity(0.09), .white.opacity(0)],
+                                                       startPoint: .top, endPoint: .center)))
+                    .shadow(color: .black.opacity(0.35), radius: 8, y: 3)
+            }
+        case .glass:
+            if #available(macOS 26, *), glassEnabled {
+                content.glassEffect(.regular, in: shape)
+            } else {
+                content.background {
+                    shape.fill(.regularMaterial)
+                        .shadow(color: .black.opacity(0.18), radius: 8, y: 3)
+                }
+            }
+        }
+    }
+}
+
+/// Pastille teintée ; son anneau se vide avec le décompte, à l'arrêt sous le pointeur. Sur une ligne, elle devient
+/// la ✕ au survol.
+struct CountdownBadge: View {
+    @Environment(\.bubbleStyle) private var style
+    var kind: MessageKind
+    var size: CGFloat
+    var countdown: MessageCountdown?
+    var closing = false
+
+    var body: some View {
+        let palette = MessagePalette(style)
+        ZStack {
+            Circle().inset(by: size * 0.135).fill(closing ? palette.control : kind.tint.opacity(0.2))
+            Image(systemName: closing ? "xmark" : kind.symbol)
+                .font(.system(size: size * (closing ? 0.3 : 0.36), weight: .bold))
+                .foregroundStyle(closing ? palette.primary : kind.tint)
+            Circle().inset(by: 1).stroke(kind.tint.opacity(0.16), lineWidth: 2)
+            // Seul l'anneau se redessine à chaque image ; figé quand le décompte est en pause.
+            TimelineView(.animation(minimumInterval: nil, paused: countdown?.isPaused ?? true)) { timeline in
+                Circle().inset(by: 1)
+                    .trim(from: 0, to: CGFloat(countdown?.fraction(at: timeline.date) ?? 0))
+                    .stroke(kind.tint, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+            }
+        }
+        .frame(width: size, height: size)
+        .animation(OverlayStyle.fade, value: closing)
+    }
+}
+
+/// Une ligne : pastille à décompte, texte de 13 points (deux lignes au plus), boutons. Au survol, la pastille devient
+/// la ✕ et le décompte s'arrête ; rien ne bouge.
+struct MessageLine: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.bubbleStyle) private var style
+    var kind: MessageKind
+    var message: String
+    var countdown: MessageCountdown?
+    var onDismiss: (() -> Void)?
+    var actions: [MessageAction] = []
+
+    var body: some View {
+        let closable = model.overlay.state.isHovered && onDismiss != nil
+        HStack(spacing: 10) {
+            Button { onDismiss?() } label: {
+                CountdownBadge(kind: kind, size: OverlayLayout.messageBadge, countdown: countdown, closing: closable)
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .allowsHitTesting(closable)
+            .help(closable ? String(localized: "Fermer le message") : "")
+            .accessibilityLabel("Fermer le message")
+            // VoiceOver peut fermer le message sans déplacer le pointeur.
+            .accessibilityHidden(onDismiss == nil)
+            Text(OverlayText.display(message))
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(MessagePalette(style).primary)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+            ForEach(actions.indices, id: \.self) { index in
+                MessageButton(action: actions[index], height: 26, fontSize: 12)
+            }
+        }
+        .padding(.leading, 8)
+        .padding(.trailing, actions.isEmpty ? 16 : 8)
+        .padding(.vertical, 8)
+        .frame(minHeight: OverlayLayout.messageHeight)
+        .modifier(MessageSurface(shape: RoundedRectangle(cornerRadius: OverlayLayout.messageHeight / 2, style: .continuous)))
+    }
+}
+
+/// Une carte : titre et raison (ou mots appris en premier), boutons sur leur ligne, ✕ en haut à droite au survol.
+struct MessageCard: View {
+    @Environment(\.bubbleStyle) private var style
+    var kind: MessageKind
+    var title: String
+    var message: String
+    var footnote: String?
+    /// Mots appris : les mots, en grand, passent devant le titre.
+    var emphasizesMessage = false
+    var countdown: MessageCountdown?
+    var onDismiss: () -> Void
+    var actions: [MessageAction]
+
+    var body: some View {
+        let palette = MessagePalette(style)
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                CountdownBadge(kind: kind, size: 36, countdown: countdown)
+                VStack(alignment: .leading, spacing: 3) {
+                    if emphasizesMessage {
+                        Text(title)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(kind.tint)
+                        Text(OverlayText.display(message))
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(palette.primary)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } else {
+                        Text(title)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(palette.primary)
+                        Text(OverlayText.display(message))
+                            .font(.system(size: 12.5))
+                            .foregroundStyle(palette.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    if let footnote {
+                        Text(footnote)
+                            .font(.system(size: 11.5))
+                            .foregroundStyle(palette.tertiary)
+                            .padding(.top, 2)
+                    }
+                }
+                .padding(.top, 1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                MessageCloseButton(onDismiss: onDismiss)
+            }
+            HStack(spacing: 8) {
+                Spacer(minLength: 0)
+                ForEach(actions.indices, id: \.self) { index in
+                    MessageButton(action: actions[index], height: 30, fontSize: 13)
+                }
+            }
+        }
+        .padding(16)
+        .frame(width: OverlayLayout.cardWidth)
+        .modifier(MessageSurface(shape: RoundedRectangle(cornerRadius: 26, style: .continuous)))
+    }
+}
+
+/// ✕ d'une carte : place gardée, visible et cliquable seulement sous le pointeur.
+private struct MessageCloseButton: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.bubbleStyle) private var style
+    var onDismiss: () -> Void
+
+    var body: some View {
+        let hovered = model.overlay.state.isHovered
+        let palette = MessagePalette(style)
+        Button(action: onDismiss) {
+            Image(systemName: "xmark")
+                .font(.system(size: 8.5, weight: .bold))
+                .foregroundStyle(palette.secondary)
+                .frame(width: 22, height: 22)
+                .background(Circle().fill(palette.control))
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .opacity(hovered ? 1 : 0)
+        .allowsHitTesting(hovered)
+        .animation(OverlayStyle.fade, value: hovered)
+        .help("Fermer le message")
+        .accessibilityLabel("Fermer le message")
+    }
+}
+
+/// Bouton en capsule : plein pour l'action principale (Copier), voilé pour les autres.
+private struct MessageButton: View {
+    @Environment(\.bubbleStyle) private var style
+    var action: MessageAction
+    var height: CGFloat
+    var fontSize: CGFloat
+
+    var body: some View {
+        let palette = MessagePalette(style)
+        let button = Button(action: action.perform) {
+            Text(action.title)
+                .font(.system(size: fontSize, weight: .semibold))
+                .foregroundStyle(action.prominent ? palette.onProminent : palette.primary)
+                .padding(.horizontal, height * 0.45)
+                .frame(height: height)
+                .background(Capsule().fill(action.prominent ? palette.prominent : palette.control))
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(title)
+        .fixedSize()
+        .accessibilityLabel(action.title)
+        if let help = action.help {
+            button.help(help)
+        } else {
+            button
+        }
     }
 }
 
@@ -855,7 +1008,7 @@ final class OverlayController {
         self.model = model
         let hosting = FirstMouseHostingView(rootView: OverlayBar().environment(model))
         hosting.sizingOptions = []
-        let panel = Self.makePanel()
+        let panel = Self.makePanel(appearance: panelAppearance)
         panel.contentView = hosting
         content = hosting
         self.panel = panel
@@ -885,7 +1038,18 @@ final class OverlayController {
         }
     }
 
-    private static func makePanel() -> NSPanel {
+    /// Sombre pour le noir profond ; pour le verre, celle de l'app, qui le fait clair ou sombre comme elle. La bulle de
+    /// dictée garde ses couleurs sombres dans les deux cas.
+    private var panelAppearance: NSAppearance? {
+        model?.settings.bubbleStyle == .glass ? nil : NSAppearance(named: .darkAqua)
+    }
+
+    /// Réglages › Bulle et messages : le nouveau style vaut tout de suite, message affiché compris.
+    func bubbleStyleChanged() {
+        panel?.appearance = panelAppearance
+    }
+
+    private static func makePanel(appearance: NSAppearance?) -> NSPanel {
         let panel = NSPanel(
             contentRect: NSRect(origin: .zero, size: OverlayLayout.panelSize),
             styleMask: [.borderless, .nonactivatingPanel],
@@ -898,8 +1062,7 @@ final class OverlayController {
         panel.collectionBehavior = [.canJoinAllSpaces, .canJoinAllApplications, .fullScreenAuxiliary, .stationary, .ignoresCycle]
         panel.backgroundColor = .clear
         panel.isOpaque = false
-        // Bulle toujours sombre, quelle que soit l'apparence choisie pour l'app ou celle de macOS.
-        panel.appearance = NSAppearance(named: .darkAqua)
+        panel.appearance = appearance
         panel.hasShadow = false
         panel.hidesOnDeactivate = false
         panel.canHide = false
@@ -1029,7 +1192,7 @@ final class OverlayController {
         guard let old = panel, let content, !isOnActiveSpace(old), replacedGeneration != spaceGeneration else { return false }
         replacedGeneration = spaceGeneration
         spaceReplacements += 1
-        let replacement = Self.makePanel()
+        let replacement = Self.makePanel(appearance: panelAppearance)
         replacement.setFrame(old.frame, display: false)
         replacement.ignoresMouseEvents = old.ignoresMouseEvents
         let wasVisible = old.isVisible

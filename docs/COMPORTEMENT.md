@@ -117,13 +117,21 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 - Verre noir (Liquid Glass sur macOS 26+) au-dessus du Dock, sur le bureau comme au-dessus d'une app en plein
   écran, avec le spectre de la voix (graves au centre) à la cadence de l'écran (120 Hz en ProMotion).
 - Elle laisse passer les clics, sauf sur ses boutons : ✕ / ■ en mains libres, Copier et Coller d'un texte non
-  écrit, Oui / Non d'un mot appris, ✕ d'un message.
-- Messages (erreur, « Collé », mot appris, relais, texte prêt à copier) sur une ligne, brefs et sans point final
-  (une erreur de macOS terminée par un point le perd), avec une barre qui se vide de droite à gauche avant leur
-  départ. Pointeur sur la bulle, sans clic préalable : une petite ✕ paraît en fondu à
-  droite et le décompte (barre comprise) s'arrête ; il reprend où il en était à la sortie. Un message qui paraît
-  sous le pointeur attend aussi. La ✕ ferme le message tout de suite, sans prendre le focus ni le premier plan à
-  l'app active. La bulle d'enregistrement (spectre, finalisation) n'a ni ✕ ni décompte.
+  écrit, Voir / Annuler l'ajout d'un mot appris, ✕ d'un message.
+- Messages, sans contour : sur une ligne (erreur, « Collé », relais, nouvelle version), 42 points de haut, texte de
+  13 points sur deux lignes au plus, 520 points de large au plus ; en carte de 392 points (texte prêt à copier, mots
+  appris), avec les boutons sur leur propre ligne. Brefs et sans point final (une erreur de macOS terminée par un
+  point le perd). À gauche, une pastille de la couleur du message (rouge : erreur, vert : réussite, vert d'eau :
+  relais, bleu : nouvelle version, orange : texte prêt, violet : mots appris, gris : information) ; son anneau se
+  vide pendant le décompte. Pointeur sur la bulle, sans clic préalable : le décompte (anneau compris) s'arrête et
+  reprend où il en était à la sortie ; sur une ligne, la pastille devient la ✕, sur une carte la ✕ paraît en haut à
+  droite. Rien ne bouge. Un message qui paraît sous le pointeur attend aussi. La ✕ ferme le message tout de suite,
+  sans prendre le focus ni le premier plan à l'app active. La bulle d'enregistrement (spectre, finalisation) n'a ni
+  ✕ ni décompte.
+- **Style des messages** (Réglages › Bulle et messages) : **Noir profond** (par défaut), noir avec un reflet doux
+  sur le haut et une ombre, lisible sur tous les fonds ; ou **Verre**, le Liquid Glass transparent de macOS 26
+  (matériau translucide avant), clair ou sombre comme l'apparence de l'app. Le changement vaut tout de suite. La
+  bulle de dictée et son spectre ne changent pas.
 - **Place à l'écran** (Réglages › Bulle et messages) : trois places réglables à main levée sur un schéma quadrillé
   de l'écran, la grille aimantant légèrement les bulles. **Dictée** (spectre et finalisation), **Alertes de
   collage** (texte prêt à copier) et **Messages** (« Collé », mot appris, relais, nouvelle version). Par défaut :
@@ -161,7 +169,8 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   Sombre. Choix rapide par le bouton à droite de « Wispad » en haut de la barre latérale (son icône montre le choix
   en cours, un clic ouvre trois vignettes), ou dans Réglages › Apparence. Toute l'app change aussitôt, en fondu
   (sans fondu avec « Réduire les animations ») : fenêtre, premier lancement guidé, notes de version, bulles d'aide.
-  La bulle de dictée et le schéma de Réglages › Bulle et messages restent sombres. Le choix est gardé après une
+  La bulle de dictée, les messages en noir profond et le schéma de Réglages › Bulle et messages restent sombres ;
+  les messages en verre suivent l'apparence. Le choix est gardé après une
   relance ou une mise à jour, et posé avant l'ouverture de toute fenêtre.
 - Choix d'affichage mémorisés, retrouvés après avoir quitté et relancé Wispad, chacun enregistré dès qu'il change :
   - période de l'Accueil (7 jours par défaut) ;
@@ -666,8 +675,8 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
   Système, ou jamais donnée : ni ⌘V ni lecture du champ), « Collage impossible » (app cible fermée ou qui a perdu le
   premier plan, presse-papiers non modifiable, ⌘V non envoyé), « Champ sécurisé ». Le menu de Wispad et le bandeau
   de la fenêtre, sans ce titre, ajoutent « : le texte est prêt » (« Pas de champ où écrire : le texte est prêt »).
-  Le texte est déjà copié, sauf pour un champ sécurisé. 12 s, avec une barre qui se vide (en pause au
-  survol) ; ✕ au survol ou Échap la ferment. Elle ne prend jamais le focus : **Copier** remet le texte au
+  Le texte est déjà copié, sauf pour un champ sécurisé. 12 s, avec un anneau qui se vide autour de la pastille
+  orange (en pause au survol) ; ✕ au survol ou Échap la ferment. Elle ne prend jamais le focus : **Copier** remet le texte au
   presse-papiers et confirme « Copié » (1,5 s), **Coller** le colle dans le champ de l'app active (même collage que
   « Coller la dernière dictée »). Le collage garde tous les formats du presse-papiers précédent et refuse les champs
   sécurisés.

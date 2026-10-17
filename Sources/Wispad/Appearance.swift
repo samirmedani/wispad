@@ -33,6 +33,23 @@ enum AppAppearance: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+/// Style des messages de la bulle (Réglages › Bulle et messages). La bulle de dictée et son spectre ne changent pas.
+enum BubbleStyle: String, Codable, CaseIterable, Identifiable {
+    /// Noir profond, comme la Dynamic Island : lisible sur tous les fonds.
+    case black
+    /// Liquid Glass transparent d'Apple, clair ou sombre comme l'app.
+    case glass
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .black: return String(localized: "Noir profond")
+        case .glass: return String(localized: "Verre")
+        }
+    }
+}
+
 /// Applique l'apparence à toute l'app. Changée à la main, les fenêtres ouvertes passent de l'une à l'autre en fondu
 /// (sauf avec « Réduire les animations ») ; au lancement, elle est posée avant toute fenêtre.
 @MainActor
@@ -61,6 +78,13 @@ extension AppModel {
         settings.appearance = appearance
         saveSettings()
         AppearanceSwitcher.apply(appearance, animated: true)
+    }
+
+    func setBubbleStyle(_ style: BubbleStyle) {
+        guard settings.bubbleStyle != style else { return }
+        settings.bubbleStyle = style
+        saveSettings()
+        overlay.bubbleStyleChanged()
     }
 }
 

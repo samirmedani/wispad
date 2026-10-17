@@ -9,8 +9,8 @@ import Testing
 struct OverlayScreenTests {
     /// Tailles réelles de la bulle (`OverlayLayout.contentSize`) : spectre, mains libres, message, carte Copier / Coller,
     /// mot appris.
-    static let sizes = [CGSize(width: 86, height: 30), CGSize(width: 162, height: 30), CGSize(width: 470, height: 30),
-                        CGSize(width: 420, height: 122), CGSize(width: 470, height: 112)]
+    static let sizes = [CGSize(width: 86, height: 30), CGSize(width: 162, height: 30), CGSize(width: 520, height: 52),
+                        CGSize(width: 392, height: 128), CGSize(width: 392, height: 156)]
 
     /// Écran de test : cadre, puis zone utile sans la barre des menus (en haut) ni le Dock (en bas).
     static func screen(_ id: UInt32, _ frame: CGRect, menuBar: CGFloat = 0, dock: CGFloat = 0) throws -> OverlayScreen {

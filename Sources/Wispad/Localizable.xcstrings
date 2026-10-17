@@ -8175,12 +8175,72 @@
         }
       }
     },
-    "Où la bulle de dictée et ses messages apparaissent à l'écran." : {
+    "Style des messages, et où la bulle et ses messages apparaissent à l'écran." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Where the dictation bubble and its messages appear on screen."
+            "value" : "Message style, and where the bubble and its messages appear on screen."
+          }
+        }
+      }
+    },
+    "Style des messages" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Message style"
+          }
+        }
+      }
+    },
+    "Noir profond, ou verre transparent comme macOS." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deep black, or clear glass like macOS."
+          }
+        }
+      }
+    },
+    "Le verre laisse voir ce qu'il y a derrière et suit l'apparence de l'app, claire ou sombre." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Glass lets what's behind show through and follows the app's light or dark appearance."
+          }
+        }
+      }
+    },
+    "La bulle de dictée et son spectre ne changent pas." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The dictation bubble and its spectrum don't change."
+          }
+        }
+      }
+    },
+    "Noir profond" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deep black"
+          }
+        }
+      }
+    },
+    "Verre" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Glass"
           }
         }
       }

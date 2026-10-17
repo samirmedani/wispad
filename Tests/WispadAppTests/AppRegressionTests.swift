@@ -1444,7 +1444,8 @@ struct AppRegressionTests {
         #expect(try !f.model.store.hasRefused("Seedance"))
     }
 
-    @Test func messagesFitOnOneLine() async throws {
+    /// Chaque message tient dans la taille que la bulle lui réserve pour se placer (à l'écran, hors du champ).
+    @Test func messagesStayWithinTheirPlacementSize() async throws {
         let f = try Fixture()
         defer { f.dispose() }
         let snapshots = ProcessInfo.processInfo.environment["WISPAD_OVERLAY_SNAPSHOTS"]
@@ -1459,8 +1460,10 @@ struct AppRegressionTests {
                 .environment(\.overlayGlass, false))
             renderer.scale = 2
             let image = try #require(renderer.nsImage)
-            #expect(image.size.height <= (mode.isLearning ? OverlayLayout.panelSize.height - 20 : OverlayLayout.pillHeight + 1))
-            #expect(image.size.width <= OverlayLayout.panelSize.width - 40)
+            let reserved = OverlayLayout.contentSize(for: mode, hasReadyText: false)
+            #expect(image.size.height <= reserved.height + 1, "\(name)")
+            #expect(image.size.width <= reserved.width + 1, "\(name)")
+            #expect(image.size.height <= OverlayLayout.panelSize.height - 20)
             if let snapshots, let tiff = image.tiffRepresentation,
                let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
                 try png.write(to: URL(fileURLWithPath: snapshots).appendingPathComponent("\(name).png"))
@@ -2493,16 +2496,6 @@ private final class SilentProvider: NSObject, NSPasteboardItemDataProvider {
 
 @MainActor
 struct InsertionFailureTests {
-    @Test func copyButtonKeepsItsActionWithATrailingClosure() {
-        // Le 5 octobre, la fermeture finale se rattachait au bouton secondaire : « Copier » disparaissait.
-        let line = MessageLine(symbol: "exclamationmark.circle.fill", tint: .red, message: "Échec.", actionTitle: "Copier") {}
-        #expect(line.action != nil)
-        #expect(line.secondaryAction == nil)
-        let labeled = MessageLine(symbol: "checkmark.circle.fill", tint: .green, message: "Garder ?",
-                                  actionTitle: "Oui", action: {}, secondaryTitle: "Non", secondaryAction: {})
-        #expect(labeled.action != nil && labeled.secondaryAction != nil)
-    }
-
     @Test func anUnreadableClipboardFormatDoesNotBlockThePaste() throws {
         let pasteboard = NSPasteboard(name: NSPasteboard.Name("wispad-test-" + UUID().uuidString))
         defer { pasteboard.releaseGlobally() }

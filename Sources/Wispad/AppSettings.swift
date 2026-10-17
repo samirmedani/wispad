@@ -92,6 +92,8 @@ struct AppSettings: Codable, Equatable {
     var overlayPlacement = OverlayPlacement()
     /// Apparence de l'app (Réglages › Apparence, ou le bouton de la barre latérale) : celle de macOS par défaut.
     var appearance: AppAppearance = .system
+    /// Style des messages de la bulle (Réglages › Bulle et messages) : noir profond par défaut, ou verre.
+    var bubbleStyle: BubbleStyle = .black
 
     init() {}
 
@@ -158,6 +160,7 @@ struct AppSettings: Codable, Equatable {
         dictionarySort = value(.dictionarySort, defaults.dictionarySort)
         overlayPlacement = value(.overlayPlacement, defaults.overlayPlacement)
         appearance = value(.appearance, defaults.appearance)
+        bubbleStyle = value(.bubbleStyle, defaults.bubbleStyle)
     }
 
     /// Bornes des réglages de conservation, partagées avec leurs contrôles dans Réglages.

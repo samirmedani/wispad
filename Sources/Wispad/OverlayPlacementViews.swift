@@ -8,6 +8,19 @@ struct OverlayPlacementSection: View {
 
     var body: some View {
         Section {
+            SettingRow(text: SettingsPresentation.bubbleStyle) {
+                Picker(SettingsPresentation.bubbleStyle.title, selection: Binding(
+                    get: { model.settings.bubbleStyle },
+                    set: { model.setBubbleStyle($0) }
+                )) {
+                    ForEach(BubbleStyle.allCases) { style in
+                        Text(style.title).tag(style)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .fixedSize()
+            }
             SettingToggle(text: SettingsPresentation.avoidInput, isOn: Binding(
                 get: { model.settings.overlayPlacement.avoidsInput },
                 set: { model.settings.overlayPlacement.avoidsInput = $0; model.saveSettings() }
@@ -40,8 +53,8 @@ extension OverlayRole {
     @MainActor var screenSize: CGSize {
         switch self {
         case .dictation: return CGSize(width: OverlayLayout.spectrumPillWidth, height: OverlayLayout.pillHeight)
-        case .alerts: return CGSize(width: 420, height: 122)
-        case .info: return CGSize(width: 470, height: OverlayLayout.pillHeight)
+        case .alerts: return OverlayLayout.contentSize(for: .failure(""), hasReadyText: true)
+        case .info: return CGSize(width: 300, height: OverlayLayout.messageHeight)
         }
     }
 }

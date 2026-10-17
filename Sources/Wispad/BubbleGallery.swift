@@ -8,7 +8,6 @@ import WispadCore
 /// `--bubble-gallery <dossier>` : une planche PNG par famille d'états de la bulle (dictée, texte prêt, erreurs,
 /// messages, survol), avec les vues et les textes de l'app. Rien ne s'affiche : app d'arrière-plan sans fenêtre ni
 /// panneau, modèle fictif dans un dossier temporaire, rendu par ImageRenderer, donc sans l'effet de verre de macOS 26.
-/// Avec `--styles` : les propositions de style des messages (`BubbleStyleLab`).
 @MainActor
 enum BubbleGallery {
     struct Shot {
@@ -32,9 +31,8 @@ enum BubbleGallery {
             exit(2)
         }
         let output = URL(fileURLWithPath: arguments[index + 1], isDirectory: true)
-        let styles = arguments.contains("--styles")
         Task { @MainActor in
-            exit(styles ? BubbleStyleLab.render(to: output) : await render(to: output))
+            exit(await render(to: output))
         }
         app.run()
     }
