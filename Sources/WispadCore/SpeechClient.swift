@@ -110,10 +110,19 @@ public final class LiveSpeechSession: NSObject, URLSessionWebSocketDelegate, @un
     private var audioDoneQueued = false
     private var finishStarted = false
     private var didFinish = false
+    /// Audio parti vers le fournisseur, en octets de PCM 16 kHz, 16 bits, mono.
+    private var sentAudioBytes = 0
+    /// Fin tranchée par un segment final qui couvre tout l'audio, avant `transcript.done`.
+    private var finishedOnCoverage = false
     private var pending = Data()
     private var assembler = TranscriptAssembler()
     private let readyResult = AsyncResult<Void>()
     private let finishResult = AsyncResult<StreamFinish>()
+
+    /// Octets par seconde du PCM envoyé (16 kHz, 16 bits, mono).
+    static let pcmBytesPerSecond = 32_000.0
+    /// Écart toléré entre la fin du dernier segment final et l'audio envoyé (arrondis du serveur) : moins qu'un mot.
+    static let coverageToleranceSeconds = 0.1
 
     public var onPartial: (@Sendable (String) -> Void)?
     /// Appelé quand un segment final clôt tout ce qui a été entendu (pause dans la parole), avec ce texte.
@@ -193,7 +202,8 @@ public final class LiveSpeechSession: NSObject, URLSessionWebSocketDelegate, @un
             if request.provider == .xai, !lock.withLock({ assembler.endingFinalized || closed || didFinish }) {
                 await waitForTailFinal()
             }
-            if request.provider == .xai, !lock.withLock({ closed || didFinish }) {
+            // `audio.done` part aussi après une fin tranchée par la couverture : la session se clôt proprement.
+            if request.provider == .xai, !lock.withLock({ closed || (didFinish && !finishedOnCoverage) }) {
                 sendAudioDone()
             }
             let replySeconds = finalReplySeconds
@@ -371,6 +381,7 @@ public final class LiveSpeechSession: NSObject, URLSessionWebSocketDelegate, @un
             assembler.apply(event)
             let partial = assembler.displayText
             let done = streamFinishIfDone(event)
+            let covering = coveringFinishLocked(after: event)
             let settled: String? = {
                 guard case .partial(_, let isFinal, let speechFinal, _) = event, isFinal || speechFinal,
                       assembler.endingFinalized, !finishStarted else { return nil }
@@ -379,6 +390,7 @@ public final class LiveSpeechSession: NSObject, URLSessionWebSocketDelegate, @un
             lock.unlock()
             publish(partial)
             if let settled, !settled.isEmpty { onSettled?(settled) }
+            if let covering { completeFinish(covering) }
             if let done { completeFinish(done) }
         case .openAI:
             let event = TranscriptEventParser.parseOpenAI(object)
@@ -410,8 +422,24 @@ public final class LiveSpeechSession: NSObject, URLSessionWebSocketDelegate, @un
         )
     }
 
+    /// Après `finalize`, xAI renvoie un segment final de fin de parole qui va jusqu'au bout de l'audio envoyé, puis,
+    /// seulement après `audio.done`, un `transcript.done` au même texte, environ 0,1 s plus tard (mesuré le
+    /// 17 octobre 2026 : 9 essais sur 9, fin du segment égale à la durée envoyée). Ce segment suffit : la dictée
+    /// n'attend pas ce dernier aller-retour. Segment plus court que l'audio, fin non verrouillée ou sans
+    /// `speech_final` : rien ne change, on attend `transcript.done`. Appelé sous le verrou.
+    private func coveringFinishLocked(after event: XAIEvent) -> StreamFinish? {
+        guard finalizeQueued, !didFinish, sentAudioBytes > 0,
+              case .partial(_, _, let speechFinal, _) = event, speechFinal,
+              assembler.endingFinalized,
+              let covered = assembler.finalizedCoverageEnd,
+              covered + Self.coverageToleranceSeconds >= Double(sentAudioBytes) / Self.pcmBytesPerSecond else { return nil }
+        finishedOnCoverage = true
+        return StreamFinish(text: assembler.bestText, endingFinalized: true, coveredSeconds: covered)
+    }
+
     private func transmit(_ pcm16k: Data) {
         assembler.noteAudioAfterFinal()
+        sentAudioBytes += pcm16k.count
         switch request.provider {
         case .xai:
             enqueueMessage(.data(pcm16k))

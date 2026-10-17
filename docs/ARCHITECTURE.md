@@ -363,6 +363,10 @@ ne réécrit jamais un fichier abîmé (les clés de sa partie intacte servent).
   (temps, vues natives, lignes rendues), puis un défilement simulé vers le bas et vers le haut (temps par étape :
   moyenne, p95, max, étapes de plus de 16 ms ; évaluations de lignes et lignes distinctes).
 - Tests réseau à la demande, clés de test seulement : `scripts/live-test.sh SelfCorrectionLiveTests`.
+- Sonde de délais (clés de test) : `WISPAD_LATENCY_PROBE=1 scripts/live-test.sh LatencyProbeLiveTests` mesure, sur
+  des phrases synthétiques, le délai entre l'arrêt et le texte final du flux xAI. Elle mesure aussi le fichier
+  complet, le protocole `finalize` / `transcript.done` et la correction Grok. Elle n'affiche que des durées et
+  des comptes de mots.
 - Banc franglais (audios de `Tests/Fixtures/franglais`, clés de test) : `scripts/franglais-bench.sh <nom> [référence]` ;
   `BENCH_ONLY=h,r,g,l,e,d,n` ne rejoue que les cas de correction seule (champ `transcript` : transcription brute
   inventée, passée directement à la correction, sans audio ni flux xAI ; `dateFormat` facultatif).
