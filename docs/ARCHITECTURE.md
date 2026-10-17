@@ -348,6 +348,9 @@ ne réécrit jamais un fichier abîmé (les clés de sa partie intacte servent).
   shortcut, trial, finish) avec `--onboarding-state done|failed|progress` (états fictifs, aucune autorisation
   demandée ni micro ouvert), `--shortcut-preview custom|long|disabled|recording` (Réglages › Raccourci avec des
   raccourcis fictifs), `--customer-preview`, `-AppleLanguages "(en)"`.
+- Toutes les bulles et leurs messages, hors écran : `Wispad --bubble-gallery <dossier>` avec le build Debug. Une
+  planche PNG par famille (dictée, texte prêt, erreurs, messages, survol), rendue avec les vues et les textes de l'app,
+  sans l'effet de verre de macOS 26.
 - Fluidité de l'historique, hors écran : `Wispad --design-preview --offscreen --history-count 1000
   --performance-probe [--scroll-steps 240]` avec le build Debug. Lignes `PERFORMANCE` : deux ouvertures de l'écran
   (temps, vues natives, lignes rendues), puis un défilement simulé vers le bas et vers le haut (temps par étape :
