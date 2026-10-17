@@ -45,6 +45,8 @@ final class DictationCoordinator {
     }
     @ObservationIgnored private var outputMuted = false
     var failureText: String?
+    /// Raison courte de la carte « Texte prêt à copier », sous son titre ; nil : la carte montre le message.
+    var failureDetail: String?
     /// Copier vient d'être cliqué : la bulle confirme « Copié » avant de partir.
     var failureCopied = false
     /// Le message d'erreur propose d'ouvrir l'historique (faux pour un micro qui n'a pas démarré).
@@ -834,7 +836,7 @@ final class DictationCoordinator {
         } catch {
             current.run.trace.outcome = .historyFailed
             model.statusBanner = String(localized: "L'enregistrement local a échoué.")
-            showFailure(String(localized: "Historique indisponible. Copie le texte avant de fermer."), text: finalText)
+            showFailure(String(localized: "Historique indisponible : copie le texte avant de fermer"), text: finalText)
             return
         }
         current.run.trace.dictationID = record.id
@@ -932,31 +934,39 @@ final class DictationCoordinator {
         changed()
     }
 
-    private func showFailure(_ message: String, text: String?, recordID: String? = nil) {
-        shownFailure = ShownFailure(message: message, text: text, recordID: recordID)
+    private func showFailure(_ message: String, text: String?, recordID: String? = nil, detail: String? = nil) {
+        shownFailure = ShownFailure(message: message, text: text, recordID: recordID, detail: detail)
         refreshPhase()
         changed()
     }
 
     // MARK: - Texte prêt, faute de champ
 
-    /// Message de la bulle quand le texte n'a pas pu être écrit : court, toujours suivi de Copier. Collage refusé
-    /// faute d'accessibilité : la bulle dit laquelle manque, plutôt qu'un texte « pas arrivé » jamais envoyé.
-    /// Collage retenu parce qu'une touche modificatrice est restée tenue : la bulle dit laquelle.
-    static func readyMessage(for status: InsertionStatus, accessibilityRefused: Bool = false, heldModifiers: UInt64 = 0) -> String {
-        if accessibilityRefused { return String(localized: "Accessibilité non autorisée : le texte est prêt") }
+    /// Raison courte, sous le titre « Texte prêt à copier » de la carte, qui dit déjà que le texte attend. Collage
+    /// refusé faute d'accessibilité : laquelle manque, plutôt qu'un texte « pas arrivé » jamais envoyé. Collage
+    /// retenu parce qu'une touche modificatrice est restée tenue : laquelle.
+    static func readyReason(for status: InsertionStatus, accessibilityRefused: Bool = false, heldModifiers: UInt64 = 0) -> String {
+        if accessibilityRefused { return String(localized: "Accessibilité non autorisée") }
         if status == .failed, heldModifiers != 0 {
             let keys = TextInserter.modifierNames(heldModifiers)
             return (heldModifiers & ModifierMask.relevant).nonzeroBitCount == 1
-                ? String(localized: "Touche \(keys) maintenue : le texte est prêt")
-                : String(localized: "Touches \(keys) maintenues : le texte est prêt")
+                ? String(localized: "Touche \(keys) maintenue")
+                : String(localized: "Touches \(keys) maintenues")
         }
         switch status {
-        case .noTarget: return String(localized: "Pas de champ où écrire : le texte est prêt")
-        case .refusedSecure: return String(localized: "Champ sécurisé : le texte est prêt")
+        case .noTarget: return String(localized: "Pas de champ où écrire")
+        case .refusedSecure: return String(localized: "Champ sécurisé")
         case .failed: return String(localized: "Le texte n'est pas arrivé dans le champ")
-        default: return String(localized: "Collage impossible : le texte est prêt")
+        default: return String(localized: "Collage impossible")
         }
+    }
+
+    /// Message complet, hors de la carte (menu de Wispad, bandeau de la fenêtre) : la raison, puis que le texte
+    /// attend. Toujours suivi de Copier dans la bulle.
+    static func readyMessage(for status: InsertionStatus, accessibilityRefused: Bool = false, heldModifiers: UInt64 = 0) -> String {
+        let reason = readyReason(for: status, accessibilityRefused: accessibilityRefused, heldModifiers: heldModifiers)
+        guard accessibilityRefused || status != .failed || heldModifiers != 0 else { return reason }
+        return String(localized: "\(reason) : le texte est prêt")
     }
 
     /// Échec avéré : le texte reste récupérable sans voler le focus. Il est copié, sauf vers un champ sécurisé
@@ -967,8 +977,9 @@ final class DictationCoordinator {
         if status != .refusedSecure { model.dependencies.copyText(text) }
         Self.insertionLog.notice("récupération du collage : \(status.rawValue, privacy: .public)")
         let message = Self.readyMessage(for: status, accessibilityRefused: accessibilityRefused, heldModifiers: heldModifiers)
+        let reason = Self.readyReason(for: status, accessibilityRefused: accessibilityRefused, heldModifiers: heldModifiers)
         model.statusBanner = message
-        showFailure(message, text: text, recordID: recordID)
+        showFailure(message, text: text, recordID: recordID, detail: reason)
     }
 
     /// Copier, dans la bulle : le texte part dans le presse-papiers et la bulle confirme « Copié ».
@@ -1068,6 +1079,8 @@ final class DictationCoordinator {
         }
         let text = capture == nil ? shownFailure?.text : nil
         if failureText != text { failureText = text }
+        let detail = capture == nil ? shownFailure?.detail : nil
+        if failureDetail != detail { failureDetail = detail }
         let copied = capture == nil && shownFailure?.copied == true
         if failureCopied != copied { failureCopied = copied }
         let offersHistory = shownFailure?.offersHistory ?? true
@@ -1230,7 +1243,7 @@ final class DictationCoordinator {
         } catch {
             model.statusBanner = String(localized: "Transcription et historique indisponibles. L'audio est conservé dans le dossier Audio de Wispad.")
         }
-        showFailure(String(localized: "Transcription impossible. L'audio est gardé dans l'historique."), text: nil)
+        showFailure(String(localized: "Transcription impossible : l'audio est gardé dans l'historique"), text: nil)
     }
 
     private func applyRetention(recordID: String, url: URL?, status: InsertionStatus, model: AppModel) {

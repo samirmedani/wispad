@@ -8,6 +8,7 @@ import WispadCore
 /// `--bubble-gallery <dossier>` : une planche PNG par famille d'états de la bulle (dictée, texte prêt, erreurs,
 /// messages, survol), avec les vues et les textes de l'app. Rien ne s'affiche : app d'arrière-plan sans fenêtre ni
 /// panneau, modèle fictif dans un dossier temporaire, rendu par ImageRenderer, donc sans l'effet de verre de macOS 26.
+/// Avec `--styles` : les propositions de style des messages (`BubbleStyleLab`).
 @MainActor
 enum BubbleGallery {
     struct Shot {
@@ -31,8 +32,9 @@ enum BubbleGallery {
             exit(2)
         }
         let output = URL(fileURLWithPath: arguments[index + 1], isDirectory: true)
+        let styles = arguments.contains("--styles")
         Task { @MainActor in
-            exit(await render(to: output))
+            exit(styles ? BubbleStyleLab.render(to: output) : await render(to: output))
         }
         app.run()
     }
@@ -126,22 +128,27 @@ enum BubbleGallery {
 
         func readyText() async -> Board {
             var board = Board(file: "2-texte-pret.png", title: "Texte prêt : la dictée n'a pas pu être écrite", columns: 2)
-            let cases: [(caption: String, message: String)] = [
-                ("Collage envoyé, texte absent du champ", DictationCoordinator.readyMessage(for: .failed)),
-                ("Aucun champ de texte actif", DictationCoordinator.readyMessage(for: .noTarget)),
-                ("Champ de mot de passe : texte non copié", DictationCoordinator.readyMessage(for: .refusedSecure)),
-                ("Accessibilité non accordée", DictationCoordinator.readyMessage(for: .failed, accessibilityRefused: true)),
-                ("Une touche encore tenue", DictationCoordinator.readyMessage(for: .failed, heldModifiers: ModifierMask.option)),
-                ("Plusieurs touches encore tenues",
-                 DictationCoordinator.readyMessage(for: .failed, heldModifiers: ModifierMask.control | ModifierMask.option)),
-                ("Autre échec du collage", DictationCoordinator.readyMessage(for: .pending)),
-                ("Dictée non enregistrée dans l'historique", "Historique indisponible. Copie le texte avant de fermer."),
+            let cases: [(caption: String, status: InsertionStatus, accessibility: Bool, keys: UInt64)] = [
+                ("Collage envoyé, texte absent du champ", .failed, false, 0),
+                ("Aucun champ de texte actif", .noTarget, false, 0),
+                ("Champ de mot de passe : texte non copié", .refusedSecure, false, 0),
+                ("Accessibilité non accordée", .failed, true, 0),
+                ("Une touche encore tenue", .failed, false, ModifierMask.option),
+                ("Plusieurs touches encore tenues", .failed, false, ModifierMask.control | ModifierMask.option),
+                ("Autre échec du collage", .pending, false, 0),
             ]
             for item in cases {
-                await showFailure(item.message, text: sampleText)
+                let message = DictationCoordinator.readyMessage(for: item.status, accessibilityRefused: item.accessibility,
+                                                                heldModifiers: item.keys)
+                let reason = DictationCoordinator.readyReason(for: item.status, accessibilityRefused: item.accessibility,
+                                                              heldModifiers: item.keys)
+                await showFailure(message, text: sampleText, detail: reason)
                 snap(item.caption, into: &board)
                 clearFailure()
             }
+            await showFailure("Historique indisponible : copie le texte avant de fermer", text: sampleText)
+            snap("Dictée non enregistrée dans l'historique", into: &board)
+            clearFailure()
             await showFailure("Copié", copied: true)
             snap("Après « Copier »", into: &board)
             clearFailure()
@@ -160,7 +167,7 @@ enum BubbleGallery {
                 ("Surveillance des entrées retirée pendant la dictée",
                  DictationCoordinator.keyboardLostMessage(KeyboardPermissions(listen: false, accessibility: true)), false),
                 ("Transcription impossible (réseau, clé, quota)",
-                 "Transcription impossible. L'audio est gardé dans l'historique.", true),
+                 "Transcription impossible : l'audio est gardé dans l'historique", true),
                 ("Consigne sur une sélection restée sans réponse", "Consigne non appliquée : la sélection est inchangée.", true),
             ]
             for item in cases {
@@ -211,10 +218,11 @@ enum BubbleGallery {
             var board = Board(file: "5-survol.png", title: "Au survol : ✕ pour fermer, décompte en pause", columns: 2)
             model.overlay.state.isHovered = true
             defer { model.overlay.state.isHovered = false }
-            await showFailure(DictationCoordinator.readyMessage(for: .failed), text: sampleText)
+            await showFailure(DictationCoordinator.readyMessage(for: .noTarget), text: sampleText,
+                              detail: DictationCoordinator.readyReason(for: .noTarget))
             snap("Texte prêt", into: &board)
             clearFailure()
-            await showFailure("Transcription impossible. L'audio est gardé dans l'historique.")
+            await showFailure("Transcription impossible : l'audio est gardé dans l'historique")
             snap("Erreur", into: &board)
             clearFailure()
             await showNotice("Collé")
@@ -258,8 +266,10 @@ enum BubbleGallery {
             coordinator.noticeTimer.setPaused(true)
         }
 
-        private func showFailure(_ message: String, text: String? = nil, offersHistory: Bool = true, copied: Bool = false) async {
+        private func showFailure(_ message: String, text: String? = nil, detail: String? = nil, offersHistory: Bool = true,
+                                 copied: Bool = false) async {
             coordinator.failureText = text
+            coordinator.failureDetail = detail
             coordinator.failureCopied = copied
             coordinator.failureOffersHistory = offersHistory
             coordinator.phase = .failure(message)
@@ -271,6 +281,7 @@ enum BubbleGallery {
         private func clearFailure() {
             coordinator.failureTimer.cancel()
             coordinator.failureText = nil
+            coordinator.failureDetail = nil
             coordinator.failureCopied = false
             coordinator.failureOffersHistory = true
             coordinator.phase = .idle

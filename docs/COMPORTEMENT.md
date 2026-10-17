@@ -118,8 +118,9 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   écran, avec le spectre de la voix (graves au centre) à la cadence de l'écran (120 Hz en ProMotion).
 - Elle laisse passer les clics, sauf sur ses boutons : ✕ / ■ en mains libres, Copier et Coller d'un texte non
   écrit, Oui / Non d'un mot appris, ✕ d'un message.
-- Messages (erreur, « Collé », mot appris, relais, texte prêt à copier) sur une ligne, avec une barre qui se vide
-  de droite à gauche avant leur départ. Pointeur sur la bulle, sans clic préalable : une petite ✕ paraît en fondu à
+- Messages (erreur, « Collé », mot appris, relais, texte prêt à copier) sur une ligne, brefs et sans point final
+  (une erreur de macOS terminée par un point le perd), avec une barre qui se vide de droite à gauche avant leur
+  départ. Pointeur sur la bulle, sans clic préalable : une petite ✕ paraît en fondu à
   droite et le décompte (barre comprise) s'arrête ; il reprend où il en était à la sortie. Un message qui paraît
   sous le pointeur attend aussi. La ✕ ferme le message tout de suite, sans prendre le focus ni le premier plan à
   l'app active. La bulle d'enregistrement (spectre, finalisation) n'a ni ✕ ni décompte.
@@ -657,14 +658,15 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
 ## Reprise après erreur
 
 - Erreur réseau, de clé ou de quota : l'audio reste dans l'historique ; **Retranscrire** puis **Copier**.
-- Texte qui n'a pas pu être écrit : jamais en silence. La bulle le dit dans une carte avec un titre de 14 points,
-  une explication de 12 points et des boutons de 30 points sur une ligne séparée, avec **Copier** en évidence et
-  **Coller** : « Pas de champ où écrire : le texte est prêt » (focus sur une liste, un bouton, un menu, ou le bureau
-  et les fenêtres du Finder, avant l'envoi), « Le texte n'est pas arrivé dans le champ » (champ lisible resté
-  identique 1 s après ⌘V), « Accessibilité non autorisée : le texte est prêt » (accessibilité retirée dans Réglages
-  Système, ou jamais donnée : ni ⌘V ni lecture du champ), « Collage impossible : le texte est prêt » (app cible
-  fermée ou qui a perdu le premier plan, presse-papiers non modifiable, ⌘V non envoyé), « Champ sécurisé : le texte
-  est prêt ». Le texte est déjà copié, sauf pour un champ sécurisé. 12 s, avec une barre qui se vide (en pause au
+- Texte qui n'a pas pu être écrit : jamais en silence. La bulle le dit dans une carte « Texte prêt à copier »
+  (titre de 14 points), avec sous le titre la seule raison (12 points) et des boutons de 30 points sur une ligne
+  séparée, **Copier** en évidence et **Coller** : « Pas de champ où écrire » (focus sur une liste, un bouton, un
+  menu, ou le bureau et les fenêtres du Finder, avant l'envoi), « Le texte n'est pas arrivé dans le champ » (champ
+  lisible resté identique 1 s après ⌘V), « Accessibilité non autorisée » (accessibilité retirée dans Réglages
+  Système, ou jamais donnée : ni ⌘V ni lecture du champ), « Collage impossible » (app cible fermée ou qui a perdu le
+  premier plan, presse-papiers non modifiable, ⌘V non envoyé), « Champ sécurisé ». Le menu de Wispad et le bandeau
+  de la fenêtre, sans ce titre, ajoutent « : le texte est prêt » (« Pas de champ où écrire : le texte est prêt »).
+  Le texte est déjà copié, sauf pour un champ sécurisé. 12 s, avec une barre qui se vide (en pause au
   survol) ; ✕ au survol ou Échap la ferment. Elle ne prend jamais le focus : **Copier** remet le texte au
   presse-papiers et confirme « Copié » (1,5 s), **Coller** le colle dans le champ de l'app active (même collage que
   « Coller la dernière dictée »). Le collage garde tous les formats du presse-papiers précédent et refuse les champs
@@ -707,8 +709,8 @@ Wispad relit ces autorisations sans jamais les redemander : une demande de macOS
   retiré, la dictée s'arrête comme si on l'avait terminée et la bulle affiche « Accès au micro retiré : dictée
   arrêtée ». Au repos, comme avant, la dictée suivante ne s'ouvre pas et Réglages s'affiche (« Le microphone n'est
   pas autorisé. »).
-- **Accessibilité au moment du collage** : ni ⌘V ni lecture du champ ; le texte est copié et la bulle affiche
-  « Accessibilité non autorisée : le texte est prêt » (voir « Reprise après erreur »). Même chose pour **Coller** et
+- **Accessibilité au moment du collage** : ni ⌘V ni lecture du champ ; le texte est copié et la carte « Texte prêt
+  à copier » affiche « Accessibilité non autorisée » (voir « Reprise après erreur »). Même chose pour **Coller** et
   « Coller la dernière dictée ».
 - **Affichage** : Réglages › Autorisations et l'alerte de la barre latérale sont relus à l'ouverture de la fenêtre ou
   de Réglages et à chaque retour dans Wispad (par exemple depuis Réglages Système) ; le premier lancement guidé les
@@ -729,7 +731,7 @@ Wispad relit ces autorisations sans jamais les redemander : une demande de macOS
   enfoncée) : le collage l'attend 5 s au plus et part dès qu'elle est relâchée, toujours dans la même app (sinon
   « Pas de champ où écrire »). Le 17 octobre 2026, une touche tenue 2,4 s juste après une dictée faisait échouer le
   collage, qui n'attendait que 0,8 s. Toujours tenue au bout des 5 s : aucun ⌘V, la carte « Texte prêt » nomme la
-  touche (« Touche ⇧ maintenue : le texte est prêt ») et Coller la colle d'un clic. Échap pendant l'attente annule la
+  touche (« Touche ⇧ maintenue ») et Coller la colle d'un clic. Échap pendant l'attente annule la
   dictée.
 - Une app qui a perdu le premier plan n'est pas réactivée de force : la bulle propose de récupérer le texte.
 - Lectures d'accessibilité bornées au collage : champ actif 0,3 s avant ⌘V, confirmation 1 s après. Une app qui

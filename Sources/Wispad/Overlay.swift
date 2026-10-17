@@ -192,6 +192,15 @@ enum OverlayStyle {
     static let fade = Animation.easeInOut(duration: 0.2)
 }
 
+/// Textes de la bulle : des messages brefs, jamais terminés par un point, quelle que soit leur source (erreur de
+/// macOS comprise). Les points de suspension restent.
+enum OverlayText {
+    static func display(_ message: String) -> String {
+        guard message.hasSuffix("."), !message.hasSuffix("...") else { return message }
+        return String(message.dropLast())
+    }
+}
+
 /// Canevas fixe du panneau ; la pilule y naît, change de forme et disparaît sans que la fenêtre bouge.
 struct OverlayBar: View {
     @Environment(AppModel.self) private var model
@@ -538,7 +547,7 @@ struct FailurePill: View {
             MessageLine(symbol: "checkmark.circle.fill", tint: OverlayStyle.green, message: message, countdown: countdown, onDismiss: coordinator.closeMessage)
         } else if coordinator.failureText != nil {
             RecoveryMessageCard(
-                message: message,
+                message: coordinator.failureDetail ?? message,
                 hovered: model.overlay.state.isHovered,
                 countdown: countdown,
                 onDismiss: coordinator.closeMessage,
@@ -575,7 +584,7 @@ struct RecoveryMessageCard: View {
                     Text("Texte prêt à copier")
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(.white)
-                    Text(message)
+                    Text(OverlayText.display(message))
                         .font(.system(size: 12))
                         .foregroundStyle(.white.opacity(0.78))
                         .fixedSize(horizontal: false, vertical: true)
@@ -645,7 +654,7 @@ struct LearningNoticePill: View {
                 .allowsHitTesting(model.overlay.state.isHovered)
                 .accessibilityLabel("Fermer le message")
             }
-            Text(terms.isEmpty ? fallbackMessage : terms.joined(separator: " · "))
+            Text(terms.isEmpty ? OverlayText.display(fallbackMessage) : terms.joined(separator: " · "))
                 .font(.system(size: 13, weight: .medium))
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
@@ -718,7 +727,7 @@ struct MessageLine: View {
             Image(systemName: symbol)
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(tint)
-            Text(message)
+            Text(OverlayText.display(message))
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(.white.opacity(0.92))
                 .lineLimit(1)

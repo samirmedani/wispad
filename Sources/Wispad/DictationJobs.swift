@@ -183,4 +183,6 @@ struct ShownFailure {
     var copied = false
     /// Le bouton Historique est proposé ; jamais pour un micro qui n'a pas démarré (rien d'enregistré).
     var offersHistory = true
+    /// Raison courte sous le titre de la carte « Texte prêt à copier » ; nil : la carte montre le message.
+    var detail: String?
 }

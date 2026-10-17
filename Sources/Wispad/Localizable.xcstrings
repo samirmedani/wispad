@@ -3429,12 +3429,12 @@
         }
       }
     },
-    "Historique indisponible. Copie le texte avant de fermer." : {
+    "Historique indisponible : copie le texte avant de fermer" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "History unavailable. Copy the text before closing."
+            "value" : "History unavailable: copy the text before closing"
           }
         }
       }
@@ -3899,32 +3899,32 @@
         }
       }
     },
-    "Pas de champ où écrire : le texte est prêt" : {
+    "Pas de champ où écrire" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No field to write in: the text is ready"
+            "value" : "No field to write in"
           }
         }
       }
     },
-    "Champ sécurisé : le texte est prêt" : {
+    "%@ : le texte est prêt" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Secure field: the text is ready"
+            "value" : "%@: the text is ready"
           }
         }
       }
     },
-    "Collage impossible : le texte est prêt" : {
+    "Collage impossible" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't paste: the text is ready"
+            "value" : "Couldn't paste"
           }
         }
       }
@@ -5351,12 +5351,12 @@
         }
       }
     },
-    "Transcription impossible. L'audio est gardé dans l'historique." : {
+    "Transcription impossible : l'audio est gardé dans l'historique" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Transcription failed. The audio is kept in History."
+            "value" : "Transcription failed: the audio is kept in History"
           }
         }
       }
@@ -8535,12 +8535,12 @@
         }
       }
     },
-    "Accessibilité non autorisée : le texte est prêt" : {
+    "Accessibilité non autorisée" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Accessibility not allowed: the text is ready"
+            "value" : "Accessibility not allowed"
           }
         }
       }
@@ -9243,22 +9243,22 @@
         }
       }
     },
-    "Touche %@ maintenue : le texte est prêt" : {
+    "Touche %@ maintenue" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ key held: your text is ready"
+            "value" : "%@ key held"
           }
         }
       }
     },
-    "Touches %@ maintenues : le texte est prêt" : {
+    "Touches %@ maintenues" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ keys held: your text is ready"
+            "value" : "%@ keys held"
           }
         }
       }

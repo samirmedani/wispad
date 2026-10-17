@@ -118,6 +118,10 @@ struct TextInsertionTests {
         #expect(DictationCoordinator.readyMessage(for: .failed, heldModifiers: ModifierMask.option | ModifierMask.function)
                 == "Touches ⌥ fn maintenues : le texte est prêt")
         #expect(DictationCoordinator.readyMessage(for: .failed) == "Le texte n'est pas arrivé dans le champ")
+        // La carte a déjà le titre « Texte prêt à copier » : sa ligne ne le répète pas.
+        #expect(DictationCoordinator.readyReason(for: .failed, heldModifiers: ModifierMask.shift) == "Touche ⇧ maintenue")
+        #expect(DictationCoordinator.readyReason(for: .noTarget) == "Pas de champ où écrire")
+        #expect(DictationCoordinator.readyReason(for: .pending, accessibilityRefused: true) == "Accessibilité non autorisée")
     }
 
     @Test func failureToSendIsStillAnActualFailure() async {
