@@ -5,8 +5,7 @@ est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
 ## 0.2.4 — 17 octobre 2026
 
-Mode clair ou sombre, une première dictée qui démarre tout de suite, et un collage qui ne rate plus quand une touche
-est tenue.
+Mode clair ou sombre, première dictée immédiate, et un collage qui ne rate plus quand une touche est tenue.
 
 > Depuis la 0.2.0 : si la mise à jour reste sur « Relance… », ferme cette fenêtre, puis quitte Wispad et rouvre-le.
 > La 0.2.4 est déjà installée.
