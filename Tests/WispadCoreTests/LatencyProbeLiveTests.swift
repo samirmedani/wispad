@@ -85,20 +85,8 @@ final class LatencyProbeLiveTests: XCTestCase {
                 let socket = session.webSocketTask(with: request)
                 let log = EventLog()
                 socket.resume()
-                let receiver = Task {
-                    while !Task.isCancelled {
-                        guard let message = try? await socket.receive() else { return }
-                        var text: String?
-                        switch message {
-                        case .string(let value): text = value
-                        case .data(let data): text = String(data: data, encoding: .utf8)
-                        @unknown default: text = nil
-                        }
-                        if let text, let object = try? JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any] {
-                            log.add(object, at: Self.now())
-                        }
-                    }
-                }
+                let reader = SocketReader(socket: socket, log: log)
+                let receiver = Task { await reader.run() }
                 for _ in 0..<300 where !log.created { try await Task.sleep(nanoseconds: 10_000_000) }
                 var offset = 0
                 while offset < pcm.count {
@@ -210,6 +198,31 @@ final class LatencyProbeLiveTests: XCTestCase {
                 }
             }
             return assembler.bestText
+        }
+    }
+
+    /// Lit le socket dans son propre objet : la tâche de lecture ne capture qu'une référence.
+    private final class SocketReader: @unchecked Sendable {
+        private let socket: URLSessionWebSocketTask
+        private let log: EventLog
+
+        init(socket: URLSessionWebSocketTask, log: EventLog) {
+            self.socket = socket
+            self.log = log
+        }
+
+        func run() async {
+            while !Task.isCancelled {
+                guard let message = try? await socket.receive() else { return }
+                let text: String?
+                switch message {
+                case .string(let value): text = value
+                case .data(let data): text = String(data: data, encoding: .utf8)
+                @unknown default: text = nil
+                }
+                guard let text, let object = try? JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any] else { continue }
+                log.add(object, at: LatencyProbeLiveTests.now())
+            }
         }
     }
 
