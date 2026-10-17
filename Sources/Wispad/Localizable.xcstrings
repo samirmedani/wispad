@@ -9832,6 +9832,126 @@
           }
         }
       }
+    },
+    "Mises à jour" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Updates"
+          }
+        }
+      }
+    },
+    "Rechercher une mise à jour" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check for updates"
+          }
+        }
+      }
+    },
+    "Recherche…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checking…"
+          }
+        }
+      }
+    },
+    "Recherche en cours…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checking…"
+          }
+        }
+      }
+    },
+    "Recherche faite à l'instant : réessaie un peu plus tard" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Just checked: try again a little later"
+          }
+        }
+      }
+    },
+    "Wispad est à jour" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wispad is up to date"
+          }
+        }
+      }
+    },
+    "Nouvelle version trouvée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New version found"
+          }
+        }
+      }
+    },
+    "Nouveaux commits sur GitHub" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New commits on GitHub"
+          }
+        }
+      }
+    },
+    "Recherche impossible : réessaie plus tard" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't check: try again later"
+          }
+        }
+      }
+    },
+    "GitHub limite les recherches : réessaie plus tard" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub is limiting checks: try again later"
+          }
+        }
+      }
+    },
+    "Wispad vérifie seul au lancement, puis toutes les 6 heures." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wispad checks on its own at launch, then every 6 hours."
+          }
+        }
+      }
+    },
+    "À jour. Wispad vérifie aussi seul au lancement, puis toutes les 6 heures." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Up to date. Wispad also checks on its own at launch, then every 6 hours."
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

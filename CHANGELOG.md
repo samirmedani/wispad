@@ -3,6 +3,16 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.2.6 — 17 octobre 2026
+
+Un bouton pour chercher une mise à jour quand tu veux.
+
+> Depuis la 0.2.0 : si la mise à jour reste sur « Relance… », ferme cette fenêtre, puis quitte Wispad et rouvre-le.
+> La 0.2.6 est déjà installée.
+
+**Nouveau**
+- « Rechercher une mise à jour » : la flèche ↻ à droite de la version, en bas de la barre latérale, et Réglages › Aide › Mises à jour. Une nouvelle version s'ouvre aussitôt avec ses notes ; sinon, Wispad dit qu'il est à jour. Une recherche par minute au plus ; Wispad continue aussi de vérifier seul au lancement, puis toutes les 6 heures.
+
 ## 0.2.5 — 17 octobre 2026
 
 Une bulle redessinée, en noir profond ou en verre transparent, des Réglages en onglets, et un dictionnaire qui

@@ -658,13 +658,15 @@ final class AppModel {
     let updater = UpdateInstaller()
     /// Release dont la fenêtre de mise à jour est ouverte : notes de version, installation et son avancement.
     var updateSheet: ReleaseInfo?
+    /// Recherche à la main en cours : la version trouvée s'ouvre dans sa fenêtre, pas dans la bulle.
+    @ObservationIgnored private var checkingForUpdates = false
     /// Fenêtre principale à l'écran (posé par le délégué de l'app) : la nouvelle version la rouvre après la relance.
     @ObservationIgnored var isWindowVisible: () -> Bool = { false }
 
     /// Version plus récente trouvée par la vérification : rappelée une seule fois par version dans la bulle, quand
     /// elle se libère après une dictée ; jamais pendant la configuration guidée.
     func noteAvailableRelease(_ release: ReleaseInfo) {
-        guard onboarding == nil,
+        guard onboarding == nil, !checkingForUpdates,
               UpdateReminder.shouldRemind(release.version, lastReminded: settings.updateRemindedVersion) else { return }
         coordinator.offerUpdate(release)
     }
@@ -678,6 +680,20 @@ final class AppModel {
     func showUpdate(_ release: ReleaseInfo) {
         updateSheet = release
         onOpenWindow?(selectedSection)
+    }
+
+    /// « Rechercher une mise à jour » (barre latérale, Réglages › Aide) : une version plus récente ouvre tout de suite la
+    /// fenêtre de mise à jour, sans rappel dans la bulle ensuite.
+    func checkForUpdates() {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            checkingForUpdates = true
+            let release = await BuildStatus.shared.checkNow()
+            checkingForUpdates = false
+            guard let release else { return }
+            noteUpdateReminded(release.version)
+            showUpdate(release)
+        }
     }
 
     /// « Mettre à jour » : installation en un clic, suivie dans la fenêtre de mise à jour. Si elle ne peut pas se faire

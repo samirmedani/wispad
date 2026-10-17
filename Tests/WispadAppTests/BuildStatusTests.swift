@@ -90,6 +90,32 @@ struct BuildStatusTests {
         #expect(status.available == newer)
     }
 
+    /// « Rechercher une mise à jour » : la release trouvée est rendue tout de suite, puis une nouvelle recherche attend
+    /// la fin de la pause, sans requête.
+    @Test func manualCheckFindsTheReleaseThenWaitsForTheCooldown() async {
+        let status = BuildStatus(info: ["CFBundleShortVersionString": "0.1.1", BuildKind.infoKey: true])
+        let newer = Self.release("0.1.2")
+        let recorder = Recorder()
+        status.fetchLatest = { @MainActor in
+            recorder.requests += 1
+            return .release(newer)
+        }
+        #expect(await status.checkNow() == newer)
+        #expect(status.manualPhase == .finished(.available))
+        #expect(status.coolingDown)
+        #expect(await status.checkNow() == nil)
+        #expect(recorder.requests == 1)
+    }
+
+    /// Recherche à la main sans réponse : rien de trouvé, l'échec se dit, et la pause vaut aussi.
+    @Test func manualCheckSaysWhenGitHubCannotBeReached() async {
+        let status = BuildStatus(info: ["CFBundleShortVersionString": "0.1.1", BuildKind.infoKey: true])
+        status.fetchLatest = { .unreachable }
+        #expect(await status.checkNow() == nil)
+        #expect(status.manualPhase == .finished(.failed))
+        #expect(status.coolingDown)
+    }
+
     /// L'aide et la mise à jour partagent les métadonnées : une version absente n'est jamais inventée.
     @Test func releaseWithoutVersionDoesNotOfferAnUpdate() {
         let status = BuildStatus(info: [BuildKind.infoKey: true, BuildStatus.commitInfoKey: "0123abcdef"])

@@ -313,6 +313,32 @@ public enum BuildKind: Equatable, Sendable {
 }
 
 /// Ce que la barre latérale affiche sous la version.
+/// Recherche de mise à jour demandée à la main : jamais deux à moins d'une minute ; quand GitHub dit que sa limite est
+/// atteinte, pas avant l'heure annoncée (un quart d'heure sans indication, six heures au plus).
+public struct ManualUpdateCheck: Equatable, Sendable {
+    public static let cooldown: TimeInterval = 60
+    public static let rateLimitPause: TimeInterval = 15 * 60
+    /// Prochaine recherche permise ; nil avant la première.
+    public private(set) var availableAt: Date?
+
+    public init() {}
+
+    /// Secondes avant la prochaine recherche permise ; 0 si elle l'est.
+    public func remaining(at now: Date) -> TimeInterval {
+        guard let availableAt else { return 0 }
+        return max(0, availableAt.timeIntervalSince(now))
+    }
+
+    /// Recherche faite à ce moment, avec ce résultat (nil : build de développement).
+    public mutating func record(_ result: ReleaseCheckResult?, at now: Date) {
+        var pause = Self.cooldown
+        if case .rateLimited(let retryAfter) = result {
+            pause = min(ReleaseCheck.interval, max(Self.cooldown, retryAfter ?? Self.rateLimitPause))
+        }
+        availableAt = now.addingTimeInterval(pause)
+    }
+}
+
 public enum UpdateDisplay: Equatable, Sendable {
     /// Build de développement : retard sur la branche principale (« N commits de retard »), comme avant les releases.
     case development(BuildFreshness)

@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import SwiftUI
 import WispadCore
 
 /// Version affichée dans la barre latérale, et ce qui la suit : pour une release, la dernière version publiée sur
@@ -27,6 +28,15 @@ final class BuildStatus {
     /// Lecture de la dernière release ; remplacée dans les tests, qui n'ont jamais de réseau.
     @ObservationIgnored var fetchLatest: @Sendable () async -> ReleaseCheckResult = { await BuildStatus.fetchLatestRelease() }
     @ObservationIgnored private var task: Task<Void, Never>?
+    /// Recherche demandée à la main (barre latérale, Réglages › Aide) : en cours, puis son résultat quelques secondes.
+    private(set) var manualPhase: ManualCheckPhase = .idle
+    /// Vrai pendant la pause qui suit une recherche à la main : les boutons sont grisés.
+    private(set) var coolingDown = false
+    @ObservationIgnored private var manualLimit = ManualUpdateCheck()
+    @ObservationIgnored private var phaseToken = 0
+    @ObservationIgnored private var cooldownTask: Task<Void, Never>?
+    /// Durée d'affichage du résultat d'une recherche à la main.
+    static let resultDuration: Duration = .seconds(4)
 
     init(info: [String: Any]? = Bundle.main.infoDictionary) {
         version = info?["CFBundleShortVersionString"] as? String
@@ -87,6 +97,65 @@ final class BuildStatus {
         }
     }
 
+    /// Recherche tout de suite, même requête que la vérification automatique, qui continue à son rythme. Une à la
+    /// fois, au plus une par minute (plus tard si GitHub limite l'API). Rend la release plus récente trouvée, ou nil.
+    @discardableResult
+    func checkNow() async -> ReleaseInfo? {
+        guard manualPhase != .checking, manualLimit.remaining(at: Date()) == 0 else { return nil }
+        manualPhase = .checking
+        let outcome: ManualCheckOutcome
+        var found: ReleaseInfo?
+        switch kind {
+        case .release:
+            let result = await fetchLatest()
+            manualLimit.record(result, at: Date())
+            apply(result)
+            switch result {
+            case .release:
+                found = available
+                outcome = found == nil ? .upToDate : .available
+            case .rateLimited: outcome = .rateLimited
+            case .unusable, .unreachable: outcome = .failed
+            }
+        case .development:
+            manualLimit.record(nil, at: Date())
+            if let commit, let url = BuildFreshnessCheck.compareURL(commit: commit) {
+                let result = await Self.fetchFreshness(url)
+                if result != .unknown { freshness = result }
+                switch result {
+                case .upToDate: outcome = .upToDate
+                case .behind: outcome = .behind
+                case .unknown: outcome = .failed
+                }
+            } else {
+                outcome = .failed
+            }
+        }
+        show(outcome)
+        return found
+    }
+
+    /// Résultat affiché quelques secondes, puis la pause grise les boutons jusqu'à la prochaine recherche permise.
+    private func show(_ outcome: ManualCheckOutcome) {
+        manualPhase = .finished(outcome)
+        phaseToken += 1
+        let token = phaseToken
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: Self.resultDuration)
+            guard let self, self.phaseToken == token else { return }
+            self.manualPhase = .idle
+        }
+        let wait = manualLimit.remaining(at: Date())
+        guard wait > 0 else { return }
+        coolingDown = true
+        cooldownTask?.cancel()
+        cooldownTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(wait))
+            guard !Task.isCancelled else { return }
+            self?.coolingDown = false
+        }
+    }
+
     /// Réponse lue : une release lisible remplace la précédente ; un échec (hors ligne, limite de l'API, tag mal
     /// formé, réponse illisible) ne change rien à l'écran et ne dit rien.
     func apply(_ result: ReleaseCheckResult) {
@@ -136,6 +205,48 @@ final class BuildStatus {
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         request.setValue(AppIdentity.displayName, forHTTPHeaderField: "User-Agent")
         return request
+    }
+}
+
+/// Recherche à la main : rien, en cours, puis son résultat.
+enum ManualCheckPhase: Equatable {
+    case idle
+    case checking
+    case finished(ManualCheckOutcome)
+}
+
+enum ManualCheckOutcome: Equatable {
+    case upToDate
+    case available
+    /// Build de développement en retard sur la branche principale.
+    case behind
+    case failed
+    case rateLimited
+
+    var message: String {
+        switch self {
+        case .upToDate: return String(localized: "Wispad est à jour")
+        case .available: return String(localized: "Nouvelle version trouvée")
+        case .behind: return String(localized: "Nouveaux commits sur GitHub")
+        case .failed: return String(localized: "Recherche impossible : réessaie plus tard")
+        case .rateLimited: return String(localized: "GitHub limite les recherches : réessaie plus tard")
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .upToDate: return "checkmark.circle.fill"
+        case .available, .behind: return "arrow.down.circle.fill"
+        case .failed, .rateLimited: return "exclamationmark.circle.fill"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .upToDate: return .green
+        case .available, .behind: return Theme.brand
+        case .failed, .rateLimited: return .orange
+        }
     }
 }
 
