@@ -735,6 +735,7 @@ final class AppModel {
         case ProviderID.xai.rawValue: return ProviderID.xai.keyValidationURL
         case ProviderID.openAI.rawValue: return ProviderID.openAI.keyValidationURL
         case CleanupModel.deepSeekAccount: return URL(string: "https://api.deepseek.com/models")
+        case APIKeys.typesafe: return URL(string: "https://api.typesafe.ai/v1/models")
         default: return nil
         }
     }

@@ -143,7 +143,7 @@ fournisseur**, à l'usage, et l'écran Consommation estime le coût de chaque ap
 | **Relais** | L'autre fournisseur, s'il a une clé | Un service en panne est mis de côté, puis repris dès qu'il répond. |
 
 Une seule clé suffit pour commencer (xAI ou OpenAI). Clés facultatives : clé de gestion xAI (solde réel affiché
-dans Consommation) et TypeSafe (pour juger les mots appris).
+dans Consommation) et TypeSafe (Jev, premier avis sur les mots appris ; sans elle, le service de correction juge seul).
 
 ## Confidentialité
 

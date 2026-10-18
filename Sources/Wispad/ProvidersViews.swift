@@ -72,9 +72,8 @@ struct APIKeysSection: View {
                 set: { model.setDisplayChoice(\.showsOptionalKeys, $0) }
             )) {
                 APIKeyRow(account: APIKeys.xaiManagement, title: String(localized: "Gestion xAI"), purpose: String(localized: "Affiche le solde prépayé xAI"))
-                if model.dependencies.keyStore == .vault || model.hasKey(account: APIKeys.typesafe) {
-                    APIKeyRow(account: APIKeys.typesafe, title: "TypeSafe", purpose: String(localized: "Jev, premier avis sur les mots à apprendre"))
-                }
+                APIKeyRow(account: APIKeys.typesafe, title: "TypeSafe",
+                          purpose: String(localized: "Jev, premier avis sur les mots à apprendre ; sans lui, le service de correction juge"))
             }
             if model.dependencies.keyStore == .vault {
                 Button("Recharger depuis le coffre") { Task { await model.refreshKeys() } }
@@ -83,9 +82,12 @@ struct APIKeysSection: View {
         } header: {
             Text("Clés API")
         } footer: {
-            Text(footer)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Recommandé : xAI pour la voix, DeepSeek pour la correction, la moins chère. Facultatif : Jev (TypeSafe) pour mieux choisir les mots à apprendre. Chaque service se remplace par un autre dont tu as la clé.")
+                Text(footer)
+            }
+            .font(.footnote)
+            .foregroundStyle(.secondary)
         }
     }
 
