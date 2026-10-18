@@ -13,10 +13,14 @@ public struct DictationNumberFormat: Codable, Equatable, Sendable {
     /// Montants et unités avec leur symbole (« 25 € », « 5 km ») ; sinon en toutes lettres (« 25 euros »,
     /// « 5 kilomètres »). Le pourcentage garde toujours « % ».
     public var symbols: Bool
+    /// Petits nombres d'une phrase courante en lettres, selon le contexte (« les deux premières barres », « trois fois ») ;
+    /// mesures, données et grands nombres restent en chiffres. Faux : tout nombre qui compte s'écrit en chiffres.
+    public var smallNumbersInWords: Bool
 
-    public init(thousands: Thousands = .byLanguage, symbols: Bool = true) {
+    public init(thousands: Thousands = .byLanguage, symbols: Bool = true, smallNumbersInWords: Bool = true) {
         self.thousands = thousands
         self.symbols = symbols
+        self.smallNumbersInWords = smallNumbersInWords
     }
 
     public init(from decoder: Decoder) throws {
@@ -24,6 +28,7 @@ public struct DictationNumberFormat: Codable, Equatable, Sendable {
         let defaults = DictationNumberFormat()
         thousands = (try? container.decodeIfPresent(Thousands.self, forKey: .thousands)) ?? defaults.thousands
         symbols = (try? container.decodeIfPresent(Bool.self, forKey: .symbols)) ?? defaults.symbols
+        smallNumbersInWords = (try? container.decodeIfPresent(Bool.self, forKey: .smallNumbersInWords)) ?? defaults.smallNumbersInWords
     }
 
     /// Espace fine insécable : elle ne coupe jamais un nombre en fin de ligne.
@@ -63,18 +68,49 @@ public struct DictationNumberFormat: Codable, Equatable, Sendable {
         ]
     }
 
+    /// Règle des nombres de la consigne : quand écrire en lettres ou en chiffres, puis le format des montants et unités.
     public func instructions(english: Bool) -> String {
+        style(english: english) + "\n" + amounts(english: english)
+    }
+
+    /// Lettres ou chiffres : décidé par le contexte, comme le ferait un rédacteur, ou toujours en chiffres.
+    func style(english: Bool) -> String {
+        switch (english, smallNumbersInWords) {
+        case (false, true):
+            return """
+            Nombres en lettres ou en chiffres : décide selon le contexte, comme un rédacteur soigneux. Un nombre de zéro à dix qui compte des choses dans une phrase courante s'écrit en lettres, même quand la transcription l'écrit en chiffres : « les deux premières barres », « trois fois », « il y a deux jours », « attends cinq minutes », « il faut quatre serveurs ». En chiffres : au-delà de dix (« 12 serveurs ») ; les mesures, montants et données techniques, même petits (« 5 secondes de latence », « 60 images par seconde », « 2 Go », « 3 € ») ; les décimales, dates, heures, scores, versions, numéros et références ; et des nombres comparés dans la même phrase s'écrivent pareil (« entre 8 et 12 personnes »). Deux petits nombres qui se suivent donnent une approximation : garde-les tous les deux. « Un » et « une » articles et les expressions figées (« un ou deux », « à deux ») restent en lettres. Exemples fictifs de transcription : « les 2 dernières lignes » → « les deux dernières lignes » ; « on l'a testé 3 fois » → « on l'a testé trois fois » ; « elle a 2 enfants » → « elle a deux enfants » ; « il me faut 2 3 jours » → « il me faut deux, trois jours ». Mais « 5 secondes de latence », « 16 Go » et « 12 serveurs » restent en chiffres.
+            """
+        case (false, false):
+            return """
+            Nombres : tout nombre qui compte, mesure, date ou chiffre vraiment quelque chose s'écrit en chiffres : 4 modèles, 5 ou 10 secondes, 20 boîtes, 2 heures de route, 3 fois, 64 Go. Seuls « un » et « une » articles et les expressions figées (« un ou deux », « à deux ») restent en lettres.
+            """
+        case (true, true):
+            return """
+            Numbers in words or digits: decide from the context, like a careful editor. A number from zero to nine that counts things in an everyday sentence is spelled out, even when the transcription writes it as digits: "the first two bars", "three times", "two days ago", "wait five minutes", "we need four servers". Use digits above nine ("12 servers"); for measurements, amounts and technical data, even small ones ("5 seconds of latency", "60 frames per second", "2 GB", "$3"); for decimals, dates, times, scores, versions, numbers and references; and numbers compared in the same sentence are written the same way ("between 8 and 12 people"). Two small numbers in a row are an estimate: keep both. Keep "one" as a word when it is a pronoun ("this one", "no one") and in fixed expressions ("one or two"). Fictional transcription examples: "the last 2 lines" → "the last two lines"; "we tested it 3 times" → "we tested it three times"; "she has 2 kids" → "she has two kids"; "it takes 2 3 days" → "it takes two or three days". But "5 seconds of latency", "16 GB" and "12 servers" stay in digits.
+            """
+        case (true, false):
+            return """
+            Numbers: write numbers that really count, measure or date something as digits: 4 models, 5 or 10 seconds, 20 boxes, 2 hours of driving, 3 times, 64 GB. Keep "one" as a word when it is a pronoun ("this one", "no one") and in fixed expressions ("one or two").
+            """
+        }
+    }
+
+    private func amounts(english: Bool) -> String {
         func amount(_ integer: String, _ fraction: String? = nil, _ unit: MeasureUnit) -> String {
             NumberWriter.render(integer: integer, fraction: fraction, unit: unit, format: self, english: english)
         }
         let people = grouped("12500", english: english)
         if english {
             return """
-            Numbers, amounts and units: digits, written this way. Fictional examples: "twenty-five dollars" → "\(amount("25", nil, .dollar))"; "three euros fifty" → "\(amount("3", "50", .euro))"; "fifteen percent" → "\(amount("15", nil, .percent))"; "five kilometers" → "\(amount("5", nil, .kilometer))"; "twelve thousand five hundred people" → "\(people) people"; "two million" → "2 million". E-mail addresses and URLs are one lowercase block: "john dot smith at gmail dot com" → "john.smith@gmail.com". Phone numbers keep exactly the digits spoken. Never group the digits of a year, a zip code, a hardware reference or a version number. A duration keeps its unit in words.
+            Amounts and units: digits, written this way. Fictional examples: "twenty-five dollars" → "\(amount("25", nil, .dollar))"; "three euros fifty" → "\(amount("3", "50", .euro))"; "fifteen percent" → "\(amount("15", nil, .percent))"; "five kilometers" → "\(amount("5", nil, .kilometer))"; "twelve thousand five hundred people" → "\(people) people"; "two million" → "2 million". E-mail addresses and URLs are one lowercase block: "john dot smith at gmail dot com" → "john.smith@gmail.com". Phone numbers keep exactly the digits spoken. Never group the digits of a year, a zip code, a hardware reference or a version number. A duration keeps its unit in words.
             """
         }
+        // « Et demi » reste en lettres ; le nombre devant suit la règle choisie.
+        let halves = smallNumbersInWords
+            ? "« deux mois et 1/2 » → « deux mois et demi », « une heure et 1/2 » → « une heure et demie »"
+            : "« deux mois et demi » → « 2 mois et demi », « une heure et demie » → « 1 heure et demie »"
         return """
-        Nombres, montants et unités : en chiffres, écrits ainsi. Exemples fictifs : « vingt-cinq euros » → « \(amount("25", nil, .euro)) » ; « trois euros cinquante » → « \(amount("3", "50", .euro)) » ; « quinze pour cent » → « \(amount("15", nil, .percent)) » ; « cinq kilomètres » → « \(amount("5", nil, .kilometer)) » ; « douze mille cinq cents habitants » → « \(people) habitants » ; « deux millions » → « 2 millions », « un milliard et demi » → « 1,5 milliard ». Après un autre mot, « et demi » reste en lettres, jamais « 1/2 » : « deux mois et demi » → « 2 mois et demi », « une heure et demie » → « 1 heure et demie ». La virgule sépare les décimales : « deux virgule cinq » → « 2,5 ». Un numéro de téléphone s'écrit par paires : « zéro six douze trente-quatre cinquante-six soixante-dix-huit » → « 06 12 34 56 78 » ; « plus trente-trois six douze trente-quatre cinquante-six soixante-dix-huit » → « +33 6 12 34 56 78 ». Une adresse e-mail ou une URL s'écrit d'un seul bloc, en minuscules : « jean point dupont arobase gmail point com » → « jean.dupont@gmail.com ». Ne regroupe jamais les chiffres d'une année, d'un code postal, d'une référence de matériel ou d'un numéro de version. Une durée garde son unité en toutes lettres.
+        Montants et unités : en chiffres, écrits ainsi. Exemples fictifs : « vingt-cinq euros » → « \(amount("25", nil, .euro)) » ; « trois euros cinquante » → « \(amount("3", "50", .euro)) » ; « quinze pour cent » → « \(amount("15", nil, .percent)) » ; « cinq kilomètres » → « \(amount("5", nil, .kilometer)) » ; « douze mille cinq cents habitants » → « \(people) habitants » ; « deux millions » → « 2 millions », « un milliard et demi » → « 1,5 milliard ». Après un autre mot, « et demi » reste en lettres, jamais « 1/2 » : \(halves). La virgule sépare les décimales : « deux virgule cinq » → « 2,5 ». Un numéro de téléphone s'écrit par paires : « zéro six douze trente-quatre cinquante-six soixante-dix-huit » → « 06 12 34 56 78 » ; « plus trente-trois six douze trente-quatre cinquante-six soixante-dix-huit » → « +33 6 12 34 56 78 ». Une adresse e-mail ou une URL s'écrit d'un seul bloc, en minuscules : « jean point dupont arobase gmail point com » → « jean.dupont@gmail.com ». Ne regroupe jamais les chiffres d'une année, d'un code postal, d'une référence de matériel ou d'un numéro de version. Une durée garde son unité en toutes lettres.
         """
     }
 }

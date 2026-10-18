@@ -53,7 +53,8 @@ struct NumberFormatTests {
         #expect(french("Compte 1 heure et 1/2, voire 2 semaines et ½.") == "Compte 1 heure et demie, voire 2 semaines et demie.")
         #expect(french("Ajoute 1/2 litre d'eau, score 2 et 1/2.") == "Ajoute 1/2 litre d'eau, score 2 et 1/2.")
         #expect(english("It took 2 months and 1/2.") == "It took 2 months and 1/2.")
-        #expect(DictationNumberFormat().instructions(english: false).contains("« deux mois et demi » → « 2 mois et demi »"))
+        #expect(DictationNumberFormat(smallNumbersInWords: false).instructions(english: false).contains("« deux mois et demi » → « 2 mois et demi »"))
+        #expect(DictationNumberFormat().instructions(english: false).contains("« deux mois et 1/2 » → « deux mois et demi »"))
     }
 
     @Test func frenchPhoneNumbersAreWrittenByPairs() {
@@ -109,6 +110,9 @@ struct NumberFormatTests {
         let decoded = try JSONDecoder().decode(DictationNumberFormat.self, from: Data(#"{"thousands": "futur", "symbols": false}"#.utf8))
         #expect(decoded == DictationNumberFormat(thousands: .byLanguage, symbols: false))
         #expect(try JSONDecoder().decode(DictationNumberFormat.self, from: Data("{}".utf8)) == DictationNumberFormat())
+        // Réglages d'avant le choix lettres ou chiffres : le contexte décide.
+        let previous = try JSONDecoder().decode(DictationNumberFormat.self, from: Data(#"{"thousands": "space", "symbols": true}"#.utf8))
+        #expect(previous.smallNumbersInWords)
     }
 
     /// Le garde-fou garde un symbole d'unité au lieu de le prendre pour un nom inventé.
@@ -129,7 +133,8 @@ struct NumberFormatTests {
         let outcome = await TextCleaner.clean(transcript: request.transcript, request: request, speech: speech, enabled: true,
                                               transport: { try await stub.request($0) })
         #expect(outcome.text == "Le loyer est de 1 500\(nb)€, appelle le 06 12 34 56 78.")
-        #expect(await stub.system.contains("Nombres, montants et unités"))
+        #expect(await stub.system.contains("Montants et unités : en chiffres"))
+        #expect(await stub.system.contains("Nombres en lettres ou en chiffres : décide selon le contexte"))
     }
 }
 
@@ -150,5 +155,52 @@ private actor NumberFormatHTTPStub {
         ]
         let data = try JSONSerialization.data(withJSONObject: payload)
         return (data, HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+    }
+}
+
+/// Lettres ou chiffres : le contexte décide par défaut (« les deux premières barres », « 5 secondes de latence ») ;
+/// « En chiffres » garde l'ancienne règle. Sans réseau.
+struct NumberStyleTests {
+    @Test func contextDecidesByDefaultInBothLanguages() {
+        let french = DictationNumberFormat().instructions(english: false)
+        #expect(french.contains("Nombres en lettres ou en chiffres : décide selon le contexte"))
+        #expect(french.contains("« les deux premières barres », « trois fois »"))
+        #expect(french.contains("(« 5 secondes de latence », « 60 images par seconde », « 2 Go », « 3 € »)"))
+        #expect(french.contains("(« entre 8 et 12 personnes »)"))
+        #expect(!french.contains("tout nombre qui compte"))
+        let english = DictationNumberFormat().instructions(english: true)
+        #expect(english.contains("Numbers in words or digits: decide from the context"))
+        #expect(english.contains("\"the first two bars\", \"three times\""))
+        #expect(!english.contains("Numbers, amounts and units: digits"))
+    }
+
+    @Test func digitsKeepTheFormerRule() {
+        let format = DictationNumberFormat(smallNumbersInWords: false)
+        #expect(format.instructions(english: false).contains("Nombres : tout nombre qui compte, mesure, date ou chiffre vraiment quelque chose s'écrit en chiffres : 4 modèles"))
+        #expect(!format.instructions(english: false).contains("décide selon le contexte"))
+        #expect(format.instructions(english: true).contains("Numbers: write numbers that really count, measure or date something as digits"))
+    }
+
+    /// La consigne envoyée suit le réglage, dans la langue de la dictée ; la consigne de base ne fixe plus rien.
+    @Test(arguments: [true, false])
+    func thePromptFollowsTheSetting(inWords: Bool) {
+        for language in [DictationLanguage.french, .english] {
+            var request = CorrectionRequest(transcript: "x", language: language)
+            request.numberFormat = DictationNumberFormat(smallNumbersInWords: inWords)
+            let system = CorrectionPrompt.system(for: request)
+            let english = language == .english
+            #expect(system.contains(english ? "decide from the context" : "décide selon le contexte") == inWords)
+            #expect(system.contains(english ? "Numbers: write numbers that really count" : "Nombres : tout nombre qui compte") == !inWords)
+            #expect(system.contains(english ? "by the \"Numbers\" rule below" : "selon la règle « Nombres » plus bas"))
+        }
+    }
+
+    /// Un chiffre entendu écrit en lettres par la correction reste : le garde-fou ne le prend pas pour une invention.
+    @Test func theGuardKeepsANumberWrittenInWords() {
+        let corrected = "Non, le logo est cyan. Les deux premières barres sont bleu foncé."
+        #expect(FidelityGuard.check(transcript: "non le logo il est cyan les 2 premières barres elles sont bleues foncées",
+                                    corrected: corrected) == corrected)
+        let english = "I retried the build three times."
+        #expect(FidelityGuard.check(transcript: "I retried the build 3 times", corrected: english) == english)
     }
 }

@@ -8635,12 +8635,12 @@
         }
       }
     },
-    "Dates, heures, montants et unités écrits par la correction." : {
+    "Dates, heures, nombres, montants et unités écrits par la correction." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dates, times, amounts and units written by the cleanup."
+            "value" : "Dates, times, numbers, amounts and units written by the cleanup."
           }
         }
       }
@@ -9949,6 +9949,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Up to date. Wispad also checks on its own at launch, then every 6 hours."
+          }
+        }
+      }
+    },
+    "En chiffres" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Digits"
+          }
+        }
+      }
+    },
+    "En chiffres : tout nombre qui compte s'écrit en chiffres, « les 2 premières barres », « 3 fois »." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Digits: every number that counts something is written in digits, “the first 2 bars”, “3 times”."
+          }
+        }
+      }
+    },
+    "En lettres quand c'est plus naturel, ou toujours en chiffres." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In words when it reads more naturally, or always in digits."
+          }
+        }
+      }
+    },
+    "Montants, mesures, dates et heures restent toujours en chiffres." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Amounts, measurements, dates and times always stay in digits."
+          }
+        }
+      }
+    },
+    "Petits nombres" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Small numbers"
+          }
+        }
+      }
+    },
+    "Selon le contexte" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "By context"
+          }
+        }
+      }
+    },
+    "Selon le contexte : « les deux premières barres », « trois fois », « attends cinq minutes », mais « 5 secondes de latence », « 16 Go », « 12 serveurs » ou « entre 8 et 12 personnes »." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "By context: “the first two bars”, “three times”, “wait five minutes”, but “5 seconds of latency”, “16 GB”, “12 servers” or “between 8 and 12 people”."
           }
         }
       }

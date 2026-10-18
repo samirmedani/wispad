@@ -79,7 +79,7 @@
     { "id": "n5-vin", "text": "On a ouvert une bouteille de vin rouge.", "transcript": "on a ouvert une bouteille de vingt rouge", "required": ["de vin rouge"], "forbidden": ["20", "re:(?i)vingt"] },
     { "id": "n6-hein", "text": "Il est bien, ce resto, hein ?", "transcript": "il est bien ce resto un", "required": ["hein"], "forbidden": ["re:\\b1\\b", "re:(?i)\\bun\\b"] },
     { "id": "n7-anglais", "language": "en", "text": "I want to go home early.", "transcript": "i want two go home early", "required": ["re:(?i)want to go"], "forbidden": ["re:\\b2\\b", "re:(?i)\\btwo\\b"] },
-    { "id": "n8-garde-mois", "control": true, "text": "Le chantier dure 2 mois.", "transcript": "le chantier dure deux mois", "required": ["2 mois"], "forbidden": ["de moi"] },
+    { "id": "n8-garde-mois", "control": true, "text": "Le chantier dure 2 mois.", "transcript": "le chantier dure deux mois", "required": ["re:(?i)\\b(2|deux) mois"], "forbidden": ["de moi"] },
     { "id": "n9-garde-cent", "control": true, "text": "Le billet coûte 100 euros.", "transcript": "le billet coûte cent euros", "required": ["100 euros"], "forbidden": ["sans"] }
   ]
 }

@@ -108,7 +108,7 @@ enum SettingsPresentation {
     // MARK: Mise en forme
 
     static let formattingTitle = String(localized: "Mise en forme")
-    static let formattingSummary = String(localized: "Dates, heures, montants et unités écrits par la correction.")
+    static let formattingSummary = String(localized: "Dates, heures, nombres, montants et unités écrits par la correction.")
 
     static let dateOrder = SettingText(
         title: String(localized: "Dates"),
@@ -163,6 +163,16 @@ enum SettingsPresentation {
     static let datePreview = SettingText(
         title: String(localized: "Aperçu"),
         summary: String(localized: "Une date, une date sans année et une heure, telles qu'elles seront écrites.")
+    )
+
+    static let numberStyle = SettingText(
+        title: String(localized: "Petits nombres"),
+        summary: String(localized: "En lettres quand c'est plus naturel, ou toujours en chiffres."),
+        details: [
+            String(localized: "Selon le contexte : « les deux premières barres », « trois fois », « attends cinq minutes », mais « 5 secondes de latence », « 16 Go », « 12 serveurs » ou « entre 8 et 12 personnes »."),
+            String(localized: "En chiffres : tout nombre qui compte s'écrit en chiffres, « les 2 premières barres », « 3 fois »."),
+            String(localized: "Montants, mesures, dates et heures restent toujours en chiffres.")
+        ]
     )
 
     static let amounts = SettingText(
