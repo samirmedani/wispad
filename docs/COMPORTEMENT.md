@@ -318,6 +318,12 @@ de parole qui couvre tout l'audio envoyé, à 0,1 s près. Wispad n'attend plus 
 environ 0,1 s plus tard (vérifié le 17 octobre 2026). Si le segment est plus court que l'audio ou s'il manque la fin de
 parole, Wispad attend `transcript.done`, comme avant.
 
+Ordinaux : avec la mise en forme française, le fichier xAI écrit « 1ᵉʳ », « 1ʳᵉ », « 2ᵈᵉ » ou « 3ᵉ ». Wispad remet le
+mot dit dès la réception, avant de le comparer au flux : « 60 images par 2ᵈᵉ » → « 60 images par seconde », « dans un
+1ᵉʳ temps » → « dans un premier temps », « la 2ᵉ semaine » → « la deuxième semaine ». Au-delà de dix, l'abréviation
+reste (« 21ᵉ siècle ») ; une date reprend son format (« le premier mai » → « le 1er mai »). Le même filet passe avant
+et après la correction.
+
 **Sans connexion** : rien n'est transcrit sur le Mac. Si la connexion manque ou se perd pendant la dictée (flux et
 fichier en échec, puis le relais de voix s'il a une clé et que la connexion est revenue), l'audio reste dans
 l'historique pour **Retranscrire** une fois la connexion revenue. Hors connexion, le relais n'est pas tenté : il

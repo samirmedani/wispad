@@ -12,6 +12,8 @@ public enum FranglaisNormalizer {
     public static func normalize(_ text: String) -> String {
         guard !text.isEmpty else { return text }
         var result = text
+        // Ordinaux en exposant (« 2ᵈᵉ », « 1ᵉʳ ») : le mot dit, avant comme après la correction.
+        result = SpokenOrdinals.restore(result)
         result = joinHardwareReferences(result)
         result = restoreOAuth(result)
         result = keepEnglishPastParticiple(result)

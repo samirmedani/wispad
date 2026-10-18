@@ -117,6 +117,16 @@ struct ProviderRequestTests {
         #expect(await stub.requests.count == 1)
     }
 
+    /// Mise en forme française du fichier : ses ordinaux en exposant reviennent au mot dit, comme dans le flux.
+    @Test(arguments: [ProviderID.xai, .openAI])
+    func fileTranscriptGivesBackSpokenOrdinals(provider: ProviderID) async throws {
+        let audio = try Self.audioFile()
+        defer { try? FileManager.default.removeItem(at: audio) }
+        let stub = ProviderHTTPStub([.status(200)], body: #"{"text":"Dans un 1ᵉʳ temps, 60 images par 2ᵈᵉ."}"#)
+        let text = try await BatchTranscriber.transcribe(fileURL: audio, request: Self.speech(provider), transport: { try await stub.request($0) })
+        #expect(text == "Dans un premier temps, 60 images par seconde.")
+    }
+
     /// La requête du fichier a son délai et ne porte la clé que dans son en-tête, jamais dans l'adresse.
     @Test(arguments: [ProviderID.xai, .openAI])
     func fileRequestHasATimeoutAndKeepsTheKeyInItsHeader(provider: ProviderID) async throws {
