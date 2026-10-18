@@ -528,6 +528,18 @@ Repasser sur un texte déjà mis en forme ne change plus rien. Sans réponse ou 
 
 ### Nombres, montants et unités
 
+**Petits nombres** (Réglages › Mise en forme) : **Selon le contexte**, par défaut, ou **En chiffres**. Selon le
+contexte, la correction écrit en lettres un nombre de zéro à dix qui compte des choses dans une phrase courante, même
+si la transcription l'a mis en chiffres : « les 2 premières barres » → « les deux premières barres », « 3 fois » →
+« trois fois ». Restent en chiffres les nombres au-delà de dix, les mesures, montants et données techniques
+(« 5 secondes de latence », « 16 Go »), les décimales, dates, heures, scores, versions et références, et des nombres
+comparés dans la même phrase (« entre 8 et 12 personnes »). Deux petits nombres qui se suivent restent tous les deux
+(« deux, trois jours »). Le modèle tranche : il garde parfois un chiffre reçu de la transcription, jamais l'inverse
+sur une mesure. En chiffres : tout nombre qui compte s'écrit en chiffres (« les 2 premières barres », « 3 fois »).
+Banc : `WISPAD_NUMBER_STYLE=1 scripts/live-test.sh NumberStyleLiveTests` (`WISPAD_NUMBER_STYLE_MODEL` pour un modèle
+xAI précis) ; le 18 octobre 2026, 22 cas sur 25 conformes avec Grok 4.20 sans raisonnement, les trois écarts gardant
+un chiffre.
+
 Réglages › Mise en forme : **Montants et unités** (symboles, par défaut, ou en toutes lettres) et **Milliers**
 (selon la langue, par défaut ; espace ; aucun). La consigne reçoit des exemples rendus dans ce format, puis
 `NumberWriter` l'impose sans le modèle, après le garde-fou de fidélité, au texte retenu :

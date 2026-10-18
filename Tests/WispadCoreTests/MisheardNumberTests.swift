@@ -7,17 +7,17 @@ import Testing
 struct MisheardNumberTests {
     @Test func promptChecksANumberBeforeWritingItAsDigits() {
         let french = CorrectionPrompt.system
-        #expect(french.contains("Tout nombre qui compte, mesure, date ou chiffre vraiment quelque chose s'écrit en chiffres"))
+        #expect(french.contains("Un nombre s'écrit en lettres ou en chiffres selon la règle « Nombres » plus bas."))
         #expect(french.contains("Un mot qui sonne comme un nombre n'en est pas toujours un : voir les nombres mal entendus plus bas."))
-        #expect(french.contains("Un nombre peut lui aussi être un mot mal entendu : avant de l'écrire en chiffres, vérifie qu'il compte vraiment quelque chose dans la phrase et la conversation visible."))
+        #expect(french.contains("Un nombre peut lui aussi être un mot mal entendu : avant de l'écrire comme un nombre, vérifie qu'il compte vraiment quelque chose dans la phrase et la conversation visible."))
         #expect(french.contains("« deux » / « de », « deux mois » / « de moi », « cent » / « sans » / « s'en », « six » / « si », « sept » / « cette », « vingt » / « vin » / « vint », « mille » / « mil », « un » / « hein »"))
         #expect(french.contains("« Franchement, ils veulent quoi, deux mois ? » → « Franchement, ils veulent quoi de moi ? »"))
-        #expect(french.contains("Mais « Le chantier dure deux mois » → « Le chantier dure 2 mois. »"))
+        #expect(french.contains("Mais dans « Le chantier dure deux mois », c'est bien un nombre : il le reste, écrit selon la règle des nombres."))
         #expect(french.contains("Dans le doute entre un nombre et un autre mot, garde le mot en lettres, jamais le chiffre."))
         // La règle des unités reste : « c'est gigas » ne devient 16 gigas qu'avec une confirmation.
         #expect(french.contains("Sans cette confirmation, garde le mot transcrit"))
         let english = CorrectionPrompt.englishSystem
-        #expect(english.contains("A number can be a misheard word too: before writing it as digits, check that it really counts something"))
+        #expect(english.contains("A number can be a misheard word too: before writing it as a number, check that it really counts something"))
         #expect(english.contains("\"two\" / \"to\" / \"too\", \"four\" / \"for\", \"eight\" / \"ate\", \"one\" / \"won\""))
         #expect(english.contains("\"I want two go home\" → \"I want to go home.\""))
         #expect(english.contains("When in doubt between a number and another word, keep the word in letters, never the digit."))

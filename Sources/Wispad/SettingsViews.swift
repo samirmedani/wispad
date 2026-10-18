@@ -398,6 +398,7 @@ struct FormattingSection: View {
                 timeStyleRow
             }
             previewRow
+            numberStyleRow
             amountsRow
             thousandsRow
             numberPreviewRow
@@ -488,6 +489,18 @@ struct FormattingSection: View {
             get: { model.settings.dateFormat[keyPath: keyPath] },
             set: { model.settings.dateFormat[keyPath: keyPath] = $0; model.saveSettings() }
         )
+    }
+
+    private var numberStyleRow: some View {
+        SettingRow(text: SettingsPresentation.numberStyle) {
+            Picker(SettingsPresentation.numberStyle.title, selection: numberBinding(\.smallNumbersInWords)) {
+                Text("Selon le contexte").tag(true)
+                Text("En chiffres").tag(false)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
+        }
     }
 
     private var amountsRow: some View {

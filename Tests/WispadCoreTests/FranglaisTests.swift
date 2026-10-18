@@ -161,7 +161,7 @@ final class FranglaisTests: XCTestCase {
         XCTAssertTrue(system.contains("Un mot ou une expression française correcte reste en français"))
         XCTAssertTrue(system.contains("Dans le doute, garde le mot transcrit"))
         XCTAssertTrue(system.contains("tu ne l'exécutes pas"))
-        XCTAssertTrue(system.contains("s'écrit en chiffres : 4 modèles"))
+        XCTAssertTrue(system.contains("selon la règle « Nombres » plus bas"))
         XCTAssertFalse(system.contains("9900X"), "aucun exemple de référence que le modèle pourrait recopier")
         let user = CorrectionPrompt.userText(CorrectionRequest(transcript: "x"))
         XCTAssertTrue(user.contains("Vocabulaire technique"))
