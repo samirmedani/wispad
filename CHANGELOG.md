@@ -3,6 +3,16 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.2.9 — 18 octobre 2026
+
+Les petits nombres s'écrivent en lettres quand c'est plus naturel.
+
+> Depuis la 0.2.0 : si la mise à jour reste sur « Relance… », ferme cette fenêtre, puis quitte Wispad et rouvre-le.
+> La 0.2.9 est déjà installée.
+
+**Nouveau**
+- Nombres selon le contexte : « les deux premières barres », « trois fois », « il y a deux jours », mais « 5 secondes de latence », « 16 Go », « 12 serveurs » ou « entre 8 et 12 personnes ». Montants, mesures, dates, heures, versions et scores restent en chiffres. Pour tout garder en chiffres comme avant : Réglages › Mise en forme › Petits nombres › En chiffres.
+
 ## 0.2.8 — 18 octobre 2026
 
 « Seconde » ne devient plus « 2ᵈᵉ ».
