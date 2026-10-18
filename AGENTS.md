@@ -16,7 +16,8 @@ avant d'ajouter un fournisseur, un réglage ou un écran.
 - Tests réseau seulement avec des clés de test dédiées `WISPAD_TEST_*` (`scripts/test-keys.sh`), jamais celles de l'app.
 - Un appui simple sur le raccourci ne doit ni ouvrir le micro, ni afficher la bulle, ni démarrer une dictée.
 - Observer d'autres apps de dictée seulement comme comportement visible : ne pas extraire leur code.
-- Builds et tests en arrière-plan : ne jamais activer ni mettre au premier plan une fenêtre de test. Aperçus hors
+- Builds et tests en arrière-plan : ne jamais activer, mettre au premier plan ni afficher à l'écran une fenêtre, une
+  bulle ou une démo de test (`--show-window`) sans demande explicite : le Mac sert pendant ce temps. Aperçus hors
   écran (`--design-preview --offscreen`), relance technique avec `--background`.
 - Aucune donnée personnelle dans le dépôt : ni nom, e-mail, chemin de machine, serveur, identifiant d'équipe Apple
   (il va dans `Signing.local.xcconfig`, ignoré par Git), ni enregistrement de voix.
