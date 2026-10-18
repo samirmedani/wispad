@@ -3,6 +3,16 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.2.8 — 18 octobre 2026
+
+« Seconde » ne devient plus « 2ᵈᵉ ».
+
+> Depuis la 0.2.0 : si la mise à jour reste sur « Relance… », ferme cette fenêtre, puis quitte Wispad et rouvre-le.
+> La 0.2.8 est déjà installée.
+
+**Corrigé**
+- La transcription écrivait certains mots en ordinaux : « 60 images par 2ᵈᵉ », « 5 2ᵈᵉˢ », « dans un 1ᵉʳ temps ». Wispad remet maintenant le mot dit : « seconde », « premier », « première », « deuxième »… Les dates gardent leur format (« le 1er mai »). Ces dictées se collent souvent plus vite : le flux et l'enregistrement complet ne se contredisent plus sur ces mots.
+
 ## 0.2.7 — 17 octobre 2026
 
 Chaque dictée se colle un peu plus tôt.
