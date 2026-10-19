@@ -97,6 +97,8 @@ enum DesignPreview {
         }
         if arguments.contains("--fallback-preview") || arguments.contains("--usage-accuracy-preview") { model.selectedSection = .usage }
         if arguments.contains("--blur-recent") { model.settings.blurRecentDictations = true }
+        // `--optional-keys` : clés facultatives dépliées dans Fournisseurs.
+        if arguments.contains("--optional-keys") { model.settings.showsOptionalKeys = true }
         // `--glass-bubble` : style Verre, pour voir ses réglages et leur aperçu.
         if arguments.contains("--glass-bubble") { model.settings.bubbleStyle = .glass }
         if let index = arguments.firstIndex(of: "--settings-tab"), arguments.indices.contains(index + 1),

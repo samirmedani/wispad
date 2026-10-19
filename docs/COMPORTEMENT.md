@@ -886,6 +886,9 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
 
 ## Clés API
 
+- Fournisseurs recommande, sous les clés : xAI pour la voix, DeepSeek pour la correction (la moins chère), et Jev
+  (TypeSafe), facultatif, pour les mots à apprendre. Chaque service se remplace par un autre dont on a la clé. La
+  clé TypeSafe est proposée à tous, dans « Clés facultatives » ; sans elle, le modèle de correction juge seul.
 - Par défaut : fichier de l'app (`Application Support/Wispad/api-keys.json`, lisible par le seul utilisateur du Mac).
 - Coffre de secrets, au choix : une commande qui répond à `get NOM` (valeur sur la sortie, code 1 si absente) et
   `put NOM` (valeur sur l'entrée), indiquée par `WISPAD_SECRET_COMMAND` ou
@@ -897,9 +900,9 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
   10 s au plus : un coffre qui ne répond plus est dit injoignable, sans ouvrir le micro, et le raccourci reste libre.
   La relecture continue seule ; l'appui suivant la rejoint au lieu d'en lancer une autre.
 - Chaque clé de voix ou de correction (xAI, OpenAI, DeepSeek) est vérifiée chez le fournisseur avant d'être
-  enregistrée ; les clés de gestion xAI et TypeSafe sont enregistrées sans vérification. Une réponse 400, 401 ou 403
-  est un refus (« Clé refusée ») ; une autre réponse ou l'absence de réseau laisse la clé non vérifiée. Dans les deux
-  cas, rien n'est enregistré.
+  enregistrée, comme la clé TypeSafe (liste des modèles de Jev, gratuite) ; la clé de gestion xAI est enregistrée
+  sans vérification. Une réponse 400, 401 ou 403 est un refus (« Clé refusée ») ; une autre réponse ou l'absence de
+  réseau laisse la clé non vérifiée. Dans les deux cas, rien n'est enregistré.
 - Fichier de clés : une entrée d'un autre type (ajoutée par une version plus récente, ou abîmée) ne cache aucune autre
   clé et reste telle quelle quand on en enregistre une. Un fichier abîmé (tronqué, invalide) n'est jamais réécrit :
   les clés de sa partie intacte servent, les autres sont dites illisibles.

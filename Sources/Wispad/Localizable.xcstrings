@@ -3539,12 +3539,12 @@
         }
       }
     },
-    "Jev, premier avis sur les mots à apprendre" : {
+    "Jev, premier avis sur les mots à apprendre ; sans lui, le service de correction juge" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Jev, first opinion on words to learn"
+            "value" : "Jev, first opinion on words to learn; without it, the correction service decides"
           }
         }
       }
@@ -10019,6 +10019,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "By context: “the first two bars”, “three times”, “wait five minutes”, but “5 seconds of latency”, “16 GB”, “12 servers” or “between 8 and 12 people”."
+          }
+        }
+      }
+    },
+    "Recommandé : xAI pour la voix, DeepSeek pour la correction, la moins chère. Facultatif : Jev (TypeSafe) pour mieux choisir les mots à apprendre. Chaque service se remplace par un autre dont tu as la clé." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recommended: xAI for voice, DeepSeek for correction, the cheapest. Optional: Jev (TypeSafe) to better choose words to learn. Any service can be swapped for another you have a key for."
           }
         }
       }
