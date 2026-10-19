@@ -3,6 +3,20 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.2.10 — 19 octobre 2026
+
+Jev, facultatif, est proposé à tous.
+
+> Depuis la 0.2.0 : si la mise à jour reste sur « Relance… », ferme cette fenêtre, puis quitte Wispad et rouvre-le.
+> La 0.2.10 est déjà installée.
+
+**Nouveau**
+- Fournisseurs › Clés facultatives propose à tous une clé TypeSafe. Avec elle, Jev donne le premier avis sur les mots à apprendre ; sans elle, le service de correction juge seul, comme avant.
+- Sous les clés, une recommandation : xAI pour la voix, DeepSeek pour la correction, la moins chère, et Jev en option. Chaque service se remplace par un autre dont tu as la clé.
+
+**Corrigé**
+- Une clé TypeSafe est vérifiée avant d'être enregistrée : une clé refusée n'est plus gardée sans que tu le saches.
+
 ## 0.2.9 — 18 octobre 2026
 
 Les petits nombres s'écrivent en lettres quand c'est plus naturel.
