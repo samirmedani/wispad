@@ -67,11 +67,38 @@ enum GlassVariant: String, Codable, CaseIterable, Identifiable {
     }
 }
 
-/// Verre de la bulle (style Verre) : un des deux verres d'Apple, plus ou moins teinté.
+/// Apparence du verre (style Verre). Clair par défaut : le verre clair d'Apple est brillant et laisse voir ce qu'il y a
+/// derrière, comme la barre de navigation de l'iPhone ; le verre sombre ressemble à un verre fumé (mesuré sur des
+/// captures composées le 21 octobre 2026).
+enum GlassAppearance: String, Codable, CaseIterable, Identifiable {
+    case light, dark, system
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .light: return String(localized: "Clair")
+        case .dark: return String(localized: "Sombre")
+        case .system: return String(localized: "Comme l'app")
+        }
+    }
+
+    /// `nil` : le verre suit l'apparence de l'app (donc celle de macOS en réglage Système).
+    var nsAppearance: NSAppearance? {
+        switch self {
+        case .light: return NSAppearance(named: .aqua)
+        case .dark: return NSAppearance(named: .darkAqua)
+        case .system: return nil
+        }
+    }
+}
+
+/// Verre de la bulle (style Verre) : un des deux verres d'Apple, plus ou moins teinté, clair ou sombre.
 struct BubbleGlass: Codable, Equatable {
     var variant: GlassVariant = .clear
     /// Teinte, de 0 (le verre seul) à 1 (la plus forte) : sombre en apparence sombre, claire en apparence claire.
     var intensity = BubbleGlass.defaultIntensity
+    var appearance: GlassAppearance = .light
 
     static let defaultIntensity = 0.25
     static let intensityRange = 0.0...1.0
@@ -80,9 +107,10 @@ struct BubbleGlass: Codable, Equatable {
 
     init() {}
 
-    init(variant: GlassVariant, intensity: Double) {
+    init(variant: GlassVariant, intensity: Double, appearance: GlassAppearance = .light) {
         self.variant = variant
         self.intensity = intensity
+        self.appearance = appearance
     }
 
     /// Lecture tolérante, champ par champ : une valeur illisible ou hors bornes reprend son défaut, seule.
@@ -91,6 +119,7 @@ struct BubbleGlass: Codable, Equatable {
         variant = (try? container.decodeIfPresent(GlassVariant.self, forKey: .variant)) ?? .clear
         let stored = (try? container.decodeIfPresent(Double.self, forKey: .intensity)) ?? Self.defaultIntensity
         intensity = Self.intensityRange.contains(stored) ? stored : Self.defaultIntensity
+        appearance = (try? container.decodeIfPresent(GlassAppearance.self, forKey: .appearance)) ?? .light
     }
 
     /// Teinte posée sur le verre pour cette apparence ; nil à zéro.
@@ -138,6 +167,13 @@ extension AppModel {
     func setBubbleStyle(_ style: BubbleStyle) {
         guard settings.bubbleStyle != style else { return }
         settings.bubbleStyle = style
+        saveSettings()
+        overlay.bubbleStyleChanged()
+    }
+
+    func setGlassAppearance(_ appearance: GlassAppearance) {
+        guard settings.bubbleGlass.appearance != appearance else { return }
+        settings.bubbleGlass.appearance = appearance
         saveSettings()
         overlay.bubbleStyleChanged()
     }

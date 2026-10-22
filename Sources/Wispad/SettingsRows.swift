@@ -355,8 +355,16 @@ enum SettingsPresentation {
         title: String(localized: "Style de la bulle"),
         summary: String(localized: "Noir profond, ou verre transparent comme macOS."),
         details: [
-            String(localized: "Le verre laisse voir ce qu'il y a derrière et suit l'apparence de l'app, claire ou sombre."),
+            String(localized: "Le verre laisse voir ce qu'il y a derrière ; clair, sombre ou comme l'app, au choix."),
             String(localized: "Il vaut pour la bulle de dictée comme pour ses messages ; le spectre garde ses couleurs.")
+        ]
+    )
+
+    static let glassAppearance = SettingText(
+        title: String(localized: "Apparence du verre"),
+        summary: String(localized: "Clair comme sur iPhone, sombre, ou comme l'app."),
+        details: [
+            String(localized: "Le verre clair est brillant et laisse voir ce qu'il y a derrière, même une fenêtre sombre. Le verre sombre ressemble à un verre fumé.")
         ]
     )
 

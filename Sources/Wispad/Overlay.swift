@@ -82,12 +82,37 @@ final class OverlayState {
     @ObservationIgnored var onPillFrameChange: (() -> Void)?
 }
 
+/// Bulle de dictée selon son style. Noir profond : 30 pt, comme toujours. Verre : 40 pt ; à 30 pt, la lentille et les
+/// reflets du verre d'Apple ne se voyaient presque pas (mesuré le 21 octobre 2026 sur des captures composées), ils
+/// grandissent avec la forme. Le spectre grandit avec la pilule, en dessin net (pas un scaleEffect).
+@MainActor
+struct PillMetrics {
+    let height: CGFloat
+    let spectrumPadding: CGFloat
+    /// Taille des symboles ✕ et ■ des boutons des mains libres.
+    let symbolSize: CGFloat
+
+    static let black = PillMetrics(height: 30, spectrumPadding: 14, symbolSize: 10)
+    static let glass = PillMetrics(height: 40, spectrumPadding: 18, symbolSize: 12)
+
+    static func of(_ style: BubbleStyle) -> PillMetrics { style == .glass ? glass : black }
+
+    var spectrumScale: CGFloat { height / Self.black.height }
+    var cornerRadius: CGFloat { height / 2 }
+    /// Pilule à spectre (maintien, mains libres, finalisation) : barres et marges.
+    var spectrumWidth: CGFloat { SpectrumBars.width(count: DictationCoordinator.barCount) * spectrumScale + 2 * spectrumPadding }
+    /// Distance du centre de la pilule au centre d'un bouton sorti.
+    var orbReach: CGFloat { spectrumWidth / 2 + OverlayLayout.orbGap + height / 2 }
+    var handsFreeWidth: CGFloat { spectrumWidth + 2 * (OverlayLayout.orbGap + height) }
+}
+
 /// Géométrie de la bulle : panneau de taille fixe, pilule ancrée en bas au centre.
 @MainActor
 enum OverlayLayout {
     /// Assez grand pour l'état d'erreur, l'ombre et le rebond d'apparition : le panneau ne bouge plus.
     static let panelSize = CGSize(width: 560, height: 176)
-    static let pillHeight: CGFloat = 30
+    /// Bulle de dictée du style par défaut (Noir profond) ; selon le style, `PillMetrics.of(_:)`.
+    static let pillHeight = PillMetrics.black.height
     /// Message sur une ligne : pastille de 26 pt dans 42 pt de haut ; deux lignes de texte au plus.
     static let messageHeight: CGFloat = 42
     static let messageBadge: CGFloat = 26
@@ -98,14 +123,12 @@ enum OverlayLayout {
     /// Espace transparent sous la pilule, pour l'ombre.
     static let bottomMargin: CGFloat = 10
     static let space = "wispad-overlay"
-    static let spectrumPadding: CGFloat = 14
-    /// Pilule à spectre (maintien, mains libres, finalisation) : barres et marges.
-    static let spectrumPillWidth = SpectrumBars.width(count: DictationCoordinator.barCount) + 2 * spectrumPadding
+    static let spectrumPadding = PillMetrics.black.spectrumPadding
+    static let spectrumPillWidth = PillMetrics.black.spectrumWidth
     /// Au-delà de l'espacement du conteneur de verre : ✕ et ■ ne fusionnent plus avec la pilule.
     static let orbGap: CGFloat = 8
-    /// Distance du centre de la pilule au centre d'un bouton sorti.
-    static let orbReach = spectrumPillWidth / 2 + orbGap + pillHeight / 2
-    static let handsFreeWidth = spectrumPillWidth + 2 * (orbGap + pillHeight)
+    static let orbReach = PillMetrics.black.orbReach
+    static let handsFreeWidth = PillMetrics.black.handsFreeWidth
 
     /// Bas de la pilule en coordonnées écran : juste au-dessus du Dock affiché, sinon près du bord
     /// (Dock masqué, sur le côté, ou caché par une app en plein écran).
@@ -134,10 +157,11 @@ enum OverlayLayout {
     }
 
     /// Taille maximale de ce que montre la bulle dans ce mode, pour la garder à l'écran et hors du champ.
-    static func contentSize(for mode: OverlayMode, hasReadyText: Bool) -> CGSize {
+    static func contentSize(for mode: OverlayMode, hasReadyText: Bool, style: BubbleStyle = .black) -> CGSize {
+        let pill = PillMetrics.of(style)
         switch mode {
-        case .listening, .finishing: return CGSize(width: spectrumPillWidth, height: pillHeight)
-        case .handsFree: return CGSize(width: handsFreeWidth, height: pillHeight)
+        case .listening, .finishing: return CGSize(width: pill.spectrumWidth, height: pill.height)
+        case .handsFree: return CGSize(width: pill.handsFreeWidth, height: pill.height)
         case .failure: return hasReadyText ? CGSize(width: cardWidth, height: 128) : CGSize(width: messageMaxWidth, height: 52)
         // Mots appris sur deux lignes compris.
         case .learning: return CGSize(width: cardWidth, height: 156)
@@ -198,6 +222,33 @@ enum OverlayStyle {
     static let disappear = Animation.spring(response: 0.32, dampingFraction: 0.92)
     static let morph = Animation.spring(response: 0.4, dampingFraction: 0.8)
     static let fade = Animation.easeInOut(duration: 0.2)
+
+    /// Ombre portée sous la bulle : elle la détache du fond, comme les éléments en verre de macOS. Dessinée hors de
+    /// la forme seulement, pour ne pas assombrir le verre.
+    static let shadowOpacity = 0.42
+    static let shadowRadius: CGFloat = 10
+    static let shadowOffset: CGFloat = 5
+}
+
+/// Ombre portée d'une forme, sans la zone de la forme elle-même : sous un verre transparent, une ombre pleine
+/// l'assombrirait de l'intérieur.
+struct ShapeShadow<S: Shape>: View {
+    var shape: S
+    var opacity: Double = OverlayStyle.shadowOpacity
+
+    var body: some View {
+        shape.fill(Color.black.opacity(opacity))
+            .blur(radius: OverlayStyle.shadowRadius)
+            .offset(y: OverlayStyle.shadowOffset)
+            .mask {
+                ZStack {
+                    Rectangle().padding(-60)
+                    shape.blendMode(.destinationOut)
+                }
+                .compositingGroup()
+            }
+            .allowsHitTesting(false)
+    }
 }
 
 /// Textes de la bulle : des messages brefs, jamais terminés par un point, quelle que soit leur source (erreur de
@@ -339,8 +390,9 @@ struct OverlayCluster: View {
 
     private func cluster(glassy: Bool) -> some View {
         let coordinator = model.coordinator
+        let pill = PillMetrics.of(model.settings.bubbleStyle)
         let handsFree = mode == .handsFree
-        let reach = handsFree ? OverlayLayout.orbReach : 0
+        let reach = handsFree ? pill.orbReach : 0
         // Sous la pilule, le verre se confond avec elle ; sans verre, le bouton caché doit s'effacer.
         let hiddenOpacity: Double = glassy ? 1 : 0
         let orbScale: CGFloat = handsFree ? 1 : 0.5
@@ -365,33 +417,35 @@ struct OverlayCluster: View {
                 .transition(.opacity)
             }
             OverlayPill(mode: mode)
-                .overlayGlass(RoundedRectangle(cornerRadius: 15, style: .continuous), id: "pill", in: glass)
+                .overlayGlass(RoundedRectangle(cornerRadius: pill.cornerRadius, style: .continuous), id: "pill", in: glass)
         }
         // La mise en page suit les boutons sortis : centrage et zone cliquable couvrent ✕ et ■.
-        .frame(width: handsFree ? OverlayLayout.handsFreeWidth : nil)
+        .frame(width: handsFree ? pill.handsFreeWidth : nil)
     }
 }
 
 /// Contenu de la bulle de dictée : spectre ou vague de finalisation, en fondu enchaîné. Les messages ont leur bulle.
 struct OverlayPill: View {
+    @Environment(\.bubbleStyle) private var style
     var mode: OverlayMode
 
     var body: some View {
+        let pill = PillMetrics.of(style)
         ZStack {
             switch mode {
             case .listening, .handsFree:
                 LiveSpectrum()
-                    .padding(.horizontal, OverlayLayout.spectrumPadding)
+                    .padding(.horizontal, pill.spectrumPadding)
                     .transition(.opacity.combined(with: .scale(scale: 0.85)))
             case .finishing:
                 ProcessingBars()
-                    .padding(.horizontal, OverlayLayout.spectrumPadding)
+                    .padding(.horizontal, pill.spectrumPadding)
                     .transition(.opacity.combined(with: .scale(scale: 0.85)))
             case .failure, .notice, .learning, .update:
                 EmptyView()
             }
         }
-        .frame(minHeight: OverlayLayout.pillHeight)
+        .frame(minHeight: pill.height)
     }
 }
 
@@ -430,6 +484,8 @@ private struct OverlayGlass<S: InsettableShape>: ViewModifier {
                 .glassEffect((clear ? glassSettings.glass(for: scheme) : Glass.clear.tint(OverlayStyle.glassTint)).interactive(interactive), in: shape)
                 .glassEffectID(id, in: namespace)
                 .glassEffectTransition(reduceMotion ? .materialize : .matchedGeometry)
+                // Ombre portée du verre transparent seulement : le verre fumé noir garde son allure.
+                .background { if clear { ShapeShadow(shape: shape, opacity: rim ? OverlayStyle.shadowOpacity : 0) } }
         } else if clear {
             clipped
                 .background(shape.fill(glassSettings.tint(for: scheme) ?? .clear))
@@ -445,11 +501,13 @@ private struct OverlayGlass<S: InsettableShape>: ViewModifier {
 /// Lit le spectre lui-même : seul ce petit morceau se redessine à 60 Hz.
 struct LiveSpectrum: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.bubbleStyle) private var style
 
     var body: some View {
         let coordinator = model.coordinator
         let tint = coordinator.relay == nil ? OverlayStyle.red : OverlayStyle.relay
-        SpectrumBars(levels: coordinator.spectrum, color: tint.opacity(coordinator.isListening ? 1 : 0.45))
+        SpectrumBars(levels: coordinator.spectrum, color: tint.opacity(coordinator.isListening ? 1 : 0.45),
+                     scale: PillMetrics.of(style).spectrumScale)
     }
 }
 
@@ -496,7 +554,8 @@ struct ProcessingBars: View {
         TimelineView(.animation) { timeline in
             let levels = Self.levels(at: timeline.date.timeIntervalSinceReferenceDate, reduceMotion: reduceMotion)
             let idle = style == .glass ? Color.primary.opacity(0.5) : Color.white.opacity(0.55)
-            SpectrumBars(levels: levels, color: model.coordinator.relay == nil ? idle : OverlayStyle.relay.opacity(0.8))
+            SpectrumBars(levels: levels, color: model.coordinator.relay == nil ? idle : OverlayStyle.relay.opacity(0.8),
+                         scale: PillMetrics.of(style).spectrumScale)
         }
     }
 
@@ -516,6 +575,7 @@ struct ProcessingBars: View {
 
 /// Bouton rond en verre, soudé à la pilule en mains libres. Caché, il reste sous la pilule, inerte.
 struct OverlayOrbButton: View {
+    @Environment(\.bubbleStyle) private var style
     var symbol: String
     var tint: Color
     var help: String
@@ -525,14 +585,15 @@ struct OverlayOrbButton: View {
     var action: () -> Void
 
     var body: some View {
+        let pill = PillMetrics.of(style)
         Button(action: action) {
             Image(systemName: symbol)
-                .font(.system(size: 10, weight: .bold))
+                .font(.system(size: pill.symbolSize, weight: .bold))
                 .foregroundStyle(tint)
                 .opacity(revealed ? 1 : 0)
                 // L'icône s'efface avant que le bouton ne repasse sur le spectre, et revient une fois sorti.
                 .animation(revealed ? .easeIn(duration: 0.18).delay(0.08) : .easeOut(duration: 0.1), value: revealed)
-                .frame(width: OverlayLayout.pillHeight, height: OverlayLayout.pillHeight)
+                .frame(width: pill.height, height: pill.height)
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
@@ -770,6 +831,7 @@ private struct MessageSurface<S: Shape>: ViewModifier {
         case .glass:
             if #available(macOS 26, *), glassEnabled {
                 content.glassEffect(glassSettings.glass(for: scheme), in: shape)
+                    .background { ShapeShadow(shape: shape, opacity: 0.3) }
             } else {
                 content.background {
                     shape.fill(glassSettings.variant == .clear ? Material.ultraThinMaterial : Material.regularMaterial)
@@ -1059,13 +1121,15 @@ final class OverlayController {
         }
     }
 
-    /// Sombre pour le noir profond ; pour le verre, celle de l'app, qui le rend clair ou sombre comme elle (bulle de
-    /// dictée comprise).
+    /// Sombre pour le noir profond ; pour le verre, celle du réglage Apparence du verre (claire par défaut, ou celle de
+    /// l'app), bulle de dictée comprise.
     private var panelAppearance: NSAppearance? {
-        model?.settings.bubbleStyle == .glass ? nil : NSAppearance(named: .darkAqua)
+        guard let settings = model?.settings, settings.bubbleStyle == .glass else { return NSAppearance(named: .darkAqua) }
+        return settings.bubbleGlass.appearance.nsAppearance
     }
 
-    /// Réglages › Bulle et messages : le nouveau style vaut tout de suite, message affiché compris.
+    /// Réglages › Bulle et messages : le nouveau style ou la nouvelle apparence du verre vaut tout de suite, message
+    /// affiché compris.
     func bubbleStyleChanged() {
         panel?.appearance = panelAppearance
     }
@@ -1182,7 +1246,8 @@ final class OverlayController {
 
     /// Cadre de la bulle (taille la plus grande de ce mode) dans ce panneau, en coordonnées écran.
     private func bubbleFrame(in panel: NSPanel) -> CGRect {
-        let size = OverlayLayout.contentSize(for: state.mode, hasReadyText: model?.coordinator.failureText != nil)
+        let size = OverlayLayout.contentSize(for: state.mode, hasReadyText: model?.coordinator.failureText != nil,
+                                             style: model?.settings.bubbleStyle ?? .black)
         return OverlayGeometry.bubble(bottomCenter: OverlayLayout.bottomCenter(of: panel.frame), contentSize: size)
     }
 
@@ -1245,7 +1310,8 @@ final class OverlayController {
         guard let model else { return nil }
         let placement = model.settings.overlayPlacement
         let role = mode.isMessage ? (previewRole ?? mode.role) : mode.role
-        let size = OverlayLayout.contentSize(for: mode, hasReadyText: model.coordinator.failureText != nil)
+        let size = OverlayLayout.contentSize(for: mode, hasReadyText: model.coordinator.failureText != nil,
+                                             style: model.settings.bubbleStyle)
         let zone = mode.isMessage && placement.avoidsInput && previewRole == nil
             ? InputZoneTracker.zone(frontmost: NSWorkspace.shared.frontmostApplication?.processIdentifier) : nil
         let shown = panel.flatMap { $0.isVisible ? $0 : nil }

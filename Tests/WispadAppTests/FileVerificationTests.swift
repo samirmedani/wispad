@@ -322,6 +322,27 @@ struct FileVerificationTests {
         #expect(trace.correctionPatched == true)
     }
 
+    /// Mot entendu seulement par le fichier, au milieu de la phrase : il entre dans la correction du flux, sans
+    /// second appel.
+    @Test func wordHeardOnlyByTheFileIsAddedToTheStreamCorrection() async throws {
+        let stream = "je sais pas si on part demain"
+        let file = "je ne sais pas si on part demain"
+        let f = try VerifyFixture()
+        defer { f.dispose() }
+        f.stream.text = stream
+        f.fileTexts = [file]
+        f.holdFile = true
+        await f.model.coordinator.begin(.toggle)
+        let task = try #require(f.model.coordinator.endCapture())
+        try await f.cleanEntered.value()
+        f.fileRelease.resolve(.success(file))
+        try await finish(within: 3, task)
+        #expect(f.cleanTexts == [stream])
+        #expect(f.inserted == [file])
+        #expect(f.model.usage.filter { $0.api == .deepSeekCleanup }.count == 1)
+        #expect(try f.trace().correctionPatched == true)
+    }
+
     /// La correction du flux finit après le fichier mais avant celle du fichier : le mot y est reporté sans attendre
     /// la seconde, comptée quand elle finit.
     @Test func aStreamCorrectionFinishingFirstStillReceivesTheFileWord() async throws {

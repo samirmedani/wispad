@@ -3,6 +3,20 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.2.11 — 22 octobre 2026
+
+Une bulle en verre qui ressemble à du verre, et plus de dictées collées sans seconde correction.
+
+> Depuis la 0.2.0 : si la mise à jour reste sur « Relance… », ferme cette fenêtre, puis quitte Wispad et rouvre-le.
+> La 0.2.11 est déjà installée.
+
+**Nouveau**
+- Style Verre : la bulle de dictée passe à 40 points de haut, spectre et boutons agrandis d'autant, avec une ombre douce. La lentille et les reflets du Liquid Glass se voient enfin, comme sur iPhone. Le style Noir profond ne change pas.
+- Réglages › Bulle et messages › Apparence du verre : Clair (par défaut, brillant, il laisse voir ce qu'il y a derrière, même une fenêtre sombre), Sombre (verre fumé) ou Comme l'app, le rendu d'avant.
+
+**Plus rapide**
+- Quand l'enregistrement complet entend un mot de plus ou de moins au milieu d'une phrase (« je ne sais pas » contre « je sais pas »), ce mot est ajouté ou retiré dans la correction déjà prête, sans seconde correction complète. Un mot présent plusieurs fois est maintenant situé grâce à ses voisins. Rejoué sur l'historique, ce raccourci sert à un tiers de dictées de plus ; chacune se colle environ 0,5 s plus tôt, jusqu'à 1,6 s pour les plus lentes.
+
 ## 0.2.10 — 19 octobre 2026
 
 Jev, facultatif, est proposé à tous.

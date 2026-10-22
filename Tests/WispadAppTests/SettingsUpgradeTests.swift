@@ -92,15 +92,20 @@ struct SettingsUpgradeTests {
         settings.overlayPlacement.setAnchor(OverlayAnchor(x: 0.25, y: 0.75), for: .info)
         settings.appearance = .dark
         settings.bubbleStyle = .glass
-        settings.bubbleGlass = BubbleGlass(variant: .regular, intensity: 0.6)
+        settings.bubbleGlass = BubbleGlass(variant: .regular, intensity: 0.6, appearance: .dark)
         return settings
     }
 
     /// Verre de la bulle lu champ par champ : une intensité hors bornes reprend son défaut, le verre choisi reste.
+    /// Sans apparence enregistrée (réglages d'avant la 0.2.11), le verre est clair.
     @Test func bubbleGlassKeepsItsReadableField() throws {
         let read = try decode(#"{"bubbleStyle":"glass","bubbleGlass":{"variant":"regular","intensity":5}}"#)
         #expect(read.bubbleStyle == .glass)
-        #expect(read.bubbleGlass == BubbleGlass(variant: .regular, intensity: BubbleGlass.defaultIntensity))
+        #expect(read.bubbleGlass == BubbleGlass(variant: .regular, intensity: BubbleGlass.defaultIntensity, appearance: .light))
+        let dark = try decode(#"{"bubbleGlass":{"variant":"clear","intensity":0,"appearance":"dark"}}"#)
+        #expect(dark.bubbleGlass == BubbleGlass(variant: .clear, intensity: 0, appearance: .dark))
+        let unknown = try decode(#"{"bubbleGlass":{"variant":"clear","intensity":0,"appearance":"neon"}}"#)
+        #expect(unknown.bubbleGlass.appearance == .light)
     }
 
     /// La fixture couvre tous les réglages, y compris ceux ajoutés plus tard.
@@ -664,3 +669,4 @@ struct APIKeysUpgradeTests {
         #expect(try String(contentsOf: url, encoding: .utf8) == damaged)
     }
 }
+
