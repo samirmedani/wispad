@@ -22,6 +22,19 @@ struct OverlayPlacementSection: View {
                 .fixedSize()
             }
             if model.settings.bubbleStyle == .glass {
+                SettingRow(text: SettingsPresentation.glassAppearance) {
+                    Picker(SettingsPresentation.glassAppearance.title, selection: Binding(
+                        get: { model.settings.bubbleGlass.appearance },
+                        set: { model.setGlassAppearance($0) }
+                    )) {
+                        ForEach(GlassAppearance.allCases) { appearance in
+                            Text(appearance.title).tag(appearance)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .fixedSize()
+                }
                 SettingRow(text: SettingsPresentation.glassVariant) {
                     Picker(SettingsPresentation.glassVariant.title, selection: Binding(
                         get: { model.settings.bubbleGlass.variant },
@@ -88,10 +101,10 @@ struct BubbleGlassPreview: View {
                                startPoint: .topLeading, endPoint: .bottomTrailing)
             }
             VStack(spacing: 14) {
-                SpectrumBars(levels: Self.levels, color: OverlayStyle.red)
-                    .padding(.horizontal, OverlayLayout.spectrumPadding)
-                    .frame(height: OverlayLayout.pillHeight)
-                    .overlayGlass(RoundedRectangle(cornerRadius: 15, style: .continuous), id: "preview-pill", in: glass)
+                SpectrumBars(levels: Self.levels, color: OverlayStyle.red, scale: PillMetrics.glass.spectrumScale)
+                    .padding(.horizontal, PillMetrics.glass.spectrumPadding)
+                    .frame(height: PillMetrics.glass.height)
+                    .overlayGlass(RoundedRectangle(cornerRadius: PillMetrics.glass.cornerRadius, style: .continuous), id: "preview-pill", in: glass)
                 MessageLine(kind: .success, message: String(localized: "Collé"), countdown: nil, onDismiss: nil)
             }
         }
@@ -99,7 +112,21 @@ struct BubbleGlassPreview: View {
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .environment(\.bubbleStyle, .glass)
         .environment(\.bubbleGlass, model.settings.bubbleGlass)
+        .modifier(GlassPreviewAppearance(appearance: model.settings.bubbleGlass.appearance))
         .accessibilityHidden(true)
+    }
+}
+
+/// L'aperçu prend l'apparence choisie pour le verre ; « Comme l'app » le laisse suivre la fenêtre des Réglages.
+private struct GlassPreviewAppearance: ViewModifier {
+    var appearance: GlassAppearance
+
+    @ViewBuilder func body(content: Content) -> some View {
+        switch appearance {
+        case .light: content.environment(\.colorScheme, .light)
+        case .dark: content.environment(\.colorScheme, .dark)
+        case .system: content
+        }
     }
 }
 
@@ -333,3 +360,4 @@ struct OverlayLayoutEditor: View {
         return String(localized: "Position personnalisée")
     }
 }
+

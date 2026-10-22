@@ -1471,6 +1471,31 @@ struct AppRegressionTests {
         }
     }
 
+    /// La pilule de dictée tient dans la place que la bulle lui réserve à l'écran, dans chaque style : 30 pt en noir
+    /// profond, comme toujours ; 40 pt en verre, boutons des mains libres compris, sans devenir encombrante.
+    @Test func dictationPillMatchesItsPlacementSizeInEveryStyle() async throws {
+        let f = try Fixture()
+        defer { f.dispose() }
+        f.model.coordinator.spectrum = Array(repeating: 0.6, count: DictationCoordinator.barCount)
+        for (style, height) in [(BubbleStyle.black, CGFloat(30)), (.glass, 40)] {
+            f.model.settings.bubbleStyle = style
+            for mode in [OverlayMode.listening, .handsFree, .finishing] {
+                let renderer = ImageRenderer(content: OverlayCluster(mode: mode)
+                    .environment(f.model)
+                    .environment(\.bubbleStyle, style)
+                    .environment(\.colorScheme, .dark)
+                    .environment(\.overlayGlass, false))
+                renderer.scale = 2
+                let image = try #require(renderer.nsImage)
+                let reserved = OverlayLayout.contentSize(for: mode, hasReadyText: false, style: style)
+                #expect(reserved.height == height)
+                #expect(abs(image.size.height - height) <= 1, "\(style) \(mode)")
+                #expect(image.size.width <= reserved.width + 1, "\(style) \(mode)")
+            }
+        }
+        #expect(OverlayLayout.contentSize(for: .handsFree, hasReadyText: false, style: .glass).width <= 220)
+    }
+
     @Test func overlayIsBornFromABottomDot() async throws {
         let f = try Fixture()
         defer { f.dispose() }

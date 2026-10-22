@@ -130,16 +130,20 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   sans prendre le focus ni le premier plan à l'app active. La bulle d'enregistrement (spectre, finalisation) n'a ni
   ✕ ni décompte.
 - **Style de la bulle** (Réglages › Bulle) : **Noir profond** (par défaut) : messages noirs avec un reflet doux sur
-  le haut et une ombre, bulle de dictée en verre fumé noir ; lisible sur tous les fonds. Ou **Verre** : la bulle de
-  dictée (spectre, mains libres et ses boutons, finalisation) et tous les messages passent en Liquid Glass
-  transparent de macOS 26 (matériau translucide avant), sans liseré, clairs ou sombres comme l'apparence de l'app ;
-  le spectre garde ses couleurs, la vague de finalisation et la ✕ se foncent sur un verre clair. Le changement vaut
-  tout de suite. En Verre, deux réglages de plus, les deux verres natifs d'Apple : **Verre** Transparent (par
-  défaut, le plus transparent) ou Dépoli (plus flou, plus lisible sur un fond chargé), et **Intensité**, la teinte
-  posée sur ce verre (25 % par défaut ; à zéro, le verre seul ; au maximum, 70 % d'opacité), sombre en apparence
-  sombre et claire en apparence claire. Un aperçu sous ces réglages montre la bulle de dictée et un message avec le
-  vrai verre, au-dessus d'une page claire et d'un fond sombre ; il suit le curseur, comme la bulle affichée.
-  L'intensité s'enregistre au relâchement du curseur.
+  le haut et une ombre, bulle de dictée en verre fumé noir de 30 points de haut ; lisible sur tous les fonds. Ou
+  **Verre** : la bulle de dictée (spectre, mains libres et ses boutons, finalisation) et tous les messages passent en
+  Liquid Glass transparent de macOS 26 (matériau translucide avant), sans liseré, avec une ombre portée douce dessinée
+  hors de la forme (le verre n'est pas assombri). La bulle de dictée y fait 40 points de haut, spectre et boutons
+  agrandis d'autant : à 30 points, la lentille et les reflets du verre ne se voyaient presque pas. Le spectre garde
+  ses couleurs, la vague de finalisation et la ✕ se foncent sur un verre clair. Le changement vaut tout de suite. En
+  Verre, trois réglages de plus : **Apparence du verre**, Clair (par défaut : brillant, il laisse voir ce qu'il y a
+  derrière, même une fenêtre sombre, comme sur iPhone), Sombre (verre fumé) ou Comme l'app (clair ou sombre comme
+  l'apparence de l'app, le rendu d'avant la 0.2.11) ; puis les deux verres natifs d'Apple : **Verre** Transparent
+  (par défaut, le plus transparent) ou Dépoli (plus flou, plus lisible sur un fond chargé), et **Intensité**, la
+  teinte posée sur ce verre (25 % par défaut ; à zéro, le verre seul ; au maximum, 70 % d'opacité), sombre sur un
+  verre sombre et claire sur un verre clair. Un aperçu sous ces réglages montre la bulle de dictée et un message avec
+  le vrai verre, dans l'apparence choisie, au-dessus d'une page claire et d'un fond sombre ; il suit le curseur, comme
+  la bulle affichée. L'intensité s'enregistre au relâchement du curseur.
 - **Place à l'écran** (Réglages › Bulle et messages) : trois places réglables à main levée sur un schéma quadrillé
   de l'écran, la grille aimantant légèrement les bulles. **Dictée** (spectre et finalisation), **Alertes de
   collage** (texte prêt à copier) et **Messages** (« Collé », mot appris, relais, nouvelle version). Par défaut :
@@ -177,7 +181,8 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   Sombre. Choix rapide par le bouton à droite de « Wispad » en haut de la barre latérale (son icône montre le choix
   en cours, un clic ouvre trois vignettes), ou dans Réglages › Apparence. Toute l'app change aussitôt, en fondu
   (sans fondu avec « Réduire les animations ») : fenêtre, premier lancement guidé, notes de version, bulles d'aide.
-  La bulle en noir profond et le schéma de Réglages › Bulle restent sombres ; la bulle en verre suit l'apparence. Le choix est gardé après une
+  La bulle en noir profond et le schéma de Réglages › Bulle restent sombres ; la bulle en verre suit son réglage
+  Apparence du verre (clair par défaut, ou comme l'app). Le choix est gardé après une
   relance ou une mise à jour, et posé avant l'ouverture de toute fenêtre.
 - Choix d'affichage mémorisés, retrouvés après avoir quitté et relancé Wispad, chacun enregistré dès qu'il change :
   - période de l'Accueil (7 jours par défaut) ;
@@ -301,10 +306,13 @@ Toujours chez un fournisseur, au choix dans Fournisseurs : xAI `grok-voice-trans
   en français comme en anglais) : le flux est gardé, sa correction déjà lancée est collée ;
 - texte différent : celui du fichier est corrigé et collé, le flux sert d'« autre écoute » à la correction et reste
   avec la dictée dans l'historique local (pour comprendre le désaccord et pour le banc des erreurs signalées) ;
-- texte différent d'un ou deux remplacements courts (trois mots au plus, même nombre de mots à un près, voisin
-  retrouvé, mot unique dans la correction, aucun terme du dictionnaire) : les mots du fichier sont reportés dans la
-  correction du flux, sans second appel, si elle est déjà prête. Sinon, correction complète du fichier immédiate,
-  sans attendre 0,3 s une correction obsolète ;
+- texte différent en un ou deux endroits courts : un remplacement (trois mots au plus, même nombre de mots à un près)
+  ou, au milieu d'une phrase, un mot ajouté ou retiré (un seul mot écrit, comme « ne » ou « peut-être », entre deux
+  mots séparés par de simples espaces, jamais une répétition comme « le le ») ; l'endroit est retrouvé dans la
+  correction grâce aux voisins de l'écoute (un voisin s'il ne désigne qu'un endroit, sinon les deux, et toujours les
+  deux pour un mot retiré) et aucun terme du dictionnaire n'est touché. Les mots du fichier sont alors reportés dans
+  la correction du flux, sans second appel, si elle est déjà prête ou si elle finit avant la correction complète du
+  fichier, lancée aussitôt sans attendre 0,3 s une correction obsolète ;
 - fichier en échec, sans aucun mot ou trop lent (1,2 s + 0,06 s par seconde d'audio, 4 s au plus) : le flux est
   gardé. Il l'est aussi quand le réglage est coupé et qu'une fin de flux peu fiable rappelle un fichier vide.
 

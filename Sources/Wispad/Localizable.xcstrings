@@ -2423,6 +2423,16 @@
         }
       }
     },
+    "Comme l'app" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Same as app"
+          }
+        }
+      }
+    },
     "Comprendre le sujet grâce à la fenêtre active" : {
       "localizations" : {
         "en" : {
@@ -8225,12 +8235,22 @@
         }
       }
     },
-    "Le verre laisse voir ce qu'il y a derrière et suit l'apparence de l'app, claire ou sombre." : {
+    "Le verre clair est brillant et laisse voir ce qu'il y a derrière, même une fenêtre sombre. Le verre sombre ressemble à un verre fumé." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Glass lets what's behind show through and follows the app's light or dark appearance."
+            "value" : "Light glass is bright and lets what's behind show through, even a dark window. Dark glass looks like smoked glass."
+          }
+        }
+      }
+    },
+    "Le verre laisse voir ce qu'il y a derrière ; clair, sombre ou comme l'app, au choix." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Glass lets what's behind show through; light, dark or same as the app, your choice."
           }
         }
       }
@@ -9163,12 +9183,32 @@
         }
       }
     },
+    "Apparence du verre" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Glass appearance"
+          }
+        }
+      }
+    },
     "Clair" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Light"
+          }
+        }
+      }
+    },
+    "Clair comme sur iPhone, sombre, ou comme l'app." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Light like on iPhone, dark, or same as the app."
           }
         }
       }

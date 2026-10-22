@@ -38,13 +38,10 @@ struct CorrectionPatchTests {
     }
 
     @Test func doubtfulCasesFallBackToAFullCorrection() {
-        // Le mot apparaît deux fois dans la correction : on ne sait pas lequel changer.
+        // Le mot apparaît deux fois au même genre d'endroit : on ne sait pas lequel changer.
         #expect(CorrectionPatch.apply(
-            corrected: "Mardi, on voit mardi.", stream: "mardi on voit mardi", file: "mardi on voit mercredi"
-        ) == nil)
-        // Mot ajouté sans remplacement.
-        #expect(CorrectionPatch.apply(
-            corrected: "On part demain.", stream: "on part demain", file: "on part pas demain"
+            corrected: "On voit mardi, on voit mardi.",
+            stream: "on voit mardi on voit mardi", file: "on voit mardi on voit mercredi"
         ) == nil)
         // Trois endroits différents.
         #expect(CorrectionPatch.apply(
@@ -74,6 +71,94 @@ struct CorrectionPatchTests {
 
     @Test func candidateCheckMatchesTheBlocks() {
         #expect(CorrectionPatch.isCandidate(stream: "on part mardi", file: "on part mercredi"))
+        #expect(CorrectionPatch.isCandidate(stream: "on part demain", file: "on part pas demain"))
+        #expect(CorrectionPatch.isCandidate(stream: "on part pas demain", file: "on part demain"))
         #expect(!CorrectionPatch.isCandidate(stream: "on part", file: "on part demain matin"))
+        #expect(!CorrectionPatch.isCandidate(stream: "part demain", file: "on part demain"))
+    }
+
+    /// Mot entendu d'un seul côté au milieu de la phrase (mesuré le 21 octobre 2026 : 86 dictées sur 368 qui
+    /// différaient d'un à quatre mots) : il est ajouté ou retiré dans la correction du flux.
+    @Test func wordAddedOrDroppedByTheFileIsReported() {
+        #expect(CorrectionPatch.apply(
+            corrected: "On part demain.", stream: "on part demain", file: "on part pas demain"
+        ) == "On part pas demain.")
+        #expect(CorrectionPatch.apply(
+            corrected: "Je sais pas pourquoi.", stream: "je sais pas pourquoi", file: "Je ne sais pas pourquoi."
+        ) == "Je ne sais pas pourquoi.")
+        // Un mot écrit avec trait d'union compte pour un.
+        #expect(CorrectionPatch.apply(
+            corrected: "Il viendra demain.", stream: "il viendra demain", file: "il viendra peut-être demain"
+        ) == "Il viendra peut-être demain.")
+        // Majuscule d'un début de phrase du fichier : le mot arrive en milieu de phrase.
+        #expect(CorrectionPatch.apply(
+            corrected: "On part demain matin.", stream: "on part demain matin", file: "On part. Pas demain matin"
+        ) == "On part pas demain matin.")
+        // Nom propre au milieu du fichier : sa majuscule reste.
+        #expect(CorrectionPatch.apply(
+            corrected: "On part avec demain.", stream: "on part avec demain", file: "on part avec Julie demain"
+        ) == "On part avec Julie demain.")
+        #expect(CorrectionPatch.apply(
+            corrected: "On part pas demain.", stream: "on part pas demain", file: "on part demain"
+        ) == "On part demain.")
+        // Remplacement et ajout dans la même dictée.
+        #expect(CorrectionPatch.apply(
+            corrected: "On se voit mardi à la réunion, je sais pas quand.",
+            stream: "on se voit mardi à la réunion je sais pas quand",
+            file: "on se voit mercredi à la réunion je ne sais pas quand"
+        ) == "On se voit mercredi à la réunion, je ne sais pas quand.")
+    }
+
+    @Test func doubtfulAdditionsAndRemovalsFallBack() {
+        // Une virgule entre les voisins : on ne sait pas de quel côté mettre le mot.
+        #expect(CorrectionPatch.apply(
+            corrected: "On part, demain.", stream: "on part demain", file: "on part pas demain"
+        ) == nil)
+        // Plusieurs mots écrits ajoutés d'un coup : peut-être un rattrapage (« mardi non mercredi »).
+        #expect(CorrectionPatch.apply(
+            corrected: "On se voit mercredi.", stream: "on se voit mercredi", file: "on se voit mardi non mercredi"
+        ) == nil)
+        // Élision collée au mot suivant : « l » seul ne se place pas.
+        #expect(CorrectionPatch.apply(
+            corrected: "Il a fini hier.", stream: "il a fini hier", file: "il l'a fini hier"
+        ) == nil)
+        #expect(CorrectionPatch.apply(
+            corrected: "Il l'a fini hier.", stream: "il l'a fini hier", file: "il a fini hier"
+        ) == nil)
+        // Répétition entendue par le fichier : la correction l'enlèverait, le report ne la remet pas.
+        #expect(CorrectionPatch.apply(
+            corrected: "Le chat dort.", stream: "le chat dort", file: "le le chat dort"
+        ) == nil)
+        // Répétition déjà enlevée par la correction du flux : le mot qui reste ne part pas.
+        #expect(CorrectionPatch.apply(
+            corrected: "Par exemple, ça marche bien.",
+            stream: "par exemple par exemple ça marche bien", file: "par exemple ça marche bien"
+        ) == nil)
+        #expect(CorrectionPatch.apply(
+            corrected: "Le chat dort ici.", stream: "le chat chat dort ici", file: "le chat dort ici"
+        ) == nil)
+        // Mot à retirer collé à une virgule : la ponctuation resterait orpheline.
+        #expect(CorrectionPatch.apply(
+            corrected: "On part, pas demain.", stream: "on part pas demain", file: "on part demain"
+        ) == nil)
+        // Mot à retirer qui n'a plus ses deux voisins dans la correction.
+        #expect(CorrectionPatch.apply(
+            corrected: "On part vraiment pas demain.", stream: "on part pas demain", file: "on part demain"
+        ) == nil)
+        // Terme du dictionnaire : le fichier ne le retire pas.
+        #expect(CorrectionPatch.apply(
+            corrected: "On utilise vraiment Wispad ici.", stream: "on utilise vraiment Wispad ici",
+            file: "on utilise vraiment ici", protected: ["Wispad"]
+        ) == nil)
+    }
+
+    /// Mot présent plusieurs fois dans la correction : ses voisins de l'écoute disent lequel changer.
+    @Test func repeatedWordIsLocatedByItsNeighbors() {
+        #expect(CorrectionPatch.apply(
+            corrected: "Mardi, on voit mardi.", stream: "mardi on voit mardi", file: "mardi on voit mercredi"
+        ) == "Mardi, on voit mercredi.")
+        #expect(CorrectionPatch.apply(
+            corrected: "Je prends le train et le bus.", stream: "je prends le train et le bus", file: "je prends le train et un bus"
+        ) == "Je prends le train et un bus.")
     }
 }
