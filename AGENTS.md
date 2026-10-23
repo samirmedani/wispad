@@ -19,6 +19,9 @@ avant d'ajouter un fournisseur, un réglage ou un écran.
 - Builds et tests en arrière-plan : ne jamais activer, mettre au premier plan ni afficher à l'écran une fenêtre, une
   bulle ou une démo de test (`--show-window`) sans demande explicite : le Mac sert pendant ce temps. Aperçus hors
   écran (`--design-preview --offscreen`), relance technique avec `--background`.
+- Tests visuels uniquement hors écran (`--design-preview --offscreen`, `--bubble-gallery`). `--bubble-probe` pose
+  de vraies fenêtres derrière celle du premier plan, visibles à travers une fenêtre translucide : jamais pendant que
+  quelqu'un se sert du Mac.
 - Aucune donnée personnelle dans le dépôt : ni nom, e-mail, chemin de machine, serveur, identifiant d'équipe Apple
   (il va dans `Signing.local.xcconfig`, ignoré par Git), ni enregistrement de voix.
 

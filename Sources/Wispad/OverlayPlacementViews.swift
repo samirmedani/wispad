@@ -2,26 +2,39 @@ import AppKit
 import SwiftUI
 import WispadCore
 
-/// Réglages › Bulle et messages : ne pas couvrir le champ, et position de chaque affichage sur un écran quadrillé.
+/// Réglages › Bulle et messages : le style de la bulle, montré en vrai, puis où elle et ses messages apparaissent.
 struct OverlayPlacementSection: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
+        BubbleLookSection()
         Section {
-            SettingRow(text: SettingsPresentation.bubbleStyle) {
-                Picker(SettingsPresentation.bubbleStyle.title, selection: Binding(
-                    get: { model.settings.bubbleStyle },
-                    set: { model.setBubbleStyle($0) }
-                )) {
-                    ForEach(BubbleStyle.allCases) { style in
-                        Text(style.title).tag(style)
-                    }
+            SettingToggle(text: SettingsPresentation.avoidInput, isOn: Binding(
+                get: { model.settings.overlayPlacement.avoidsInput },
+                set: { model.settings.overlayPlacement.avoidsInput = $0; model.saveSettings() }
+            ))
+            OverlayLayoutEditor()
+        } header: {
+            SectionTitle(title: SettingsPresentation.placementTitle, summary: SettingsPresentation.placementSummary)
+        }
+    }
+}
+
+/// Style : trois cartes qui montrent la vraie bulle (noir profond, verre transparent, verre dépoli), les réglages du
+/// verre, puis un grand aperçu avec un message. Tout suit le réglage en direct, la bulle à l'écran comprise.
+struct BubbleLookSection: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        let look = model.bubbleLook
+        Section {
+            HStack(spacing: 12) {
+                ForEach(BubbleLook.allCases) { item in
+                    BubbleLookCard(look: item, selected: item == look) { model.setBubbleLook(item) }
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .fixedSize()
             }
-            if model.settings.bubbleStyle == .glass {
+            .padding(.vertical, 4)
+            if look != .black {
                 SettingRow(text: SettingsPresentation.glassAppearance) {
                     Picker(SettingsPresentation.glassAppearance.title, selection: Binding(
                         get: { model.settings.bubbleGlass.appearance },
@@ -29,19 +42,6 @@ struct OverlayPlacementSection: View {
                     )) {
                         ForEach(GlassAppearance.allCases) { appearance in
                             Text(appearance.title).tag(appearance)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .fixedSize()
-                }
-                SettingRow(text: SettingsPresentation.glassVariant) {
-                    Picker(SettingsPresentation.glassVariant.title, selection: Binding(
-                        get: { model.settings.bubbleGlass.variant },
-                        set: { model.settings.bubbleGlass.variant = $0; model.saveSettings() }
-                    )) {
-                        ForEach(GlassVariant.allCases) { variant in
-                            Text(variant.title).tag(variant)
                         }
                     }
                     .pickerStyle(.segmented)
@@ -63,62 +63,162 @@ struct OverlayPlacementSection: View {
                         .foregroundStyle(.secondary)
                         .frame(width: 42, alignment: .trailing)
                 }
-                BubbleGlassPreview()
             }
-            SettingToggle(text: SettingsPresentation.avoidInput, isOn: Binding(
-                get: { model.settings.overlayPlacement.avoidsInput },
-                set: { model.settings.overlayPlacement.avoidsInput = $0; model.saveSettings() }
-            ))
-            OverlayLayoutEditor()
+            BubblePreview()
         } header: {
-            SectionTitle(title: SettingsPresentation.overlayTitle, summary: SettingsPresentation.overlaySummary)
+            SectionTitle(title: SettingsPresentation.bubbleStyle.title, summary: SettingsPresentation.bubbleStyle.summary ?? "")
         }
     }
 }
 
-/// Aperçu du verre dans Réglages › Bulle : la bulle de dictée et un message, rendus avec le vrai verre au-dessus
-/// d'une page claire et d'un fond sombre, comme des apps derrière la bulle. Il suit le réglage en direct.
-struct BubbleGlassPreview: View {
+/// Une allure de la bulle, montrée en vrai sur une page claire et un fond coloré ; la carte choisie porte la couleur
+/// de l'app.
+struct BubbleLookCard: View {
     @Environment(AppModel.self) private var model
-    @Namespace private var glass
+    var look: BubbleLook
+    var selected: Bool
+    var action: () -> Void
+    @State private var hovered = false
 
-    private static let levels: [Float] = [0.18, 0.3, 0.5, 0.72, 0.9, 1, 0.86, 0.66, 0.44, 0.26, 0.14]
-    private static let lines: [CGFloat] = [190, 150, 210, 120, 175, 160, 200, 130, 180]
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 10) {
+                ZStack {
+                    BubbleScene()
+                    BubbleSample()
+                }
+                .frame(height: 96)
+                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                .bubbleLook(look, glass: model.settings.bubbleGlass)
+                HStack(alignment: .center, spacing: 6) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(look.title)
+                            .font(.system(size: 13, weight: .semibold))
+                        Text(look.caption)
+                            .font(.system(size: 11.5))
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 4)
+                    Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 16))
+                        .foregroundStyle(selected ? Theme.brand : Color.secondary.opacity(0.45))
+                        .contentTransition(.symbolEffect(.replace))
+                }
+                .padding(.horizontal, 4)
+                .padding(.bottom, 2)
+            }
+            .padding(7)
+            .background(shape.fill(selected ? Theme.brand.opacity(0.08) : Theme.subtleFill))
+            .overlay(shape.strokeBorder(selected ? Theme.brand : hovered ? Theme.brand.opacity(0.35) : Theme.cardBorder,
+                                        lineWidth: selected ? 2 : 1))
+            .contentShape(shape)
+        }
+        .buttonStyle(.plain)
+        .onHover { hovered = $0 }
+        .animation(Theme.quick, value: selected)
+        .animation(Theme.hover, value: hovered)
+        .accessibilityLabel(look.title)
+        .accessibilityHint(look.caption)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+}
+
+/// Grand aperçu du style choisi : la bulle des mains libres et un message, au-dessus d'une page claire et d'un fond
+/// coloré, comme des apps derrière la bulle.
+struct BubblePreview: View {
+    @Environment(AppModel.self) private var model
 
     var body: some View {
         ZStack {
-            HStack(spacing: 0) {
-                ZStack(alignment: .topLeading) {
-                    Color(white: 0.97)
-                    VStack(alignment: .leading, spacing: 8) {
-                        ForEach(Self.lines.indices, id: \.self) { index in
-                            Capsule().fill(Color.black.opacity(0.2)).frame(width: Self.lines[index], height: 6)
-                        }
-                    }
-                    .padding(16)
-                }
-                LinearGradient(colors: [Color(red: 0.13, green: 0.2, blue: 0.48), Color(red: 0.58, green: 0.17, blue: 0.42)],
-                               startPoint: .topLeading, endPoint: .bottomTrailing)
-            }
-            VStack(spacing: 14) {
-                SpectrumBars(levels: Self.levels, color: OverlayStyle.red, scale: PillMetrics.glass.spectrumScale)
-                    .padding(.horizontal, PillMetrics.glass.spectrumPadding)
-                    .frame(height: PillMetrics.glass.height)
-                    .overlayGlass(RoundedRectangle(cornerRadius: PillMetrics.glass.cornerRadius, style: .continuous), id: "preview-pill", in: glass)
+            BubbleScene(lines: true)
+            VStack(spacing: 16) {
+                BubbleSample(orbs: true)
                 MessageLine(kind: .success, message: String(localized: "Collé"), countdown: nil, onDismiss: nil)
+                    .modifier(BubbleScheme(style: model.settings.bubbleStyle))
             }
         }
-        .frame(height: 170)
+        .frame(height: 180)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .environment(\.bubbleStyle, .glass)
-        .environment(\.bubbleGlass, model.settings.bubbleGlass)
-        .modifier(GlassPreviewAppearance(appearance: model.settings.bubbleGlass.appearance))
+        .bubbleLook(model.bubbleLook, glass: model.settings.bubbleGlass)
         .accessibilityHidden(true)
     }
 }
 
+/// Fond des aperçus : une page claire à gauche, un dégradé coloré à droite, la bulle à cheval sur les deux.
+struct BubbleScene: View {
+    var lines = false
+    private static let widths: [CGFloat] = [190, 150, 210, 120, 175, 160, 200, 130, 180]
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ZStack(alignment: .topLeading) {
+                Color(white: 0.97)
+                VStack(alignment: .leading, spacing: lines ? 8 : 6) {
+                    ForEach(Self.widths.indices, id: \.self) { index in
+                        Capsule().fill(Color.black.opacity(0.2))
+                            .frame(width: Self.widths[index] * (lines ? 1 : 0.5), height: lines ? 6 : 4)
+                    }
+                }
+                .padding(lines ? 16 : 10)
+            }
+            LinearGradient(colors: [Color(red: 0.13, green: 0.2, blue: 0.48), Color(red: 0.58, green: 0.17, blue: 0.42)],
+                           startPoint: .topLeading, endPoint: .bottomTrailing)
+        }
+    }
+}
+
+/// Bulle de démonstration, rendue comme la vraie (verre compris) dans le style de l'environnement : la pilule et son
+/// spectre, et les boutons des mains libres si demandés.
+struct BubbleSample: View {
+    @Environment(\.bubbleStyle) private var style
+    @Namespace private var glass
+    var orbs = false
+
+    private static let levels: [Float] = [0.18, 0.3, 0.5, 0.72, 0.9, 1, 0.86, 0.66, 0.44, 0.26, 0.14]
+
+    var body: some View {
+        let pill = PillMetrics.of(style)
+        HStack(spacing: OverlayLayout.orbGap) {
+            if orbs {
+                orb("xmark", tint: style == .glass ? Color.primary.opacity(0.8) : .white.opacity(0.78), id: "sample-cancel", pill: pill)
+            }
+            SpectrumBars(levels: Self.levels, color: OverlayStyle.red, scale: pill.spectrumScale)
+                .lensHalo()
+                .padding(.horizontal, pill.spectrumPadding)
+                .frame(height: pill.height)
+                .overlayGlass(RoundedRectangle(cornerRadius: pill.cornerRadius, style: .continuous), id: "sample-pill", in: glass)
+            if orbs {
+                orb("stop.fill", tint: OverlayStyle.red, id: "sample-stop", pill: pill)
+            }
+        }
+        .modifier(BubbleScheme(style: style))
+    }
+
+    private func orb(_ symbol: String, tint: Color, id: String, pill: PillMetrics) -> some View {
+        Image(systemName: symbol)
+            .font(.system(size: pill.symbolSize, weight: .bold))
+            .foregroundStyle(tint)
+            .lensHalo()
+            .frame(width: pill.height, height: pill.height)
+            .overlayGlass(Circle(), id: id, in: glass)
+    }
+}
+
+extension View {
+    /// Pose une allure de la bulle (style, verre et son apparence) sur un aperçu.
+    func bubbleLook(_ look: BubbleLook, glass: BubbleGlass) -> some View {
+        var shown = glass
+        if let variant = look.variant { shown.variant = variant }
+        return environment(\.bubbleStyle, look.style)
+            .environment(\.bubbleGlass, shown)
+            .modifier(GlassPreviewAppearance(appearance: look.style == .glass ? glass.appearance : .system))
+    }
+}
+
+
 /// L'aperçu prend l'apparence choisie pour le verre ; « Comme l'app » le laisse suivre la fenêtre des Réglages.
-private struct GlassPreviewAppearance: ViewModifier {
+struct GlassPreviewAppearance: ViewModifier {
     var appearance: GlassAppearance
 
     @ViewBuilder func body(content: Content) -> some View {

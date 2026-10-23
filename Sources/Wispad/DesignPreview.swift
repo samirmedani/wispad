@@ -105,8 +105,17 @@ enum DesignPreview {
         }
         if arguments.contains("--fallback-preview") || arguments.contains("--usage-accuracy-preview") { model.selectedSection = .usage }
         if arguments.contains("--blur-recent") { model.settings.blurRecentDictations = true }
-        // `--glass-bubble` : style Verre, pour voir ses réglages et leur aperçu.
+        // `--glass-bubble` : style Verre, pour voir ses réglages et leur aperçu ; `--glass-variant clear|regular` et
+        // `--glass-appearance light|dark|system` choisissent le verre.
         if arguments.contains("--glass-bubble") { model.settings.bubbleStyle = .glass }
+        if let index = arguments.firstIndex(of: "--glass-variant"), arguments.indices.contains(index + 1),
+           let variant = GlassVariant(rawValue: arguments[index + 1]) {
+            model.settings.bubbleGlass.variant = variant
+        }
+        if let index = arguments.firstIndex(of: "--glass-appearance"), arguments.indices.contains(index + 1),
+           let appearance = GlassAppearance(rawValue: arguments[index + 1]) {
+            model.settings.bubbleGlass.appearance = appearance
+        }
         if let index = arguments.firstIndex(of: "--settings-tab"), arguments.indices.contains(index + 1),
            let tab = SettingsTab(rawValue: arguments[index + 1]) {
             model.settings.settingsTab = tab
@@ -159,7 +168,8 @@ enum DesignPreview {
         }
         let window = MainWindow.make(model: model, offscreen: offscreen, historyRowDidRender: rowDidRender,
                                     interactionPreviewHover: arguments.contains("--hover-preview"),
-                                    reduceMotion: arguments.contains("--reduce-motion") ? true : nil)
+                                    reduceMotion: arguments.contains("--reduce-motion") ? true : nil,
+                                    systemGlass: !arguments.contains("--no-glass"))
         if let index = arguments.firstIndex(of: "--size"), arguments.indices.contains(index + 1) {
             let parts = arguments[index + 1].split(separator: "x").compactMap { Double($0) }
             if parts.count == 2 { window.setContentSize(NSSize(width: parts[0], height: parts[1])) }

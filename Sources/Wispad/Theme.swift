@@ -208,7 +208,7 @@ enum MainWindow {
     }
 
     static func make(model: AppModel, offscreen: Bool = false, historyRowDidRender: HistoryRowRenderCallback? = nil,
-                     interactionPreviewHover: Bool = false, reduceMotion: Bool? = nil) -> NSWindow {
+                     interactionPreviewHover: Bool = false, reduceMotion: Bool? = nil, systemGlass: Bool = true) -> NSWindow {
         let window = (offscreen ? OffscreenWindow.self : NSWindow.self).init(
             contentRect: NSRect(x: 0, y: 0, width: 980, height: 660),
             styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
@@ -224,7 +224,9 @@ enum MainWindow {
             .environment(model)
             .environment(\.historyRowDidRender, historyRowDidRender)
             .environment(\.interactionPreviewHover, interactionPreviewHover)
-            .environment(\.interactionPreviewReduceMotion, reduceMotion))
+            .environment(\.interactionPreviewReduceMotion, reduceMotion)
+            // Captures hors écran : la capture d'une fenêtre ne dessine pas le Liquid Glass (zone blanche), son repli si.
+            .environment(\.overlayGlass, systemGlass))
         window.minSize = NSSize(width: 820, height: 540)
         if offscreen {
             window.setFrameOrigin(NSPoint(x: -20_000, y: -20_000))

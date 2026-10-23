@@ -8359,26 +8359,6 @@
         }
       }
     },
-    "Bulle et messages" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bubble and messages"
-          }
-        }
-      }
-    },
-    "Style de la bulle, et où elle et ses messages apparaissent à l'écran." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bubble style, and where it and its messages appear on screen."
-          }
-        }
-      }
-    },
     "Style de la bulle" : {
       "localizations" : {
         "en" : {
@@ -8409,46 +8389,6 @@
         }
       }
     },
-    "Noir profond, ou verre transparent comme macOS." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deep black, or clear glass like macOS."
-          }
-        }
-      }
-    },
-    "Le verre clair est brillant et laisse voir ce qu'il y a derrière, même une fenêtre sombre. Le verre sombre ressemble à un verre fumé." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Light glass is bright and lets what's behind show through, even a dark window. Dark glass looks like smoked glass."
-          }
-        }
-      }
-    },
-    "Le verre laisse voir ce qu'il y a derrière ; clair, sombre ou comme l'app, au choix." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Glass lets what's behind show through; light, dark or same as the app, your choice."
-          }
-        }
-      }
-    },
-    "Il vaut pour la bulle de dictée comme pour ses messages ; le spectre garde ses couleurs." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "It applies to the dictation bubble and its messages; the spectrum keeps its colors."
-          }
-        }
-      }
-    },
     "Transparent" : {
       "localizations" : {
         "en" : {
@@ -8465,56 +8405,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Frosted"
-          }
-        }
-      }
-    },
-    "Intensité" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Intensity"
-          }
-        }
-      }
-    },
-    "Les deux verres d'Apple : transparent ou dépoli." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Apple's two glasses: clear or frosted."
-          }
-        }
-      }
-    },
-    "Transparent laisse le plus voir ce qu'il y a derrière. Dépoli floute davantage et se lit mieux sur un fond chargé." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Clear lets the most of what's behind show through. Frosted blurs more and reads better over a busy background."
-          }
-        }
-      }
-    },
-    "Teinte du verre ; à zéro, le verre seul." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Glass tint; at zero, the glass alone."
-          }
-        }
-      }
-    },
-    "Plus forte, elle assombrit le verre (ou l'éclaircit en apparence claire) et rend le texte plus lisible." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stronger, it darkens the glass (or lightens it in light appearance) and makes text easier to read."
           }
         }
       }
@@ -9383,16 +9273,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Light"
-          }
-        }
-      }
-    },
-    "Clair comme sur iPhone, sombre, ou comme l'app." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Light like on iPhone, dark, or same as the app."
           }
         }
       }
@@ -10733,6 +10613,156 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "One model per step, in the order of a dictation, and a relay of your choice for the voice and the correction: it takes over when the first one doesn't respond. Only providers with an active key can be chosen: add the others just below."
+          }
+        }
+      }
+    },
+    "Clair : voile blanc et reflets brillants, symboles foncés. Sombre : verre fumé, symboles clairs." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Light: white veil and bright highlights, dark symbols. Dark: smoked glass, light symbols."
+          }
+        }
+      }
+    },
+    "Clair, sombre, ou comme l'app." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Light, dark, or like the app."
+          }
+        }
+      }
+    },
+    "Densité du verre" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Glass density"
+          }
+        }
+      }
+    },
+    "Elle assombrit le verre en apparence sombre, l'éclaircit en apparence claire." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "It darkens the glass in dark appearance and lightens it in light appearance."
+          }
+        }
+      }
+    },
+    "Flouté, comme macOS" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Blurred, like macOS"
+          }
+        }
+      }
+    },
+    "Le fond reste net" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The background stays sharp"
+          }
+        }
+      }
+    },
+    "Les messages gardent un voile plus dense que la bulle de dictée : leur texte reste lisible." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Messages keep a denser veil than the dictation bubble, so their text stays readable."
+          }
+        }
+      }
+    },
+    "Lisible sur tout fond" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Readable on any background"
+          }
+        }
+      }
+    },
+    "Où la bulle et ses messages apparaissent à l'écran." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Where the bubble and its messages appear on screen."
+          }
+        }
+      }
+    },
+    "Plus dense, il se lit mieux sur un fond chargé ; à zéro, le verre seul." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Denser, it reads better over a busy background; at zero, just the glass."
+          }
+        }
+      }
+    },
+    "Position" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Position"
+          }
+        }
+      }
+    },
+    "Pour la bulle de dictée comme pour ses messages ; le spectre garde ses couleurs." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "For the dictation bubble and its messages alike; the spectrum keeps its colors."
+          }
+        }
+      }
+    },
+    "Sur le verre transparent, un fin halo garde le spectre et les symboles lisibles, quel que soit le fond." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On clear glass, a thin halo keeps the spectrum and symbols readable on any background."
+          }
+        }
+      }
+    },
+    "Verre dépoli" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frosted glass"
+          }
+        }
+      }
+    },
+    "Verre transparent" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear glass"
           }
         }
       }

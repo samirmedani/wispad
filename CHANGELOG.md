@@ -3,6 +3,21 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.3.0 — 23 octobre 2026
+
+La bulle refaite : un vrai verre transparent, une ombre propre et un réglage du style qui montre la bulle en vrai.
+
+> Depuis la 0.2.0 : si la mise à jour reste sur « Relance… », ferme cette fenêtre, puis quitte Wispad et rouvre-le.
+> La 0.3.0 est déjà installée.
+
+**Nouveau**
+- Verre transparent : un verre sans aucun flou, dessiné par Wispad. Ce qu'il y a derrière la bulle reste net, sous un voile léger, un reflet et un liseré lumineux. Le verre « Transparent » d'Apple floutait autant que le dépoli sur macOS : c'est pour ça qu'il paraissait dépoli.
+- Réglages › Bulle : trois cartes montrent la vraie bulle (Noir profond, Verre transparent, Verre dépoli) ; un clic suffit. Puis l'apparence du verre, sa densité et un grand aperçu avec les mains libres et un message.
+- Sur le verre transparent, un fin halo garde le spectre, la croix et le carré lisibles sur n'importe quel fond, et les messages gardent un voile plus dense pour que leur texte se lise.
+
+**Corrigé**
+- L'ombre sous la bulle était coupée net par le bord de sa fenêtre, ce qui dessinait un rectangle sombre. Elle est plus douce et tient entière.
+
 ## 0.2.15 — 23 octobre 2026
 
 Le relais de la voix et celui de la correction se choisissent, au lieu d'être décidés par Wispad.
