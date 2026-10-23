@@ -3,6 +3,16 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.2.12 — 23 octobre 2026
+
+Un mot appris s'annonce en une ligne discrète.
+
+> Depuis la 0.2.0 : si la mise à jour reste sur « Relance… », ferme cette fenêtre, puis quitte Wispad et rouvre-le.
+> La 0.2.12 est déjà installée.
+
+**Corrigé**
+- L'ajout d'un mot au dictionnaire prenait une grande carte pendant 8 secondes. C'est maintenant une ligne de la taille de « Collé » : « « Vinted » ajouté au dictionnaire », avec Voir et Retirer, pendant 5 secondes. Le pointeur sur la bulle arrête toujours le décompte.
+
 ## 0.2.11 — 22 octobre 2026
 
 Une bulle en verre qui ressemble à du verre, et plus de dictées collées sans seconde correction.

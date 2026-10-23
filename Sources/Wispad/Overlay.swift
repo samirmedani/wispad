@@ -163,9 +163,7 @@ enum OverlayLayout {
         case .listening, .finishing: return CGSize(width: pill.spectrumWidth, height: pill.height)
         case .handsFree: return CGSize(width: pill.handsFreeWidth, height: pill.height)
         case .failure: return hasReadyText ? CGSize(width: cardWidth, height: 128) : CGSize(width: messageMaxWidth, height: 52)
-        // Mots appris sur deux lignes compris.
-        case .learning: return CGSize(width: cardWidth, height: 156)
-        case .notice, .update: return CGSize(width: messageMaxWidth, height: 52)
+        case .notice, .learning, .update: return CGSize(width: messageMaxWidth, height: 52)
         }
     }
 
@@ -654,7 +652,6 @@ extension EnvironmentValues {
 struct MessagePalette {
     let primary: Color
     let secondary: Color
-    let tertiary: Color
     /// Fond d'un bouton secondaire et de la ✕.
     let control: Color
     let prominent: Color
@@ -665,14 +662,12 @@ struct MessagePalette {
         case .black:
             primary = .white.opacity(0.95)
             secondary = .white.opacity(0.62)
-            tertiary = .white.opacity(0.42)
             control = .white.opacity(0.13)
             prominent = .white
             onProminent = .black.opacity(0.9)
         case .glass:
             primary = .primary
             secondary = .secondary
-            tertiary = Color(nsColor: .tertiaryLabelColor)
             control = .primary.opacity(0.09)
             prominent = .primary
             onProminent = Color(nsColor: .windowBackgroundColor)
@@ -749,14 +744,13 @@ struct MessageBubble: View {
         }
     }
 
-    /// Ajouts groupés au dictionnaire : les mots d'abord, puis Voir ou Annuler l'ajout.
+    /// Ajouts au dictionnaire : une ligne discrète, comme « Collé », avec Voir et Retirer. Un mot appris n'a pas besoin
+    /// d'une carte.
     private func learning(fallback: String) -> some View {
         let coordinator = model.coordinator
         let terms = coordinator.learningOfferedTerms
-        let title = terms.count > 1 ? String(localized: "\(terms.count) ajouts au dictionnaire") : String(localized: "Ajout au dictionnaire")
-        return MessageCard(
-            kind: .learning, title: title, message: terms.isEmpty ? fallback : terms.joined(separator: " · "),
-            footnote: String(localized: "Appris de tes corrections"), emphasizesMessage: true,
+        return MessageLine(
+            kind: .learning, message: terms.isEmpty ? fallback : DictationCoordinator.learnedLine(terms),
             countdown: coordinator.noticeTimer.countdown, onDismiss: coordinator.closeMessage, actions: [
                 MessageAction(title: String(localized: "Voir")) {
                     if let term = terms.first {
@@ -767,8 +761,9 @@ struct MessageBubble: View {
                     coordinator.acceptLearning()
                     model.open(.dictionary)
                 },
-                MessageAction(title: String(localized: "Annuler l'ajout"),
-                              help: String(localized: "Retirer ces ajouts et ne plus les apprendre automatiquement")) {
+                MessageAction(title: String(localized: "Retirer"),
+                              help: terms.count > 1 ? String(localized: "Retirer ces ajouts et ne plus les apprendre automatiquement")
+                                  : String(localized: "Retirer ce mot et ne plus l'apprendre automatiquement")) {
                     coordinator.declineLearning()
                 },
             ]
@@ -914,15 +909,12 @@ struct MessageLine: View {
     }
 }
 
-/// Une carte : titre et raison (ou mots appris en premier), boutons sur leur ligne, ✕ en haut à droite au survol.
+/// Une carte : titre et raison, boutons sur leur ligne, ✕ en haut à droite au survol.
 struct MessageCard: View {
     @Environment(\.bubbleStyle) private var style
     var kind: MessageKind
     var title: String
     var message: String
-    var footnote: String?
-    /// Mots appris : les mots, en grand, passent devant le titre.
-    var emphasizesMessage = false
     var countdown: MessageCountdown?
     var onDismiss: () -> Void
     var actions: [MessageAction]
@@ -933,30 +925,13 @@ struct MessageCard: View {
             HStack(alignment: .top, spacing: 12) {
                 CountdownBadge(kind: kind, size: 36, countdown: countdown)
                 VStack(alignment: .leading, spacing: 3) {
-                    if emphasizesMessage {
-                        Text(title)
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(kind.tint)
-                        Text(OverlayText.display(message))
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(palette.primary)
-                            .lineLimit(2)
-                            .fixedSize(horizontal: false, vertical: true)
-                    } else {
-                        Text(title)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(palette.primary)
-                        Text(OverlayText.display(message))
-                            .font(.system(size: 12.5))
-                            .foregroundStyle(palette.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    if let footnote {
-                        Text(footnote)
-                            .font(.system(size: 11.5))
-                            .foregroundStyle(palette.tertiary)
-                            .padding(.top, 2)
-                    }
+                    Text(title)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(palette.primary)
+                    Text(OverlayText.display(message))
+                        .font(.system(size: 12.5))
+                        .foregroundStyle(palette.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.top, 1)
                 .frame(maxWidth: .infinity, alignment: .leading)
