@@ -650,6 +650,47 @@ final class RelayTests: XCTestCase {
         XCTAssertTrue(routes[0].isFallback)
     }
 
+    private func chosen(_ choice: CleanupChoice, key: String? = "chosen", down: Bool = false) -> SpeechRequest {
+        var request = speech(deepSeek: true, openAI: true, down: down)
+        request.cleanupChoice = choice
+        request.chosenCleanupKey = key
+        return request
+    }
+
+    /// Un modèle choisi dans Fournisseurs passe en premier, avec sa clé ; l'ordre automatique reste son relais, sans doublon.
+    func testChosenModelGoesFirstThenAutomaticRelay() {
+        let grok = TextCleaner.routes(chosen(.grok))
+        XCTAssertEqual(grok.map(\.model), ["grok-4.7", CleanupModel.deepSeek, CleanupModel.openAIFallback])
+        XCTAssertEqual(grok.map(\.isFallback), [false, true, true])
+        XCTAssertEqual(grok[0].api, .xaiCleanup)
+        XCTAssertEqual(grok[0].url.host, "api.x.ai")
+        XCTAssertEqual(grok[0].key, "chosen")
+        XCTAssertEqual(TextCleaner.routes(chosen(.openAILuna)).map(\.model), ["gpt-5.6-luna", CleanupModel.deepSeek, CleanupModel.openAIFallback])
+        // Déjà dans l'ordre automatique : il n'y figure qu'une fois.
+        XCTAssertEqual(TextCleaner.routes(chosen(.openAIMini)).map(\.model), [CleanupModel.openAIFallback, CleanupModel.deepSeek])
+        XCTAssertEqual(TextCleaner.routes(chosen(.deepSeekFlash)).map(\.model), [CleanupModel.deepSeek, CleanupModel.openAIFallback])
+        // Deux services au plus par dictée.
+        XCTAssertEqual(TextCleaner.plan(chosen(.grok)).steps, ["xAI grok-4.7", "DeepSeek deepseek-flash"])
+        XCTAssertEqual(TextCleaner.services(chosen(.grok)), [CleanupService(provider: "xAI", model: "grok-4.7"),
+                                                             CleanupService(provider: "DeepSeek", model: CleanupModel.deepSeek)])
+    }
+
+    /// Sans clé pour le modèle choisi (absente ou coupée), la correction reste automatique.
+    func testChosenModelWithoutKeyStaysAutomatic() {
+        let automatic = [CleanupModel.deepSeek, CleanupModel.openAIFallback]
+        XCTAssertEqual(TextCleaner.routes(chosen(.grok, key: nil)).map(\.model), automatic)
+        XCTAssertEqual(TextCleaner.routes(chosen(.grok, key: "")).map(\.model), automatic)
+        XCTAssertEqual(TextCleaner.routes(chosen(.automatic, key: "chosen")).map(\.model), automatic)
+    }
+
+    /// DeepSeek en pause passe en dernier, derrière un modèle choisi comme quand il est choisi lui-même.
+    func testPausedDeepSeekGoesLastAroundAChosenModel() {
+        XCTAssertEqual(TextCleaner.routes(chosen(.grok, down: true)).map(\.model), ["grok-4.7", CleanupModel.openAIFallback, CleanupModel.deepSeek])
+        let paused = TextCleaner.routes(chosen(.deepSeekFlash, down: true))
+        XCTAssertEqual(paused.map(\.model), [CleanupModel.openAIFallback, CleanupModel.deepSeek])
+        XCTAssertTrue(paused[0].isFallback)
+    }
+
     func testServiceIsPausedAfterTwoFailuresThenRetried() {
         var health = ServiceHealth()
         let start = Date()

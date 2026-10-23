@@ -45,6 +45,8 @@ public struct SpeechModel: Identifiable, Equatable, Sendable {
     public var batchUSDPerHour: Double
     public var recommended: Bool
     public var fileModel: String
+    /// Nom du modèle de l'enregistrement complet (« GPT Transcribe ») : celui du direct s'il est le même.
+    public var fileDisplayName: String
 
     public init(
         id: String,
@@ -53,7 +55,8 @@ public struct SpeechModel: Identifiable, Equatable, Sendable {
         streamingUSDPerHour: Double,
         batchUSDPerHour: Double,
         recommended: Bool,
-        fileModel: String? = nil
+        fileModel: String? = nil,
+        fileDisplayName: String? = nil
     ) {
         self.id = id
         self.provider = provider
@@ -62,6 +65,7 @@ public struct SpeechModel: Identifiable, Equatable, Sendable {
         self.batchUSDPerHour = batchUSDPerHour
         self.recommended = recommended
         self.fileModel = fileModel ?? id
+        self.fileDisplayName = fileDisplayName ?? displayName
     }
 
     public var costSummary: String {
@@ -94,7 +98,8 @@ public enum ProviderCatalog {
             streamingUSDPerHour: 1.02,
             batchUSDPerHour: 0.27,
             recommended: true,
-            fileModel: "gpt-transcribe"
+            fileModel: "gpt-transcribe",
+            fileDisplayName: "GPT Transcribe"
         ),
         SpeechModel(
             id: "gpt-4o-mini-transcribe",

@@ -84,8 +84,8 @@ curseur : messagerie, e-mail, éditeur de code, terminal, navigateur.
       <br><b>Dictionnaire</b> · tes noms, marques et sigles, envoyés à la transcription et à la correction.
     </td>
     <td width="50%" align="center">
-      <img src="docs/images/ecran-providers.png" alt="Écran Fournisseurs : choix du modèle de transcription, clés API et service de correction">
-      <br><b>Fournisseurs</b> · ton fournisseur de voix, tes clés, vérifiées avant d'être enregistrées.
+      <img src="docs/images/ecran-providers.png" alt="Écran Fournisseurs : les 4 étapes d'une dictée, chacune avec son modèle, puis les clés API">
+      <br><b>Fournisseurs</b> · un modèle par étape (voix, vérification, correction, mots appris) et tes clés.
     </td>
   </tr>
 </table>
@@ -139,7 +139,7 @@ fournisseur**, à l'usage, et l'écran Consommation estime le coût de chaque ap
 | Étape | Qui s'en charge | À savoir |
 | :--- | :--- | :--- |
 | **Transcription** (ta voix) | **xAI** Grok Voice Transcribe 2.0 *(recommandé)* ou **OpenAI** GPT Live Transcribe | En direct pendant l'écoute ; chez xAI, 0,20 $ de l'heure en direct. |
-| **Correction** (le texte) | **DeepSeek** d'abord s'il a une clé, puis **OpenAI**, puis le modèle du fournisseur de voix (**xAI** ou **OpenAI**) | Seul le texte part à la correction, jamais l'audio. |
+| **Correction** (le texte) | Au choix dans Fournisseurs › Modèles, ou automatique : **DeepSeek** d'abord s'il a une clé, puis **OpenAI**, puis le modèle du fournisseur de voix (**xAI** ou **OpenAI**) | Seul le texte part à la correction, jamais l'audio. |
 | **Relais** | L'autre fournisseur, s'il a une clé | Un service en panne est mis de côté, puis repris dès qu'il répond. |
 
 Une seule clé suffit pour commencer (xAI ou OpenAI). Clés facultatives : clé de gestion xAI (solde réel affiché

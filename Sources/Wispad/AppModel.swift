@@ -954,7 +954,10 @@ final class AppModel {
             cleanupKey: key(CleanupModel.deepSeekAccount),
             fallbackKey: settings.provider == .openAI ? nil : key(ProviderID.openAI.rawValue),
             cleanupPrimaryDown: health.isDown(ServiceHealth.deepSeek),
-            judgeKey: key(APIKeys.typesafe)
+            judgeKey: key(APIKeys.typesafe),
+            cleanupChoice: settings.cleanupChoice,
+            // Clé du modèle choisi absente ou coupée : nil, la correction reste automatique.
+            chosenCleanupKey: settings.cleanupChoice.account.flatMap { key($0) }
         )
     }
 
@@ -1008,11 +1011,10 @@ final class AppModel {
         settings.cleanupEnabled && dependencies.isOnline()
     }
 
-    /// Service qui corrige d'après les clés actives : DeepSeek, puis OpenAI, puis le fournisseur de voix. nil sans clé.
+    /// Service qui corrige maintenant : le modèle choisi dans Fournisseurs s'il a sa clé, sinon l'ordre automatique
+    /// (DeepSeek, puis OpenAI, puis le fournisseur de voix). nil sans clé.
     var correctionServiceName: String? {
-        if hasKey(account: CleanupModel.deepSeekAccount) { return "DeepSeek" }
-        if hasKey(.openAI) { return ProviderID.openAI.displayName }
-        return hasKey(settings.provider) ? settings.provider.displayName : nil
+        TextCleaner.services(speechRequest(context: nil)).first?.provider
     }
 
     /// Même dictée envoyée à l'autre fournisseur vocal, si sa clé est là (OpenAI quand xAI ne répond pas).

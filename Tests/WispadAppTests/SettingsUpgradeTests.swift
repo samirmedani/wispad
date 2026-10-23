@@ -51,6 +51,7 @@ struct SettingsUpgradeTests {
         settings.openAIModel = "gpt-4o-mini-transcribe"
         settings.language = .english
         settings.cleanupEnabled = false
+        settings.cleanupChoice = .grok
         settings.verifyWithFile = false
         settings.tones = ["email": .polished, "notes": .casual]
         settings.selectionCommands = false
@@ -103,6 +104,15 @@ struct SettingsUpgradeTests {
         #expect(wrong.disabledKeys.isEmpty)
         #expect(wrong.provider == .openAI)
         #expect(try decode(#"{"disabledKeys": ["deepseek", "typesafe"]}"#).disabledKeys == ["deepseek", "typesafe"])
+    }
+
+    /// Modèle de correction : absent (avant la 0.2.14) ou inconnu, automatique ; lu, il reste.
+    @Test func cleanupChoiceIsReadTolerantly() throws {
+        #expect(try decode(#"{"provider": "openai"}"#).cleanupChoice == .automatic)
+        let unknown = try decode(#"{"cleanupChoice": "modele-futur", "provider": "openai"}"#)
+        #expect(unknown.cleanupChoice == .automatic)
+        #expect(unknown.provider == .openAI)
+        #expect(try decode(#"{"cleanupChoice": "gpt-5.6-luna"}"#).cleanupChoice == .openAILuna)
     }
 
     /// Verre de la bulle lu champ par champ : une intensité hors bornes reprend son défaut, le verre choisi reste.
