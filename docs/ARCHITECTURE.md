@@ -266,7 +266,9 @@ les lignes évaluées.
 ## Ajouter…
 
 **Un fournisseur de correction** : une route dans `TextCleaner.routes`, un cas `UsageAPI`, son tarif dans
-`Pricing.tokenRate`, son libellé dans `Presentation.swift`, une clé dans `APIKeys.accounts`.
+`Pricing.tokenRate`, son libellé dans `Presentation.swift`, une clé dans `APIKeys.accounts`. Pour qu'il se
+choisisse dans Fournisseurs › Modèles : un cas `CleanupChoice` (route dans `TextCleaner.chosenRoute`) et sa place
+dans `ModelStepsSection.cleanupGroups`.
 
 **Un fournisseur de voix** : un cas `ProviderID` (catalogue et modèles dans `Catalog.swift`), le flux dans
 `LiveSpeechSession`, le fichier dans `BatchTranscriber`, les coûts dans `UsageAPI` et `ProviderCatalog`.

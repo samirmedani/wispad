@@ -1,60 +1,393 @@
 import SwiftUI
 import WispadCore
 
-/// Fournisseurs : qui transcrit la voix, les clés API et le service qui corrige le texte.
+/// Fournisseurs : le modèle de chaque étape d'une dictée, les clés API et l'état des services.
 struct ProvidersView: View {
-    @Environment(AppModel.self) private var model
-
     var body: some View {
         FormScreen(title: String(localized: "Fournisseurs"), subtitle: String(localized: "Où ta voix est transcrite, et ce qui corrige le texte.")) {
-            TranscriptionSection()
+            ModelStepsSection()
             APIKeysSection()
-            CorrectionSection()
             ServiceStatusSection()
         }
     }
 }
 
-// MARK: - Transcription
+// MARK: - Modèles
 
-struct TranscriptionSection: View {
+/// Ce qu'une étape fait maintenant, et sur quel ton l'afficher.
+struct StepStatus: Equatable {
+    enum Tone: Equatable {
+        /// L'étape travaille : modèle, relais, prix.
+        case ready
+        /// L'étape ne peut pas travailler comme choisi (clé absente ou coupée).
+        case warning
+        /// Étape coupée par son interrupteur.
+        case off
+    }
+
+    var text: String
+    var tone: Tone
+}
+
+/// Fournisseurs › Modèles : les quatre étapes d'une dictée, numérotées dans leur ordre. Chacune a son choix, puis une
+/// ligne qui dit ce qu'elle fait maintenant d'après les clés actives (modèle réel, relais, prix).
+struct ModelStepsSection: View {
     @Environment(AppModel.self) private var model
     @Environment(\.interactionReduceMotion) private var reduceMotion
 
     var body: some View {
+        let speech = model.speechRequest(context: nil)
+        let services = TextCleaner.services(speech)
         Section {
-            Picker("Fournisseur", selection: Binding(
-                get: { model.settings.provider },
-                set: { provider in withAnimation(reduceMotion ? nil : Theme.spring) { model.selectProvider(provider) } }
-            )) {
-                ForEach(ProviderID.allCases) { provider in
-                    Text(model.hasKey(provider) ? provider.displayName : String(localized: "\(provider.displayName) · sans clé active"))
-                        .tag(provider)
+            VStack(spacing: 0) {
+                ModelStepRow(number: 1, title: String(localized: "Voix en direct"),
+                             summary: String(localized: "Transcrit pendant que tu parles."),
+                             status: voiceStatus, isLast: false) {
+                    voicePicker
+                }
+                ModelStepRow(number: 2, title: String(localized: "Vérification"),
+                             summary: String(localized: "Réécoute l'enregistrement complet à la fin."),
+                             status: verifyStatus, isLast: false) {
+                    Toggle(String(localized: "Vérifier sur l'enregistrement complet"), isOn: Binding(
+                        get: { model.settings.verifyWithFile },
+                        set: { model.settings.verifyWithFile = $0; model.saveSettings() }
+                    ))
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+                }
+                ModelStepRow(number: 3, title: String(localized: "Correction"),
+                             summary: String(localized: "Ponctuation, mots mal entendus, mise en forme."),
+                             status: correctionStatus(services: services, speech: speech), isLast: false) {
+                    HStack(spacing: 12) {
+                        correctionPicker
+                            .disabled(!model.settings.cleanupEnabled)
+                        Toggle(String(localized: "Corriger le texte avant insertion"), isOn: Binding(
+                            get: { model.settings.cleanupEnabled },
+                            set: { model.settings.cleanupEnabled = $0; model.saveSettings() }
+                        ))
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                    }
+                }
+                ModelStepRow(number: 4, title: String(localized: "Mots appris"),
+                             summary: String(localized: "Décide si un mot corrigé entre au dictionnaire."),
+                             status: learningStatus(services: services), isLast: true) {
+                    HStack(spacing: 12) {
+                        judgePicker
+                            .disabled(!model.settings.learnCorrections)
+                        Toggle(String(localized: "Apprendre de mes corrections"), isOn: Binding(
+                            get: { model.settings.learnCorrections },
+                            set: { model.settings.learnCorrections = $0; model.saveSettings() }
+                        ))
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                    }
                 }
             }
-            Picker("Modèle", selection: Binding(
-                get: { model.settings.liveModel },
-                set: {
-                    model.settings.liveModel = $0
-                    model.saveSettings()
-                }
-            )) {
-                ForEach(ProviderCatalog.models(for: model.settings.provider)) { item in
-                    Text(item.recommended ? String(localized: "\(item.displayName) · recommandé") : item.displayName).tag(item.id)
-                }
-            }
+            .padding(.vertical, 8)
         } header: {
-            Text("Transcription")
+            Text("Modèles")
         } footer: {
-            Text(footer)
+            Text("Un choix par étape, dans l'ordre d'une dictée. Seuls les fournisseurs dont la clé est active se choisissent : ajoute les autres juste en dessous.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
     }
 
-    private var footer: String {
-        let chosen = ProviderCatalog.liveModel(id: model.settings.liveModel, provider: model.settings.provider)
-        return String(localized: "\(chosen.localizedCostSummary). L'audio part chez \(model.settings.provider.displayName) ; s'il ne répond pas et qu'une clé de l'autre fournisseur est enregistrée, le même enregistrement part chez celui-ci.")
+    // MARK: Étape 1 : voix en direct
+
+    private struct VoiceChoice: Hashable {
+        var provider: ProviderID
+        var model: String
+    }
+
+    private var voicePicker: some View {
+        Picker(String(localized: "Modèle de la voix en direct"), selection: Binding(
+            get: { VoiceChoice(provider: model.settings.provider, model: model.settings.liveModel) },
+            set: { choice in
+                guard model.hasKey(choice.provider) else { return }
+                withAnimation(reduceMotion ? nil : Theme.spring) {
+                    model.selectProvider(choice.provider)
+                    model.settings.liveModel = choice.model
+                    model.saveSettings()
+                }
+            }
+        )) {
+            ForEach(ProviderID.allCases) { provider in
+                Section(provider.displayName) {
+                    ForEach(ProviderCatalog.models(for: provider)) { item in
+                        Text(option(provider.displayName, item.displayName,
+                                    availability(provider.rawValue) ?? (item.recommended ? String(localized: "recommandé") : nil)))
+                            .tag(VoiceChoice(provider: provider, model: item.id))
+                            .selectionDisabled(!model.hasKey(provider))
+                    }
+                }
+            }
+        }
+        .labelsHidden()
+        .fixedSize()
+    }
+
+    private var voiceStatus: StepStatus {
+        let provider = model.settings.provider
+        let other: ProviderID = provider == .xai ? .openAI : .xai
+        guard model.hasKey(provider) else {
+            let name = provider.displayName
+            let text: String
+            switch (model.hasStoredKey(account: provider.rawValue), model.hasKey(other)) {
+            case (true, true): text = String(localized: "Clé \(name) coupée : rallume-la, ou choisis un modèle \(other.displayName).")
+            case (true, false): text = String(localized: "Clé \(name) coupée : rallume-la dans Clés API pour dicter.")
+            case (false, true): text = String(localized: "Aucune clé \(name) : ajoute-la, ou choisis un modèle \(other.displayName).")
+            case (false, false): text = String(localized: "Aucune clé \(name) : ajoute-la dans Clés API pour dicter.")
+            }
+            return StepStatus(text: text, tone: .warning)
+        }
+        let chosen = ProviderCatalog.liveModel(id: model.settings.liveModel, provider: provider)
+        let price = MoneyFormat.price(chosen.streamingUSDPerHour)
+        guard model.hasKey(other) else {
+            return StepStatus(text: String(localized: "\(price)/h en direct · pas de relais : aucune autre clé de voix active"), tone: .ready)
+        }
+        let relay = ProviderCatalog.liveModel(id: other.defaultLiveModel, provider: other)
+        return StepStatus(text: String(localized: "\(price)/h en direct · si \(provider.displayName) ne répond pas : \(other.displayName) \(relay.displayName)"),
+                          tone: .ready)
+    }
+
+    // MARK: Étape 2 : vérification
+
+    private var verifyStatus: StepStatus {
+        guard model.settings.verifyWithFile else {
+            return StepStatus(text: String(localized: "Coupée : seul le texte reçu en direct compte."), tone: .off)
+        }
+        let provider = model.settings.provider
+        guard model.hasKey(provider) else {
+            return StepStatus(text: String(localized: "Suit la voix, qui n'a pas de clé active."), tone: .warning)
+        }
+        let chosen = ProviderCatalog.liveModel(id: model.settings.liveModel, provider: provider)
+        let price = MoneyFormat.price(chosen.batchUSDPerHour)
+        return StepStatus(text: String(localized: "Même fournisseur que la voix : \(provider.displayName) \(chosen.fileDisplayName) · \(price)/h"),
+                          tone: .ready)
+    }
+
+    // MARK: Étape 3 : correction
+
+    private static let cleanupGroups: [(name: String, choices: [CleanupChoice])] = [
+        ("DeepSeek", [.deepSeekFlash]),
+        (ProviderID.openAI.displayName, [.openAIMini, .openAILuna]),
+        (ProviderID.xai.displayName, [.grok])
+    ]
+
+    private var correctionPicker: some View {
+        Picker(String(localized: "Modèle de correction"), selection: Binding(
+            get: { model.settings.cleanupChoice },
+            set: { choice in
+                guard choice.account.map({ model.hasKey(account: $0) }) ?? true else { return }
+                model.settings.cleanupChoice = choice
+                model.saveSettings()
+            }
+        )) {
+            Text("Automatique · selon tes clés").tag(CleanupChoice.automatic)
+            ForEach(Self.cleanupGroups, id: \.name) { group in
+                Section(group.name) {
+                    ForEach(group.choices, id: \.self) { choice in
+                        let account = choice.account ?? ""
+                        Text(option(group.name, choice.rawValue,
+                                    availability(account) ?? (choice == .deepSeekFlash ? String(localized: "la moins chère") : nil)))
+                            .tag(choice)
+                            .selectionDisabled(!model.hasKey(account: account))
+                    }
+                }
+            }
+        }
+        .labelsHidden()
+        .fixedSize()
+    }
+
+    private func correctionStatus(services: [CleanupService], speech: SpeechRequest) -> StepStatus {
+        guard model.settings.cleanupEnabled else {
+            return StepStatus(text: String(localized: "Coupée : le texte est collé tel que transcrit."), tone: .off)
+        }
+        guard let first = services.first else {
+            return StepStatus(text: String(localized: "Aucune clé active pour corriger : le texte est collé tel que transcrit."), tone: .warning)
+        }
+        let choice = model.settings.cleanupChoice
+        if let name = choice.providerName, speech.chosenCleanupKey == nil {
+            let text = services.count > 1
+                ? String(localized: "Pas de clé \(name) active : correction automatique par \(first.label), puis \(services[1].label) si besoin.")
+                : String(localized: "Pas de clé \(name) active : correction automatique par \(first.label).")
+            return StepStatus(text: text, tone: .warning)
+        }
+        let text = services.count > 1
+            ? String(localized: "Maintenant : \(first.label) · si besoin : \(services[1].label)")
+            : String(localized: "Maintenant : \(first.label)")
+        return StepStatus(text: text, tone: .ready)
+    }
+
+    // MARK: Étape 4 : mots appris
+
+    private enum JudgeChoice: Hashable {
+        /// Le modèle de correction juge seul.
+        case correction
+        /// Jev (TypeSafe) note d'abord ; le modèle de correction tranche les cas douteux.
+        case jev
+    }
+
+    /// Jev n'a pas d'autre usage que les mots appris : le choisir allume la clé TypeSafe, « Comme la correction » la coupe.
+    private var judgePicker: some View {
+        Picker(String(localized: "Modèle qui choisit les mots appris"), selection: Binding(
+            get: { model.hasKey(account: APIKeys.typesafe) ? JudgeChoice.jev : .correction },
+            set: { choice in
+                guard model.hasStoredKey(account: APIKeys.typesafe) else { return }
+                model.setKeyEnabled(APIKeys.typesafe, choice == .jev)
+            }
+        )) {
+            Text("Comme la correction").tag(JudgeChoice.correction)
+            Text(option(APIKeys.title(APIKeys.typesafe), "Jev",
+                        model.hasStoredKey(account: APIKeys.typesafe) ? nil : String(localized: "aucune clé")))
+                .tag(JudgeChoice.jev)
+                .selectionDisabled(!model.hasStoredKey(account: APIKeys.typesafe))
+        }
+        .labelsHidden()
+        .fixedSize()
+    }
+
+    private func learningStatus(services: [CleanupService]) -> StepStatus {
+        guard model.settings.learnCorrections else {
+            return StepStatus(text: String(localized: "Coupé : aucun mot n'est appris de tes corrections."), tone: .off)
+        }
+        if model.hasKey(account: APIKeys.typesafe) {
+            let text = services.first.map { String(localized: "Jev note chaque mot ; en cas de doute, \($0.label) tranche.") }
+                ?? String(localized: "Jev note chaque mot, seul : aucun modèle de correction actif.")
+            return StepStatus(text: text, tone: .ready)
+        }
+        guard let first = services.first else {
+            return StepStatus(text: String(localized: "Aucun modèle actif : aucun mot n'est appris."), tone: .warning)
+        }
+        return StepStatus(text: String(localized: "Maintenant : \(first.label), comme la correction."), tone: .ready)
+    }
+
+    // MARK: Libellés
+
+    /// « xAI · Grok Voice Transcribe 2.0 · recommandé » : fournisseur, modèle, puis une précision facultative.
+    private func option(_ provider: String, _ name: String, _ note: String?) -> String {
+        [provider, name, note].compactMap { $0 }.joined(separator: " · ")
+    }
+
+    /// Pourquoi un fournisseur ne se choisit pas : « aucune clé » ou « clé coupée » ; nil si sa clé est active.
+    private func availability(_ account: String) -> String? {
+        guard !model.hasKey(account: account) else { return nil }
+        return model.hasStoredKey(account: account) ? String(localized: "clé coupée") : String(localized: "aucune clé")
+    }
+}
+
+/// Une étape numérotée : pastille, titre et rôle, contrôle à droite, puis ce que l'étape fait maintenant. Un trait
+/// relie la pastille à celle de l'étape suivante.
+struct ModelStepRow<Control: View>: View {
+    var number: Int
+    var title: String
+    var summary: String
+    var status: StepStatus
+    var isLast: Bool
+    @ViewBuilder var control: Control
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 14) {
+            VStack(spacing: 6) {
+                StepBadge(number: number, tone: status.tone)
+                if !isLast {
+                    Capsule()
+                        .fill(Theme.brand.opacity(0.22))
+                        .frame(width: 2)
+                        .frame(maxHeight: .infinity)
+                }
+            }
+            .frame(width: 30)
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .center, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(title)
+                            .font(.system(size: 14, weight: .semibold))
+                        Text(summary)
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 16)
+                    control
+                }
+                .frame(minHeight: 30)
+                StepStatusLine(status: status)
+            }
+            .padding(.bottom, isLast ? 0 : 22)
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(String(localized: "Étape \(number) : \(title)"))
+    }
+}
+
+/// Pastille numérotée d'une étape : rouge de la marque quand l'étape travaille, orange quand elle ne peut pas, grise
+/// quand elle est coupée.
+struct StepBadge: View {
+    var number: Int
+    var tone: StepStatus.Tone
+
+    var body: some View {
+        Text(verbatim: String(number))
+            .font(.system(size: 14, weight: .bold, design: .rounded))
+            .monospacedDigit()
+            .foregroundStyle(tone == .off ? Color.secondary : Color.white)
+            .frame(width: 30, height: 30)
+            .background {
+                switch tone {
+                case .ready:
+                    Circle().fill(Theme.brand.gradient)
+                case .warning:
+                    Circle().fill(Color.orange.gradient)
+                case .off:
+                    Circle().fill(Theme.subtleFill)
+                        .overlay(Circle().strokeBorder(Theme.cardBorder, lineWidth: 1))
+                }
+            }
+            .shadow(color: shadow, radius: 5, y: 2)
+            .accessibilityHidden(true)
+    }
+
+    private var shadow: Color {
+        switch tone {
+        case .ready: return Theme.brand.opacity(0.3)
+        case .warning: return Color.orange.opacity(0.3)
+        case .off: return .clear
+        }
+    }
+}
+
+/// Ce que l'étape fait maintenant, dans un bandeau discret ; orange quand elle ne peut pas travailler comme choisi.
+struct StepStatusLine: View {
+    var status: StepStatus
+
+    var body: some View {
+        Label {
+            Text(status.text)
+                .fixedSize(horizontal: false, vertical: true)
+        } icon: {
+            Image(systemName: symbol)
+        }
+        .font(.callout)
+        .foregroundStyle(status.tone == .warning ? Color.orange : Color.secondary)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(status.tone == .warning ? Color.orange.opacity(0.12) : Theme.subtleFill)
+        }
+    }
+
+    private var symbol: String {
+        switch status.tone {
+        case .ready: return "arrow.turn.down.right"
+        case .warning: return "exclamationmark.triangle.fill"
+        case .off: return "pause.circle"
+        }
     }
 }
 
@@ -265,32 +598,6 @@ struct AddKeyRow: View {
         model.newKeyDraft = ""
         model.newKeyAccount = nil
         open = false
-    }
-}
-
-// MARK: - Correction
-
-struct CorrectionSection: View {
-    @Environment(AppModel.self) private var model
-
-    var body: some View {
-        Section {
-            LabeledContent("Service de correction") {
-                Text(service)
-            }
-        } header: {
-            Text("Correction")
-        } footer: {
-            Text("DeepSeek d'abord s'il a une clé, puis OpenAI, puis le modèle du fournisseur de voix. Seul le texte part, jamais l'audio.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    private var service: String {
-        guard model.settings.cleanupEnabled else { return String(localized: "Coupée dans Réglages") }
-        guard let name = model.correctionServiceName else { return String(localized: "Aucune clé active") }
-        return String(localized: "Automatique : \(name)")
     }
 }
 

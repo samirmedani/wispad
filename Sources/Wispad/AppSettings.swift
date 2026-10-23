@@ -68,6 +68,8 @@ struct AppSettings: Codable, Equatable {
     /// Nouvelle installation : langue du système ; les réglages antérieurs restent en français.
     var language: DictationLanguage = .preferred()
     var cleanupEnabled = true
+    /// Modèle de correction choisi dans Fournisseurs › Modèles : automatique (selon les clés actives) par défaut.
+    var cleanupChoice: CleanupChoice = .automatic
     /// Chaque dictée est aussi transcrite sur l'enregistrement complet. Le flux reste le secours.
     var verifyWithFile = true
     /// Ton demandé à la correction, par catégorie d'apps (`UsageKind.rawValue`). Absent : ton de la dictée.
@@ -164,6 +166,7 @@ struct AppSettings: Codable, Equatable {
         openAIModel = Self.knownLiveModel(value(.openAIModel, defaults.openAIModel), provider: .openAI)
         language = value(.language, DictationLanguage.french)
         cleanupEnabled = value(.cleanupEnabled, defaults.cleanupEnabled)
+        cleanupChoice = value(.cleanupChoice, defaults.cleanupChoice)
         verifyWithFile = value(.verifyWithFile, defaults.verifyWithFile)
         tones = table(.tones, defaults.tones)
         selectionCommands = value(.selectionCommands, defaults.selectionCommands)

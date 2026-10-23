@@ -2058,6 +2058,26 @@ struct AppRegressionTests {
         #expect(f.model.speechRequest(context: nil).apiKey == "fixture-xai")
     }
 
+    /// Modèle de correction choisi dans Fournisseurs : il part avec la clé de son fournisseur ; clé coupée, la
+    /// correction redevient automatique.
+    @Test func chosenCleanupModelTravelsWithItsKey() throws {
+        let f = try Fixture()
+        defer { f.dispose() }
+        #expect(f.model.speechRequest(context: nil).chosenCleanupKey == nil)
+        f.model.settings.cleanupChoice = .grok
+        let request = f.model.speechRequest(context: nil)
+        #expect(request.cleanupChoice == .grok)
+        #expect(request.chosenCleanupKey == "fixture-xai")
+        #expect(TextCleaner.plan(request).steps.first == "xAI grok-4.7")
+        #expect(f.model.correctionServiceName == "xAI")
+
+        f.model.settings.cleanupChoice = .openAILuna
+        #expect(f.model.speechRequest(context: nil).chosenCleanupKey == "fixture-openai")
+        f.model.setKeyEnabled("openai", false)
+        #expect(f.model.speechRequest(context: nil).chosenCleanupKey == nil)
+        #expect(f.model.correctionServiceName == "DeepSeek")
+    }
+
     /// Supprimer une clé coupée ne la laisse pas coupée : une prochaine clé de ce compte sert tout de suite.
     @Test func deletingAKeyForgetsThatItWasDisabled() async throws {
         var deleted: [String] = []

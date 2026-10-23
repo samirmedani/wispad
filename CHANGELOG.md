@@ -3,6 +3,22 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.2.14 — 23 octobre 2026
+
+Fournisseurs montre les 4 étapes d'une dictée, numérotées, avec un modèle à choisir pour chacune.
+
+> Depuis la 0.2.0 : si la mise à jour reste sur « Relance… », ferme cette fenêtre, puis quitte Wispad et rouvre-le.
+> La 0.2.14 est déjà installée.
+
+**Nouveau**
+- Fournisseurs › Modèles : 1 Voix en direct, 2 Vérification, 3 Correction, 4 Mots appris. Chaque étape a son choix et une ligne qui dit ce qu'elle fait maintenant : modèle réel, relais, prix.
+- Correction : « Automatique » comme avant, ou un modèle au choix parmi tes clés actives (DeepSeek deepseek-flash, OpenAI gpt-5.4-mini ou gpt-5.6-luna, xAI grok-4.7). Le modèle choisi passe en premier, l'ordre automatique reste son relais.
+- Mots appris : « Comme la correction » ou Jev (TypeSafe), en un choix.
+- Un modèle sans clé active ne se choisit pas, et l'étape passe en orange tant qu'il manque une clé.
+
+**Corrigé**
+- DeepSeek en pause passe bien en dernier, même derrière un autre modèle.
+
 ## 0.2.13 — 23 octobre 2026
 
 Les clés API deviennent une liste simple : on colle, Wispad reconnaît le fournisseur.

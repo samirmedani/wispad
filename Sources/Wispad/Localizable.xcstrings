@@ -1339,22 +1339,6 @@
         }
       }
     },
-    "%@. L'audio part chez %@ ; s'il ne répond pas et qu'une clé de l'autre fournisseur est enregistrée, le même enregistrement part chez celui-ci." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@. Audio goes to %2$@; if it doesn't respond and a key for the other provider is saved, the same recording goes there instead."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@. L'audio part chez %2$@ ; s'il ne répond pas et qu'une clé de l'autre fournisseur est enregistrée, le même enregistrement part chez celui-ci."
-          }
-        }
-      }
-    },
     "Gratuit et open source. Tu paies tes fournisseurs directement." : {
       "localizations" : {
         "en" : {
@@ -2333,16 +2317,6 @@
         }
       }
     },
-    "%@ · sans clé active" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ · no active key"
-          }
-        }
-      }
-    },
     "Ajouter une clé" : {
       "localizations" : {
         "en" : {
@@ -2353,32 +2327,12 @@
         }
       }
     },
-    "Aucune clé active" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No active key"
-          }
-        }
-      }
-    },
     "Aucune clé pour l'instant. Ajoute celle de ton fournisseur de voix, xAI ou OpenAI, pour dicter." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "No keys yet. Add your voice provider's key, xAI or OpenAI, to start dictating."
-          }
-        }
-      }
-    },
-    "Automatique : %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Automatic: %@"
           }
         }
       }
@@ -2479,16 +2433,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Off: kept, but Wispad doesn't use it"
-          }
-        }
-      }
-    },
-    "Coupée dans Réglages" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Turned off in Settings"
           }
         }
       }
@@ -2969,16 +2913,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "DeepSeek · correction"
-          }
-        }
-      }
-    },
-    "DeepSeek d'abord s'il a une clé, puis OpenAI, puis le modèle du fournisseur de voix. Seul le texte part, jamais l'audio." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "DeepSeek first if it has a key, then OpenAI, then the voice provider's model. Only the text is sent, never the audio."
           }
         }
       }
@@ -4169,16 +4103,6 @@
         }
       }
     },
-    "Modèle" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Model"
-          }
-        }
-      }
-    },
     "Modifier" : {
       "localizations" : {
         "en" : {
@@ -5211,16 +5135,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Succeeded"
-          }
-        }
-      }
-    },
-    "Service de correction" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Correction service"
           }
         }
       }
@@ -10339,6 +10253,406 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Recommended: xAI for voice, DeepSeek for correction, the cheapest. Optional: Jev (TypeSafe) to better choose words to learn. Any service can be swapped for another you have a key for."
+          }
+        }
+      }
+    },
+    "%@/h en direct · pas de relais : aucune autre clé de voix active" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@/h live · no relay: no other active voice key"
+          }
+        }
+      }
+    },
+    "%@/h en direct · si %@ ne répond pas : %@ %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@/h live · if %2$@ doesn't respond: %3$@ %4$@"
+          }
+        }
+      }
+    },
+    "Aucun modèle actif : aucun mot n'est appris." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No active model: no words are learned."
+          }
+        }
+      }
+    },
+    "aucune clé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "no key"
+          }
+        }
+      }
+    },
+    "Aucune clé %@ : ajoute-la dans Clés API pour dicter." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No %@ key: add it in API keys to dictate."
+          }
+        }
+      }
+    },
+    "Aucune clé %@ : ajoute-la, ou choisis un modèle %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No %1$@ key: add it, or choose a %2$@ model."
+          }
+        }
+      }
+    },
+    "Aucune clé active pour corriger : le texte est collé tel que transcrit." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No active key for correction: the text is pasted as transcribed."
+          }
+        }
+      }
+    },
+    "Automatique · selon tes clés" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatic · based on your keys"
+          }
+        }
+      }
+    },
+    "Clé %@ coupée : rallume-la dans Clés API pour dicter." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ key turned off: turn it back on in API keys to dictate."
+          }
+        }
+      }
+    },
+    "Clé %@ coupée : rallume-la, ou choisis un modèle %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ key turned off: turn it back on, or choose a %2$@ model."
+          }
+        }
+      }
+    },
+    "clé coupée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "key off"
+          }
+        }
+      }
+    },
+    "Comme la correction" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Same as correction"
+          }
+        }
+      }
+    },
+    "Coupé : aucun mot n'est appris de tes corrections." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Off: no words are learned from your corrections."
+          }
+        }
+      }
+    },
+    "Coupée : le texte est collé tel que transcrit." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Off: the text is pasted as transcribed."
+          }
+        }
+      }
+    },
+    "Coupée : seul le texte reçu en direct compte." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Off: only the live text counts."
+          }
+        }
+      }
+    },
+    "Décide si un mot corrigé entre au dictionnaire." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Decides whether a corrected word goes into the dictionary."
+          }
+        }
+      }
+    },
+    "Étape %lld : %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Step %1$lld: %2$@"
+          }
+        }
+      }
+    },
+    "Jev note chaque mot ; en cas de doute, %@ tranche." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jev scores each word; when in doubt, %@ decides."
+          }
+        }
+      }
+    },
+    "Jev note chaque mot, seul : aucun modèle de correction actif." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jev scores each word alone: no active correction model."
+          }
+        }
+      }
+    },
+    "la moins chère" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "cheapest"
+          }
+        }
+      }
+    },
+    "Maintenant : %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Now: %@"
+          }
+        }
+      }
+    },
+    "Maintenant : %@ · si besoin : %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Now: %1$@ · if needed: %2$@"
+          }
+        }
+      }
+    },
+    "Maintenant : %@, comme la correction." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Now: %@, same as correction."
+          }
+        }
+      }
+    },
+    "Même fournisseur que la voix : %@ %@ · %@/h" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Same provider as the voice: %1$@ %2$@ · %3$@/h"
+          }
+        }
+      }
+    },
+    "Modèle de correction" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Correction model"
+          }
+        }
+      }
+    },
+    "Modèle de la voix en direct" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Live voice model"
+          }
+        }
+      }
+    },
+    "Modèle qui choisit les mots appris" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Model that picks learned words"
+          }
+        }
+      }
+    },
+    "Modèles" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Models"
+          }
+        }
+      }
+    },
+    "Mots appris" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Learned words"
+          }
+        }
+      }
+    },
+    "Pas de clé %@ active : correction automatique par %@, puis %@ si besoin." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No active %1$@ key: automatic correction by %2$@, then %3$@ if needed."
+          }
+        }
+      }
+    },
+    "Pas de clé %@ active : correction automatique par %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No active %1$@ key: automatic correction by %2$@."
+          }
+        }
+      }
+    },
+    "Ponctuation, mots mal entendus, mise en forme." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Punctuation, misheard words, formatting."
+          }
+        }
+      }
+    },
+    "recommandé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "recommended"
+          }
+        }
+      }
+    },
+    "Réécoute l'enregistrement complet à la fin." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Listens to the full recording again at the end."
+          }
+        }
+      }
+    },
+    "Suit la voix, qui n'a pas de clé active." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Follows the voice, which has no active key."
+          }
+        }
+      }
+    },
+    "Transcrit pendant que tu parles." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transcribes while you speak."
+          }
+        }
+      }
+    },
+    "Un choix par étape, dans l'ordre d'une dictée. Seuls les fournisseurs dont la clé est active se choisissent : ajoute les autres juste en dessous." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "One choice per step, in the order of a dictation. Only providers with an active key can be chosen: add the others just below."
+          }
+        }
+      }
+    },
+    "Vérification" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verification"
+          }
+        }
+      }
+    },
+    "Vérifier sur l'enregistrement complet" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verify with the full recording"
+          }
+        }
+      }
+    },
+    "Voix en direct" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Live voice"
           }
         }
       }
