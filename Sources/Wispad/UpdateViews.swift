@@ -2,31 +2,67 @@ import AppKit
 import SwiftUI
 import WispadCore
 
-/// Fenêtre de mise à jour : la version disponible, ses notes de version, l'installation en un clic et son avancement.
-/// En cas d'échec, la raison et la page de la release.
+/// Fenêtre de mise à jour : la version disponible et les notes de chaque version à rattraper, en rubriques claires,
+/// ce que fait le clic, puis l'installation en quatre étapes. En cas d'échec, la raison et la page de la release.
+/// Pour la version installée (« Nouveautés de cette version »), les mêmes notes, sans installation.
 struct UpdateSheet: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     let release: ReleaseInfo
     var status = BuildStatus.shared
+    /// Versions présentées, la plus récente en premier : d'abord la seule disponible, puis aussi celles sautées.
+    @State private var releases: [ReleaseInfo]
     /// Lu à l'ouverture : ce qui empêche l'installation ici ; la page de la release s'ouvre alors à la place.
     @State private var obstacle: UpdateInstallObstacle? = nil
+    /// Aperçu hors écran : versions fournies, rien n'est demandé à GitHub.
+    private let fixedReleases: Bool
+
+    init(release: ReleaseInfo, releases: [ReleaseInfo]? = nil) {
+        self.release = release
+        _releases = State(initialValue: releases ?? [release])
+        fixedReleases = releases != nil
+    }
+
+    private var current: SemanticVersion? { status.version.flatMap(SemanticVersion.init) }
+    /// Version déjà installée : ses nouveautés, sans bouton d'installation.
+    private var installed: Bool { current.map { release.version <= $0 } ?? false }
 
     var body: some View {
         VStack(spacing: 0) {
             header
             Divider()
             ScrollView {
-                ReleaseNotesView(markdown: release.notes)
-                    .padding(24)
+                VStack(alignment: .leading, spacing: 16) {
+                    if let headline = ReleaseNotes.digest(release.notes).headline {
+                        Text(ReleaseText.inline(headline))
+                            .font(.system(size: 17, weight: .semibold))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    ForEach(releases) { item in
+                        ReleaseCard(release: item, showsHeadline: item.version != release.version)
+                    }
+                }
+                .padding(24)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .textSelection(.enabled)
             }
             Divider()
             footer
                 .padding(.horizontal, 24)
                 .padding(.vertical, 16)
         }
-        .frame(width: 560, height: 520)
-        .onAppear { obstacle = model.updater.obstacle(for: release, kind: status.kind) }
+        .frame(width: 600, height: 600)
+        // Aperçu hors écran (versions fournies) : la fenêtre d'une version publiée, même depuis une version de développement.
+        .onAppear { obstacle = installed || fixedReleases ? nil : model.updater.obstacle(for: release, kind: status.kind) }
+        .task { await loadMissedVersions() }
+    }
+
+    /// Notes des versions sautées entre la version installée et celle-ci ; sans réponse de GitHub, celle-ci seule.
+    private func loadMissedVersions() async {
+        guard !fixedReleases, !installed, let current, let all = await BuildStatus.fetchReleaseHistory() else { return }
+        let missed = ReleaseCheck.missed(all, after: current, upTo: release)
+        guard missed.count > 1 else { return }
+        withAnimation(Theme.spring) { releases = missed }
     }
 
     private var header: some View {
@@ -34,13 +70,17 @@ struct UpdateSheet: View {
             Image(nsImage: NSApplication.shared.applicationIconImage)
                 .resizable()
                 .interpolation(.high)
-                .frame(width: 44, height: 44)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(DictationCoordinator.updateMessage(release.version))
-                    .font(.title2.weight(.bold))
-                Text("Tu utilises la version \(status.version ?? "—").")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
+                .frame(width: 52, height: 52)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(verbatim: "Wispad \(release.version.description)")
+                    .font(.system(size: 22, weight: .bold))
+                HStack(spacing: 8) {
+                    StatusChip(text: installed ? String(localized: "Installée") : String(localized: "Nouvelle version"),
+                               tint: installed ? .green : Theme.brand)
+                    Text(subtitle)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
             }
             Spacer()
             Button("Fermer", systemImage: "xmark") { dismiss() }
@@ -52,25 +92,57 @@ struct UpdateSheet: View {
         .padding(24)
     }
 
+    private var subtitle: String {
+        if installed {
+            guard let date = release.publishedAt else { return String(localized: "Ta version actuelle") }
+            return String(localized: "Publiée le \(date.formatted(.dateTime.day().month(.wide)))")
+        }
+        let version = status.version ?? "—"
+        return releases.count > 1
+            ? String(localized: "Tu as la \(version) · \(releases.count) versions à rattraper")
+            : String(localized: "Tu as la \(version)")
+    }
+
     @ViewBuilder private var footer: some View {
         let updater = model.updater
-        switch updater.phase {
-        case .idle:
-            idleFooter
-        case .failed(let failure):
-            failureFooter(failure)
-        case .downloading, .verifying, .waitingForDictation, .installing, .relaunching:
-            progressFooter(updater)
+        if installed {
+            HStack(spacing: 10) {
+                Button("Voir sur GitHub") { NSWorkspace.shared.open(release.pageURL) }
+                    .hoverFeedback()
+                Spacer()
+                Button("Fermer") { dismiss() }
+                    .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.defaultAction)
+                    .hoverFeedback()
+            }
+        } else {
+            switch updater.phase {
+            case .idle:
+                idleFooter
+            case .failed(let failure):
+                failureFooter(failure)
+            case .downloading, .verifying, .waitingForDictation, .installing, .relaunching:
+                progressFooter(updater)
+            }
         }
     }
 
     private var idleFooter: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             if let obstacle {
-                Text(obstacle.note)
+                Label(obstacle.note, systemImage: "info.circle")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+            } else {
+                Label {
+                    Text(installExplanation)
+                        .fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: "checkmark.shield.fill").foregroundStyle(.green)
+                }
+                .font(.callout)
+                .foregroundStyle(.secondary)
             }
             HStack(spacing: 10) {
                 Button("Voir sur GitHub") { NSWorkspace.shared.open(release.pageURL) }
@@ -88,24 +160,36 @@ struct UpdateSheet: View {
         }
     }
 
+    /// Ce que fait « Mettre à jour », en une phrase.
+    private var installExplanation: String {
+        if let bytes = release.diskImage?.size {
+            let size = ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
+            return String(localized: "En un clic : Wispad télécharge cette version (\(size)), vérifie qu'elle vient bien de son développeur, puis redémarre. Tes réglages, tes clés et ton historique restent.")
+        }
+        return String(localized: "En un clic : Wispad télécharge cette version, vérifie qu'elle vient bien de son développeur, puis redémarre. Tes réglages, tes clés et ton historique restent.")
+    }
+
     private func progressFooter(_ updater: UpdateInstaller) -> some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(updater.phase.detailText)
-                    .font(.callout)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                if case .downloading(let fraction?) = updater.phase {
-                    ProgressView(value: fraction)
-                } else {
-                    ProgressView()
-                        .progressViewStyle(.linear)
+        VStack(alignment: .leading, spacing: 14) {
+            UpdateSteps(current: updater.phase.step)
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(updater.phase.detailText)
+                        .font(.callout)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if case .downloading(let fraction?) = updater.phase {
+                        ProgressView(value: fraction)
+                    } else {
+                        ProgressView()
+                            .progressViewStyle(.linear)
+                    }
                 }
-            }
-            Spacer(minLength: 12)
-            if updater.canCancel {
-                Button("Annuler") { updater.cancel() }
-                    .hoverFeedback()
+                Spacer(minLength: 12)
+                if updater.canCancel {
+                    Button("Annuler") { updater.cancel() }
+                        .hoverFeedback()
+                }
             }
         }
     }
@@ -131,62 +215,166 @@ struct UpdateSheet: View {
     }
 }
 
-/// Notes de version en markdown simple : titres, puces, listes numérotées, paragraphes et code, avec gras, italique,
-/// liens et `code` dans la ligne. Le texte reste sélectionnable.
-struct ReleaseNotesView: View {
-    let markdown: String
+
+/// Une version : son numéro et sa date, son accroche (sauf pour la plus récente, dont l'accroche est en titre), puis
+/// ses rubriques.
+struct ReleaseCard: View {
+    let release: ReleaseInfo
+    var showsHeadline: Bool
 
     var body: some View {
-        let blocks = ReleaseNotes.blocks(markdown)
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Notes de version")
-                .font(.headline)
-            if blocks.isEmpty {
+        let digest = ReleaseNotes.digest(release.notes)
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 8) {
+                Text(verbatim: release.version.description)
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(Theme.brand)
+                    .padding(.horizontal, 9)
+                    .frame(height: 22)
+                    .background(Capsule().fill(Theme.brand.opacity(0.13)))
+                if let date = release.publishedAt {
+                    Text(date, format: .dateTime.day().month(.wide))
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            if showsHeadline, let headline = digest.headline {
+                Text(ReleaseText.inline(headline))
+                    .font(.system(size: 14, weight: .semibold))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if digest.isEmpty {
                 Text("Pas de notes pour cette version.")
                     .foregroundStyle(.secondary)
             }
-            ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
-                view(for: block)
+            ForEach(Array(digest.sections.enumerated()), id: \.offset) { _, section in
+                ReleaseSectionView(section: section)
             }
         }
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .textSelection(.enabled)
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.subtleFill))
     }
+}
 
-    @ViewBuilder private func view(for block: ReleaseNoteBlock) -> some View {
-        switch block {
-        case .heading(let level, let text):
-            Text(Self.inline(text))
-                .font(level <= 2 ? Font.title3.weight(.semibold) : Font.headline)
-                .padding(.top, 6)
-        case .bullet(let text):
-            HStack(alignment: .firstTextBaseline, spacing: 7) {
-                Text(verbatim: "•")
-                    .foregroundStyle(.secondary)
-                Text(Self.inline(text))
-                    .fixedSize(horizontal: false, vertical: true)
+/// Une rubrique (Nouveau, Corrigé, Amélioré) : son nom en couleur, puis chaque point, titre en gras et détail dessous.
+struct ReleaseSectionView: View {
+    let section: ReleaseDigest.Section
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if let title = section.kind.title {
+                Label(title, systemImage: section.kind.symbol)
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(section.kind.tint)
             }
-        case .numbered(let number, let text):
-            HStack(alignment: .firstTextBaseline, spacing: 7) {
-                Text(verbatim: number + ".")
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-                Text(Self.inline(text))
-                    .fixedSize(horizontal: false, vertical: true)
+            ForEach(Array(section.items.enumerated()), id: \.offset) { _, item in
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Circle()
+                        .fill(section.kind.tint.opacity(0.85))
+                        .frame(width: 6, height: 6)
+                        .alignmentGuide(.firstTextBaseline) { $0[.bottom] + 3 }
+                    VStack(alignment: .leading, spacing: 2) {
+                        if let title = item.title {
+                            Text(ReleaseText.inline(title))
+                                .font(.system(size: 13.5, weight: .semibold))
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        Text(ReleaseText.inline(item.text))
+                            .font(.system(size: 13))
+                            .foregroundStyle(item.title == nil ? Color.primary : Color.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
             }
-        case .paragraph(let text):
-            Text(Self.inline(text))
-                .fixedSize(horizontal: false, vertical: true)
-        case .code(let text):
-            Text(verbatim: text)
-                .font(.system(.callout, design: .monospaced))
-                .padding(10)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Theme.subtleFill, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        }
+    }
+}
+
+extension ReleaseDigest.Kind {
+    /// Nom de la rubrique ; nil pour les points d'avant toute rubrique.
+    var title: String? {
+        switch self {
+        case .new: return String(localized: "Nouveau")
+        case .fixed: return String(localized: "Corrigé")
+        case .improved: return String(localized: "Amélioré")
+        case .other(let title): return title.isEmpty ? nil : title
         }
     }
 
-    /// Gras, italique, liens et `code` dans la ligne ; le texte brut si le markdown est illisible.
+    var symbol: String {
+        switch self {
+        case .new: return "sparkles"
+        case .fixed: return "wrench.and.screwdriver.fill"
+        case .improved: return "wand.and.stars"
+        case .other: return "circle.grid.2x2.fill"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .new: return Theme.brand
+        case .fixed: return .orange
+        case .improved: return .blue
+        case .other: return .secondary
+        }
+    }
+}
+
+/// Avancement de l'installation : téléchargement, vérification, installation, redémarrage. Les étapes faites sont
+/// cochées, celle en cours porte la couleur de l'app.
+struct UpdateSteps: View {
+    var current: Int
+
+    private static let titles = [String(localized: "Téléchargement"), String(localized: "Vérification"),
+                                 String(localized: "Installation"), String(localized: "Redémarrage")]
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 0) {
+            ForEach(Self.titles.indices, id: \.self) { index in
+                VStack(spacing: 6) {
+                    ZStack {
+                        Circle()
+                            .fill(index < current ? Color.green : index == current ? Theme.brand : Theme.card)
+                            .overlay(Circle().strokeBorder(index > current ? Theme.cardBorder : .clear, lineWidth: 1.5))
+                            .frame(width: 22, height: 22)
+                        if index < current {
+                            Image(systemName: "checkmark").font(.system(size: 10, weight: .bold)).foregroundStyle(.white)
+                        } else {
+                            Text(verbatim: String(index + 1))
+                                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                .foregroundStyle(index == current ? Color.white : Color.secondary)
+                        }
+                    }
+                    Text(Self.titles[index])
+                        .font(.caption)
+                        .foregroundStyle(index <= current ? Color.primary : Color.secondary)
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .background(alignment: .top) {
+            GeometryReader { proxy in
+                let inset = proxy.size.width / 8
+                let span = proxy.size.width - 2 * inset
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Theme.cardBorder)
+                    Capsule().fill(Color.green).frame(width: span * CGFloat(min(current, 3)) / 3)
+                }
+                .frame(width: span, height: 2)
+                .offset(x: inset, y: 10)
+            }
+        }
+        .animation(Theme.spring, value: current)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(String(localized: "Étape \(current + 1) sur 4 : \(Self.titles[min(current, 3)])"))
+    }
+}
+
+/// Texte des notes de version : gras, italique, liens et `code` dans la ligne ; le texte brut si le markdown est illisible.
+enum ReleaseText {
     static func inline(_ text: String) -> AttributedString {
         let options = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
         return (try? AttributedString(markdown: text, options: options)) ?? AttributedString(text)
@@ -210,6 +398,16 @@ extension UpdateInstaller.Phase {
     }
 
     /// Avancement en quelques mots, dans la barre latérale ; nil quand « Mettre à jour » est proposé.
+    /// Étape de l'installation, de 0 (téléchargement) à 3 (redémarrage).
+    var step: Int {
+        switch self {
+        case .idle, .failed, .downloading: return 0
+        case .verifying: return 1
+        case .waitingForDictation, .installing: return 2
+        case .relaunching: return 3
+        }
+    }
+
     var sidebarText: String? {
         switch self {
         case .idle: return nil

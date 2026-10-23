@@ -89,6 +89,11 @@ final class UpdateInstaller {
     }
 
     private(set) var phase: Phase = .idle
+
+    #if DEBUG
+    /// Aperçus hors écran seulement : l'avancement à montrer, sans rien télécharger.
+    func previewPhase(_ phase: Phase) { self.phase = phase }
+    #endif
     /// Release en cours d'installation, ou dont l'installation a échoué.
     private(set) var release: ReleaseInfo?
     @ObservationIgnored var system = UpdateSystem()

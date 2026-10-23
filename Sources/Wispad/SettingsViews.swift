@@ -655,6 +655,7 @@ struct DiagnosticsSection: View {
 struct UpdatesSection: View {
     @Environment(AppModel.self) private var model
     var status = BuildStatus.shared
+    @State private var loadingNotes = false
 
     var body: some View {
         Section("Mises à jour") {
@@ -668,6 +669,20 @@ struct UpdatesSection: View {
                         model.checkForUpdates()
                     }
                     .disabled(status.manualPhase == .checking || status.coolingDown)
+                    .hoverFeedback()
+                }
+            }
+            if let version = status.version {
+                SettingRow(text: SettingText(title: String(localized: "Nouveautés de cette version"),
+                                             summary: String(localized: "Ce qui a changé dans la \(version), en rubriques claires."))) {
+                    Button(loadingNotes ? String(localized: "Chargement…") : String(localized: "Voir les nouveautés")) {
+                        loadingNotes = true
+                        Task {
+                            await model.showWhatsNew()
+                            loadingNotes = false
+                        }
+                    }
+                    .disabled(loadingNotes)
                     .hoverFeedback()
                 }
             }

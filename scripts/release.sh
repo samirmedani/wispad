@@ -135,9 +135,9 @@ digest=$(shasum -a 256 "$dmg" | cut -d ' ' -f 1)
 step "Release GitHub $tag"
 release_args=(--title "Wispad $version" --target "$commit")
 if [[ -n "$notes_file" ]]; then
-  # Notes du mainteneur, suivies de l'empreinte du dmg (GitHub l'affiche aussi à côté du fichier).
-  { cat "$notes_file"; print; print "SHA-256 de \`Wispad.dmg\` : \`$digest\`"; } > "$out/notes.md"
-  release_args+=(--notes-file "$out/notes.md")
+  # Notes du mainteneur, telles quelles : l'empreinte du dmg est affichée par GitHub à côté du fichier, et l'app
+  # vérifie celle que l'API annonce.
+  release_args+=(--notes-file "$notes_file")
 else
   release_args+=(--generate-notes)
 fi

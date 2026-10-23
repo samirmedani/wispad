@@ -253,6 +253,73 @@ struct ReleaseNotesTests {
     }
 }
 
+/// Notes prêtes à montrer dans l'app : accroche, rubriques, points « titre : détail », sans ce qui ne sert que sur
+/// GitHub (conseil pour une ancienne version, empreinte du disque).
+struct ReleaseDigestTests {
+    @Test func publishedNotesBecomeAHeadlineAndSections() {
+        let notes = """
+        La bulle de dictée se règle à ta taille.
+
+        > Depuis la 0.2.0 : si la mise à jour reste sur « Relance… », ferme cette fenêtre, puis quitte Wispad et rouvre-le.
+        > La 0.3.2 est déjà installée.
+
+        **Nouveau**
+        - Réglages › Bulle › Taille de la bulle : de 80 % à 160 %. Le spectre grandit avec elle.
+        - Une nouvelle installation commence toujours avec la bulle en Noir profond.
+
+        **Corrigé**
+        - **Ombre** : elle tient entière.
+
+        SHA-256 de `Wispad.dmg` : `b385dd0e122fda6dfa039e4dfb1c823574e8ddbe6b7220cce9bdcb477859ac16`
+        """
+        #expect(ReleaseNotes.digest(notes) == ReleaseDigest(headline: "La bulle de dictée se règle à ta taille.", sections: [
+            ReleaseDigest.Section(kind: .new, items: [
+                ReleaseDigest.Item(title: "Réglages › Bulle › Taille de la bulle", text: "De 80 % à 160 %. Le spectre grandit avec elle."),
+                ReleaseDigest.Item(text: "Une nouvelle installation commence toujours avec la bulle en Noir profond."),
+            ]),
+            ReleaseDigest.Section(kind: .fixed, items: [ReleaseDigest.Item(title: "Ombre", text: "Elle tient entière.")]),
+        ]))
+    }
+
+    @Test func otherShapesStayReadable() {
+        let notes = "## Améliorations\n- Plus rapide. Encore : oui\nUne phrase libre.\n\n**Installer**\n1. Télécharge"
+        #expect(ReleaseNotes.digest(notes) == ReleaseDigest(sections: [
+            ReleaseDigest.Section(kind: .improved, items: [
+                ReleaseDigest.Item(text: "Plus rapide. Encore : oui"),
+                ReleaseDigest.Item(text: "Une phrase libre."),
+            ]),
+            ReleaseDigest.Section(kind: .other("Installer"), items: [ReleaseDigest.Item(text: "Télécharge")]),
+        ]))
+        #expect(ReleaseNotes.digest("").isEmpty)
+        #expect(ReleaseNotes.digest("> seulement une citation\nSHA-256 : abc").isEmpty)
+    }
+
+    /// Versions sautées : celles d'après la version installée jusqu'à la plus récente, la plus récente en premier.
+    @Test func missedVersionsAreTheOnesAfterTheInstalledOne() {
+        func release(_ text: String) -> ReleaseInfo {
+            ReleaseInfo(version: SemanticVersion(text)!, tag: "v" + text, notes: "", pageURL: ReleaseCheck.releasesURL, diskImage: nil)
+        }
+        let latest = release("0.3.2")
+        let list = [release("0.2.15"), release("0.3.1"), latest, release("0.3.0"), release("0.3.1")]
+        #expect(ReleaseCheck.missed(list, after: SemanticVersion("0.3.0"), upTo: latest).map(\.tag) == ["v0.3.2", "v0.3.1"])
+        #expect(ReleaseCheck.missed([], after: SemanticVersion("0.3.0"), upTo: latest).map(\.tag) == ["v0.3.2"])
+        #expect(ReleaseCheck.missed(list, after: nil, upTo: latest).map(\.tag) == ["v0.3.2"])
+        let many = (1...20).map { release("0.2.\($0)") }
+        #expect(ReleaseCheck.missed(many, after: SemanticVersion("0.1.0"), upTo: latest).count == 8)
+    }
+
+    @Test func theReleaseListIsReadWithDates() throws {
+        let json = """
+        [{"tag_name": "v0.3.2", "body": "B", "html_url": "https://github.com/samirmedani/wispad/releases/tag/v0.3.2",
+          "published_at": "2026-10-23T12:40:24Z", "assets": []},
+         {"tag_name": "pas-une-version"}, {"tag_name": "v0.3.1", "draft": true}, 42]
+        """
+        let releases = ReleaseCheck.releases(from: Data(json.utf8))
+        #expect(releases.map(\.tag) == ["v0.3.2"])
+        #expect(releases.first?.publishedAt == ISO8601DateFormatter().date(from: "2026-10-23T12:40:24Z"))
+    }
+}
+
 struct UpdateInstallRulesTests {
     private let release = ReleaseInfo(
         version: SemanticVersion(major: 0, minor: 1, patch: 2), tag: "v0.1.2", notes: "", pageURL: ReleaseCheck.releasesURL,

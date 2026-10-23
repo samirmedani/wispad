@@ -183,6 +183,27 @@ final class BuildStatus {
         }
     }
 
+    /// Les 20 dernières releases (notes des versions sautées, fenêtre de mise à jour) ; nil sans réponse lisible.
+    nonisolated static func fetchReleaseHistory() async -> [ReleaseInfo]? {
+        guard let data = await fetchGitHub(ReleaseCheck.historyURL) else { return nil }
+        return ReleaseCheck.releases(from: data)
+    }
+
+    /// Release d'une version (« Nouveautés de cette version ») ; nil si GitHub ne la connaît pas ou ne répond pas.
+    nonisolated static func fetchRelease(_ version: SemanticVersion) async -> ReleaseInfo? {
+        guard let data = await fetchGitHub(ReleaseCheck.tagURL(version)) else { return nil }
+        return ReleaseCheck.release(from: data)
+    }
+
+    /// Corps d'une réponse 200 de l'API publique, 8 s au plus ; nil sinon.
+    private nonisolated static func fetchGitHub(_ url: URL) async -> Data? {
+        let session = URLSession(configuration: githubConfiguration(timeout: ReleaseCheck.timeout))
+        defer { session.finishTasksAndInvalidate() }
+        guard let (data, response) = try? await session.data(for: githubRequest(url)),
+              (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
+        return data
+    }
+
     private nonisolated static func fetchFreshness(_ url: URL) async -> BuildFreshness {
         let session = URLSession(configuration: githubConfiguration(timeout: BuildFreshnessCheck.timeout))
         defer { session.finishTasksAndInvalidate() }
