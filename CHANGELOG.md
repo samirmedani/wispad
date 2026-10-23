@@ -3,6 +3,14 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.3.4 — 23 octobre 2026
+
+Le bas de la barre latérale tient sur une ligne, bien rangé.
+
+**Amélioré**
+- Version en une pastille : point de couleur, numéro, « À jour » et la recherche ↻ au bout, sur la même ligne que GitHub et X. Elle ne passe plus jamais sur deux lignes.
+- Nouvelle version : la pastille passe en rouge avec « 0.3.4 → 0.3.5 », cliquable, et « Mettre à jour » apparaît dessous.
+
 ## 0.3.3 — 23 octobre 2026
 
 La fenêtre de mise à jour devient claire : ce qui change, en rubriques, et ce que fait le clic.

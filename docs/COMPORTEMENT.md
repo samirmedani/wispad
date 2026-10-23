@@ -1008,24 +1008,28 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
   (« Star on GitHub » en anglais), sur une seule ligne et sans troncature à la largeur fixe de la barre, entièrement
   cliquable. Un clic ouvre la page du dépôt dans le navigateur, affiche « Merci ! » 1,6 s, puis le bandeau
   disparaît pour de bon (réglage `githubStarClicked`, enregistré dès le clic). Wispad ne peut pas savoir si
-  l'étoile a été donnée : le clic suffit. Dessous, toujours visibles et sur une seule ligne : la version, l'état de
-  la mise à jour juste à sa droite (« Wispad 0.2.3 ● À jour »), puis à droite les logos GitHub et X du développeur
-  (profil GitHub `samirmedani`, compte X `@Mayuu_France`), qui ouvrent ces pages dans le navigateur ; leur nom et
-  l'adresse s'affichent au survol. Trop long pour une ligne (build de développement en retard), l'état passe dessous.
+  l'étoile a été donnée : le clic suffit. Dessous, toujours visibles et sur une seule ligne : une pastille de version,
+  puis à droite les logos GitHub et X du développeur (profil GitHub `samirmedani`, compte X `@Mayuu_France`), qui
+  ouvrent ces pages dans le navigateur ; leur nom et l'adresse s'affichent au survol. La pastille réunit un point de
+  couleur, le numéro (le nom de l'app est déjà en haut de la barre), l'état et, au bout, la flèche ↻ de recherche :
+  « ● 0.3.3 À jour ↻ » en vert ; « ● 0.3.3 → 0.3.4 » en rouge de l'app quand une version plus récente est publiée
+  (cliquable, sans ↻) ; pour un build de développement, le commit et son retard, en orange s'il est en retard
+  (cliquable). Trop étroite (grand texte), elle ne garde que le point et le numéro, l'état restant dans l'infobulle ;
+  elle ne passe jamais sur deux lignes.
 - **Release ou build de développement** : une release est l'app du `Wispad.dmg` publié sur GitHub ; seul
   `scripts/release.sh` ajoute à son Info.plist la clé `WispadRelease` (vraie), avant de la signer. Sans cette clé,
   c'est un build de développement, compilé depuis les sources (Xcode, `scripts/build.sh`, `scripts/install.sh`). Une
   clé posée par le script de release plutôt que l'absence de signature Developer ID : explicite et testable, couverte
   par la signature de l'app, et un contributeur qui signe son build avec son propre certificat Developer ID reste un
   build de développement.
-- **Release** : la version seule (« Wispad 0.1.1 »), puis « À jour », ou « 0.1.2 disponible » (un clic ouvre la
+- **Release** : la version seule (« 0.1.1 »), puis « À jour », ou « → 0.1.2 » (un clic ouvre la
   fenêtre de mise à jour ; « Wispad 0.1.2 est disponible » au survol) et, dessous, le bouton « Mettre à jour », qui
   ouvre aussi cette fenêtre : l'installation
   ne démarre qu'après lecture des notes, avec son bouton « Mettre à jour ». Le tag de la dernière release
   (« v0.1.2 ») et la version de l'app (`CFBundleShortVersionString`) se comparent en semver : X.Y.Z, une pré-version
   avant la version
   finale. Une app plus récente que la dernière release (release retirée) reste « À jour ».
-- **Build de développement** : la version et le commit court gravé à la compilation (« Wispad 0.1.0 · abc1234 »),
+- **Build de développement** : la version et le commit court gravé à la compilation (« 0.1.0 · abc1234 »),
   puis « À jour » ou « N commits de retard » (« 1 commit de retard ») sur la branche `main` du dépôt public, comme
   avant les releases. Un clic sur le retard ouvre la page des commits. Aucune release proposée ni demandée.
 - **Vérification**, seul contact hors des fournisseurs : pour une release
@@ -1034,7 +1038,7 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
   API publique, sans clé ni cookie, avec l'en-tête User-Agent demandé par GitHub ; 5 s après le lancement, puis
   toutes les 6 heures, 8 s au plus. Rien d'autre n'est envoyé (pour un build de développement, le commit de la
   version, dans l'adresse). Ni le démarrage ni la dictée n'attendent cette requête.
-- **Rechercher une mise à jour** : la flèche ↻ à droite de l'état de la version (barre latérale) et Réglages › Aide ›
+- **Rechercher une mise à jour** : la flèche ↻ au bout de la pastille de version (barre latérale) et Réglages › Aide ›
   Mises à jour lancent tout de suite la même requête ; la vérification automatique continue à son rythme. Une
   recherche à la fois, au plus une par minute (boutons grisés pendant la pause) ; limite de l'API atteinte : pas avant
   l'heure annoncée par GitHub (un quart d'heure sans indication, six heures au plus). Pendant la recherche, une roue ;

@@ -237,9 +237,8 @@ enum StarBanner: Equatable {
     }
 }
 
-/// Bandeau étoile, puis sur une ligne la version, son état et les liens du développeur (GitHub, X), au-dessus des
-/// raccourcis. Pour une release, la dernière version publiée ; pour un build de développement, le retard sur la branche
-/// principale. Trop long pour une ligne (build de développement en retard), l'état passe dessous.
+/// Bandeau étoile, puis sur une seule ligne la pastille de version (numéro, état, recherche à la main) et les liens du
+/// développeur (GitHub, X), au-dessus des raccourcis. Une nouvelle version ajoute « Mettre à jour » dessous.
 struct ProjectFooter: View {
     @Environment(AppModel.self) private var model
     var status = BuildStatus.shared
@@ -253,18 +252,8 @@ struct ProjectFooter: View {
                     .padding(.bottom, 3)
                     .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .bottom)))
             }
-            HStack(spacing: 4) {
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 7) {
-                        versionText
-                        statusLine
-                    }
-                    VStack(alignment: .leading, spacing: 4) {
-                        versionText
-                        statusLine
-                    }
-                }
-                UpdateCheckButton(status: status)
+            HStack(alignment: .center, spacing: 6) {
+                VersionChip(status: status)
                 Spacer(minLength: 4)
                 DeveloperLinks()
             }
@@ -288,53 +277,6 @@ struct ProjectFooter: View {
         Task { @MainActor in
             try? await Task.sleep(for: StarBanner.thanksDuration)
             thanking = false
-        }
-    }
-
-    /// Build compilé depuis les sources : retard sur la branche principale du dépôt public.
-    @ViewBuilder private func developmentLine(_ freshness: BuildFreshness) -> some View {
-        if let label = freshness.label {
-            if case .behind = freshness {
-                Button {
-                    NSWorkspace.shared.open(BuildFreshnessCheck.commitsURL)
-                } label: {
-                    line(label, color: .orange)
-                }
-                .buttonStyle(HoverButtonStyle(treatment: .quiet))
-                .help("Voir les nouveaux commits sur GitHub")
-            } else {
-                line(label, color: .green)
-            }
-        }
-    }
-
-    private var versionText: some View {
-        Text(verbatim: status.versionLine)
-            .font(.system(size: 10.5).monospacedDigit())
-            .foregroundStyle(.tertiary)
-            .lineLimit(1)
-            .fixedSize()
-            .textSelection(.enabled)
-    }
-
-    /// État de la version, à droite du numéro : « À jour », « 0.1.2 disponible » (ouvre les notes de version) ou, pour
-    /// un build de développement, son retard.
-    @ViewBuilder private var statusLine: some View {
-        switch status.display {
-        case .development(let freshness):
-            developmentLine(freshness)
-        case .upToDate:
-            line(String(localized: "À jour"), color: .green)
-        case .available(let release):
-            Button {
-                model.showUpdate(release)
-            } label: {
-                line(String(localized: "\(release.version.description) disponible"), color: Theme.brand)
-            }
-            .buttonStyle(HoverButtonStyle(treatment: .quiet))
-            .help(DictationCoordinator.updateMessage(release.version))
-        case .unknown:
-            EmptyView()
         }
     }
 
@@ -374,16 +316,113 @@ struct ProjectFooter: View {
                 .transition(.opacity)
         }
     }
+}
 
-    private func line(_ text: String, color: Color) -> some View {
-        HStack(spacing: 5) {
-            Circle().fill(color).frame(width: 5, height: 5)
-            Text(text)
-                .font(.system(size: 10.5))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
+/// Version et état, en une pastille sur la ligne des liens du développeur : point de couleur, numéro, état (« À jour »,
+/// « → 0.3.4 » pour une nouvelle version, retard d'un build de développement), puis la recherche à la main au bout.
+/// Une nouvelle version la colore et la rend cliquable (fenêtre de mise à jour). Trop étroite (grand texte), elle ne
+/// garde que le point et le numéro ; l'état reste dans l'infobulle.
+struct VersionChip: View {
+    @Environment(AppModel.self) private var model
+    var status = BuildStatus.shared
+
+    var body: some View {
+        let tint = self.tint
+        HStack(spacing: 0) {
+            content
+            if showsCheck {
+                Rectangle()
+                    .fill(tint.opacity(0.25))
+                    .frame(width: 1, height: 11)
+                    .padding(.leading, 6)
+                    .padding(.trailing, 1)
+                UpdateCheckButton(status: status)
+            }
         }
-        .transition(.opacity)
+        .padding(.leading, 9)
+        .padding(.trailing, showsCheck ? 2 : 9)
+        .frame(height: 24)
+        .background(Capsule().fill(tint.opacity(0.1)))
+        .overlay(Capsule().strokeBorder(tint.opacity(0.22), lineWidth: 1))
+        .help(helpText)
+        .animation(Theme.quick, value: status.display)
+    }
+
+    @ViewBuilder private var content: some View {
+        switch status.display {
+        case .available(let release):
+            Button { model.showUpdate(release) } label: { label }
+                .buttonStyle(HoverButtonStyle(treatment: .quiet, tint: Theme.brand))
+        case .development(.behind):
+            Button { NSWorkspace.shared.open(BuildFreshnessCheck.commitsURL) } label: { label }
+                .buttonStyle(HoverButtonStyle(treatment: .quiet, tint: .orange))
+        default:
+            label
+        }
+    }
+
+    private var label: some View {
+        ViewThatFits(in: .horizontal) {
+            row(full: true)
+            row(full: false)
+        }
+    }
+
+    private func row(full: Bool) -> some View {
+        HStack(spacing: 6) {
+            Circle().fill(tint).frame(width: 6, height: 6)
+            Text(verbatim: full ? versionText : (status.version ?? "—"))
+                .font(.system(size: 10.5, weight: .semibold).monospacedDigit())
+                .foregroundStyle(.secondary)
+            if full, let state = stateText {
+                Text(state)
+                    .font(.system(size: 10.5, weight: isAvailable ? .semibold : .regular).monospacedDigit())
+                    .foregroundStyle(isAvailable ? Theme.brand : Color.secondary)
+            }
+        }
+        .lineLimit(1)
+        .fixedSize()
+    }
+
+    /// « 0.3.3 », ou « 0.3.3 · abc1234 » pour un build de développement.
+    private var versionText: String {
+        let version = status.version ?? "—"
+        guard status.kind == .development, let commit = status.commit else { return version }
+        return version + " · " + commit
+    }
+
+    private var stateText: String? {
+        switch status.display {
+        case .upToDate: return String(localized: "À jour")
+        case .available(let release): return "→ " + release.version.description
+        case .development(let freshness): return freshness.label
+        case .unknown: return nil
+        }
+    }
+
+    private var isAvailable: Bool {
+        if case .available = status.display { return true }
+        return false
+    }
+
+    /// La recherche à la main, sauf quand une version est déjà proposée.
+    private var showsCheck: Bool { !isAvailable }
+
+    private var tint: Color {
+        switch status.display {
+        case .upToDate: return .green
+        case .available: return Theme.brand
+        case .development(.behind): return .orange
+        case .development(.upToDate): return .green
+        case .development, .unknown: return .secondary
+        }
+    }
+
+    private var helpText: String {
+        switch status.display {
+        case .available(let release): return DictationCoordinator.updateMessage(release.version)
+        default: return [status.versionLine, stateText].compactMap { $0 }.joined(separator: " · ")
+        }
     }
 }
 

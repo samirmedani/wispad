@@ -221,6 +221,10 @@ enum DesignPreview {
                 }
                 // `--update-preview` : fenêtre de mise à jour avec deux versions à rattraper ; `--installed-preview` :
                 // nouveautés de la version installée. Notes d'exemple, rien n'est demandé à GitHub.
+                // `--footer-preview` : pied de la barre latérale, à jour, nouvelle version, build de développement.
+                if arguments.contains("--footer-preview") {
+                    footerSnapshot(model: model, to: URL(fileURLWithPath: path))
+                }
                 if arguments.contains("--update-preview") || arguments.contains("--installed-preview") {
                     updateSnapshot(model: model, installed: arguments.contains("--installed-preview"),
                                    to: URL(fileURLWithPath: path))
@@ -421,6 +425,42 @@ enum DesignPreview {
         window.contentView?.layoutSubtreeIfNeeded()
         snapshot(window, to: url.deletingPathExtension().appendingPathExtension("report.png"))
         window.orderOut(nil)
+    }
+
+    /// Pied de la barre latérale dans trois états, rendu sans fenêtre, à la largeur de la barre.
+    private static func footerSnapshot(model: AppModel, to url: URL) {
+        func status(release: Bool, latest: String?) -> BuildStatus {
+            var info: [String: Any] = ["CFBundleShortVersionString": "0.3.3"]
+            if release { info[BuildKind.infoKey] = true } else { info[BuildStatus.commitInfoKey] = "4b3ca6d0" }
+            let status = BuildStatus(info: info)
+            if let latest, let version = SemanticVersion(latest) {
+                status.apply(.release(ReleaseInfo(version: version, tag: "v" + latest, notes: "", pageURL: ReleaseCheck.releasesURL,
+                                                  diskImage: nil)))
+            }
+            return status
+        }
+        model.settings.githubStarClicked = true
+        let statuses = [status(release: true, latest: "0.3.3"), status(release: true, latest: "0.3.4"), status(release: false, latest: nil)]
+        for scheme in [ColorScheme.dark, .light] {
+            let board = VStack(alignment: .leading, spacing: 22) {
+                ForEach(statuses.indices, id: \.self) { index in
+                    ProjectFooter(status: statuses[index])
+                }
+            }
+            .frame(width: Theme.sidebarWidth - 24)
+            .padding(16)
+            .background(scheme == .dark ? Color(white: 0.16) : Color(white: 0.95))
+            .environment(model)
+            .environment(\.colorScheme, scheme)
+            .tint(Theme.brand)
+            let renderer = ImageRenderer(content: board)
+            renderer.scale = 2
+            guard let image = renderer.nsImage, let tiff = image.tiffRepresentation,
+                  let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) else { continue }
+            let file = url.deletingPathExtension().appendingPathExtension("footer-\(scheme == .dark ? "dark" : "light").png")
+            try? png.write(to: file)
+            print("SNAPSHOT \(file.path)")
+        }
     }
 
     /// Fenêtre de mise à jour hors écran, avec des notes d'exemple de la forme des vraies.
