@@ -55,10 +55,18 @@ enum DesignPreview {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             var dependencies = AppDependencies()
             let customerPreview = arguments.contains("--customer-preview")
-            dependencies.keyStore = customerPreview ? .file : .vault
-            dependencies.loadKey = { account in customerPreview && account == ProviderID.xai.rawValue ? "fixture-key" : nil }
-            dependencies.refreshKeys = { customerPreview }
+            // `--keys-preview` : clés fictives dans le fichier de l'app, la clé TypeSafe coupée ; `--add-key-preview` ouvre
+            // l'ajout avec une clé fictive de la forme DeepSeek.
+            let keysPreview = arguments.contains("--keys-preview")
+            dependencies.keyStore = customerPreview || keysPreview ? .file : .vault
+            dependencies.loadKey = { account in
+                if keysPreview { return Self.previewKeys[account] }
+                return customerPreview && account == ProviderID.xai.rawValue ? "fixture-key" : nil
+            }
+            dependencies.refreshKeys = { customerPreview || keysPreview }
             model = try AppModel(supportDirectory: directory, settings: AppSettings(), dependencies: dependencies)
+            if keysPreview { model.settings.disabledKeys = [APIKeys.typesafe] }
+            if arguments.contains("--add-key-preview") { model.newKeyDraft = "sk-" + String(repeating: "0", count: 28) + "beef" }
             var audioURL: URL?
             if audioPreview {
                 let url = directory.appendingPathComponent("preview.wav")
@@ -97,8 +105,6 @@ enum DesignPreview {
         }
         if arguments.contains("--fallback-preview") || arguments.contains("--usage-accuracy-preview") { model.selectedSection = .usage }
         if arguments.contains("--blur-recent") { model.settings.blurRecentDictations = true }
-        // `--optional-keys` : clés facultatives dépliées dans Fournisseurs.
-        if arguments.contains("--optional-keys") { model.settings.showsOptionalKeys = true }
         // `--glass-bubble` : style Verre, pour voir ses réglages et leur aperçu.
         if arguments.contains("--glass-bubble") { model.settings.bubbleStyle = .glass }
         if let index = arguments.firstIndex(of: "--settings-tab"), arguments.indices.contains(index + 1),
@@ -403,6 +409,14 @@ enum DesignPreview {
         try? rep.representation(using: .png, properties: [:])?.write(to: url)
         print("SNAPSHOT \(url.path)")
     }
+
+    /// Clés fictives de l'aperçu, de la forme des vraies, fabriquées ici : aucune ne fonctionne.
+    private static let previewKeys: [String: String] = [
+        ProviderID.xai.rawValue: "xai-" + String(repeating: "p", count: 76) + "3f9a",
+        ProviderID.openAI.rawValue: "sk-proj-" + String(repeating: "q", count: 56) + "k2Lm",
+        CleanupModel.deepSeekAccount: "sk-" + String(repeating: "0", count: 28) + "c0de",
+        APIKeys.typesafe: String(repeating: "t", count: 36) + "9d1c",
+    ]
 
     private static let apps: [(name: String, bundle: String)] = [
         ("Slack", "com.tinyspeck.slackmacgap"),

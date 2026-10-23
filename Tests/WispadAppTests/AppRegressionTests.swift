@@ -1949,7 +1949,128 @@ struct AppRegressionTests {
         defer { f.dispose() }
         await f.model.removeKey("xai")
         #expect(deletions == 0)
-        #expect(f.model.keyMessages["xai"] == "Impossible de retirer la clé.")
+        #expect(f.model.keysMessage == "Impossible de retirer la clé.")
+    }
+
+    /// Clé collée : son fournisseur est reconnu à sa forme, elle est vérifiée chez lui seul, puis enregistrée active.
+    @Test func addedKeyFindsItsProviderAndIsCheckedThereOnly() async throws {
+        var checked: [String] = []
+        var stored: [String: String] = [:]
+        let f = try Fixture {
+            $0.loadKey = { stored[$0] }
+            $0.validateKey = { request in checked.append(request.url!.absoluteString); return 200 }
+            $0.saveKey = { account, value in stored[account] = value; return true }
+        }
+        defer { f.dispose() }
+        let deepSeek = "sk-" + String(repeating: "0f", count: 16)
+        f.model.setKeyEnabled("deepseek", false)
+        f.model.newKeyDraft = "  Bearer \(deepSeek) "
+        #expect(await f.model.addKey())
+        #expect(checked == ["https://api.deepseek.com/models"])
+        #expect(stored == ["deepseek": deepSeek])
+        // Une clé ajoutée est active, même si ce compte avait été coupé.
+        #expect(f.model.isKeyEnabled("deepseek"))
+        #expect(f.model.hasKey(account: "deepseek"))
+        #expect(f.model.newKeyDraft.isEmpty)
+        #expect(f.model.keysMessage?.hasPrefix("Clé DeepSeek ajoutée") == true)
+        #expect(f.model.maskedKey("deepseek") == "sk-••••0f0f")
+    }
+
+    /// Clé xAI refusée comme clé d'API : essayée comme clé de gestion, toujours chez xAI.
+    @Test func xaiKeyIsTriedAsAManagementKeyAtXAIOnly() async throws {
+        var checked: [String] = []
+        var saved: [String] = []
+        let f = try Fixture {
+            $0.validateKey = { request in
+                let url = request.url!.absoluteString
+                checked.append(url)
+                return url.contains("management-api.x.ai") ? 200 : 401
+            }
+            $0.saveKey = { account, _ in saved.append(account); return true }
+        }
+        defer { f.dispose() }
+        f.model.newKeyDraft = "xai-" + String(repeating: "m", count: 60)
+        #expect(await f.model.addKey())
+        #expect(checked == ["https://api.x.ai/v1/models", "https://management-api.x.ai/auth/management-keys/validation"])
+        #expect(saved == ["xai-management"])
+        #expect(f.model.keysMessage?.hasPrefix("Clé xAI (gestion) ajoutée") == true)
+    }
+
+    /// Clé refusée, service non pris en charge ou forme inconnue sans choix : rien n'est envoyé ailleurs ni enregistré.
+    @Test func unrecognizedOrRefusedKeysAreNeverSavedOrSentElsewhere() async throws {
+        var checked: [String] = []
+        var saved: [String] = []
+        var status = 401
+        let f = try Fixture {
+            $0.validateKey = { request in checked.append(request.url!.absoluteString); return status }
+            $0.saveKey = { account, _ in saved.append(account); return true }
+        }
+        defer { f.dispose() }
+        f.model.newKeyDraft = "sk-proj-" + String(repeating: "r", count: 60)
+        #expect(await !f.model.addKey())
+        #expect(f.model.keysMessage == "Clé refusée par OpenAI (HTTP 401).")
+        #expect(checked == ["https://api.openai.com/v1/models"])
+
+        checked = []
+        f.model.newKeyDraft = "sk-ant-" + String(repeating: "a", count: 60)
+        #expect(await !f.model.addKey())
+        #expect(f.model.keysMessage == "Clé Anthropic : Wispad ne s'en sert pas.")
+
+        f.model.newKeyDraft = "ts" + String(repeating: "t", count: 40)
+        #expect(await !f.model.addKey())
+        #expect(f.model.keysMessage == "Fournisseur non reconnu : choisis-le dans la liste.")
+        #expect(checked.isEmpty)
+        #expect(saved.isEmpty)
+
+        // Fournisseur choisi à la main : vérifiée chez lui seul.
+        status = 200
+        f.model.newKeyAccount = "typesafe"
+        #expect(await f.model.addKey())
+        #expect(checked == ["https://api.typesafe.ai/v1/models"])
+        #expect(saved == ["typesafe"])
+        #expect(f.model.newKeyAccount == nil)
+    }
+
+    /// Clé coupée : gardée et affichée masquée, mais aucun appel ne s'en sert ; la dictée le dit sans relire le coffre.
+    @Test func disabledKeyIsKeptButNeverUsed() async throws {
+        var refreshes = 0
+        let f = try Fixture { $0.refreshKeys = { refreshes += 1; return true } }
+        defer { f.dispose() }
+        f.model.setKeyEnabled("deepseek", false)
+        f.model.setKeyEnabled("typesafe", false)
+        #expect(f.model.hasStoredKey(account: "deepseek"))
+        #expect(!f.model.hasKey(account: "deepseek"))
+        let request = f.model.speechRequest(context: nil)
+        #expect(request.cleanupKey == nil)
+        #expect(request.judgeKey == nil)
+        #expect(request.apiKey == "fixture-xai")
+        #expect(f.model.correctionServiceName == "OpenAI")
+
+        f.model.setKeyEnabled("xai", false)
+        #expect(f.model.voiceFallback(for: f.model.speechRequest(context: nil)) != nil)
+        await f.model.coordinator.begin(.pushToTalk)
+        #expect(f.audio.starts == 0)
+        #expect(refreshes == 0)
+        #expect(f.model.statusBanner == "Ta clé xAI est coupée dans Fournisseurs.")
+        #expect(f.model.selectedSection == .providers)
+
+        f.model.setKeyEnabled("xai", true)
+        #expect(f.model.speechRequest(context: nil).apiKey == "fixture-xai")
+    }
+
+    /// Supprimer une clé coupée ne la laisse pas coupée : une prochaine clé de ce compte sert tout de suite.
+    @Test func deletingAKeyForgetsThatItWasDisabled() async throws {
+        var deleted: [String] = []
+        let f = try Fixture {
+            $0.keyStore = .file
+            $0.deleteKey = { account in deleted.append(account); return true }
+        }
+        defer { f.dispose() }
+        f.model.setKeyEnabled("openai", false)
+        await f.model.removeKey("openai")
+        #expect(deleted == ["openai"])
+        #expect(f.model.isKeyEnabled("openai"))
+        #expect(f.model.keysMessage == "Clé OpenAI supprimée de ce Mac.")
     }
 
     @Test func customersAreToldToAddTheirKey() async throws {

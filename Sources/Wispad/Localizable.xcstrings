@@ -2313,12 +2313,12 @@
         }
       }
     },
-    "Clé supprimée de ce Mac." : {
+    "Clé %@ supprimée de ce Mac." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Key deleted from this Mac."
+            "value" : "%@ key deleted from this Mac."
           }
         }
       }
@@ -2333,12 +2333,282 @@
         }
       }
     },
-    "Clés facultatives" : {
+    "%@ · sans clé active" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Optional keys"
+            "value" : "%@ · no active key"
+          }
+        }
+      }
+    },
+    "Ajouter une clé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a key"
+          }
+        }
+      }
+    },
+    "Aucune clé active" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No active key"
+          }
+        }
+      }
+    },
+    "Aucune clé pour l'instant. Ajoute celle de ton fournisseur de voix, xAI ou OpenAI, pour dicter." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No keys yet. Add your voice provider's key, xAI or OpenAI, to start dictating."
+          }
+        }
+      }
+    },
+    "Automatique : %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatic: %@"
+          }
+        }
+      }
+    },
+    "Choisir…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose…"
+          }
+        }
+      }
+    },
+    "Clé %@ : Wispad ne s'en sert pas." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ key: Wispad doesn't use it."
+          }
+        }
+      }
+    },
+    "Clé %@ ajoutée %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ key added %2$@."
+          }
+        }
+      }
+    },
+    "Clé %@ reconnue : elle remplacera la clé actuelle." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ key recognized: it will replace the current key."
+          }
+        }
+      }
+    },
+    "Clé %@ reconnue." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ key recognized."
+          }
+        }
+      }
+    },
+    "Clé coupée : gardée, mais pas utilisée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Key turned off: kept, but not used"
+          }
+        }
+      }
+    },
+    "Clé refusée par %@ (HTTP %lld)." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Key rejected by %1$@ (HTTP %2$lld)."
+          }
+        }
+      }
+    },
+    "Clé xAI reconnue : la vérification dira si c'est une clé d'API ou de gestion." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "xAI key recognized: verification will tell whether it's an API key or a management key."
+          }
+        }
+      }
+    },
+    "Colle une clé xAI, OpenAI, DeepSeek ou TypeSafe : son fournisseur est reconnu tout seul." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paste an xAI, OpenAI, DeepSeek or TypeSafe key: its provider is recognized automatically."
+          }
+        }
+      }
+    },
+    "Coupée : gardée, mais Wispad ne s'en sert pas" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Off: kept, but Wispad doesn't use it"
+          }
+        }
+      }
+    },
+    "Coupée dans Réglages" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turned off in Settings"
+          }
+        }
+      }
+    },
+    "Elle est effacée de ce Mac. Tu pourras en ajouter une autre à tout moment." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "It is erased from this Mac. You can add another one at any time."
+          }
+        }
+      }
+    },
+    "Fournisseur non reconnu : choisis-le dans la liste." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Provider not recognized: choose it from the list."
+          }
+        }
+      }
+    },
+    "Fournisseur non reconnu à la forme de la clé : choisis-le." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The key's format doesn't reveal its provider: choose it."
+          }
+        }
+      }
+    },
+    "Nouvelle clé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New key"
+          }
+        }
+      }
+    },
+    "Supprimer la clé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete key"
+          }
+        }
+      }
+    },
+    "Supprimer la clé %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete the %@ key"
+          }
+        }
+      }
+    },
+    "Supprimer la clé %@ ?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete the %@ key?"
+          }
+        }
+      }
+    },
+    "Ta clé %@ est coupée dans Fournisseurs." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your %@ key is turned off in Providers."
+          }
+        }
+      }
+    },
+    "Une clé coupée reste dans le coffre, mais Wispad ne s'en sert plus. Pour en supprimer une, passe par l'outil de ton coffre." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A key that is turned off stays in the vault, but Wispad no longer uses it. To delete one, use your vault's tool."
+          }
+        }
+      }
+    },
+    "Une clé coupée reste enregistrée, mais Wispad ne s'en sert plus." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A key that is turned off stays saved, but Wispad no longer uses it."
+          }
+        }
+      }
+    },
+    "Utiliser la clé %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use the %@ key"
+          }
+        }
+      }
+    },
+    "Wispad utilise cette clé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wispad uses this key"
           }
         }
       }
@@ -3089,16 +3359,6 @@
         }
       }
     },
-    "Enregistrée" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Saved"
-          }
-        }
-      }
-    },
     "enregistrement" : {
       "localizations" : {
         "en" : {
@@ -3419,12 +3679,12 @@
         }
       }
     },
-    "Gestion xAI" : {
+    "xAI (gestion)" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "xAI management"
+            "value" : "xAI (management)"
           }
         }
       }

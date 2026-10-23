@@ -83,7 +83,7 @@ struct SettingsUpgradeTests {
         settings.usageTaxRate = 8.1
         settings.lastSection = .dictionary
         settings.settingsTab = .permissions
-        settings.showsOptionalKeys = true
+        settings.disabledKeys = ["typesafe"]
         settings.dictionaryOriginFilter = .learned
         settings.dictionaryPeriod = .days30
         settings.dictionaryKind = .phrase
@@ -94,6 +94,15 @@ struct SettingsUpgradeTests {
         settings.bubbleStyle = .glass
         settings.bubbleGlass = BubbleGlass(variant: .regular, intensity: 0.6, appearance: .dark)
         return settings
+    }
+
+    /// Clés coupées dans Fournisseurs : absentes (version précédente) ou illisibles, aucune ; lues, elles le restent.
+    @Test func disabledKeysAreReadTolerantly() throws {
+        #expect(try decode(#"{"provider": "openai"}"#).disabledKeys.isEmpty)
+        let wrong = try decode(#"{"disabledKeys": "deepseek", "provider": "openai"}"#)
+        #expect(wrong.disabledKeys.isEmpty)
+        #expect(wrong.provider == .openAI)
+        #expect(try decode(#"{"disabledKeys": ["deepseek", "typesafe"]}"#).disabledKeys == ["deepseek", "typesafe"])
     }
 
     /// Verre de la bulle lu champ par champ : une intensité hors bornes reprend son défaut, le verre choisi reste.

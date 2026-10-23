@@ -42,6 +42,35 @@ enum APIKeys {
     static let typesafe = "typesafe"
     static let accounts = [ProviderID.xai.rawValue, ProviderID.openAI.rawValue, CleanupModel.deepSeekAccount, xaiManagement, typesafe]
 
+    /// Nom d'un compte de clé dans Fournisseurs.
+    static func title(_ account: String) -> String {
+        switch account {
+        case ProviderID.xai.rawValue: return "xAI"
+        case ProviderID.openAI.rawValue: return "OpenAI"
+        case CleanupModel.deepSeekAccount: return "DeepSeek"
+        case xaiManagement: return String(localized: "xAI (gestion)")
+        case typesafe: return "TypeSafe"
+        default: return account
+        }
+    }
+
+    /// Ce à quoi sert la clé de ce compte.
+    static func purpose(_ account: String) -> String {
+        switch account {
+        case ProviderID.xai.rawValue: return String(localized: "Voix recommandée, correction Grok")
+        case ProviderID.openAI.rawValue: return String(localized: "Voix, relais et correction")
+        case CleanupModel.deepSeekAccount: return String(localized: "Correction la moins chère")
+        case xaiManagement: return String(localized: "Affiche le solde prépayé xAI")
+        case typesafe: return String(localized: "Jev, premier avis sur les mots à apprendre ; sans lui, le service de correction juge")
+        default: return ""
+        }
+    }
+
+    /// Fournisseur qui vérifie la clé de ce compte (la clé de gestion xAI se vérifie chez xAI).
+    static func provider(_ account: String) -> String {
+        account == xaiManagement ? "xAI" : title(account)
+    }
+
     static let kind = KeyStoreKind.detect()
     private static let cache = OSAllocatedUnfairLock(initialState: [String: String]())
     private static let log = Logger.wispad("cles")
