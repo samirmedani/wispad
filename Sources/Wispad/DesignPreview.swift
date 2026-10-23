@@ -116,6 +116,11 @@ enum DesignPreview {
            let appearance = GlassAppearance(rawValue: arguments[index + 1]) {
             model.settings.bubbleGlass.appearance = appearance
         }
+        // `--bubble-size 1.4` : taille de la bulle de dictée.
+        if let index = arguments.firstIndex(of: "--bubble-size"), arguments.indices.contains(index + 1),
+           let size = Double(arguments[index + 1]), AppSettings.bubbleSizeRange.contains(size) {
+            model.settings.bubbleSize = size
+        }
         if let index = arguments.firstIndex(of: "--settings-tab"), arguments.indices.contains(index + 1),
            let tab = SettingsTab(rawValue: arguments[index + 1]) {
             model.settings.settingsTab = tab

@@ -3,6 +3,17 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.3.2 — 23 octobre 2026
+
+La bulle de dictée se règle à ta taille.
+
+> Depuis la 0.2.0 : si la mise à jour reste sur « Relance… », ferme cette fenêtre, puis quitte Wispad et rouvre-le.
+> La 0.3.2 est déjà installée.
+
+**Nouveau**
+- Réglages › Bulle › Taille de la bulle : de 80 % à 160 %. Le spectre et les boutons des mains libres grandissent avec elle, les messages gardent leur taille. L'aperçu et la bulle affichée suivent le curseur.
+- Une nouvelle installation commence toujours avec la bulle en Noir profond.
+
 ## 0.3.1 — 23 octobre 2026
 
 Si tu sors du champ pendant que tu dictes, Wispad le voit et te garde le texte prêt.

@@ -10776,6 +10776,26 @@
           }
         }
       }
+    },
+    "Taille de la bulle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bubble size"
+          }
+        }
+      }
+    },
+    "Le spectre et ses boutons grandissent avec elle ; les messages gardent leur taille." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The spectrum and its buttons grow with it; messages keep their size."
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

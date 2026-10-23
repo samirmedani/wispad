@@ -356,6 +356,11 @@ enum SettingsPresentation {
         summary: String(localized: "Pour la bulle de dictée comme pour ses messages ; le spectre garde ses couleurs.")
     )
 
+    static let bubbleSize = SettingText(
+        title: String(localized: "Taille de la bulle"),
+        summary: String(localized: "Le spectre et ses boutons grandissent avec elle ; les messages gardent leur taille.")
+    )
+
     static let glassAppearance = SettingText(
         title: String(localized: "Apparence du verre"),
         summary: String(localized: "Clair, sombre, ou comme l'app."),

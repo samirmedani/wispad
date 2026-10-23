@@ -95,7 +95,14 @@ struct PillMetrics {
     static let black = PillMetrics(height: 30, spectrumPadding: 14, symbolSize: 10)
     static let glass = PillMetrics(height: 40, spectrumPadding: 18, symbolSize: 12)
 
-    static func of(_ style: BubbleStyle) -> PillMetrics { style == .glass ? glass : black }
+    /// `size` : taille choisie dans Réglages › Bulle (1 = taille d'origine du style). Hauteur arrondie au point.
+    static func of(_ style: BubbleStyle, size: Double = 1) -> PillMetrics {
+        let base = style == .glass ? glass : black
+        guard size != 1 else { return base }
+        let factor = CGFloat(size)
+        return PillMetrics(height: (base.height * factor).rounded(), spectrumPadding: base.spectrumPadding * factor,
+                           symbolSize: base.symbolSize * factor)
+    }
 
     var spectrumScale: CGFloat { height / Self.black.height }
     var cornerRadius: CGFloat { height / 2 }
@@ -158,8 +165,8 @@ enum OverlayLayout {
     }
 
     /// Taille maximale de ce que montre la bulle dans ce mode, pour la garder à l'écran et hors du champ.
-    static func contentSize(for mode: OverlayMode, hasReadyText: Bool, style: BubbleStyle = .black) -> CGSize {
-        let pill = PillMetrics.of(style)
+    static func contentSize(for mode: OverlayMode, hasReadyText: Bool, style: BubbleStyle = .black, size: Double = 1) -> CGSize {
+        let pill = PillMetrics.of(style, size: size)
         switch mode {
         case .listening, .finishing: return CGSize(width: pill.spectrumWidth, height: pill.height)
         case .handsFree: return CGSize(width: pill.handsFreeWidth, height: pill.height)
@@ -411,6 +418,7 @@ struct OverlayCluster: View {
         }
         .environment(\.bubbleStyle, style)
         .environment(\.bubbleGlass, model.settings.bubbleGlass)
+        .environment(\.bubbleSize, model.settings.bubbleSize)
     }
 
     /// De la bulle de dictée à un message, et retour : fondu avec un léger rebond depuis le bas.
@@ -432,7 +440,7 @@ struct OverlayCluster: View {
 
     private func cluster(glassy: Bool) -> some View {
         let coordinator = model.coordinator
-        let pill = PillMetrics.of(model.settings.bubbleStyle)
+        let pill = PillMetrics.of(model.settings.bubbleStyle, size: model.settings.bubbleSize)
         let handsFree = mode == .handsFree
         let reach = handsFree ? pill.orbReach : 0
         // Sous la pilule, le verre se confond avec elle ; sans verre, le bouton caché doit s'effacer.
@@ -469,10 +477,11 @@ struct OverlayCluster: View {
 /// Contenu de la bulle de dictée : spectre ou vague de finalisation, en fondu enchaîné. Les messages ont leur bulle.
 struct OverlayPill: View {
     @Environment(\.bubbleStyle) private var style
+    @Environment(\.bubbleSize) private var size
     var mode: OverlayMode
 
     var body: some View {
-        let pill = PillMetrics.of(style)
+        let pill = PillMetrics.of(style, size: size)
         ZStack {
             switch mode {
             case .listening, .handsFree:
@@ -548,12 +557,13 @@ private struct OverlayGlass<S: InsettableShape>: ViewModifier {
 struct LiveSpectrum: View {
     @Environment(AppModel.self) private var model
     @Environment(\.bubbleStyle) private var style
+    @Environment(\.bubbleSize) private var size
 
     var body: some View {
         let coordinator = model.coordinator
         let tint = coordinator.relay == nil ? OverlayStyle.red : OverlayStyle.relay
         SpectrumBars(levels: coordinator.spectrum, color: tint.opacity(coordinator.isListening ? 1 : 0.45),
-                     scale: PillMetrics.of(style).spectrumScale)
+                     scale: PillMetrics.of(style, size: size).spectrumScale)
             .lensHalo()
     }
 }
@@ -617,6 +627,7 @@ struct SpectrumBars: View {
 struct ProcessingBars: View {
     @Environment(\.overlayReduceMotion) private var reduceMotion
     @Environment(\.bubbleStyle) private var style
+    @Environment(\.bubbleSize) private var size
     @Environment(AppModel.self) private var model
 
     var body: some View {
@@ -624,7 +635,7 @@ struct ProcessingBars: View {
             let levels = Self.levels(at: timeline.date.timeIntervalSinceReferenceDate, reduceMotion: reduceMotion)
             let idle = style == .glass ? Color.primary.opacity(0.5) : Color.white.opacity(0.55)
             SpectrumBars(levels: levels, color: model.coordinator.relay == nil ? idle : OverlayStyle.relay.opacity(0.8),
-                         scale: PillMetrics.of(style).spectrumScale)
+                         scale: PillMetrics.of(style, size: size).spectrumScale)
                 .lensHalo()
         }
     }
@@ -646,6 +657,7 @@ struct ProcessingBars: View {
 /// Bouton rond en verre, soudé à la pilule en mains libres. Caché, il reste sous la pilule, inerte.
 struct OverlayOrbButton: View {
     @Environment(\.bubbleStyle) private var style
+    @Environment(\.bubbleSize) private var size
     var symbol: String
     var tint: Color
     var help: String
@@ -655,7 +667,7 @@ struct OverlayOrbButton: View {
     var action: () -> Void
 
     var body: some View {
-        let pill = PillMetrics.of(style)
+        let pill = PillMetrics.of(style, size: size)
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: pill.symbolSize, weight: .bold))
@@ -719,6 +731,8 @@ extension EnvironmentValues {
     /// Style de la bulle et verre du style Verre, posés par OverlayCluster depuis Réglages › Bulle.
     @Entry var bubbleStyle = BubbleStyle.black
     @Entry var bubbleGlass = BubbleGlass()
+    /// Taille de la bulle de dictée (Réglages › Bulle), 1 à la taille d'origine du style.
+    @Entry var bubbleSize = 1.0
 }
 
 /// Couleurs d'un message : blanc sur le noir profond, couleurs de macOS sur le verre (clair ou sombre).
@@ -1299,7 +1313,7 @@ final class OverlayController {
     /// Cadre de la bulle (taille la plus grande de ce mode) dans ce panneau, en coordonnées écran.
     private func bubbleFrame(in panel: NSPanel) -> CGRect {
         let size = OverlayLayout.contentSize(for: state.mode, hasReadyText: model?.coordinator.failureText != nil,
-                                             style: model?.settings.bubbleStyle ?? .black)
+                                             style: model?.settings.bubbleStyle ?? .black, size: model?.settings.bubbleSize ?? 1)
         return OverlayGeometry.bubble(bottomCenter: OverlayLayout.bottomCenter(of: panel.frame), contentSize: size)
     }
 
@@ -1363,7 +1377,7 @@ final class OverlayController {
         let placement = model.settings.overlayPlacement
         let role = mode.isMessage ? (previewRole ?? mode.role) : mode.role
         let size = OverlayLayout.contentSize(for: mode, hasReadyText: model.coordinator.failureText != nil,
-                                             style: model.settings.bubbleStyle)
+                                             style: model.settings.bubbleStyle, size: model.settings.bubbleSize)
         let zone = mode.isMessage && placement.avoidsInput && previewRole == nil
             ? InputZoneTracker.zone(frontmost: NSWorkspace.shared.frontmostApplication?.processIdentifier) : nil
         let shown = panel.flatMap { $0.isVisible ? $0 : nil }

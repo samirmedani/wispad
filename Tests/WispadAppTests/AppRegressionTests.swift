@@ -1504,6 +1504,37 @@ struct AppRegressionTests {
         #expect(f.model.bubbleLook == .clearGlass)
     }
 
+    /// Taille choisie dans Réglages › Bulle : la vraie bulle (spectre, boutons des mains libres) prend la place
+    /// réservée à cette taille, et à la plus grande, elle et son ombre tiennent encore dans le panneau.
+    @Test func bubbleSizeScalesTheDictationBubble() async throws {
+        let f = try Fixture()
+        defer { f.dispose() }
+        f.model.coordinator.spectrum = Array(repeating: 0.6, count: DictationCoordinator.barCount)
+        f.model.settings.bubbleSize = 1.5
+        for (style, height) in [(BubbleStyle.black, CGFloat(45)), (.glass, 60)] {
+            f.model.settings.bubbleStyle = style
+            for mode in [OverlayMode.listening, .handsFree] {
+                let renderer = ImageRenderer(content: OverlayCluster(mode: mode)
+                    .environment(f.model)
+                    .environment(\.colorScheme, .dark)
+                    .environment(\.overlayGlass, false))
+                renderer.scale = 2
+                let image = try #require(renderer.nsImage)
+                let reserved = OverlayLayout.contentSize(for: mode, hasReadyText: false, style: style, size: 1.5)
+                #expect(reserved.height == height)
+                #expect(abs(image.size.height - height) <= 1, "\(style) \(mode)")
+                #expect(abs(image.size.width - reserved.width) <= 2, "\(style) \(mode)")
+            }
+        }
+        let shadow = 2 * OverlayStyle.shadowRadius + OverlayStyle.shadowOffset
+        for style in BubbleStyle.allCases {
+            let largest = OverlayLayout.contentSize(for: .handsFree, hasReadyText: false, style: style,
+                                                    size: AppSettings.bubbleSizeRange.upperBound)
+            #expect(largest.width + 2 * shadow <= OverlayLayout.panelSize.width, "\(style)")
+            #expect(largest.height + OverlayLayout.bottomMargin + shadow <= OverlayLayout.panelSize.height, "\(style)")
+        }
+    }
+
     /// La pilule de dictée tient dans la place que la bulle lui réserve à l'écran, dans chaque style : 30 pt en noir
     /// profond, comme toujours ; 40 pt en verre, boutons des mains libres compris, sans devenir encombrante.
     @Test func dictationPillMatchesItsPlacementSizeInEveryStyle() async throws {

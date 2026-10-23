@@ -34,6 +34,21 @@ struct BubbleLookSection: View {
                 }
             }
             .padding(.vertical, 4)
+            SettingRow(text: SettingsPresentation.bubbleSize) {
+                // La bulle et l'aperçu suivent le curseur ; le réglage s'enregistre au relâchement.
+                Slider(value: Binding(
+                    get: { model.settings.bubbleSize },
+                    set: { model.settings.bubbleSize = ($0 * 10).rounded() / 10 }
+                ), in: AppSettings.bubbleSizeRange, step: 0.1) { editing in
+                    if !editing { model.saveSettings() }
+                }
+                .labelsHidden()
+                .frame(width: 170)
+                Text(model.settings.bubbleSize, format: .percent.precision(.fractionLength(0)))
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                    .frame(width: 42, alignment: .trailing)
+            }
             if look != .black {
                 SettingRow(text: SettingsPresentation.glassAppearance) {
                     Picker(SettingsPresentation.glassAppearance.title, selection: Binding(
@@ -138,9 +153,10 @@ struct BubblePreview: View {
                     .modifier(BubbleScheme(style: model.settings.bubbleStyle))
             }
         }
-        .frame(height: 180)
+        .frame(height: 190)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .bubbleLook(model.bubbleLook, glass: model.settings.bubbleGlass)
+        .environment(\.bubbleSize, model.settings.bubbleSize)
         .accessibilityHidden(true)
     }
 }
@@ -172,13 +188,14 @@ struct BubbleScene: View {
 /// spectre, et les boutons des mains libres si demandés.
 struct BubbleSample: View {
     @Environment(\.bubbleStyle) private var style
+    @Environment(\.bubbleSize) private var size
     @Namespace private var glass
     var orbs = false
 
     private static let levels: [Float] = [0.18, 0.3, 0.5, 0.72, 0.9, 1, 0.86, 0.66, 0.44, 0.26, 0.14]
 
     var body: some View {
-        let pill = PillMetrics.of(style)
+        let pill = PillMetrics.of(style, size: size)
         HStack(spacing: OverlayLayout.orbGap) {
             if orbs {
                 orb("xmark", tint: style == .glass ? Color.primary.opacity(0.8) : .white.opacity(0.78), id: "sample-cancel", pill: pill)

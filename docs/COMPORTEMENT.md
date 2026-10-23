@@ -147,6 +147,12 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   dictée) ou teinte le dépoli (jusqu'à 70 %). Un grand aperçu sous ces réglages montre la bulle des mains libres et un
   message dans le style choisi ; il suit le curseur, comme la bulle affichée. La densité s'enregistre au relâchement
   du curseur. Un verre « Transparent » choisi avant la 0.3.0 devient ce verre sans flou.
+- **Taille de la bulle** (Réglages › Bulle, sous les cartes) : de 80 % à 160 %, par pas de 10 % (100 % par défaut).
+  La bulle de dictée, son spectre (en dessin net) et les boutons ✕ / ■ des mains libres grandissent ensemble ; les
+  messages et les cartes gardent leur taille. La place réservée à la bulle (position, écart du champ de saisie, zone
+  cliquable) suit la taille. À 160 %, la bulle des mains libres et son ombre tiennent encore dans le panneau. La
+  bulle affichée et l'aperçu suivent le curseur ; la taille s'enregistre au relâchement. Une nouvelle installation
+  commence en **Noir profond**, à 100 %.
 - **Place à l'écran** (Réglages › Bulle et messages) : trois places réglables à main levée sur un schéma quadrillé
   de l'écran, la grille aimantant légèrement les bulles. **Dictée** (spectre et finalisation), **Alertes de
   collage** (texte prêt à copier) et **Messages** (« Collé », mot appris, relais, nouvelle version). Par défaut :
