@@ -184,6 +184,13 @@ enum TextInserter {
         guard !field.isSecure, !Self.secureInputBlocks(target: pid, field: field, system: system) else { return .refusedSecure }
         let kind = field.kind(bundleID: bundle)
         guard kind != .notText else { return .noTarget }
+        if Self.leftTextField(context: context, field: field, kind: kind, pid: pid) {
+            log.notice("collage retenu : le curseur a quitté le champ du début de la dictée")
+            context.leftTextField = true
+            // Pas de ⌘V : la zone de saisie est quand même repérée, pour que la carte « Texte prêt » ne la couvre pas.
+            InputZoneTracker.note(await system.locate(pid), pid: pid)
+            return .noTarget
+        }
         let memory = previousMemory(pid: pid, element: field.element)
         let joined = SmartJoin.adjust(text, before: SmartJoin.textBefore(
             read: field.before, previous: memory?.text, previousConfirmed: memory != nil
@@ -248,6 +255,17 @@ enum TextInserter {
     private static func finishTurn(_ done: AsyncResult<Void>) {
         done.resolve(.success(()))
         if tail === done { tail = nil }
+    }
+
+    /// Le curseur a quitté le champ pendant la dictée : elle a commencé dans un champ de texte de cette app, et le focus
+    /// est maintenant sur un autre élément lisible qui n'en est pas un (la page, la conversation, un groupe). Cette app
+    /// expose ses champs (celui du début a été lu) : ce n'est pas un éditeur caché, et un ⌘V partirait dans le vide,
+    /// sans que rien ne puisse le prouver ensuite. Un focus illisible ne prouve rien : le collage reste envoyé.
+    static func leftTextField(context: DictationContext, field: InsertionField, kind: FocusedFieldKind, pid: pid_t) -> Bool {
+        guard context.startedInTextField, context.pid == pid, kind != .text, field.role != nil,
+              let now = field.element else { return false }
+        if let start = context.element, CFEqual(start, now) { return false }
+        return true
     }
 
     /// Attente des touches modificatrices tenues au moment de coller (raccourci de capture d'écran, touche gardée

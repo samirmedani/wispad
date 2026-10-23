@@ -74,6 +74,43 @@ struct TextInsertionTests {
         #expect(f.keys == 1)
     }
 
+    /// Curseur sorti du champ pendant la dictée : elle avait commencé dans un champ de texte, le focus est maintenant
+    /// sur la page (lisible, sans texte). Aucun ⌘V dans le vide : le texte reste prêt, et la bulle dit pourquoi.
+    @Test func leavingTheFieldDuringTheDictationKeepsTheTextReady() async {
+        let f = InsertionFixture(); defer { f.dispose() }
+        f.context.element = AXUIElementCreateApplication(51_515)
+        f.context.startedInTextField = true
+        f.field = InsertionField(element: AXUIElementCreateApplication(61_616), role: "AXWebArea")
+        #expect(await f.insert() == .noTarget)
+        #expect(f.keys == 0 && f.sent == 0)
+        #expect(f.context.leftTextField)
+        #expect(f.board.string(forType: .string) == "Copie conservée")
+        #expect(DictationCoordinator.readyReason(for: .noTarget, leftTextField: f.context.leftTextField) == "Le curseur a quitté le champ")
+        InputZoneTracker.reset()
+    }
+
+    /// Sans preuve que le curseur a quitté un vrai champ, le collage part comme avant : focus illisible (Electron),
+    /// dictée commencée hors d'un champ de texte, ou même élément qu'au début.
+    @Test func noProofOfLeavingTheFieldStillPastes() async {
+        let f = InsertionFixture(); defer { f.dispose() }
+        f.deliver = false
+        f.context.startedInTextField = true
+        f.field = InsertionField()
+        #expect(await f.insert() == .pasteSent)
+
+        f.context.startedInTextField = false
+        f.field = InsertionField(element: AXUIElementCreateApplication(61_616), role: "AXWebArea")
+        #expect(await f.insert() == .pasteSent)
+
+        let page = AXUIElementCreateApplication(61_616)
+        f.context.startedInTextField = true
+        f.context.element = page
+        f.field = InsertionField(element: page, role: "AXGroup")
+        #expect(await f.insert() == .pasteSent)
+        #expect(f.keys == 3)
+        #expect(!f.context.leftTextField)
+    }
+
     /// Une app occupée lit le presse-papiers tard : sans confirmation, la dictée y reste le temps prévu.
     @Test func aSlowAppStillFindsTheDictationOnTheClipboard() async throws {
         let f = InsertionFixture(); defer { f.dispose() }

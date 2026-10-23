@@ -897,7 +897,7 @@ final class DictationCoordinator {
             if let note = job.announcement { pendingAnnouncement = note.message }
         } else {
             offerReadyText(finalText, status: status, recordID: record.id, accessibilityRefused: context.accessibilityRefused,
-                           heldModifiers: context.heldModifiers)
+                           heldModifiers: context.heldModifiers, leftTextField: context.leftTextField)
         }
         // La bulle part d'abord ; le ménage des vieux audios vient après.
         settle(job)
@@ -945,8 +945,10 @@ final class DictationCoordinator {
     /// Raison courte, sous le titre « Texte prêt à copier » de la carte, qui dit déjà que le texte attend. Collage
     /// refusé faute d'accessibilité : laquelle manque, plutôt qu'un texte « pas arrivé » jamais envoyé. Collage
     /// retenu parce qu'une touche modificatrice est restée tenue : laquelle.
-    static func readyReason(for status: InsertionStatus, accessibilityRefused: Bool = false, heldModifiers: UInt64 = 0) -> String {
+    static func readyReason(for status: InsertionStatus, accessibilityRefused: Bool = false, heldModifiers: UInt64 = 0,
+                            leftTextField: Bool = false) -> String {
         if accessibilityRefused { return String(localized: "Accessibilité non autorisée") }
+        if status == .noTarget, leftTextField { return String(localized: "Le curseur a quitté le champ") }
         if status == .failed, heldModifiers != 0 {
             let keys = TextInserter.modifierNames(heldModifiers)
             return (heldModifiers & ModifierMask.relevant).nonzeroBitCount == 1
@@ -963,8 +965,10 @@ final class DictationCoordinator {
 
     /// Message complet, hors de la carte (menu de Wispad, bandeau de la fenêtre) : la raison, puis que le texte
     /// attend. Toujours suivi de Copier dans la bulle.
-    static func readyMessage(for status: InsertionStatus, accessibilityRefused: Bool = false, heldModifiers: UInt64 = 0) -> String {
-        let reason = readyReason(for: status, accessibilityRefused: accessibilityRefused, heldModifiers: heldModifiers)
+    static func readyMessage(for status: InsertionStatus, accessibilityRefused: Bool = false, heldModifiers: UInt64 = 0,
+                             leftTextField: Bool = false) -> String {
+        let reason = readyReason(for: status, accessibilityRefused: accessibilityRefused, heldModifiers: heldModifiers,
+                                 leftTextField: leftTextField)
         guard accessibilityRefused || status != .failed || heldModifiers != 0 else { return reason }
         return String(localized: "\(reason) : le texte est prêt")
     }
@@ -972,12 +976,14 @@ final class DictationCoordinator {
     /// Échec avéré : le texte reste récupérable sans voler le focus. Il est copié, sauf vers un champ sécurisé
     /// où il ne doit pas traîner dans le presse-papiers.
     private func offerReadyText(_ text: String, status: InsertionStatus, recordID: String?, accessibilityRefused: Bool = false,
-                                heldModifiers: UInt64 = 0) {
+                                heldModifiers: UInt64 = 0, leftTextField: Bool = false) {
         guard let model else { return }
         if status != .refusedSecure { model.dependencies.copyText(text) }
         Self.insertionLog.notice("récupération du collage : \(status.rawValue, privacy: .public)")
-        let message = Self.readyMessage(for: status, accessibilityRefused: accessibilityRefused, heldModifiers: heldModifiers)
-        let reason = Self.readyReason(for: status, accessibilityRefused: accessibilityRefused, heldModifiers: heldModifiers)
+        let message = Self.readyMessage(for: status, accessibilityRefused: accessibilityRefused, heldModifiers: heldModifiers,
+                                        leftTextField: leftTextField)
+        let reason = Self.readyReason(for: status, accessibilityRefused: accessibilityRefused, heldModifiers: heldModifiers,
+                                      leftTextField: leftTextField)
         model.statusBanner = message
         showFailure(message, text: text, recordID: recordID, detail: reason)
     }

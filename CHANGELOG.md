@@ -3,6 +3,16 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.3.1 — 23 octobre 2026
+
+Si tu sors du champ pendant que tu dictes, Wispad le voit et te garde le texte prêt.
+
+> Depuis la 0.2.0 : si la mise à jour reste sur « Relance… », ferme cette fenêtre, puis quitte Wispad et rouvre-le.
+> La 0.3.1 est déjà installée.
+
+**Corrigé**
+- Curseur sorti du champ pendant la dictée (un clic sur la conversation ou la page) : Wispad collait dans le vide sans rien dire. Il ne colle plus et affiche la carte « Texte prêt à copier · Le curseur a quitté le champ », avec Coller et Copier. Le texte est déjà copié.
+
 ## 0.3.0 — 23 octobre 2026
 
 La bulle refaite : un vrai verre transparent, une ombre propre et un réglage du style qui montre la bulle en vrai.
