@@ -10766,6 +10766,16 @@
           }
         }
       }
+    },
+    "Le curseur a quitté le champ" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The cursor left the field"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

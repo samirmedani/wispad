@@ -18,6 +18,12 @@ final class DictationContext: @unchecked Sendable {
     /// Le collage n'a pas été tenté : ces touches modificatrices (masques `ModifierMask`) étaient encore tenues au
     /// bout de l'attente. Noté par l'insertion, pour que la bulle dise laquelle.
     var heldModifiers: UInt64 = 0
+    /// La dictée a commencé dans un champ de texte reconnu (rôle de texte ou curseur de texte) : l'app expose ses
+    /// champs à l'accessibilité.
+    var startedInTextField = false
+    /// Le collage n'a pas été tenté : le curseur a quitté ce champ pendant la dictée. Noté par l'insertion, pour que
+    /// la bulle le dise.
+    var leftTextField = false
     /// Le champ actif a été lu (ou sa lecture a échoué) : rien de plus à attendre.
     private(set) var fieldRead = false
 
@@ -28,6 +34,7 @@ final class DictationContext: @unchecked Sendable {
         isSecure = field.isSecure
         selectedText = field.selectedText
         nearbyText = field.nearbyText
+        startedInTextField = field.isTextField
     }
 }
 
@@ -37,6 +44,8 @@ struct FieldSnapshot: @unchecked Sendable {
     var isSecure = false
     var selectedText: String?
     var nearbyText: String?
+    /// Rôle de texte ou curseur de texte : un vrai champ, pas la page ni un conteneur.
+    var isTextField = false
 }
 
 /// Valeur qui traverse vers un autre fil sans être Sendable (éléments d'accessibilité) : un seul fil s'en sert à la fois.
@@ -90,6 +99,8 @@ enum ContextProbe {
         var field = FieldSnapshot(element: element)
         field.isSecure = isSecure(element)
         guard !field.isSecure else { return field }
+        field.isTextField = FocusedField.kind(role: string(kAXRoleAttribute, element), subrole: string(kAXSubroleAttribute, element),
+                                              hasTextCursor: selectedRange(element) != nil, bundleID: nil) == .text
         field.selectedText = string(kAXSelectedTextAttribute, element)
         if let count = number(kAXNumberOfCharactersAttribute, element), count <= 4_000,
            let value = string(kAXValueAttribute, element) {

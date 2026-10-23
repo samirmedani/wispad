@@ -730,7 +730,8 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
   (titre de 14 points), avec sous le titre la seule raison (12 points) et des boutons de 30 points sur une ligne
   séparée, **Copier** en évidence et **Coller** : « Pas de champ où écrire » (focus sur une liste, un bouton, un
   menu, ou le bureau et les fenêtres du Finder, avant l'envoi), « Le texte n'est pas arrivé dans le champ » (champ
-  lisible resté identique 1 s après ⌘V), « Accessibilité non autorisée » (accessibilité retirée dans Réglages
+  lisible resté identique 1 s après ⌘V), « Le curseur a quitté le champ » (voir ci-dessous), « Accessibilité non
+  autorisée » (accessibilité retirée dans Réglages
   Système, ou jamais donnée : ni ⌘V ni lecture du champ), « Collage impossible » (app cible fermée ou qui a perdu le
   premier plan, presse-papiers non modifiable, ⌘V non envoyé), « Champ sécurisé ». Le menu de Wispad et le bandeau
   de la fenêtre, sans ce titre, ajoutent « : le texte est prêt » (« Pas de champ où écrire : le texte est prêt »).
@@ -739,6 +740,13 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
   presse-papiers et confirme « Copié » (1,5 s), **Coller** le colle dans le champ de l'app active (même collage que
   « Coller la dernière dictée »). Le collage garde tous les formats du presse-papiers précédent et refuse les champs
   sécurisés.
+- Curseur sorti du champ pendant la dictée : elle a commencé dans un champ de texte reconnu (rôle de texte ou curseur
+  de texte), et au moment de coller, le focus de la même app est sur un autre élément lisible qui n'en est pas un (la
+  page, la conversation, un groupe). L'app expose ses champs, puisque celui du début a été lu : ce n'est pas un
+  éditeur caché. Aucun ⌘V n'est envoyé (il partirait dans le vide sans que rien ne le prouve), la carte « Texte prêt
+  à copier » dit « Le curseur a quitté le champ » ; **Coller** l'écrit là où le curseur est revenu. Un focus illisible
+  (apps Electron qui n'exposent rien), une dictée commencée hors d'un champ ou le même élément qu'au début : le
+  collage part comme avant.
 - Champ sécurisé : un champ de mot de passe lu comme tel par l'accessibilité, ou la saisie sécurisée de macOS tenue
   par l'app où l'on dicte (sauf dans un champ lu, non sécurisé, avec curseur de texte), ou tenue par une app que macOS
   ne nomme pas. Tenue par une autre app (un champ de mot de passe resté actif dans Chrome, un gestionnaire de mots de
