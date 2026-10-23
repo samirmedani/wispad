@@ -52,7 +52,10 @@ final class AppModel {
     var xaiAccount: XAIAccountStatus?
     var xaiBalance: String?
     /// Dernière lecture des clés : sert aussi à rafraîchir l'interface quand elles changent.
-    var keysLoadedAt: Date?
+    /// Clés relues, ajoutées ou supprimées : un relais pas encore choisi prend le premier possible.
+    var keysLoadedAt: Date? {
+        didSet { settleRelays() }
+    }
     /// Le coffre (ou le fichier des clés) a répondu à la dernière lecture.
     var keysReachable = true
     var statusBanner: String?
@@ -435,8 +438,8 @@ final class AppModel {
             let provider = ProviderID.allCases.first { ServiceHealth.voice($0) == service }
             let name = provider?.displayName ?? service
             guard let provider else { return String(localized: "\(name) en pause") }
-            let other: ProviderID = provider == .xai ? .openAI : .xai
-            return hasKey(other) ? String(localized: "\(name) en pause : voix via \(other.displayName)") : String(localized: "\(name) en pause")
+            guard let relay = voiceRelayModel(for: provider), hasKey(relay.provider) else { return String(localized: "\(name) en pause") }
+            return String(localized: "\(name) en pause : voix via \(relay.provider.displayName)")
         }
     }
 
@@ -561,6 +564,7 @@ final class AppModel {
         guard isKeyEnabled(account) != enabled else { return }
         if enabled { settings.disabledKeys.remove(account) } else { settings.disabledKeys.insert(account) }
         saveSettings()
+        if enabled { settleRelays() }
     }
 
     /// « xai-••••3f9a » : jamais la clé elle-même.
@@ -603,8 +607,62 @@ final class AppModel {
 
     func selectProvider(_ provider: ProviderID) {
         guard provider != settings.provider else { return }
+        // Le relais de la voix était chez le nouveau principal : l'ancien principal devient le relais.
+        if ProviderCatalog.model(id: settings.voiceRelay, provider: provider) != nil {
+            settings.voiceRelay = settings.liveModel
+        }
         settings.provider = provider
         saveSettings()
+    }
+
+    // MARK: - Relais
+
+    /// Relais pas encore choisis dans Fournisseurs › Modèles : dès qu'un relais est possible avec les clés actives,
+    /// celui que l'ordre automatique prendrait est enregistré comme choix. Ensuite, il ne change plus qu'à la main :
+    /// une clé coupée ou ajoutée ne le remplace pas.
+    func settleRelays() {
+        var changed = false
+        let other = settings.provider.other
+        if settings.voiceRelay.isEmpty, hasKey(other) {
+            settings.voiceRelay = other.defaultLiveModel
+            changed = true
+        }
+        if settings.cleanupRelay == .automatic, let relay = automaticCleanupRelay() {
+            settings.cleanupRelay = relay
+            changed = true
+        }
+        if changed { saveSettings() }
+    }
+
+    /// Relais que l'ordre automatique prendrait après le service principal, hors panne en cours ; nil sans second
+    /// service possible.
+    func automaticCleanupRelay() -> CleanupChoice? {
+        var speech = speechRequest(context: nil)
+        speech.cleanupRelay = .automatic
+        speech.cleanupPrimaryDown = false
+        let services = TextCleaner.services(speech)
+        guard services.count > 1 else { return nil }
+        return CleanupChoice(rawValue: services[1].model)
+    }
+
+    /// Relais de la correction tel qu'affiché dans Fournisseurs : le choix enregistré, ou tant qu'il n'y en a pas, celui
+    /// que les clés actives permettraient (« Aucun relais » sinon).
+    var displayedCleanupRelay: CleanupChoice {
+        settings.cleanupRelay == .automatic ? automaticCleanupRelay() ?? .off : settings.cleanupRelay
+    }
+
+    /// Modèle relais de la voix quand `provider` est le principal : celui choisi dans Fournisseurs, le recommandé de
+    /// l'autre fournisseur tant qu'aucun ne l'est ; nil pour « Aucun relais ».
+    func voiceRelayModel(for provider: ProviderID) -> SpeechModel? {
+        let other = provider.other
+        if settings.voiceRelay == AppSettings.voiceRelayOff { return nil }
+        return ProviderCatalog.model(id: settings.voiceRelay, provider: other)
+            ?? ProviderCatalog.liveModel(id: other.defaultLiveModel, provider: other)
+    }
+
+    /// Relais de la voix choisi à la main (enregistré), même sans clé : pour signaler une clé qui manque.
+    var chosenVoiceRelay: SpeechModel? {
+        ProviderCatalog.model(id: settings.voiceRelay, provider: settings.provider.other)
     }
 
     func apiKey() -> String? {
@@ -957,7 +1015,10 @@ final class AppModel {
             judgeKey: key(APIKeys.typesafe),
             cleanupChoice: settings.cleanupChoice,
             // Clé du modèle choisi absente ou coupée : nil, la correction reste automatique.
-            chosenCleanupKey: settings.cleanupChoice.account.flatMap { key($0) }
+            chosenCleanupKey: settings.cleanupChoice.account.flatMap { key($0) },
+            // Tant que le relais n'est pas choisi (`.automatic`), l'ordre automatique, celui que `settleRelays` retient.
+            cleanupRelay: settings.cleanupRelay,
+            relayCleanupKey: settings.cleanupRelay.account.flatMap { key($0) }
         )
     }
 
@@ -1017,13 +1078,11 @@ final class AppModel {
         TextCleaner.services(speechRequest(context: nil)).first?.provider
     }
 
-    /// Même dictée envoyée à l'autre fournisseur vocal, si sa clé est là (OpenAI quand xAI ne répond pas).
+    /// Même dictée envoyée au relais de la voix choisi dans Fournisseurs (l'autre fournisseur), si sa clé est active.
     func voiceFallback(for speech: SpeechRequest) -> SpeechRequest? {
-        let other: ProviderID = speech.provider == .xai ? .openAI : .xai
-        guard let key = key(other.rawValue) else { return nil }
-        let chosen = ProviderCatalog.liveModel(id: other.defaultLiveModel, provider: other)
+        guard let chosen = voiceRelayModel(for: speech.provider), let key = key(chosen.provider.rawValue) else { return nil }
         var fallback = speech
-        fallback.provider = other
+        fallback.provider = chosen.provider
         fallback.liveModel = chosen.id
         fallback.fileModel = chosen.fileModel
         fallback.apiKey = key

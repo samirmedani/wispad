@@ -33,6 +33,10 @@ public struct SpeechRequest: Sendable {
     /// correction reste automatique).
     public var cleanupChoice: CleanupChoice
     public var chosenCleanupKey: String?
+    /// Relais de la correction choisi dans Fournisseurs, et la clé de son fournisseur : un modèle, `.off` pour aucun.
+    /// `.automatic` (par défaut) : l'ordre automatique après le service principal.
+    public var cleanupRelay: CleanupChoice
+    public var relayCleanupKey: String?
 
     public init(
         provider: ProviderID,
@@ -47,7 +51,9 @@ public struct SpeechRequest: Sendable {
         cleanupPrimaryDown: Bool = false,
         judgeKey: String? = nil,
         cleanupChoice: CleanupChoice = .automatic,
-        chosenCleanupKey: String? = nil
+        chosenCleanupKey: String? = nil,
+        cleanupRelay: CleanupChoice = .automatic,
+        relayCleanupKey: String? = nil
     ) {
         self.provider = provider
         self.liveModel = liveModel
@@ -62,6 +68,8 @@ public struct SpeechRequest: Sendable {
         self.judgeKey = judgeKey
         self.cleanupChoice = cleanupChoice
         self.chosenCleanupKey = chosenCleanupKey
+        self.cleanupRelay = cleanupRelay
+        self.relayCleanupKey = relayCleanupKey
     }
 }
 
@@ -681,29 +689,33 @@ public enum CleanupModel {
     public static let openAIFallback = "gpt-5.4-mini"
 }
 
-/// Modèle de correction choisi dans Fournisseurs › Modèles. Automatique : l'ordre des clés actives (DeepSeek, OpenAI,
-/// puis le fournisseur de voix). Un modèle choisi passe en premier ; l'ordre automatique reste son relais.
+/// Modèle de correction, ou son relais, choisi dans Fournisseurs › Modèles. Automatique : l'ordre des clés actives
+/// (DeepSeek, OpenAI, puis le fournisseur de voix). `off` : aucun relais.
 public enum CleanupChoice: String, Codable, CaseIterable, Sendable {
     case automatic = "auto"
+    case off = "off"
     case deepSeekFlash = "deepseek-flash"
     case openAIMini = "gpt-5.4-mini"
     case openAILuna = "gpt-5.6-luna"
     case grok = "grok-4.7"
 
-    /// Compte de la clé qui sert ce modèle ; nil pour l'automatique.
+    /// Les modèles seuls, sans « automatique » ni « aucun ».
+    public static let models: [CleanupChoice] = [.deepSeekFlash, .openAIMini, .openAILuna, .grok]
+
+    /// Compte de la clé qui sert ce modèle ; nil pour l'automatique et « aucun ».
     public var account: String? {
         switch self {
-        case .automatic: return nil
+        case .automatic, .off: return nil
         case .deepSeekFlash: return CleanupModel.deepSeekAccount
         case .openAIMini, .openAILuna: return ProviderID.openAI.rawValue
         case .grok: return ProviderID.xai.rawValue
         }
     }
 
-    /// Fournisseur du modèle, en clair ; nil pour l'automatique.
+    /// Fournisseur du modèle, en clair ; nil pour l'automatique et « aucun ».
     public var providerName: String? {
         switch self {
-        case .automatic: return nil
+        case .automatic, .off: return nil
         case .deepSeekFlash: return "DeepSeek"
         case .openAIMini, .openAILuna: return ProviderID.openAI.displayName
         case .grok: return ProviderID.xai.displayName
@@ -711,14 +723,17 @@ public enum CleanupChoice: String, Codable, CaseIterable, Sendable {
     }
 }
 
-/// Un service de correction de la chaîne d'une dictée : « DeepSeek », « deepseek-flash ».
+/// Un service de correction de la chaîne d'une dictée : « DeepSeek », « deepseek-flash », et s'il est le relais.
 public struct CleanupService: Equatable, Sendable {
     public var provider: String
     public var model: String
+    /// Relais : ne sert que si le service placé avant n'a pas répondu (ou est en pause).
+    public var isRelay: Bool
 
-    public init(provider: String, model: String) {
+    public init(provider: String, model: String, isRelay: Bool = false) {
         self.provider = provider
         self.model = model
+        self.isRelay = isRelay
     }
 
     /// « DeepSeek deepseek-flash ».
@@ -799,18 +814,23 @@ public enum TextCleaner {
     static let openAIURL = URL(string: "https://api.openai.com/v1/chat/completions")!
     static let xaiURL = URL(string: "https://api.x.ai/v1/chat/completions")!
 
-    /// Services de correction dans l'ordre : le modèle choisi dans Fournisseurs s'il a sa clé, puis l'ordre
-    /// automatique en relais. Quand DeepSeek vient d'échouer plusieurs fois, il passe en dernier, où qu'il soit, pour
-    /// ne pas faire attendre chaque dictée.
+    /// Services de correction dans l'ordre : le modèle choisi dans Fournisseurs s'il a sa clé (sinon le premier de
+    /// l'ordre automatique), puis le relais choisi s'il a sa clé (aucun avec `.off`, l'ordre automatique avec
+    /// `.automatic`), sans doublon. Quand DeepSeek vient d'échouer plusieurs fois, il passe en dernier, où qu'il soit,
+    /// pour ne pas faire attendre chaque dictée.
     static func routes(_ speech: SpeechRequest) -> [Route] {
-        var routes = automaticRoutes(speech)
-        if let chosen = chosenRoute(speech) {
-            routes.removeAll { $0.api == chosen.api && $0.model == chosen.model }
-            routes = [chosen] + routes.map { route in
-                var relay = route
-                relay.isFallback = true
-                return relay
-            }
+        let automatic = automaticRoutes(speech)
+        var candidates = [modelRoute(speech.cleanupChoice, key: speech.chosenCleanupKey) ?? automatic.first].compactMap { $0 }
+        switch speech.cleanupRelay {
+        case .automatic: candidates += automatic
+        case .off: break
+        default: candidates += [modelRoute(speech.cleanupRelay, key: speech.relayCleanupKey)].compactMap { $0 }
+        }
+        var routes: [Route] = []
+        for route in candidates where !routes.contains(where: { $0.api == route.api && $0.model == route.model }) {
+            var placed = route
+            placed.isFallback = !routes.isEmpty
+            routes.append(placed)
         }
         if speech.cleanupPrimaryDown, let index = routes.firstIndex(where: { $0.api == .deepSeekCleanup }), index < routes.count - 1 {
             routes.append(routes.remove(at: index))
@@ -818,12 +838,12 @@ public enum TextCleaner {
         return routes
     }
 
-    /// Modèle choisi dans Fournisseurs, avec la clé de son fournisseur ; nil en automatique ou sans clé.
-    static func chosenRoute(_ speech: SpeechRequest) -> Route? {
-        guard let key = speech.chosenCleanupKey, !key.isEmpty else { return nil }
-        let model = speech.cleanupChoice.rawValue
-        switch speech.cleanupChoice {
-        case .automatic:
+    /// Un modèle choisi dans Fournisseurs, avec la clé de son fournisseur ; nil en automatique, sans relais ou sans clé.
+    static func modelRoute(_ choice: CleanupChoice, key: String?) -> Route? {
+        guard let key, !key.isEmpty else { return nil }
+        let model = choice.rawValue
+        switch choice {
+        case .automatic, .off:
             return nil
         case .deepSeekFlash:
             return Route(api: .deepSeekCleanup, model: model, url: deepSeekURL, key: key, provider: "DeepSeek", isFallback: false)
@@ -870,7 +890,7 @@ public enum TextCleaner {
 
     /// Les deux services au plus qu'une dictée essaie, dans l'ordre (Fournisseurs › Modèles, mots appris).
     public static func services(_ speech: SpeechRequest) -> [CleanupService] {
-        routes(speech).prefix(2).map { CleanupService(provider: $0.provider, model: $0.model) }
+        routes(speech).prefix(2).map { CleanupService(provider: $0.provider, model: $0.model, isRelay: $0.isFallback) }
     }
 
     public static func clean(transcript: String, request: CorrectionRequest, speech: SpeechRequest, enabled: Bool) async -> CleanupOutcome {

@@ -377,10 +377,15 @@ Le micro standard, réglage coupé, ne change pas.
   commandes explicites de mise en page).
 - Modèle au choix (Fournisseurs › Modèles, étape 3) : « Automatique · selon tes clés » par défaut, ou DeepSeek
   `deepseek-flash`, OpenAI `gpt-5.4-mini` ou `gpt-5.6-luna`, xAI `grok-4.7`, parmi ceux dont la clé est active. Le
-  modèle choisi passe en premier avec la clé de son fournisseur ; l'ordre automatique, sans lui, sert de relais (deux
-  services au plus, mêmes délais). Sa clé absente ou coupée, la correction redevient automatique, et l'étape le dit
-  en orange. Le juge des mots appris suit le même ordre. Un choix illisible (version plus récente) se lit
+  modèle choisi passe en premier avec la clé de son fournisseur. Sa clé absente ou coupée, le premier de l'ordre
+  automatique le remplace, et l'étape le dit en orange. Un choix illisible (version plus récente) se lit
   « Automatique », sans toucher aux autres réglages.
+- Relais au choix (même étape) : un modèle dont la clé est active, autre que le service principal, ou « Aucun
+  relais ». Deux services au plus, mêmes délais. Tant qu'aucun relais n'est choisi, le premier possible d'après
+  l'ordre automatique (OpenAI `gpt-5.4-mini` derrière DeepSeek, par exemple) est enregistré comme choix dès que les
+  clés le permettent, à la lecture des clés ou quand une clé est ajoutée ou rallumée. Ensuite, seul un choix à la
+  main le change : relais dont la clé est coupée, pas de relais, et l'étape le dit en orange. Le juge des mots appris
+  suit le même ordre.
 - Pas d'autre service de correction : le serveur compatible OpenAI choisi par l'utilisateur (fonction retirée)
   repasse sur la correction automatique au lancement ; son adresse et son modèle sont effacés, ses anciens appels
   sortent de Consommation. Sa clé reste dans le fichier de clés, comme celle de tout fournisseur retiré.
@@ -703,11 +708,14 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
 
 ## Relais en cas de panne
 
-- Voix : si xAI ne répond pas, le même enregistrement part chez OpenAI (et inversement) s'il a une clé ; après deux
-  échecs, la dictée démarre directement chez l'autre fournisseur.
-- Correction : après deux échecs, DeepSeek passe en dernier, y compris derrière un modèle choisi ou quand il est
-  choisi lui-même. Un service mis de côté est contrôlé chaque minute et repris dès qu'il répond, au plus tard après
-  30 minutes.
+- Voix : si le fournisseur de voix ne répond pas, le même enregistrement part chez le relais choisi dans Fournisseurs
+  › Modèles (étape 1) : un modèle de l'autre fournisseur, ou « Aucun relais ». Après deux échecs, la dictée démarre
+  directement chez le relais. Tant qu'aucun relais n'est choisi, le modèle recommandé de l'autre fournisseur est
+  enregistré comme choix dès que sa clé est active. Un relais dont la clé est coupée ne sert pas, et l'étape le dit
+  en orange. Prendre pour la voix le fournisseur du relais fait de l'ancien modèle de voix le relais.
+- Correction : après deux échecs, DeepSeek passe après son relais, y compris quand il est choisi lui-même ; sans
+  relais, il reste seul. Un service mis de côté est contrôlé chaque minute et repris dès qu'il répond, au plus tard
+  après 30 minutes.
 - Hors connexion, aucun échec n'est compté, aucun service mis de côté n'est contrôlé et aucune bascule n'est tentée :
   un service n'est mis de côté que pour ses propres échecs, et un relais ne travaille que s'il peut répondre.
 - Le spectre passe au vert quand un relais travaille ; la première bascule d'une panne est annoncée.
@@ -915,13 +923,15 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
   seul, jamais envoyée à un autre pour essayer ; une clé xAI refusée comme clé d'API est essayée comme clé de gestion,
   toujours chez xAI. Vérifiée, elle est enregistrée, remplace l'ancienne clé de ce compte et devient active.
 - Fournisseurs › Modèles montre les quatre étapes d'une dictée, numérotées dans leur ordre et reliées par un trait :
-  1 Voix en direct (fournisseur et modèle dans un seul menu, groupé par xAI puis OpenAI), 2 Vérification
-  (interrupteur ; même fournisseur que la voix), 3 Correction (« Automatique · selon tes clés » ou un modèle, et
-  l'interrupteur de la correction), 4 Mots appris (« Comme la correction » ou Jev, et l'interrupteur de
-  l'apprentissage). Les interrupteurs sont ceux de Réglages. Un modèle dont la clé manque ou est coupée ne se choisit
-  pas et le dit (« aucune clé », « clé coupée »). Sous chaque étape, une ligne dit ce qu'elle fait maintenant : prix
-  en direct et relais de la voix, modèle et prix de l'enregistrement complet, services de correction réellement
-  essayés (« Maintenant : DeepSeek deepseek-flash · si besoin : OpenAI gpt-5.4-mini »), juge des mots. Pastille
+  1 Voix en direct (fournisseur et modèle dans un seul menu, groupé par xAI puis OpenAI, puis « Relais si xAI ne
+  répond pas »), 2 Vérification (interrupteur ; même fournisseur que la voix), 3 Correction (« Automatique · selon
+  tes clés » ou un modèle, l'interrupteur de la correction, puis son relais), 4 Mots appris (« Comme la correction »
+  ou Jev, et l'interrupteur de l'apprentissage). Les interrupteurs sont ceux de Réglages. Un modèle dont la clé
+  manque ou est coupée ne se choisit pas et le dit (« aucune clé », « clé coupée ») ; le relais de la correction ne
+  peut pas être le service principal (« déjà en premier »). Sous chaque étape, une ligne dit ce qu'elle fait
+  maintenant : prix en direct de la voix et de son relais, modèle et prix de l'enregistrement complet, services de
+  correction réellement essayés (« Maintenant : DeepSeek deepseek-flash · relais : OpenAI gpt-5.4-mini »), juge des
+  mots. Pastille
   rouge : l'étape travaille ; orange : elle ne peut pas comme choisi (clé absente ou coupée) ; grise : coupée.
   Choisir Jev allume la clé TypeSafe, « Comme la correction » la coupe (elle ne sert qu'aux mots appris).
 - Fournisseurs recommande, sous les clés : xAI pour la voix, DeepSeek pour la correction (la moins chère), et Jev

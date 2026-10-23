@@ -29,21 +29,29 @@ struct StepStatus: Equatable {
     var tone: Tone
 }
 
-/// Fournisseurs › Modèles : les quatre étapes d'une dictée, numérotées dans leur ordre. Chacune a son choix, puis une
-/// ligne qui dit ce qu'elle fait maintenant d'après les clés actives (modèle réel, relais, prix).
+/// Fournisseurs › Modèles : les quatre étapes d'une dictée, numérotées dans leur ordre. Chacune a son choix, la voix et
+/// la correction leur relais au choix, puis une ligne qui dit ce que l'étape fait maintenant (modèle réel, relais, prix).
 struct ModelStepsSection: View {
     @Environment(AppModel.self) private var model
     @Environment(\.interactionReduceMotion) private var reduceMotion
 
+    /// Largeur réservée aux interrupteurs : le sélecteur du relais s'aligne sur celui du modèle, au-dessus.
+    private static let switchWidth: CGFloat = 40
+
     var body: some View {
         let speech = model.speechRequest(context: nil)
         let services = TextCleaner.services(speech)
+        // Service principal hors panne en cours : celui que le relais ne peut pas doubler.
+        let primary = TextCleaner.services({ var calm = speech; calm.cleanupPrimaryDown = false; return calm }()).first
         Section {
             VStack(spacing: 0) {
                 ModelStepRow(number: 1, title: String(localized: "Voix en direct"),
                              summary: String(localized: "Transcrit pendant que tu parles."),
-                             status: voiceStatus, isLast: false) {
+                             status: voiceStatus, isLast: false,
+                             relayTitle: String(localized: "Relais si \(model.settings.provider.displayName) ne répond pas")) {
                     voicePicker
+                } relay: {
+                    voiceRelayPicker
                 }
                 ModelStepRow(number: 2, title: String(localized: "Vérification"),
                              summary: String(localized: "Réécoute l'enregistrement complet à la fin."),
@@ -57,7 +65,8 @@ struct ModelStepsSection: View {
                 }
                 ModelStepRow(number: 3, title: String(localized: "Correction"),
                              summary: String(localized: "Ponctuation, mots mal entendus, mise en forme."),
-                             status: correctionStatus(services: services, speech: speech), isLast: false) {
+                             status: correctionStatus(services: services, speech: speech), isLast: false,
+                             relayTitle: primary.map { String(localized: "Relais si \($0.provider) ne répond pas") } ?? String(localized: "Relais")) {
                     HStack(spacing: 12) {
                         correctionPicker
                             .disabled(!model.settings.cleanupEnabled)
@@ -67,7 +76,12 @@ struct ModelStepsSection: View {
                         ))
                         .toggleStyle(.switch)
                         .labelsHidden()
+                        .frame(width: Self.switchWidth, alignment: .trailing)
                     }
+                } relay: {
+                    cleanupRelayPicker(primary: primary)
+                        .disabled(!model.settings.cleanupEnabled)
+                        .padding(.trailing, Self.switchWidth + 12)
                 }
                 ModelStepRow(number: 4, title: String(localized: "Mots appris"),
                              summary: String(localized: "Décide si un mot corrigé entre au dictionnaire."),
@@ -81,6 +95,7 @@ struct ModelStepsSection: View {
                         ))
                         .toggleStyle(.switch)
                         .labelsHidden()
+                        .frame(width: Self.switchWidth, alignment: .trailing)
                     }
                 }
             }
@@ -88,7 +103,7 @@ struct ModelStepsSection: View {
         } header: {
             Text("Modèles")
         } footer: {
-            Text("Un choix par étape, dans l'ordre d'une dictée. Seuls les fournisseurs dont la clé est active se choisissent : ajoute les autres juste en dessous.")
+            Text("Un modèle par étape, dans l'ordre d'une dictée, et un relais au choix pour la voix et la correction : il prend la main quand le premier ne répond pas. Seuls les fournisseurs dont la clé est active se choisissent : ajoute les autres juste en dessous.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
@@ -144,12 +159,48 @@ struct ModelStepsSection: View {
         }
         let chosen = ProviderCatalog.liveModel(id: model.settings.liveModel, provider: provider)
         let price = MoneyFormat.price(chosen.streamingUSDPerHour)
-        guard model.hasKey(other) else {
-            return StepStatus(text: String(localized: "\(price)/h en direct · pas de relais : aucune autre clé de voix active"), tone: .ready)
+        if let relay = model.chosenVoiceRelay, !model.hasKey(relay.provider) {
+            return StepStatus(text: String(localized: "\(price)/h en direct · relais \(relay.provider.displayName) sans clé active : ajoute-la, ou choisis « Aucun relais »."),
+                              tone: .warning)
         }
-        let relay = ProviderCatalog.liveModel(id: other.defaultLiveModel, provider: other)
-        return StepStatus(text: String(localized: "\(price)/h en direct · si \(provider.displayName) ne répond pas : \(other.displayName) \(relay.displayName)"),
-                          tone: .ready)
+        if let relay = model.voiceRelayModel(for: provider), model.hasKey(relay.provider) {
+            let relayPrice = MoneyFormat.price(relay.streamingUSDPerHour)
+            return StepStatus(text: String(localized: "\(price)/h en direct · relais \(relay.provider.displayName) : \(relayPrice)/h"), tone: .ready)
+        }
+        return StepStatus(text: String(localized: "\(price)/h en direct · sans relais"), tone: .ready)
+    }
+
+    /// Relais affiché : le choix enregistré, ou tant qu'il n'y en a pas, le recommandé de l'autre fournisseur s'il a
+    /// une clé active (« Aucun relais » sinon).
+    private var displayedVoiceRelay: String {
+        if let chosen = model.chosenVoiceRelay { return chosen.id }
+        let other = model.settings.provider.other
+        if model.settings.voiceRelay == AppSettings.voiceRelayOff || !model.hasKey(other) { return AppSettings.voiceRelayOff }
+        return other.defaultLiveModel
+    }
+
+    private var voiceRelayPicker: some View {
+        let other = model.settings.provider.other
+        return Picker(String(localized: "Relais de la voix"), selection: Binding(
+            get: { displayedVoiceRelay },
+            set: { choice in
+                guard choice == AppSettings.voiceRelayOff || model.hasKey(other) else { return }
+                model.settings.voiceRelay = choice
+                model.saveSettings()
+            }
+        )) {
+            Text("Aucun relais").tag(AppSettings.voiceRelayOff)
+            Section(other.displayName) {
+                ForEach(ProviderCatalog.models(for: other)) { item in
+                    Text(option(other.displayName, item.displayName,
+                                availability(other.rawValue) ?? (item.recommended ? String(localized: "recommandé") : nil)))
+                        .tag(item.id)
+                        .selectionDisabled(!model.hasKey(other))
+                }
+            }
+        }
+        .labelsHidden()
+        .fixedSize()
     }
 
     // MARK: Étape 2 : vérification
@@ -202,6 +253,34 @@ struct ModelStepsSection: View {
         .fixedSize()
     }
 
+    /// Relais de la correction : « Aucun relais » ou un modèle dont la clé est active, autre que le service principal.
+    private func cleanupRelayPicker(primary: CleanupService?) -> some View {
+        Picker(String(localized: "Relais de la correction"), selection: Binding(
+            get: { model.displayedCleanupRelay },
+            set: { choice in
+                guard choice == .off || (choice.account.map { model.hasKey(account: $0) } ?? false) else { return }
+                model.settings.cleanupRelay = choice
+                model.saveSettings()
+            }
+        )) {
+            Text("Aucun relais").tag(CleanupChoice.off)
+            ForEach(Self.cleanupGroups, id: \.name) { group in
+                Section(group.name) {
+                    ForEach(group.choices, id: \.self) { choice in
+                        let account = choice.account ?? ""
+                        let isPrimary = primary?.model == choice.rawValue
+                        Text(option(group.name, choice.rawValue,
+                                    availability(account) ?? (isPrimary ? String(localized: "déjà en premier") : nil)))
+                            .tag(choice)
+                            .selectionDisabled(!model.hasKey(account: account) || isPrimary)
+                    }
+                }
+            }
+        }
+        .labelsHidden()
+        .fixedSize()
+    }
+
     private func correctionStatus(services: [CleanupService], speech: SpeechRequest) -> StepStatus {
         guard model.settings.cleanupEnabled else {
             return StepStatus(text: String(localized: "Coupée : le texte est collé tel que transcrit."), tone: .off)
@@ -216,9 +295,13 @@ struct ModelStepsSection: View {
                 : String(localized: "Pas de clé \(name) active : correction automatique par \(first.label).")
             return StepStatus(text: text, tone: .warning)
         }
+        if let name = model.settings.cleanupRelay.providerName, speech.relayCleanupKey == nil {
+            return StepStatus(text: String(localized: "Maintenant : \(first.label) · relais \(name) sans clé active : ajoute-la, ou choisis « Aucun relais »."),
+                              tone: .warning)
+        }
         let text = services.count > 1
-            ? String(localized: "Maintenant : \(first.label) · si besoin : \(services[1].label)")
-            : String(localized: "Maintenant : \(first.label)")
+            ? String(localized: "Maintenant : \(first.label) · relais : \(services[1].label)")
+            : String(localized: "Maintenant : \(first.label) · sans relais")
         return StepStatus(text: text, tone: .ready)
     }
 
@@ -279,15 +362,17 @@ struct ModelStepsSection: View {
     }
 }
 
-/// Une étape numérotée : pastille, titre et rôle, contrôle à droite, puis ce que l'étape fait maintenant. Un trait
-/// relie la pastille à celle de l'étape suivante.
-struct ModelStepRow<Control: View>: View {
+/// Une étape numérotée : pastille, titre et rôle, contrôle à droite, relais au choix s'il y en a un, puis ce que
+/// l'étape fait maintenant. Un trait relie la pastille à celle de l'étape suivante.
+struct ModelStepRow<Control: View, Relay: View>: View {
     var number: Int
     var title: String
     var summary: String
     var status: StepStatus
     var isLast: Bool
+    var relayTitle: String = ""
     @ViewBuilder var control: Control
+    @ViewBuilder var relay: Relay
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
@@ -314,6 +399,21 @@ struct ModelStepRow<Control: View>: View {
                     control
                 }
                 .frame(minHeight: 30)
+                if Relay.self != EmptyView.self {
+                    HStack(alignment: .center, spacing: 16) {
+                        Label {
+                            Text(relayTitle)
+                        } icon: {
+                            Image(systemName: "arrow.triangle.branch")
+                                .foregroundStyle(Theme.brand)
+                        }
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        Spacer(minLength: 16)
+                        relay
+                    }
+                    .frame(minHeight: 26)
+                }
                 StepStatusLine(status: status)
             }
             .padding(.bottom, isLast ? 0 : 22)
@@ -321,6 +421,12 @@ struct ModelStepRow<Control: View>: View {
         .fixedSize(horizontal: false, vertical: true)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(String(localized: "Étape \(number) : \(title)"))
+    }
+}
+
+extension ModelStepRow where Relay == EmptyView {
+    init(number: Int, title: String, summary: String, status: StepStatus, isLast: Bool, @ViewBuilder control: () -> Control) {
+        self.init(number: number, title: title, summary: summary, status: status, isLast: isLast, control: control, relay: { EmptyView() })
     }
 }
 

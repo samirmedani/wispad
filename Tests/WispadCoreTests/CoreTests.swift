@@ -672,7 +672,7 @@ final class RelayTests: XCTestCase {
         // Deux services au plus par dictée.
         XCTAssertEqual(TextCleaner.plan(chosen(.grok)).steps, ["xAI grok-4.7", "DeepSeek deepseek-flash"])
         XCTAssertEqual(TextCleaner.services(chosen(.grok)), [CleanupService(provider: "xAI", model: "grok-4.7"),
-                                                             CleanupService(provider: "DeepSeek", model: CleanupModel.deepSeek)])
+                                                             CleanupService(provider: "DeepSeek", model: CleanupModel.deepSeek, isRelay: true)])
     }
 
     /// Sans clé pour le modèle choisi (absente ou coupée), la correction reste automatique.
@@ -689,6 +689,39 @@ final class RelayTests: XCTestCase {
         let paused = TextCleaner.routes(chosen(.deepSeekFlash, down: true))
         XCTAssertEqual(paused.map(\.model), [CleanupModel.openAIFallback, CleanupModel.deepSeek])
         XCTAssertTrue(paused[0].isFallback)
+    }
+
+    private func relayed(_ relay: CleanupChoice, key: String? = "relay", choice: CleanupChoice = .automatic,
+                         down: Bool = false) -> SpeechRequest {
+        var request = speech(deepSeek: true, openAI: true, down: down)
+        request.cleanupChoice = choice
+        request.chosenCleanupKey = choice == .automatic ? nil : "chosen"
+        request.cleanupRelay = relay
+        request.relayCleanupKey = key
+        return request
+    }
+
+    /// Un relais choisi remplace l'ordre automatique derrière le service principal ; « Aucun relais », un relais sans
+    /// clé ou le principal lui-même ne laissent que le principal.
+    func testChosenRelayReplacesTheAutomaticOrder() {
+        let grok = TextCleaner.routes(relayed(.grok))
+        XCTAssertEqual(grok.map(\.model), [CleanupModel.deepSeek, "grok-4.7"])
+        XCTAssertEqual(grok.map(\.isFallback), [false, true])
+        XCTAssertEqual(grok[1].key, "relay")
+        XCTAssertEqual(TextCleaner.services(relayed(.grok)).map(\.isRelay), [false, true])
+        XCTAssertEqual(TextCleaner.routes(relayed(.off)).map(\.model), [CleanupModel.deepSeek])
+        XCTAssertEqual(TextCleaner.routes(relayed(.grok, key: nil)).map(\.model), [CleanupModel.deepSeek])
+        XCTAssertEqual(TextCleaner.routes(relayed(.deepSeekFlash)).map(\.model), [CleanupModel.deepSeek])
+        XCTAssertEqual(TextCleaner.routes(relayed(.openAILuna, choice: .grok)).map(\.model), ["grok-4.7", "gpt-5.6-luna"])
+    }
+
+    /// DeepSeek en pause laisse passer le relais choisi d'abord ; sans relais, il reste seul.
+    func testPausedDeepSeekGivesWayToTheChosenRelay() {
+        let routes = TextCleaner.routes(relayed(.grok, down: true))
+        XCTAssertEqual(routes.map(\.model), ["grok-4.7", CleanupModel.deepSeek])
+        XCTAssertTrue(routes[0].isFallback)
+        XCTAssertEqual(TextCleaner.services(relayed(.grok, down: true)).first?.isRelay, true)
+        XCTAssertEqual(TextCleaner.routes(relayed(.off, down: true)).map(\.model), [CleanupModel.deepSeek])
     }
 
     func testServiceIsPausedAfterTwoFailuresThenRetried() {

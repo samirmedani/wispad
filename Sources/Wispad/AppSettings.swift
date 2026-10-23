@@ -70,6 +70,12 @@ struct AppSettings: Codable, Equatable {
     var cleanupEnabled = true
     /// Modèle de correction choisi dans Fournisseurs › Modèles : automatique (selon les clés actives) par défaut.
     var cleanupChoice: CleanupChoice = .automatic
+    /// Relais de la correction (Fournisseurs › Modèles) : un modèle, ou `.off` pour aucun. `.automatic` tant qu'il
+    /// n'est pas choisi : le premier relais possible est alors enregistré dès que les clés le permettent.
+    var cleanupRelay: CleanupChoice = .automatic
+    /// Relais de la voix (Fournisseurs › Modèles) : un modèle de l'autre fournisseur, ou `voiceRelayOff`. Vide tant
+    /// qu'il n'est pas choisi : le modèle recommandé de l'autre fournisseur est enregistré dès que sa clé est active.
+    var voiceRelay = ""
     /// Chaque dictée est aussi transcrite sur l'enregistrement complet. Le flux reste le secours.
     var verifyWithFile = true
     /// Ton demandé à la correction, par catégorie d'apps (`UsageKind.rawValue`). Absent : ton de la dictée.
@@ -167,6 +173,8 @@ struct AppSettings: Codable, Equatable {
         language = value(.language, DictationLanguage.french)
         cleanupEnabled = value(.cleanupEnabled, defaults.cleanupEnabled)
         cleanupChoice = value(.cleanupChoice, defaults.cleanupChoice)
+        cleanupRelay = value(.cleanupRelay, defaults.cleanupRelay)
+        voiceRelay = value(.voiceRelay, defaults.voiceRelay)
         verifyWithFile = value(.verifyWithFile, defaults.verifyWithFile)
         tones = table(.tones, defaults.tones)
         selectionCommands = value(.selectionCommands, defaults.selectionCommands)
@@ -225,6 +233,9 @@ struct AppSettings: Codable, Equatable {
             if provider == .xai { xaiModel = newValue } else { openAIModel = newValue }
         }
     }
+
+    /// « Aucun relais » pour la voix.
+    static let voiceRelayOff = "off"
 
     static let defaultsKey = "wispad.settings.v1"
     /// Réglages retirés de l'app (raccourcis vocaux, transcription sur le Mac, serveur de correction compatible

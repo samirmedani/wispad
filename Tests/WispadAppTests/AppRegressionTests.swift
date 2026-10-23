@@ -2078,6 +2078,43 @@ struct AppRegressionTests {
         #expect(f.model.correctionServiceName == "DeepSeek")
     }
 
+    /// Relais pas encore choisis : à la lecture des clés, ceux de l'ordre automatique deviennent le choix enregistré.
+    /// Ensuite, une clé coupée ne les remplace plus : le relais manque, et seul un choix à la main le change.
+    @Test func relaysAreSettledOnceThenOnlyChangedByHand() async throws {
+        let f = try Fixture()
+        defer { f.dispose() }
+        await f.model.refreshKeys()
+        #expect(f.model.settings.voiceRelay == "gpt-live-transcribe")
+        #expect(f.model.settings.cleanupRelay == .openAIMini)
+
+        f.model.setKeyEnabled("openai", false)
+        await f.model.refreshKeys()
+        #expect(f.model.settings.cleanupRelay == .openAIMini)
+        #expect(TextCleaner.plan(f.model.speechRequest(context: nil)).steps == ["DeepSeek deepseek-flash"])
+        #expect(f.model.voiceFallback(for: f.model.speechRequest(context: nil)) == nil)
+
+        f.model.settings.cleanupRelay = .grok
+        #expect(TextCleaner.plan(f.model.speechRequest(context: nil)).steps == ["DeepSeek deepseek-flash", "xAI grok-4.7"])
+
+        f.model.settings.voiceRelay = AppSettings.voiceRelayOff
+        f.model.setKeyEnabled("openai", true)
+        #expect(f.model.settings.voiceRelay == AppSettings.voiceRelayOff)
+        #expect(f.model.voiceFallback(for: f.model.speechRequest(context: nil)) == nil)
+    }
+
+    /// Changer de fournisseur de voix pour celui du relais : l'ancien principal devient le relais.
+    @Test func switchingToTheRelayProviderSwapsTheRelay() async throws {
+        let f = try Fixture()
+        defer { f.dispose() }
+        await f.model.refreshKeys()
+        f.model.settings.xaiModel = "grok-voice-transcribe-1.0"
+        f.model.selectProvider(.openAI)
+        #expect(f.model.settings.voiceRelay == "grok-voice-transcribe-1.0")
+        let fallback = f.model.voiceFallback(for: f.model.speechRequest(context: nil))
+        #expect(fallback?.provider == .xai)
+        #expect(fallback?.liveModel == "grok-voice-transcribe-1.0")
+    }
+
     /// Supprimer une clé coupée ne la laisse pas coupée : une prochaine clé de ce compte sert tout de suite.
     @Test func deletingAKeyForgetsThatItWasDisabled() async throws {
         var deleted: [String] = []
