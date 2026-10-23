@@ -16,10 +16,16 @@ struct UpdateSheet: View {
     @State private var obstacle: UpdateInstallObstacle? = nil
     /// Aperçu hors écran : versions fournies, rien n'est demandé à GitHub.
     private let fixedReleases: Bool
+    /// Versions anciennes dépliées : sans cela, seules les `Self.unfolded` plus récentes s'affichent.
+    @State private var showsAll = false
+    /// Versions montrées dépliées avant « Afficher les versions précédentes ».
+    static let unfolded = 3
 
-    init(release: ReleaseInfo, releases: [ReleaseInfo]? = nil) {
+    /// `releases` : versions imposées (aperçu). Sinon celles déjà lues par la vérification, ou la seule disponible.
+    init(release: ReleaseInfo, releases: [ReleaseInfo]? = nil, status: BuildStatus = .shared) {
         self.release = release
-        _releases = State(initialValue: releases ?? [release])
+        self.status = status
+        _releases = State(initialValue: releases ?? status.missed(for: release) ?? [release])
         fixedReleases = releases != nil
     }
 
@@ -38,8 +44,12 @@ struct UpdateSheet: View {
                             .font(.system(size: 17, weight: .semibold))
                             .fixedSize(horizontal: false, vertical: true)
                     }
-                    ForEach(releases) { item in
+                    ForEach(showsAll ? releases : Array(releases.prefix(Self.unfolded))) { item in
                         ReleaseCard(release: item, showsHeadline: item.version != release.version)
+                            .transition(.opacity)
+                    }
+                    if releases.count > Self.unfolded {
+                        foldButton
                     }
                 }
                 .padding(24)
@@ -57,12 +67,32 @@ struct UpdateSheet: View {
         .task { await loadMissedVersions() }
     }
 
-    /// Notes des versions sautées entre la version installée et celle-ci ; sans réponse de GitHub, celle-ci seule.
+    /// Versions sautées entre la version installée et celle-ci : déjà lues en général ; sinon lues maintenant. Sans
+    /// réponse de GitHub, celle-ci seule.
     private func loadMissedVersions() async {
-        guard !fixedReleases, !installed, let current, let all = await BuildStatus.fetchReleaseHistory() else { return }
-        let missed = ReleaseCheck.missed(all, after: current, upTo: release)
-        guard missed.count > 1 else { return }
+        guard !fixedReleases, !installed else { return }
+        await status.loadMissedReleases(for: release)
+        guard let missed = status.missed(for: release), missed.map(\.version) != releases.map(\.version) else { return }
         withAnimation(Theme.spring) { releases = missed }
+    }
+
+    /// Les versions les plus anciennes restent repliées : la fenêtre reste lisible même après de nombreuses versions.
+    private var foldButton: some View {
+        let hidden = releases.count - Self.unfolded
+        return Button {
+            withAnimation(Theme.spring) { showsAll.toggle() }
+        } label: {
+            Label(showsAll ? String(localized: "Masquer les versions précédentes")
+                  : hidden == 1 ? String(localized: "Afficher la version précédente")
+                  : String(localized: "Afficher les \(hidden) versions précédentes"),
+                  systemImage: showsAll ? "chevron.up" : "chevron.down")
+                .font(.system(size: 13, weight: .medium))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 9)
+                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.subtleFill))
+                .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(HoverButtonStyle(treatment: .quiet))
     }
 
     private var header: some View {

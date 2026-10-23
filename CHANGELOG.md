@@ -3,6 +3,14 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.3.6 — 23 octobre 2026
+
+La fenêtre de mise à jour montre toutes les versions que tu as ratées.
+
+**Amélioré**
+- Notes prêtes d'avance : les notes des versions ratées sont chargées dès que Wispad trouve la mise à jour ; la fenêtre s'ouvre complète, même si GitHub ne répond plus.
+- Toutes les versions ratées : jusqu'à 30, les 3 plus récentes dépliées, les autres derrière « Afficher les versions précédentes ».
+
 ## 0.3.5 — 23 octobre 2026
 
 La comparaison avec les abonnements reste visible sur toutes les périodes.

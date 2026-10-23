@@ -10980,6 +10980,36 @@
           }
         }
       }
+    },
+    "Masquer les versions précédentes" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide previous versions"
+          }
+        }
+      }
+    },
+    "Afficher la version précédente" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show previous version"
+          }
+        }
+      }
+    },
+    "Afficher les %lld versions précédentes" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show the %lld previous versions"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

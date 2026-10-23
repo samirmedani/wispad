@@ -149,8 +149,10 @@ public enum ReleaseCheckResult: Equatable, Sendable {
 public enum ReleaseCheck {
     public static let repository = BuildFreshnessCheck.repository
     public static let latestURL = URL(string: "https://api.github.com/repos/\(repository)/releases/latest")!
-    /// Les 20 dernières releases : notes des versions sautées, dans la fenêtre de mise à jour.
-    public static let historyURL = URL(string: "https://api.github.com/repos/\(repository)/releases?per_page=20")!
+    /// Versions sautées montrées au plus, et releases lues pour les trouver (une seule requête).
+    public static let maximumMissed = 30
+    /// Les 30 dernières releases : notes des versions sautées, dans la fenêtre de mise à jour.
+    public static let historyURL = URL(string: "https://api.github.com/repos/\(repository)/releases?per_page=\(maximumMissed)")!
 
     /// Release d'une version donnée (« Nouveautés de cette version »).
     public static func tagURL(_ version: SemanticVersion) -> URL {
@@ -220,7 +222,8 @@ public enum ReleaseCheck {
     }
 
     /// Versions que la fenêtre de mise à jour présente : toutes celles publiées après la version installée, jusqu'à
-    /// la plus récente, de la plus récente à la plus ancienne (8 au plus). La plus récente y est toujours.
+    /// la plus récente, de la plus récente à la plus ancienne (`maximumMissed` au plus). La plus récente y est
+    /// toujours.
     public static func missed(_ releases: [ReleaseInfo], after current: SemanticVersion?, upTo latest: ReleaseInfo) -> [ReleaseInfo] {
         var seen: Set<SemanticVersion> = [latest.version]
         var older: [ReleaseInfo] = []
@@ -228,7 +231,7 @@ public enum ReleaseCheck {
             guard let current, release.version > current, seen.insert(release.version).inserted else { continue }
             older.append(release)
         }
-        return Array(([latest] + older).prefix(8))
+        return Array(([latest] + older).prefix(maximumMissed))
     }
 
     private static func info(_ latest: GitHubRelease) -> ReleaseInfo? {

@@ -54,7 +54,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             installStatusItem()
             // Dernière release (ou, pour un build de développement, retard sur le dépôt public) : en arrière-plan, après
             // le démarrage, puis toutes les 6 heures. Une version plus récente est rappelée une fois dans la bulle.
-            BuildStatus.shared.onAvailable = { [weak model] release in model?.noteAvailableRelease(release) }
+            // Les notes des versions sautées sont lues aussitôt : la fenêtre de mise à jour s'ouvre complète.
+            BuildStatus.shared.onAvailable = { [weak model] release in
+                model?.noteAvailableRelease(release)
+                Task { await BuildStatus.shared.loadMissedReleases(for: release) }
+            }
             BuildStatus.shared.start()
             model.isWindowVisible = { [weak self] in self?.window?.isVisible == true }
             model.updater.removeLeftovers()

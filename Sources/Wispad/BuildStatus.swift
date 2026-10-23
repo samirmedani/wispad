@@ -27,6 +27,14 @@ final class BuildStatus {
     @ObservationIgnored var onAvailable: (@MainActor (ReleaseInfo) -> Void)?
     /// Lecture de la dernière release ; remplacée dans les tests, qui n'ont jamais de réseau.
     @ObservationIgnored var fetchLatest: @Sendable () async -> ReleaseCheckResult = { await BuildStatus.fetchLatestRelease() }
+    /// Versions publiées depuis celle qui tourne, jusqu'à la plus récente, la plus récente d'abord : lues dès qu'une
+    /// nouvelle version est trouvée, pour que la fenêtre de mise à jour les montre aussitôt, même si GitHub ne répond
+    /// plus à son ouverture.
+    private(set) var missedReleases: [ReleaseInfo] = []
+    /// Lecture des dernières releases ; remplacée dans les tests.
+    @ObservationIgnored var fetchHistory: @Sendable () async -> [ReleaseInfo]? = { await BuildStatus.fetchReleaseHistory() }
+    /// Version pour laquelle les versions sautées sont lues (ou en cours de lecture) : une seule requête par version.
+    @ObservationIgnored private var missedFor: SemanticVersion?
     @ObservationIgnored private var task: Task<Void, Never>?
     /// Recherche demandée à la main (barre latérale, Réglages › Aide) : en cours, puis son résultat quelques secondes.
     private(set) var manualPhase: ManualCheckPhase = .idle
@@ -60,6 +68,24 @@ final class BuildStatus {
     /// Ce que la barre latérale montre sous la version.
     var display: UpdateDisplay {
         UpdateDisplay.make(kind: kind, installed: version ?? "", latest: latest, freshness: freshness)
+    }
+
+    /// Versions sautées jusqu'à `release`, si elles sont déjà lues.
+    func missed(for release: ReleaseInfo) -> [ReleaseInfo]? {
+        missedReleases.first?.version == release.version ? missedReleases : nil
+    }
+
+    /// Lit une fois les versions publiées depuis celle qui tourne, jusqu'à `release` ; rien sans réponse de GitHub
+    /// (nouvel essai à la prochaine vérification ou à l'ouverture de la fenêtre).
+    func loadMissedReleases(for release: ReleaseInfo) async {
+        guard missedFor != release.version, let current = version.flatMap(SemanticVersion.init) else { return }
+        missedFor = release.version
+        guard let all = await fetchHistory() else {
+            if missedFor == release.version { missedFor = nil }
+            return
+        }
+        guard missedFor == release.version else { return }
+        missedReleases = ReleaseCheck.missed(all, after: current, upTo: release)
     }
 
     /// Release plus récente que celle qui tourne, s'il y en a une.

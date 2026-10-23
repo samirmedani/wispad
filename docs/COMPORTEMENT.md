@@ -1064,8 +1064,9 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
   une version plus récente l'est à son tour. La barre latérale la propose toujours.
 - **Fenêtre de mise à jour** : en tête, « Wispad 0.3.3 », une étiquette « Nouvelle version » et « Tu as la 0.3.2 »
   (« · 2 versions à rattraper » si d'autres sont sorties depuis). Dessous, l'accroche de la version (première phrase
-  de ses notes) en titre, puis une carte par version à rattraper, de la plus récente à la plus ancienne (8 au plus,
-  lues dans les 20 dernières releases de GitHub ; sans réponse, la seule version disponible) : numéro, date de
+  de ses notes) en titre, puis une carte par version à rattraper, de la plus récente à la plus ancienne (30 au plus,
+  lues dès que la vérification automatique trouve la nouvelle version, sinon à l'ouverture ; sans réponse, la seule
+  version disponible ; les 3 plus récentes dépliées, les autres derrière « Afficher les N versions précédentes ») : numéro, date de
   publication, accroche (sauf pour la plus récente), puis ses rubriques en couleur avec leur icône, **Nouveau**
   (rouge de l'app), **Corrigé** (orange), **Amélioré** (bleu), et leurs points : un point « titre : détail » montre
   le titre en gras et le détail dessous. Ce qui ne sert que sur GitHub n'y est pas : les citations (conseil pour une

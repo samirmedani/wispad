@@ -305,7 +305,9 @@ struct ReleaseDigestTests {
         #expect(ReleaseCheck.missed([], after: SemanticVersion("0.3.0"), upTo: latest).map(\.tag) == ["v0.3.2"])
         #expect(ReleaseCheck.missed(list, after: nil, upTo: latest).map(\.tag) == ["v0.3.2"])
         let many = (1...20).map { release("0.2.\($0)") }
-        #expect(ReleaseCheck.missed(many, after: SemanticVersion("0.1.0"), upTo: latest).count == 8)
+        #expect(ReleaseCheck.missed(many, after: SemanticVersion("0.1.0"), upTo: latest).count == 21)
+        let lots = (1...40).map { release("0.2.\($0)") }
+        #expect(ReleaseCheck.missed(lots, after: SemanticVersion("0.1.0"), upTo: latest).count == ReleaseCheck.maximumMissed)
     }
 
     @Test func theReleaseListIsReadWithDates() throws {
