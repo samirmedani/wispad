@@ -114,7 +114,7 @@ struct AppSettings: Codable, Equatable {
     /// Dernière version rappelée par la bulle (« 0.1.2 ») : une nouvelle version n'est rappelée qu'une fois.
     var updateRemindedVersion = ""
     /// Choix d'affichage retrouvés au lancement suivant, écrits dès qu'ils changent : période de l'Accueil, période
-    /// de Consommation (indépendantes), dernière section ouverte, clés API facultatives et filtres du dictionnaire.
+    /// de Consommation (indépendantes), dernière section ouverte et filtres du dictionnaire.
     var homePeriod: StatsPeriod = .days7
     var usagePeriod: StatsPeriod = .today
     /// Taxe ajoutée aux prix comparés dans Consommation › Tout, en pourcentage (20 % par défaut, la TVA française).
@@ -122,7 +122,8 @@ struct AppSettings: Codable, Equatable {
     var lastSection: AppSection = .home
     /// Dernier onglet ouvert dans Réglages.
     var settingsTab: SettingsTab = .general
-    var showsOptionalKeys = false
+    /// Clés API coupées dans Fournisseurs (comptes) : gardées, mais jamais utilisées.
+    var disabledKeys: Set<String> = []
     var dictionaryOriginFilter: DictionaryFilter = .all
     var dictionaryPeriod: DictionaryPeriod = .all
     var dictionaryKind: DictionaryKind = .word
@@ -195,7 +196,7 @@ struct AppSettings: Codable, Equatable {
         usageTaxRate = number(.usageTaxRate, defaults.usageTaxRate, in: SalesTax.range)
         lastSection = value(.lastSection, defaults.lastSection)
         settingsTab = value(.settingsTab, defaults.settingsTab)
-        showsOptionalKeys = value(.showsOptionalKeys, defaults.showsOptionalKeys)
+        disabledKeys = value(.disabledKeys, defaults.disabledKeys)
         dictionaryOriginFilter = value(.dictionaryOriginFilter, defaults.dictionaryOriginFilter)
         dictionaryPeriod = value(.dictionaryPeriod, defaults.dictionaryPeriod)
         dictionaryKind = value(.dictionaryKind, defaults.dictionaryKind)
@@ -224,10 +225,10 @@ struct AppSettings: Codable, Equatable {
 
     static let defaultsKey = "wispad.settings.v1"
     /// Réglages retirés de l'app (raccourcis vocaux, transcription sur le Mac, serveur de correction compatible
-    /// OpenAI) : leurs valeurs n'ont plus d'effet et sont effacées au lancement. Un choix « Sur ce Mac » repasse ainsi
-    /// sur le cloud, un serveur de correction choisi sur la correction automatique.
+    /// OpenAI, clés facultatives repliées) : leurs valeurs n'ont plus d'effet et sont effacées au lancement. Un choix
+    /// « Sur ce Mac » repasse ainsi sur le cloud, un serveur de correction choisi sur la correction automatique.
     static let retiredKeys = ["snippets", "voiceEngine", "localModel", "offlineLocalVoice",
-                              "correction", "customCorrectionURL", "customCorrectionModel"]
+                              "correction", "customCorrectionURL", "customCorrectionModel", "showsOptionalKeys"]
 
     /// Efface des réglages enregistrés les valeurs des réglages retirés, sans toucher aux autres. Sans réglages
     /// enregistrés ou sans valeur retirée, rien n'est réécrit.

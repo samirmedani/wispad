@@ -529,9 +529,43 @@ final class AppModel {
         return true
     }
 
+    /// Clé utilisable : enregistrée et pas coupée dans Fournisseurs.
     func hasKey(account: String) -> Bool {
+        key(account) != nil
+    }
+
+    /// Clé enregistrée, coupée ou non (liste des clés de Fournisseurs).
+    func hasStoredKey(account: String) -> Bool {
+        storedKey(account) != nil
+    }
+
+    /// Seule porte vers une clé à utiliser : une clé coupée dans Fournisseurs y est absente.
+    func key(_ account: String) -> String? {
+        guard isKeyEnabled(account) else { return nil }
+        return storedKey(account)
+    }
+
+    /// Clé enregistrée, même coupée : pour l'afficher masquée ou la revérifier, jamais pour un appel.
+    func storedKey(_ account: String) -> String? {
         _ = keysLoadedAt
-        return !(dependencies.loadKey(account) ?? "").isEmpty
+        guard let value = dependencies.loadKey(account), !value.isEmpty else { return nil }
+        return value
+    }
+
+    func isKeyEnabled(_ account: String) -> Bool {
+        !settings.disabledKeys.contains(account)
+    }
+
+    /// Coupe ou rallume une clé. Coupée, elle reste enregistrée, mais aucun appel ne s'en sert.
+    func setKeyEnabled(_ account: String, _ enabled: Bool) {
+        guard isKeyEnabled(account) != enabled else { return }
+        if enabled { settings.disabledKeys.remove(account) } else { settings.disabledKeys.insert(account) }
+        saveSettings()
+    }
+
+    /// « xai-••••3f9a » : jamais la clé elle-même.
+    func maskedKey(_ account: String) -> String {
+        storedKey(account).map(APIKeyFormat.masked) ?? ""
     }
 
     /// Dernière lecture complète des soldes : l'écran Consommation ne les relit qu'au-delà de 5 minutes, ou plus
@@ -547,12 +581,12 @@ final class AppModel {
     /// Soldes réels chez les fournisseurs (appels gratuits, jamais journalisés). Une lecture interrompue (écran
     /// quitté entre-temps) ne remplace rien.
     func refreshBalances() async {
-        let deepSeekKey = dependencies.loadKey(CleanupModel.deepSeekAccount) ?? ""
-        let xaiKey = dependencies.loadKey(ProviderID.xai.rawValue) ?? ""
+        let deepSeekKey = key(CleanupModel.deepSeekAccount) ?? ""
+        let xaiKey = key(ProviderID.xai.rawValue) ?? ""
         let deepSeek = deepSeekKey.isEmpty ? nil : await BalanceProbe.deepSeek(key: deepSeekKey)
         let account = xaiKey.isEmpty ? nil : await BalanceProbe.xai(key: xaiKey)
         var prepaid: String?
-        if let account, let management = dependencies.loadKey(APIKeys.xaiManagement), !management.isEmpty {
+        if let account, let management = key(APIKeys.xaiManagement) {
             prepaid = await BalanceProbe.xaiPrepaid(managementKey: management, teamID: account.teamID)
         }
         guard !Task.isCancelled else { return }
@@ -574,7 +608,7 @@ final class AppModel {
     }
 
     func apiKey() -> String? {
-        dependencies.loadKey(settings.provider.rawValue)
+        key(settings.provider.rawValue)
     }
 
     func hasKey(_ provider: ProviderID) -> Bool {
@@ -736,6 +770,7 @@ final class AppModel {
         case ProviderID.openAI.rawValue: return ProviderID.openAI.keyValidationURL
         case CleanupModel.deepSeekAccount: return URL(string: "https://api.deepseek.com/models")
         case APIKeys.typesafe: return URL(string: "https://api.typesafe.ai/v1/models")
+        case APIKeys.xaiManagement: return URL(string: "https://management-api.x.ai/auth/management-keys/validation")
         default: return nil
         }
     }
@@ -816,8 +851,85 @@ final class AppModel {
 
     func removeKey(_ account: String) async {
         let removed = await deleteKey(account)
-        if removed { keyChecks[account] = nil }
-        keyMessages[account] = removed ? String(localized: "Clé supprimée de ce Mac.") : String(localized: "Impossible de retirer la clé.")
+        if removed {
+            keyChecks[account] = nil
+            if settings.disabledKeys.remove(account) != nil { saveSettings() }
+        }
+        keysMessage = removed ? String(localized: "Clé \(APIKeys.title(account)) supprimée de ce Mac.") : String(localized: "Impossible de retirer la clé.")
+    }
+
+    // MARK: - Ajout d'une clé (Fournisseurs › Clés API)
+
+    /// Clé en cours d'ajout : jamais enregistrée avant sa vérification.
+    var newKeyDraft = ""
+    /// Fournisseur choisi à la main, pour une clé que sa forme ne désigne pas (TypeSafe).
+    var newKeyAccount: String?
+    private(set) var addingKey = false
+    /// Dernier message de la liste des clés (ajout, suppression). Jamais la clé elle-même.
+    var keysMessage: String?
+
+    /// Comptes à essayer pour cette clé, dans l'ordre. Vide : fournisseur à choisir, ou service non pris en charge.
+    func candidateAccounts(for draft: String) -> [String] {
+        switch APIKeyFormat.guess(draft) {
+        case .account(let account): return [account]
+        case .xai: return [ProviderID.xai.rawValue, APIKeys.xaiManagement]
+        case .unsupported: return []
+        case .unknown: return newKeyAccount.map { [$0] } ?? []
+        }
+    }
+
+    /// Reconnaît le fournisseur de la clé collée, la vérifie chez lui seul, puis l'enregistre et l'active (elle
+    /// remplace l'ancienne clé de ce compte). Une clé xAI refusée comme clé d'API est essayée comme clé de gestion,
+    /// toujours chez xAI. Rien n'est enregistré sans vérification réussie, ni si la saisie change entre-temps.
+    @discardableResult
+    func addKey() async -> Bool {
+        let draft = APIKeyFormat.normalize(newKeyDraft)
+        guard !draft.isEmpty, !addingKey else { return false }
+        if case .unsupported(let service) = APIKeyFormat.guess(draft) {
+            keysMessage = String(localized: "Clé \(service) : Wispad ne s'en sert pas.")
+            return false
+        }
+        let candidates = candidateAccounts(for: draft)
+        guard let first = candidates.first else {
+            keysMessage = String(localized: "Fournisseur non reconnu : choisis-le dans la liste.")
+            return false
+        }
+        addingKey = true
+        defer { addingKey = false }
+        keysMessage = nil
+        func unchanged() -> Bool { APIKeyFormat.normalize(newKeyDraft) == draft }
+        var refusal: Int?
+        for account in candidates {
+            let result = await check(draft, account: account)
+            guard unchanged() else { return false }
+            switch result {
+            case .valid:
+                guard await dependencies.saveKey(account, draft) else {
+                    keysMessage = String(localized: "Impossible d'enregistrer la clé \(dependencies.keyStore.place).")
+                    return false
+                }
+                keysLoadedAt = Date()
+                keyChecks[account] = .valid
+                keyMessages[account] = nil
+                if settings.disabledKeys.remove(account) != nil { saveSettings() }
+                newKeyDraft = ""
+                newKeyAccount = nil
+                keysMessage = String(localized: "Clé \(APIKeys.title(account)) ajoutée \(dependencies.keyStore.place).")
+                return true
+            case .rejected(let status):
+                refusal = status
+            case .offline:
+                keysMessage = String(localized: "Réseau indisponible : clé non vérifiée, non enregistrée.")
+                return false
+            case .unverified(let status):
+                keysMessage = String(localized: "Vérification impossible (HTTP \(status)) : clé non enregistrée.")
+                return false
+            case .missing, .verifying, .notSaved:
+                return false
+            }
+        }
+        keysMessage = String(localized: "Clé refusée par \(APIKeys.provider(first)) (HTTP \(refusal ?? 401)).")
+        return false
     }
 
     /// Textes finaux déjà livrés dans cette application. Relu dans l'historique, sans copie supplémentaire.
@@ -839,15 +951,19 @@ final class AppModel {
             language: settings.language,
             keyterms: RecognitionHints.keyterms(dictionary: dictionary.map(\.term), context: nearbyTerms, prior: priorTerms),
             prompt: CorrectionPrompt.recognitionPrompt(appName: context?.appName, nearby: context?.nearbyText, language: settings.language),
-            cleanupKey: dependencies.loadKey(CleanupModel.deepSeekAccount),
-            fallbackKey: settings.provider == .openAI ? nil : dependencies.loadKey(ProviderID.openAI.rawValue),
+            cleanupKey: key(CleanupModel.deepSeekAccount),
+            fallbackKey: settings.provider == .openAI ? nil : key(ProviderID.openAI.rawValue),
             cleanupPrimaryDown: health.isDown(ServiceHealth.deepSeek),
-            judgeKey: dependencies.loadKey(APIKeys.typesafe)
+            judgeKey: key(APIKeys.typesafe)
         )
     }
 
     /// Ce qui empêche une dictée de partir : clé absente ou coffre injoignable.
     func voiceProblem() async -> (outcome: DictationOutcome, message: String)? {
+        // Clé coupée dans Fournisseurs : elle est là, inutile de relire le coffre.
+        if !isKeyEnabled(settings.provider.rawValue), storedKey(settings.provider.rawValue) != nil {
+            return (.keyUnavailable, String(localized: "Ta clé \(settings.provider.displayName) est coupée dans Fournisseurs."))
+        }
         // Clé pas encore lue (démarrage) ou ajoutée depuis : une relecture suffit, celle en cours si elle existe.
         // Sans réponse dans `keyRefreshLimit`, le coffre est dit injoignable et la relecture continue seule.
         var reachable = keysReachable
@@ -892,10 +1008,17 @@ final class AppModel {
         settings.cleanupEnabled && dependencies.isOnline()
     }
 
+    /// Service qui corrige d'après les clés actives : DeepSeek, puis OpenAI, puis le fournisseur de voix. nil sans clé.
+    var correctionServiceName: String? {
+        if hasKey(account: CleanupModel.deepSeekAccount) { return "DeepSeek" }
+        if hasKey(.openAI) { return ProviderID.openAI.displayName }
+        return hasKey(settings.provider) ? settings.provider.displayName : nil
+    }
+
     /// Même dictée envoyée à l'autre fournisseur vocal, si sa clé est là (OpenAI quand xAI ne répond pas).
     func voiceFallback(for speech: SpeechRequest) -> SpeechRequest? {
         let other: ProviderID = speech.provider == .xai ? .openAI : .xai
-        guard let key = dependencies.loadKey(other.rawValue), !key.isEmpty else { return nil }
+        guard let key = key(other.rawValue) else { return nil }
         let chosen = ProviderCatalog.liveModel(id: other.defaultLiveModel, provider: other)
         var fallback = speech
         fallback.provider = other
@@ -923,13 +1046,13 @@ final class AppModel {
     func checkDownServices() async {
         guard dependencies.isOnline() else { return }
         for service in health.downServices() {
-            if service == ServiceHealth.deepSeek, let key = dependencies.loadKey(CleanupModel.deepSeekAccount), !key.isEmpty {
+            if service == ServiceHealth.deepSeek, let key = key(CleanupModel.deepSeekAccount) {
                 if let usage = await dependencies.probeDeepSeek(key) {
                     recordUsage(usage)
                     recordHealth(service, succeeded: usage.succeeded)
                 }
             } else if let provider = ProviderID.allCases.first(where: { ServiceHealth.voice($0) == service }),
-                      let key = dependencies.loadKey(provider.rawValue), !key.isEmpty,
+                      let key = key(provider.rawValue),
                       await dependencies.probeVoice(provider, key) {
                 health.record(service, succeeded: true)
             }

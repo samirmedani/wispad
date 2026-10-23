@@ -3,20 +3,19 @@ import Testing
 @testable import WispadApp
 @testable import WispadCore
 
-/// Choix d'affichage (périodes, section, clés facultatives dépliées) : retrouvés après une relance, lus de façon
+/// Choix d'affichage (périodes, section) : retrouvés après une relance, lus de façon
 /// tolérante, sur des préférences temporaires, jamais les vraies.
 struct DisplayChoicesTests {
     private func decode(_ json: String) throws -> AppSettings {
         try JSONDecoder().decode(AppSettings.self, from: Data(json.utf8))
     }
 
-    /// Nouvelle installation : Accueil sur 7 jours, Consommation sur Aujourd'hui, section Accueil, clés repliées.
+    /// Nouvelle installation : Accueil sur 7 jours, Consommation sur Aujourd'hui, section Accueil.
     @Test func defaultsAreUnchangedForANewUser() {
         let settings = AppSettings()
         #expect(settings.homePeriod == .days7)
         #expect(settings.usagePeriod == .today)
         #expect(settings.lastSection == .home)
-        #expect(settings.showsOptionalKeys == false)
     }
 
     /// Ancien bloc, sans ces clés : valeurs par défaut, les autres réglages restent.
@@ -26,7 +25,6 @@ struct DisplayChoicesTests {
         #expect(settings.usagePeriod == .today)
         #expect(settings.usageTaxRate == 20)
         #expect(settings.lastSection == .home)
-        #expect(settings.showsOptionalKeys == false)
         #expect(settings.provider == .openAI)
         #expect(settings.soundsEnabled == false)
     }
@@ -42,7 +40,6 @@ struct DisplayChoicesTests {
         #expect(settings.usagePeriod == .today)
         #expect(settings.usageTaxRate == 20)
         #expect(settings.lastSection == .home)
-        #expect(settings.showsOptionalKeys == false)
         #expect(settings.provider == .openAI)
         #expect(settings.learnCorrections == false)
 
@@ -62,7 +59,6 @@ struct DisplayChoicesTests {
         settings.usagePeriod = .all
         settings.usageTaxRate = 25.5
         settings.lastSection = .dictionary
-        settings.showsOptionalKeys = true
         settings.save(to: defaults)
 
         let reloaded = AppSettings.load(from: defaults)
@@ -70,7 +66,6 @@ struct DisplayChoicesTests {
         #expect(reloaded.usagePeriod == .all)
         #expect(reloaded.usageTaxRate == 25.5)
         #expect(reloaded.lastSection == .dictionary)
-        #expect(reloaded.showsOptionalKeys)
         #expect(reloaded == settings)
     }
 

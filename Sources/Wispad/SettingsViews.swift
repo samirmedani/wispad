@@ -246,7 +246,7 @@ struct SettingsView: View {
     }
 
     private var learningText: SettingText {
-        SettingsPresentation.learning(hasTypeSafeKey: model.dependencies.loadKey("typesafe").map { !$0.isEmpty } == true)
+        SettingsPresentation.learning(hasTypeSafeKey: model.hasKey(account: APIKeys.typesafe))
     }
 
     /// Le traitement de la voix demandé n'a pas démarré avec ce micro (lu à l'affichage des Réglages).

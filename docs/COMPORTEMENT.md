@@ -190,8 +190,7 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   - taux du curseur « Taxes » de Consommation (20 % par défaut) ;
   - section, origine et période du Dictionnaire (Mots, Tous et Toute période par défaut) ;
   - dernière section ouverte dans la barre latérale (Accueil par défaut) : la fenêtre rouvre dessus depuis le
-    Dock ou « Ouvrir Wispad » ; un raccourci de section ou un menu de section ouvre toujours la sienne ;
-  - « Clés facultatives » dépliées ou non dans Fournisseurs (repliées par défaut).
+    Dock ou « Ouvrir Wispad » ; un raccourci de section ou un menu de section ouvre toujours la sienne.
 
   Un choix illisible ou inconnu reprend sa valeur par défaut, sans toucher aux autres réglages. Restent
   éphémères : les recherches de l'Historique et du Dictionnaire, une saisie en cours (clé, terme du dictionnaire),
@@ -894,9 +893,26 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
 
 ## Clés API
 
+- Fournisseurs › Clés API liste les clés enregistrées, une ligne par clé : fournisseur, rôle, clé masquée (son
+  début connu, comme « xai- » ou « sk-proj- », et ses quatre derniers caractères : « xai-••••3f9a »), un interrupteur
+  et, pour le fichier de l'app, une corbeille (après confirmation). Une clé coupée reste enregistrée mais n'est plus
+  utilisée nulle part : voix, relais, correction, Jev, soldes. Choisir pour la voix un fournisseur dont la clé est
+  coupée : la dictée dit « Ta clé … est coupée dans Fournisseurs » sans relire le coffre ni ouvrir le micro. Avec un
+  coffre de secrets, pas de corbeille : une clé se supprime avec l'outil du coffre. Le choix coupé ou non est gardé
+  dans les réglages (`disabledKeys`), jamais avec la clé ; supprimer une clé l'oublie.
+- « Ajouter une clé » : on colle la clé, son fournisseur s'affiche aussitôt d'après sa forme, sans réseau. « xai- » :
+  xAI ; « sk- » suivi de 32 caractères hexadécimaux : DeepSeek ; toute autre clé « sk- » (« sk-proj- »,
+  « sk-svcacct- », anciennes clés) : OpenAI. « Bearer », guillemets et espaces autour sont retirés. Une clé
+  Anthropic, OpenRouter, Groq, Google ou Hugging Face est nommée et refusée (Wispad ne s'en sert pas). Une clé sans
+  forme reconnue (TypeSafe) demande seulement de choisir son fournisseur. La clé est vérifiée chez ce fournisseur
+  seul, jamais envoyée à un autre pour essayer ; une clé xAI refusée comme clé d'API est essayée comme clé de gestion,
+  toujours chez xAI. Vérifiée, elle est enregistrée, remplace l'ancienne clé de ce compte et devient active.
+- Fournisseurs › Transcription marque « sans clé active » un fournisseur de voix sans clé ou dont la clé est coupée ;
+  Fournisseurs › Correction affiche le service qui corrige maintenant (« Automatique : DeepSeek »), d'après les clés
+  actives : DeepSeek, puis OpenAI, puis le fournisseur de voix ; « Aucune clé active », ou « Coupée dans Réglages ».
 - Fournisseurs recommande, sous les clés : xAI pour la voix, DeepSeek pour la correction (la moins chère), et Jev
-  (TypeSafe), facultatif, pour les mots à apprendre. Chaque service se remplace par un autre dont on a la clé. La
-  clé TypeSafe est proposée à tous, dans « Clés facultatives » ; sans elle, le modèle de correction juge seul.
+  (TypeSafe), facultatif, pour les mots à apprendre. Chaque service se remplace par un autre dont on a la clé ; sans
+  clé TypeSafe, le modèle de correction juge seul.
 - Par défaut : fichier de l'app (`Application Support/Wispad/api-keys.json`, lisible par le seul utilisateur du Mac).
 - Coffre de secrets, au choix : une commande qui répond à `get NOM` (valeur sur la sortie, code 1 si absente) et
   `put NOM` (valeur sur l'entrée), indiquée par `WISPAD_SECRET_COMMAND` ou
@@ -908,9 +924,9 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
   10 s au plus : un coffre qui ne répond plus est dit injoignable, sans ouvrir le micro, et le raccourci reste libre.
   La relecture continue seule ; l'appui suivant la rejoint au lieu d'en lancer une autre.
 - Chaque clé de voix ou de correction (xAI, OpenAI, DeepSeek) est vérifiée chez le fournisseur avant d'être
-  enregistrée, comme la clé TypeSafe (liste des modèles de Jev, gratuite) ; la clé de gestion xAI est enregistrée
-  sans vérification. Une réponse 400, 401 ou 403 est un refus (« Clé refusée ») ; une autre réponse ou l'absence de
-  réseau laisse la clé non vérifiée. Dans les deux cas, rien n'est enregistré.
+  enregistrée, comme la clé TypeSafe (liste des modèles de Jev, gratuite) et la clé de gestion xAI
+  (`management-api.x.ai/auth/management-keys/validation`). Une réponse 400, 401 ou 403 est un refus (« Clé refusée ») ;
+  une autre réponse ou l'absence de réseau laisse la clé non vérifiée. Dans les deux cas, rien n'est enregistré.
 - Fichier de clés : une entrée d'un autre type (ajoutée par une version plus récente, ou abîmée) ne cache aucune autre
   clé et reste telle quelle quand on en enregistre une. Un fichier abîmé (tronqué, invalide) n'est jamais réécrit :
   les clés de sa partie intacte servent, les autres sont dites illisibles.

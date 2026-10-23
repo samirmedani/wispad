@@ -3,6 +3,21 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.2.13 — 23 octobre 2026
+
+Les clés API deviennent une liste simple : on colle, Wispad reconnaît le fournisseur.
+
+> Depuis la 0.2.0 : si la mise à jour reste sur « Relance… », ferme cette fenêtre, puis quitte Wispad et rouvre-le.
+> La 0.2.13 est déjà installée.
+
+**Nouveau**
+- Fournisseurs › Clés API : une ligne par clé, masquée (« xai-••••3f9a »), avec un interrupteur pour la couper sans la perdre et une corbeille pour la supprimer (clés enregistrées sur le Mac).
+- « Ajouter une clé » : colle-la, son fournisseur s'affiche tout seul (xAI, OpenAI, DeepSeek), puis elle est vérifiée chez lui seul et enregistrée. Une clé TypeSafe demande juste de choisir le fournisseur. Une clé d'un service que Wispad n'utilise pas (Anthropic, OpenRouter…) est signalée.
+- Le choix du fournisseur de voix indique ceux qui n'ont pas de clé active, et la section Correction affiche le service qui corrige maintenant.
+
+**Corrigé**
+- La clé de gestion xAI est maintenant vérifiée chez xAI avant d'être enregistrée.
+
 ## 0.2.12 — 23 octobre 2026
 
 Un mot appris s'annonce en une ligne discrète.
