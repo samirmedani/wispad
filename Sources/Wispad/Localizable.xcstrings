@@ -1001,16 +1001,6 @@
         }
       }
     },
-    "Voir les nouveaux commits sur GitHub" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "See new commits on GitHub"
-          }
-        }
-      }
-    },
     "Wispad envoie l'audio et, si disponible, l'application active, la sélection et un court extrait autour du curseur." : {
       "localizations" : {
         "en" : {
@@ -8781,16 +8771,6 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$@ + %2$@ en cache → %3$@ jetons"
-          }
-        }
-      }
-    },
-    "%@ disponible" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ available"
           }
         }
       }
