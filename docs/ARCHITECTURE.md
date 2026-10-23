@@ -168,8 +168,8 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
   `DictionaryKind` classe le texte sans changer la base. Section, origine et période sont dans `AppSettings` ;
   recherche éphémère, filtrage pur dans `DictionaryFilter.matchingEntries`.
 - **Notification** : `DictationCoordinator` regroupe jusqu'à trois ajouts dans `learningOfferedTerms` ;
-  `MessageBubble` les annonce dans une `MessageCard` avec Voir / Annuler l'ajout. Le panneau reste fixe, assez haut
-  pour cette carte, tandis que les autres messages tiennent sur une ligne. Une dictée suspend et remet en file le groupe.
+  `MessageBubble` les annonce sur une `MessageLine` avec Voir / Retirer, comme les autres messages brefs. Une
+  dictée suspend et remet en file le groupe.
 - **Concurrence** : `AppModel.considerLearning` revalide les candidats après l'attente puis `learn` relit les
   refus et déduplique avant écriture. Couper l'apprentissage pendant le jugement empêche un ajout tardif.
 

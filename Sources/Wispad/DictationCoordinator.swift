@@ -100,8 +100,8 @@ final class DictationCoordinator {
     /// Confirmation « Copié », puis la bulle part.
     static let copiedSeconds = 1.5
     static let noticeSeconds = 3.5
-    /// Confirmation d'un mot appris : assez longtemps pour cliquer, puis le mot reste.
-    static let learningSeconds = 8.0
+    /// Mot appris : le temps de lire le mot et de cliquer sur Retirer (le survol arrête le décompte), puis le mot reste.
+    static let learningSeconds = 5.0
     private static let learningLog = Logger.wispad("apprentissage")
     static let transcriptionLog = Logger.wispad("transcription")
     private static let insertionLog = Logger.wispad("insertion")
@@ -1436,7 +1436,19 @@ private extension DictationPhase {
 /// Messages de la bulle hors dictée : relais annoncé, mot appris à confirmer.
 extension DictationCoordinator {
     static func learningMessage(_ term: String) -> String {
-        String(localized: "« \(term) » ajouté au dictionnaire. Le garder ?")
+        learnedLine([term])
+    }
+
+    /// Ligne de la bulle : « « Vinted » ajouté au dictionnaire », « « A » et « B » ajoutés au dictionnaire »… La
+    /// conjonction suit la langue de l'app.
+    static func learnedLine(_ terms: [String]) -> String {
+        let quoted = terms.map { String(localized: "« \($0) »") }
+        switch quoted.count {
+        case 0, 1: return String(localized: "\(quoted.first ?? "") ajouté au dictionnaire")
+        case 2: return String(localized: "\(quoted[0]) et \(quoted[1]) ajoutés au dictionnaire")
+        case 3: return String(localized: "\(quoted[0]), \(quoted[1]) et \(quoted[2]) ajoutés au dictionnaire")
+        default: return String(localized: "\(quoted.count) mots ajoutés au dictionnaire")
+        }
     }
 
     func notifyLearned(_ terms: [String]) {
@@ -1581,8 +1593,7 @@ extension DictationCoordinator {
         let terms = Array(learningQueue.prefix(CorrectionLearner.maxTermsPerDictation))
         learningQueue.removeFirst(terms.count)
         learningOfferedTerms = terms
-        let message = terms.count == 1 ? Self.learningMessage(terms[0]) : String(localized: "\(terms.count) ajouts au dictionnaire")
-        announce(message, relay: false, confirmsLearning: true, seconds: Self.learningSeconds)
+        announce(Self.learnedLine(terms), relay: false, confirmsLearning: true, seconds: Self.learningSeconds)
         return true
     }
 

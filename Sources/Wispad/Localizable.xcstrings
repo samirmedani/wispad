@@ -1041,12 +1041,32 @@
         }
       }
     },
-    "« %@ » ajouté au dictionnaire. Le garder ?" : {
+    "%@ ajouté au dictionnaire" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” added to the dictionary. Keep it?"
+            "value" : "%@ added to the dictionary"
+          }
+        }
+      }
+    },
+    "%@ et %@ ajoutés au dictionnaire" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ and %2$@ added to the dictionary"
+          }
+        }
+      }
+    },
+    "%@, %@ et %@ ajoutés au dictionnaire" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, %2$@ and %3$@ added to the dictionary"
           }
         }
       }
@@ -7909,12 +7929,12 @@
         }
       }
     },
-    "%lld ajouts au dictionnaire" : {
+    "%lld mots ajoutés au dictionnaire" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld dictionary additions"
+            "value" : "%lld words added to the dictionary"
           }
         }
       }
@@ -7931,16 +7951,6 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$lld sur %2$lld entrées"
-          }
-        }
-      }
-    },
-    "Ajout au dictionnaire" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Added to your dictionary"
           }
         }
       }
@@ -7965,22 +7975,22 @@
         }
       }
     },
-    "Annuler l'ajout" : {
+    "Retirer" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Undo addition"
+            "value" : "Remove"
           }
         }
       }
     },
-    "Appris de tes corrections" : {
+    "Retirer ce mot et ne plus l'apprendre automatiquement" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Learned from your corrections"
+            "value" : "Remove this word and stop learning it automatically"
           }
         }
       }

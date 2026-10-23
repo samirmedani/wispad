@@ -118,17 +118,17 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   Dock, sur le bureau comme au-dessus d'une app en plein écran, avec le spectre de la voix (graves au centre) à la
   cadence de l'écran (120 Hz en ProMotion).
 - Elle laisse passer les clics, sauf sur ses boutons : ✕ / ■ en mains libres, Copier et Coller d'un texte non
-  écrit, Voir / Annuler l'ajout d'un mot appris, ✕ d'un message.
-- Messages, sans contour : sur une ligne (erreur, « Collé », relais, nouvelle version), 42 points de haut, texte de
-  13 points sur deux lignes au plus, 520 points de large au plus ; en carte de 392 points (texte prêt à copier, mots
-  appris), avec les boutons sur leur propre ligne. Brefs et sans point final (une erreur de macOS terminée par un
+  écrit, Voir / Retirer d'un mot appris, ✕ d'un message.
+- Messages, sans contour : sur une ligne (erreur, « Collé », mot appris, relais, nouvelle version), 42 points de haut,
+  texte de 13 points sur deux lignes au plus, 520 points de large au plus ; en carte de 392 points (texte prêt à
+  copier), avec les boutons sur leur propre ligne. Brefs et sans point final (une erreur de macOS terminée par un
   point le perd). À gauche, une pastille de la couleur du message (rouge : erreur, vert : réussite, vert d'eau :
-  relais, bleu : nouvelle version, orange : texte prêt, violet : mots appris, gris : information) ; son anneau se
-  vide pendant le décompte. Pointeur sur la bulle, sans clic préalable : le décompte (anneau compris) s'arrête et
-  reprend où il en était à la sortie ; sur une ligne, la pastille devient la ✕, sur une carte la ✕ paraît en haut à
-  droite. Rien ne bouge. Un message qui paraît sous le pointeur attend aussi. La ✕ ferme le message tout de suite,
-  sans prendre le focus ni le premier plan à l'app active. La bulle d'enregistrement (spectre, finalisation) n'a ni
-  ✕ ni décompte.
+  relais, bleu : nouvelle version, orange : texte prêt, violet : mots appris, gris : information) ; son anneau se vide
+  pendant le décompte. Pointeur sur la bulle, sans clic préalable : le décompte (anneau compris) s'arrête et reprend
+  où il en était à la sortie ; sur une ligne, la pastille devient la ✕, sur une carte la ✕ paraît en haut à droite.
+  Rien ne bouge. Un message qui paraît sous le pointeur attend aussi. La ✕ ferme le message tout de suite, sans
+  prendre le focus ni le premier plan à l'app active. La bulle d'enregistrement (spectre, finalisation) n'a ni ✕ ni
+  décompte.
 - **Style de la bulle** (Réglages › Bulle) : **Noir profond** (par défaut) : messages noirs avec un reflet doux sur
   le haut et une ombre, bulle de dictée en verre fumé noir de 30 points de haut ; lisible sur tous les fonds. Ou
   **Verre** : la bulle de dictée (spectre, mains libres et ses boutons, finalisation) et tous les messages passent en
@@ -601,10 +601,10 @@ Réglages › Mise en forme : **Montants et unités** (symboles, par défaut, ou
   entendu corrigé à la main (« Sidance » → « Seedance ») est jugé : marque, nom, sigle ou jargon seulement. Avec
   une clé TypeSafe, Jev le note d'abord et tranche les cas nets ; le modèle de correction décide des autres (et
   de tous sans clé TypeSafe). Sans réponse du modèle de correction, la note de Jev suffit.
-- Les termes retenus sont ajoutés, puis une bulle « Ajout au dictionnaire » les présente ensemble (jusqu'à trois,
-  8 s, sans prendre le focus). « Voir » ouvre leur section dans le dictionnaire ; « Annuler l'ajout » retire le
-  groupe affiché et mémorise le refus. Sans réponse ou avec ✕, les termes restent. Le décompte se suspend au
-  survol et une nouvelle dictée passe toujours avant la bulle, qui revient ensuite.
+- Les termes retenus sont ajoutés, puis une ligne discrète les présente ensemble, comme « Collé » (« « Vinted » ajouté
+  au dictionnaire », jusqu'à trois mots, 5 s, sans prendre le focus). « Voir » ouvre leur section dans le
+  dictionnaire ; « Retirer » retire le groupe affiché et mémorise le refus. Sans réponse ou avec ✕, les termes restent.
+  Le décompte se suspend au survol et une nouvelle dictée passe toujours avant la bulle, qui revient ensuite.
 - Les jugements sont sérialisés : un terme déjà ajouté par le jugement précédent n'est pas rejugé. Les refus
   sont relus après l'attente et avant l'ajout. Une réponse tardive n'ajoute rien si l'apprentissage a été coupé
   entre-temps. Un résultat ne peut ajouter que les candidats effectivement soumis, sans doublons.
@@ -638,7 +638,7 @@ Chaque mot garde, sur ce Mac, qui l'a ajouté :
   `grok-4.7`…), ou pour Jev le modèle annoncé par sa réponse. Après un changement de clé ou de fournisseur, les mots
   suivants portent le nouveau modèle, les anciens gardent le leur.
 - **« Voir » dans la bulle** ne fait pas du mot un mot « Toi » : le juge l'avait déjà ajouté.
-  Le terme reste comme avec le silence ou ✕ ; « Annuler l'ajout » le retire. La confirmation est notée et
+  Le terme reste comme avec le silence ou ✕ ; « Retirer » le retire. La confirmation est notée et
   l'info-bulle dit « Gardé par toi » ; le mot garde son juge. « Toi » désigne seulement un mot ajouté à la main.
 - **Avant le suivi** : mot ajouté par une version précédente. L'historique ne relie aucun appel de jugement à un
   mot ni ne garde le verdict de chaque mot : l'origine n'est pas devinée.

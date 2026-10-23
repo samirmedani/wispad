@@ -1222,7 +1222,14 @@ struct AppRegressionTests {
         f.model.learn(learnedTerms(["Seedance", "OpenRouter", "Seedance"]))
         #expect(coordinator.learningOfferedTerms == ["Seedance", "OpenRouter"])
         #expect(f.model.dictionary.count == 2)
-        #expect(coordinator.notice == "2 ajouts au dictionnaire")
+        #expect(coordinator.notice == "« Seedance » et « OpenRouter » ajoutés au dictionnaire")
+        // Une ligne discrète, comme « Collé » : jamais une carte pour quelques mots.
+        let line = ImageRenderer(content: OverlayCluster(mode: .learning(coordinator.notice ?? ""))
+            .environment(f.model).environment(\.colorScheme, .dark).environment(\.overlayGlass, false))
+        line.scale = 2
+        let lineImage = try #require(line.nsImage)
+        #expect(lineImage.size.height <= 52)
+        #expect(lineImage.size.width <= OverlayLayout.messageMaxWidth)
         if let folder = ProcessInfo.processInfo.environment["WISPAD_OVERLAY_SNAPSHOTS"] {
             f.model.overlay.state.isHovered = true
             let renderer = ImageRenderer(content: OverlayCluster(mode: .learning(coordinator.notice ?? ""))
@@ -1255,7 +1262,7 @@ struct AppRegressionTests {
         f.model.overlay.displaysPanel = false
         let coordinator = f.model.coordinator
         let message = DictationCoordinator.learningMessage("Seedance")
-        #expect(message == "« Seedance » ajouté au dictionnaire. Le garder ?")
+        #expect(message == "« Seedance » ajouté au dictionnaire")
         coordinator.notifyLearned(["Seedance"])
         #expect(coordinator.notice == message)
         #expect(coordinator.learningOffer == "Seedance")
@@ -1270,7 +1277,7 @@ struct AppRegressionTests {
         #expect(coordinator.notice == nil)
         coordinator.cancel()
         #expect(coordinator.learningOfferedTerms == ["Seedance", "OpenRouter"])
-        #expect(coordinator.notice == "2 ajouts au dictionnaire")
+        #expect(coordinator.notice == "« Seedance » et « OpenRouter » ajoutés au dictionnaire")
         #expect(f.model.dictionary.isEmpty)
     }
 
@@ -1337,10 +1344,10 @@ struct AppRegressionTests {
         let f = try Fixture()
         defer { f.dispose() }
         f.model.overlay.displaysPanel = false
-        #expect(DictationCoordinator.learningSeconds == 8)
+        #expect(DictationCoordinator.learningSeconds == 5)
         f.model.learn(learnedTerms(["Seedance"]))
         #expect(f.model.coordinator.notice == DictationCoordinator.learningMessage("Seedance"))
-        // Même geste que la minuterie de 8 s : le mot reste, le message part, rien n'est refusé.
+        // Même geste que la minuterie de 5 s : le mot reste, le message part, rien n'est refusé.
         f.model.coordinator.dismissCurrentNotice()
         #expect(f.model.coordinator.notice == nil)
         #expect(f.model.dictionary.map(\.term) == ["Seedance"])
@@ -1450,7 +1457,7 @@ struct AppRegressionTests {
         defer { f.dispose() }
         let snapshots = ProcessInfo.processInfo.environment["WISPAD_OVERLAY_SNAPSHOTS"]
         for (name, mode) in [("message-appris", OverlayMode.notice("Ajouté au dictionnaire : Seedance")),
-                             ("message-confirmation", .learning("« Seedance » ajouté au dictionnaire. Le garder ?")),
+                             ("message-confirmation", .learning("« Seedance » ajouté au dictionnaire")),
                              ("message-erreur", .failure("Insertion impossible. Texte gardé dans l'historique.")),
                              ("message-relais", .notice("DeepSeek ne répond pas : correction via OpenAI.")),
                              ("message-mise-a-jour", .update("Wispad 10.12.3 est disponible"))] {
