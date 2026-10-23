@@ -49,6 +49,17 @@ struct UsageSpanTests {
         #expect(MonthlyCost.withTax(15, rate: 0) == 15)
     }
 
+    /// Chaque période se ramène à un mois sur ses propres jours, sans dépasser les jours d'utilisation.
+    @Test func eachPeriodIsAveragedOverItsOwnDays() {
+        #expect(MonthlyCost.days(for: .today, usedDays: 23) == 1)
+        #expect(MonthlyCost.days(for: .days7, usedDays: 23) == 7)
+        #expect(MonthlyCost.days(for: .days30, usedDays: 23) == 23)
+        #expect(MonthlyCost.days(for: .days30, usedDays: 45) == 30)
+        #expect(MonthlyCost.days(for: .days7, usedDays: 3) == 3)
+        #expect(MonthlyCost.days(for: .all, usedDays: 23) == 23)
+        #expect(MonthlyCost.days(for: .all, usedDays: 0) == 1)
+    }
+
     @Test func theTaxSliderNamesTheClosestReferenceCountry() {
         #expect(SalesTax.closest(to: 0) == nil)
         #expect(SalesTax.closest(to: 20)?.region == "FR")
