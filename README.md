@@ -140,7 +140,7 @@ fournisseur**, à l'usage, et l'écran Consommation estime le coût de chaque ap
 | :--- | :--- | :--- |
 | **Transcription** (ta voix) | **xAI** Grok Voice Transcribe 2.0 *(recommandé)* ou **OpenAI** GPT Live Transcribe | En direct pendant l'écoute ; chez xAI, 0,20 $ de l'heure en direct. |
 | **Correction** (le texte) | Au choix dans Fournisseurs › Modèles, ou automatique : **DeepSeek** d'abord s'il a une clé, puis **OpenAI**, puis le modèle du fournisseur de voix (**xAI** ou **OpenAI**) | Seul le texte part à la correction, jamais l'audio. |
-| **Relais** | L'autre fournisseur, s'il a une clé | Un service en panne est mis de côté, puis repris dès qu'il répond. |
+| **Relais** | Au choix dans Fournisseurs › Modèles, pour la voix et pour la correction, ou aucun | Un service en panne est mis de côté, puis repris dès qu'il répond. |
 
 Une seule clé suffit pour commencer (xAI ou OpenAI). Clés facultatives : clé de gestion xAI (solde réel affiché
 dans Consommation) et TypeSafe (Jev, premier avis sur les mots appris ; sans elle, le service de correction juge seul).

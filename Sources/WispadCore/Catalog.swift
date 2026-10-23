@@ -6,6 +6,11 @@ public enum ProviderID: String, Codable, Sendable, CaseIterable, Identifiable {
 
     public var id: String { rawValue }
 
+    /// L'autre fournisseur de voix : celui du relais.
+    public var other: ProviderID {
+        self == .xai ? .openAI : .xai
+    }
+
     public var displayName: String {
         switch self {
         case .xai: return "xAI"

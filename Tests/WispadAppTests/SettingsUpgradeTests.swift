@@ -52,6 +52,8 @@ struct SettingsUpgradeTests {
         settings.language = .english
         settings.cleanupEnabled = false
         settings.cleanupChoice = .grok
+        settings.cleanupRelay = .off
+        settings.voiceRelay = "grok-voice-transcribe-1.0"
         settings.verifyWithFile = false
         settings.tones = ["email": .polished, "notes": .casual]
         settings.selectionCommands = false
@@ -113,6 +115,17 @@ struct SettingsUpgradeTests {
         #expect(unknown.cleanupChoice == .automatic)
         #expect(unknown.provider == .openAI)
         #expect(try decode(#"{"cleanupChoice": "gpt-5.6-luna"}"#).cleanupChoice == .openAILuna)
+    }
+
+    /// Relais : absents (avant la 0.2.15) ou inconnus, pas encore choisis ; lus, ils restent.
+    @Test func relaysAreReadTolerantly() throws {
+        let old = try decode(#"{"provider": "openai"}"#)
+        #expect(old.cleanupRelay == .automatic)
+        #expect(old.voiceRelay == "")
+        #expect(try decode(#"{"cleanupRelay": "modele-futur"}"#).cleanupRelay == .automatic)
+        let read = try decode(#"{"cleanupRelay": "off", "voiceRelay": "gpt-4o-mini-transcribe"}"#)
+        #expect(read.cleanupRelay == .off)
+        #expect(read.voiceRelay == "gpt-4o-mini-transcribe")
     }
 
     /// Verre de la bulle lu champ par champ : une intensité hors bornes reprend son défaut, le verre choisi reste.

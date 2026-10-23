@@ -3,6 +3,19 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.2.15 — 23 octobre 2026
+
+Le relais de la voix et celui de la correction se choisissent, au lieu d'être décidés par Wispad.
+
+> Depuis la 0.2.0 : si la mise à jour reste sur « Relance… », ferme cette fenêtre, puis quitte Wispad et rouvre-le.
+> La 0.2.15 est déjà installée.
+
+**Nouveau**
+- Fournisseurs › Modèles, étape 1 : « Relais si xAI ne répond pas », un modèle de l'autre fournisseur ou « Aucun relais ».
+- Étape 3 : le relais de la correction, n'importe quel modèle dont la clé est active, ou « Aucun relais ».
+- Ton relais actuel est repris tel quel à la mise à jour, puis il ne change plus qu'à la main : couper une clé ne le remplace plus en douce, l'étape passe en orange.
+- Prendre pour la voix le fournisseur du relais fait de l'ancien modèle de voix le relais.
+
 ## 0.2.14 — 23 octobre 2026
 
 Fournisseurs montre les 4 étapes d'une dictée, numérotées, avec un modèle à choisir pour chacune.

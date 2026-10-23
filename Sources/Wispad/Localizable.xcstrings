@@ -10257,26 +10257,6 @@
         }
       }
     },
-    "%@/h en direct · pas de relais : aucune autre clé de voix active" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@/h live · no relay: no other active voice key"
-          }
-        }
-      }
-    },
-    "%@/h en direct · si %@ ne répond pas : %@ %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@/h live · if %2$@ doesn't respond: %3$@ %4$@"
-          }
-        }
-      }
-    },
     "Aucun modèle actif : aucun mot n'est appris." : {
       "localizations" : {
         "en" : {
@@ -10457,26 +10437,6 @@
         }
       }
     },
-    "Maintenant : %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Now: %@"
-          }
-        }
-      }
-    },
-    "Maintenant : %@ · si besoin : %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Now: %1$@ · if needed: %2$@"
-          }
-        }
-      }
-    },
     "Maintenant : %@, comme la correction." : {
       "localizations" : {
         "en" : {
@@ -10617,16 +10577,6 @@
         }
       }
     },
-    "Un choix par étape, dans l'ordre d'une dictée. Seuls les fournisseurs dont la clé est active se choisissent : ajoute les autres juste en dessous." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "One choice per step, in the order of a dictation. Only providers with an active key can be chosen: add the others just below."
-          }
-        }
-      }
-    },
     "Vérification" : {
       "localizations" : {
         "en" : {
@@ -10653,6 +10603,136 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Live voice"
+          }
+        }
+      }
+    },
+    "%@/h en direct · relais %@ : %@/h" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@/h live · %2$@ relay: %3$@/h"
+          }
+        }
+      }
+    },
+    "%@/h en direct · relais %@ sans clé active : ajoute-la, ou choisis « Aucun relais »." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@/h live · %2$@ relay has no active key: add it, or choose “No relay”."
+          }
+        }
+      }
+    },
+    "%@/h en direct · sans relais" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@/h live · no relay"
+          }
+        }
+      }
+    },
+    "Aucun relais" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No relay"
+          }
+        }
+      }
+    },
+    "déjà en premier" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "already first"
+          }
+        }
+      }
+    },
+    "Maintenant : %@ · relais : %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Now: %1$@ · relay: %2$@"
+          }
+        }
+      }
+    },
+    "Maintenant : %@ · relais %@ sans clé active : ajoute-la, ou choisis « Aucun relais »." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Now: %1$@ · %2$@ relay has no active key: add it, or choose “No relay”."
+          }
+        }
+      }
+    },
+    "Maintenant : %@ · sans relais" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Now: %@ · no relay"
+          }
+        }
+      }
+    },
+    "Relais" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relay"
+          }
+        }
+      }
+    },
+    "Relais de la correction" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Correction relay"
+          }
+        }
+      }
+    },
+    "Relais de la voix" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voice relay"
+          }
+        }
+      }
+    },
+    "Relais si %@ ne répond pas" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relay if %@ doesn't respond"
+          }
+        }
+      }
+    },
+    "Un modèle par étape, dans l'ordre d'une dictée, et un relais au choix pour la voix et la correction : il prend la main quand le premier ne répond pas. Seuls les fournisseurs dont la clé est active se choisissent : ajoute les autres juste en dessous." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "One model per step, in the order of a dictation, and a relay of your choice for the voice and the correction: it takes over when the first one doesn't respond. Only providers with an active key can be chosen: add the others just below."
           }
         }
       }
