@@ -50,11 +50,13 @@ enum BubbleStyle: String, Codable, CaseIterable, Identifiable {
     }
 }
 
-/// Les deux verres d'Apple (Liquid Glass) du style Verre.
+/// Les deux verres du style Verre.
 enum GlassVariant: String, Codable, CaseIterable, Identifiable {
-    /// Glass.clear : le plus transparent, comme « Transparent » dans les réglages d'iOS.
+    /// Verre dessiné par Wispad, sans aucun flou : ce qu'il y a derrière reste net, sous un voile léger, un reflet et
+    /// un liseré lumineux. Le Glass.clear d'Apple floute autant que le dépoli sur macOS (mesuré le 23 octobre 2026 sur
+    /// des captures composées : rayures fondues, fond sombre devenu gris laiteux) ; il n'est donc plus utilisé.
     case clear
-    /// Glass.regular : dépoli, plus lisible sur un fond chargé.
+    /// Liquid Glass d'Apple (Glass.regular) : dépoli, plus lisible sur un fond chargé.
     case regular
 
     var id: String { rawValue }
@@ -63,6 +65,46 @@ enum GlassVariant: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .clear: return String(localized: "Transparent")
         case .regular: return String(localized: "Dépoli")
+        }
+    }
+}
+
+/// Les trois allures de la bulle proposées dans Réglages, chacune un style et, pour le verre, une variante.
+enum BubbleLook: String, CaseIterable, Identifiable {
+    case black, clearGlass, frostedGlass
+
+    var id: String { rawValue }
+
+    init(style: BubbleStyle, glass: BubbleGlass) {
+        switch style {
+        case .black: self = .black
+        case .glass: self = glass.isLens ? .clearGlass : .frostedGlass
+        }
+    }
+
+    var style: BubbleStyle { self == .black ? .black : .glass }
+
+    var variant: GlassVariant? {
+        switch self {
+        case .black: return nil
+        case .clearGlass: return .clear
+        case .frostedGlass: return .regular
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .black: return String(localized: "Noir profond")
+        case .clearGlass: return String(localized: "Verre transparent")
+        case .frostedGlass: return String(localized: "Verre dépoli")
+        }
+    }
+
+    var caption: String {
+        switch self {
+        case .black: return String(localized: "Lisible sur tout fond")
+        case .clearGlass: return String(localized: "Le fond reste net")
+        case .frostedGlass: return String(localized: "Flouté, comme macOS")
         }
     }
 }
@@ -130,7 +172,16 @@ struct BubbleGlass: Codable, Equatable {
 
     @available(macOS 26, *)
     func glass(for scheme: ColorScheme) -> Glass {
-        (variant == .clear ? Glass.clear : Glass.regular).tint(tint(for: scheme))
+        Glass.regular.tint(tint(for: scheme))
+    }
+
+    /// Verre transparent de Wispad, sans flou (`GlassLens`), au lieu du Liquid Glass d'Apple.
+    var isLens: Bool { variant == .clear }
+
+    /// Voile du verre transparent : léger sur la bulle de dictée, où le spectre se lit sur tout fond ; plus dense sous
+    /// un message, dont le texte doit rester lisible. L'intensité le renforce.
+    func lensVeil(message: Bool) -> Double {
+        message ? 0.74 + intensity * 0.22 : 0.05 + intensity * 0.45
     }
 }
 
@@ -167,6 +218,17 @@ extension AppModel {
     func setBubbleStyle(_ style: BubbleStyle) {
         guard settings.bubbleStyle != style else { return }
         settings.bubbleStyle = style
+        saveSettings()
+        overlay.bubbleStyleChanged()
+    }
+
+    var bubbleLook: BubbleLook { BubbleLook(style: settings.bubbleStyle, glass: settings.bubbleGlass) }
+
+    /// Choix d'une carte de Réglages › Bulle et messages : style et verre d'un coup, appliqués aussitôt à la bulle.
+    func setBubbleLook(_ look: BubbleLook) {
+        guard look != bubbleLook else { return }
+        settings.bubbleStyle = look.style
+        if let variant = look.variant { settings.bubbleGlass.variant = variant }
         saveSettings()
         overlay.bubbleStyleChanged()
     }

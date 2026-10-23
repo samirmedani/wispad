@@ -114,7 +114,7 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 
 ## Bulle
 
-- Verre fumé noir (Liquid Glass sur macOS 26+), ou verre transparent (voir « Style de la bulle »), au-dessus du
+- Verre fumé noir (Liquid Glass sur macOS 26+), ou verre transparent ou dépoli (voir « Style de la bulle »), au-dessus du
   Dock, sur le bureau comme au-dessus d'une app en plein écran, avec le spectre de la voix (graves au centre) à la
   cadence de l'écran (120 Hz en ProMotion).
 - Elle laisse passer les clics, sauf sur ses boutons : ✕ / ■ en mains libres, Copier et Coller d'un texte non
@@ -129,21 +129,24 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   Rien ne bouge. Un message qui paraît sous le pointeur attend aussi. La ✕ ferme le message tout de suite, sans
   prendre le focus ni le premier plan à l'app active. La bulle d'enregistrement (spectre, finalisation) n'a ni ✕ ni
   décompte.
-- **Style de la bulle** (Réglages › Bulle) : **Noir profond** (par défaut) : messages noirs avec un reflet doux sur
-  le haut et une ombre, bulle de dictée en verre fumé noir de 30 points de haut ; lisible sur tous les fonds. Ou
-  **Verre** : la bulle de dictée (spectre, mains libres et ses boutons, finalisation) et tous les messages passent en
-  Liquid Glass transparent de macOS 26 (matériau translucide avant), sans liseré, avec une ombre portée douce dessinée
-  hors de la forme (le verre n'est pas assombri). La bulle de dictée y fait 40 points de haut, spectre et boutons
-  agrandis d'autant : à 30 points, la lentille et les reflets du verre ne se voyaient presque pas. Le spectre garde
-  ses couleurs, la vague de finalisation et la ✕ se foncent sur un verre clair. Le changement vaut tout de suite. En
-  Verre, trois réglages de plus : **Apparence du verre**, Clair (par défaut : brillant, il laisse voir ce qu'il y a
-  derrière, même une fenêtre sombre, comme sur iPhone), Sombre (verre fumé) ou Comme l'app (clair ou sombre comme
-  l'apparence de l'app, le rendu d'avant la 0.2.11) ; puis les deux verres natifs d'Apple : **Verre** Transparent
-  (par défaut, le plus transparent) ou Dépoli (plus flou, plus lisible sur un fond chargé), et **Intensité**, la
-  teinte posée sur ce verre (25 % par défaut ; à zéro, le verre seul ; au maximum, 70 % d'opacité), sombre sur un
-  verre sombre et claire sur un verre clair. Un aperçu sous ces réglages montre la bulle de dictée et un message avec
-  le vrai verre, dans l'apparence choisie, au-dessus d'une page claire et d'un fond sombre ; il suit le curseur, comme
-  la bulle affichée. L'intensité s'enregistre au relâchement du curseur.
+- **Style de la bulle** (Réglages › Bulle) : trois cartes montrent la vraie bulle sur une page claire et un fond
+  coloré ; un clic la choisit, la bulle affichée change tout de suite. **Noir profond** (par défaut) : messages noirs
+  avec un reflet doux sur le haut et une ombre, bulle de dictée en verre fumé noir de 30 points de haut ; lisible sur
+  tous les fonds. **Verre transparent** : verre dessiné par Wispad, sans aucun flou ; ce qu'il y a derrière reste
+  net, sous un voile léger, un reflet sur le haut, des bords intérieurs plus denses et un liseré lumineux. Le
+  Glass.clear d'Apple n'est plus utilisé : sur macOS il floute autant que le dépoli (rayures fondues, fond sombre
+  devenu gris laiteux, mesuré le 23 octobre 2026). Un fin halo (blanc en apparence claire, noir en sombre) garde le
+  spectre, la vague de finalisation et les symboles ✕ / ■ lisibles sur un fond de leur couleur ; les messages gardent
+  un voile plus dense (74 % à densité nulle) pour que leur texte se lise. **Verre dépoli** : Liquid Glass d'Apple
+  (Glass.regular, macOS 26 ; matériau translucide avant), flouté. En verre, la bulle de dictée fait 40 points de
+  haut, spectre et boutons agrandis d'autant. Ombre portée douce (26 %, flou de 12 points, 4 points plus bas),
+  dessinée hors de la forme et jamais coupée : le panneau garde 32 points sous la bulle (10 avant la 0.3.0, d'où un
+  rectangle sombre). Deux réglages de plus pour le verre : **Apparence du verre**, Clair (par défaut : voile blanc,
+  reflets brillants, symboles foncés), Sombre (verre fumé, symboles clairs) ou Comme l'app ; et **Densité du verre**
+  (25 % par défaut ; à zéro, le verre seul), qui épaissit le voile du verre transparent (de 5 à 50 % sur la bulle de
+  dictée) ou teinte le dépoli (jusqu'à 70 %). Un grand aperçu sous ces réglages montre la bulle des mains libres et un
+  message dans le style choisi ; il suit le curseur, comme la bulle affichée. La densité s'enregistre au relâchement
+  du curseur. Un verre « Transparent » choisi avant la 0.3.0 devient ce verre sans flou.
 - **Place à l'écran** (Réglages › Bulle et messages) : trois places réglables à main levée sur un schéma quadrillé
   de l'écran, la grille aimantant légèrement les bulles. **Dictée** (spectre et finalisation), **Alertes de
   collage** (texte prêt à copier) et **Messages** (« Collé », mot appris, relais, nouvelle version). Par défaut :

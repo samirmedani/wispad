@@ -37,6 +37,12 @@ enum BubbleGallery {
         app.run()
     }
 
+    private static func value(after flag: String) -> String? {
+        let arguments = CommandLine.arguments
+        guard let index = arguments.firstIndex(of: flag), arguments.indices.contains(index + 1) else { return nil }
+        return arguments[index + 1]
+    }
+
     private static func render(to output: URL) async -> Int32 {
         let support = FileManager.default.temporaryDirectory.appendingPathComponent("wispad-bubble-gallery-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: support) }
@@ -48,7 +54,16 @@ enum BubbleGallery {
             dependencies.keyStore = .vault
             dependencies.loadKey = { _ in nil }
             dependencies.refreshKeys = { false }
-            model = try AppModel(supportDirectory: support, settings: AppSettings(), dependencies: dependencies)
+            // `--look black|clearGlass|frostedGlass` et `--glass-appearance light|dark` : la bulle dans ce style.
+            var settings = AppSettings()
+            if let look = value(after: "--look").flatMap(BubbleLook.init(rawValue:)) {
+                settings.bubbleStyle = look.style
+                if let variant = look.variant { settings.bubbleGlass.variant = variant }
+            }
+            if let appearance = value(after: "--glass-appearance").flatMap(GlassAppearance.init(rawValue:)) {
+                settings.bubbleGlass.appearance = appearance
+            }
+            model = try AppModel(supportDirectory: support, settings: settings, dependencies: dependencies)
         } catch {
             print("Galerie impossible : \(error.localizedDescription)")
             return 2
@@ -243,10 +258,11 @@ enum BubbleGallery {
                 missing.append(caption)
                 return
             }
+            let light = model.settings.bubbleStyle == .glass && model.settings.bubbleGlass.appearance == .light
             let content = OverlayCluster(mode: mode)
                 .padding(16)
                 .environment(model)
-                .environment(\.colorScheme, .dark)
+                .environment(\.colorScheme, light ? .light : .dark)
                 .environment(\.overlayGlass, false)
             let renderer = ImageRenderer(content: content)
             renderer.scale = 2

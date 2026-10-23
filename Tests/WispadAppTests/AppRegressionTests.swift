@@ -1478,6 +1478,32 @@ struct AppRegressionTests {
         }
     }
 
+    /// L'ombre de la bulle tient entière dans le panneau : coupée par son bord, elle dessinait un rectangle sombre
+    /// sous la bulle (flou gaussien : environ deux fois son rayon, plus son décalage).
+    @Test func bubbleShadowFitsInsideThePanel() {
+        #expect(OverlayLayout.bottomMargin >= 2 * OverlayStyle.shadowRadius + OverlayStyle.shadowOffset)
+    }
+
+    /// Les trois cartes de Réglages › Bulle posent chacune leur style et leur verre ; revenir au noir profond garde
+    /// le verre choisi pour plus tard.
+    @Test func bubbleLookCardsSetStyleAndGlass() throws {
+        let f = try Fixture()
+        defer { f.dispose() }
+        f.model.setBubbleLook(.frostedGlass)
+        #expect(f.model.settings.bubbleStyle == .glass)
+        #expect(f.model.settings.bubbleGlass.variant == .regular)
+        #expect(!f.model.settings.bubbleGlass.isLens)
+        #expect(f.model.bubbleLook == .frostedGlass)
+        f.model.setBubbleLook(.black)
+        #expect(f.model.settings.bubbleStyle == .black)
+        #expect(f.model.settings.bubbleGlass.variant == .regular)
+        #expect(f.model.bubbleLook == .black)
+        f.model.setBubbleLook(.clearGlass)
+        #expect(f.model.settings.bubbleStyle == .glass)
+        #expect(f.model.settings.bubbleGlass.isLens)
+        #expect(f.model.bubbleLook == .clearGlass)
+    }
+
     /// La pilule de dictée tient dans la place que la bulle lui réserve à l'écran, dans chaque style : 30 pt en noir
     /// profond, comme toujours ; 40 pt en verre, boutons des mains libres compris, sans devenir encombrante.
     @Test func dictationPillMatchesItsPlacementSizeInEveryStyle() async throws {
@@ -1585,12 +1611,13 @@ struct AppRegressionTests {
         // La pilule descend à 10 pt du bas au lieu de flotter 65 pt au-dessus du contenu.
         let fullScreenVisible = NSRect(x: 0, y: 59, width: 1512, height: 890)
         #expect(OverlayLayout.pillBottom(screen: screen, visible: fullScreenVisible, dockShown: false) == 10)
-        #expect(OverlayLayout.panelFrame(screen: screen, visible: fullScreenVisible, dockShown: false).minY == 0)
+        // Le panneau dépasse sous l'écran de la place de l'ombre (invisible) ; la pilule, elle, est à 10 pt.
+        #expect(OverlayLayout.panelFrame(screen: screen, visible: fullScreenVisible, dockShown: false).minY + OverlayLayout.bottomMargin == 10)
         // Dock masqué ou sur le côté : 10 pt du bas de l'écran, que sa fenêtre soit là ou non.
         let dockOnLeft = NSRect(x: 64, y: 0, width: 1448, height: 949)
         #expect(OverlayLayout.pillBottom(screen: screen, visible: dockOnLeft, dockShown: true) == 10)
         #expect(OverlayLayout.pillBottom(screen: screen, visible: dockOnLeft, dockShown: false) == 10)
-        #expect(OverlayLayout.panelFrame(screen: screen, visible: dockOnLeft, dockShown: true).minY == 0)
+        #expect(OverlayLayout.panelFrame(screen: screen, visible: dockOnLeft, dockShown: true).minY + OverlayLayout.bottomMargin == 10)
         // Écran secondaire placé sous le principal : mêmes règles, en coordonnées globales.
         let lower = NSRect(x: -200, y: -1080, width: 1920, height: 1080)
         let lowerVisible = NSRect(x: -200, y: -1010, width: 1920, height: 985)

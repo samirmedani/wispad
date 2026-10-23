@@ -348,39 +348,29 @@ enum SettingsPresentation {
 
     // MARK: Bulle et messages
 
-    static let overlayTitle = String(localized: "Bulle et messages")
-    static let overlaySummary = String(localized: "Style de la bulle, et où elle et ses messages apparaissent à l'écran.")
+    static let placementTitle = String(localized: "Position")
+    static let placementSummary = String(localized: "Où la bulle et ses messages apparaissent à l'écran.")
 
     static let bubbleStyle = SettingText(
         title: String(localized: "Style de la bulle"),
-        summary: String(localized: "Noir profond, ou verre transparent comme macOS."),
-        details: [
-            String(localized: "Le verre laisse voir ce qu'il y a derrière ; clair, sombre ou comme l'app, au choix."),
-            String(localized: "Il vaut pour la bulle de dictée comme pour ses messages ; le spectre garde ses couleurs.")
-        ]
+        summary: String(localized: "Pour la bulle de dictée comme pour ses messages ; le spectre garde ses couleurs.")
     )
 
     static let glassAppearance = SettingText(
         title: String(localized: "Apparence du verre"),
-        summary: String(localized: "Clair comme sur iPhone, sombre, ou comme l'app."),
+        summary: String(localized: "Clair, sombre, ou comme l'app."),
         details: [
-            String(localized: "Le verre clair est brillant et laisse voir ce qu'il y a derrière, même une fenêtre sombre. Le verre sombre ressemble à un verre fumé.")
-        ]
-    )
-
-    static let glassVariant = SettingText(
-        title: String(localized: "Verre"),
-        summary: String(localized: "Les deux verres d'Apple : transparent ou dépoli."),
-        details: [
-            String(localized: "Transparent laisse le plus voir ce qu'il y a derrière. Dépoli floute davantage et se lit mieux sur un fond chargé.")
+            String(localized: "Clair : voile blanc et reflets brillants, symboles foncés. Sombre : verre fumé, symboles clairs."),
+            String(localized: "Sur le verre transparent, un fin halo garde le spectre et les symboles lisibles, quel que soit le fond.")
         ]
     )
 
     static let glassIntensity = SettingText(
-        title: String(localized: "Intensité"),
-        summary: String(localized: "Teinte du verre ; à zéro, le verre seul."),
+        title: String(localized: "Densité du verre"),
+        summary: String(localized: "Plus dense, il se lit mieux sur un fond chargé ; à zéro, le verre seul."),
         details: [
-            String(localized: "Plus forte, elle assombrit le verre (ou l'éclaircit en apparence claire) et rend le texte plus lisible.")
+            String(localized: "Elle assombrit le verre en apparence sombre, l'éclaircit en apparence claire."),
+            String(localized: "Les messages gardent un voile plus dense que la bulle de dictée : leur texte reste lisible.")
         ]
     )
 

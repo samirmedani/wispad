@@ -10,10 +10,13 @@ import WispadCore
 /// posés derrière la fenêtre au premier plan, puis ces deux fenêtres seules sont composées par ScreenCaptureKit.
 /// Les rendus hors écran (ImageRenderer) ne dessinent pas le Liquid Glass ; ceci le dessine.
 ///
-///   Wispad --bubble-probe <dossier> [--appearance dark|light]
+///   Wispad --bubble-probe <dossier> [--appearance dark|light] [--glass clear-light-0,regular-dark-0.3,…]
+///                                   [--modes ecoute,texte-pret,…]
 ///
 /// Écrit <style>-<mode>-<fond>.png pour chaque style de bulle, chaque état et trois fonds : rayures vives, fenêtre
-/// sombre avec du texte, photo claire. Lancer depuis un shell autorisé à enregistrer l'écran ; jamais de focus pris.
+/// sombre avec du texte, photo claire. `--glass` : seulement le style Verre, une série par verre (variante, apparence,
+/// intensité), écrite glass-<verre>-<mode>-<fond>.png. Lancer depuis un shell autorisé à enregistrer l'écran ; jamais
+/// de focus pris.
 @MainActor
 enum BubbleProbe {
     static let modes: [(name: String, apply: @MainActor (AppModel) -> Void)] = [
@@ -34,6 +37,8 @@ enum BubbleProbe {
         }
         let outDir = URL(fileURLWithPath: arguments[index + 1])
         let light = arguments.firstIndex(of: "--appearance").map { arguments.indices.contains($0 + 1) && arguments[$0 + 1] == "light" } ?? false
+        let glassSpecs = value(after: "--glass", in: arguments)?.split(separator: ",").map(String.init) ?? []
+        let modeFilter = Set(value(after: "--modes", in: arguments)?.split(separator: ",").map(String.init) ?? [])
         let app = NSApplication.shared
         app.setActivationPolicy(.prohibited)
         guard let front = frontWindow() else { print("PROBE aucune fenêtre opaque assez grande au premier plan"); return }
@@ -73,10 +78,24 @@ enum BubbleProbe {
         print("PROBE fenêtre \(front.number) cadre \(NSStringFromRect(frame))")
         fflush(stdout)
         Task { @MainActor in
-            for style in BubbleStyle.allCases {
-                model.settings.bubbleStyle = style
-                model.settings.bubbleGlass = BubbleGlass(variant: .clear, intensity: 0)
-                for mode in modes {
+            // Une série par style, ou par verre demandé.
+            var series: [(name: String, style: BubbleStyle, glass: BubbleGlass)] = BubbleStyle.allCases.map {
+                ($0.rawValue, $0, BubbleGlass(variant: .clear, intensity: 0, appearance: light ? .light : .dark))
+            }
+            if !glassSpecs.isEmpty {
+                series = glassSpecs.compactMap { spec in
+                    let parts = spec.split(separator: "-").map(String.init)
+                    guard parts.count == 3, let variant = GlassVariant(rawValue: parts[0]),
+                          let appearance = GlassAppearance(rawValue: parts[1]), let intensity = Double(parts[2]) else { return nil }
+                    return ("glass-\(spec)", .glass, BubbleGlass(variant: variant, intensity: intensity, appearance: appearance))
+                }
+            }
+            for item in series {
+                model.settings.bubbleStyle = item.style
+                model.settings.bubbleGlass = item.glass
+                hosting.appearance = item.style == .glass && !glassSpecs.isEmpty
+                    ? item.glass.appearance.nsAppearance : NSAppearance(named: light ? .aqua : .darkAqua)
+                for mode in modes where modeFilter.isEmpty || modeFilter.contains(mode.name) {
                     mode.apply(model)
                     try? await Task.sleep(nanoseconds: 700_000_000)
                     for kind in ProbeBackground.Kind.allCases {
@@ -84,7 +103,7 @@ enum BubbleProbe {
                         background.display()
                         try? await Task.sleep(nanoseconds: 120_000_000)
                         await capture(windows: [back.windowNumber, bubble.windowNumber], frame: frame, primaryHeight: primaryHeight,
-                                      to: outDir.appendingPathComponent("\(style.rawValue)-\(mode.name)-\(kind.rawValue).png"))
+                                      to: outDir.appendingPathComponent("\(item.name)-\(mode.name)-\(kind.rawValue).png"))
                     }
                     model.coordinator.phase = .idle
                     model.coordinator.failureText = nil
@@ -97,8 +116,13 @@ enum BubbleProbe {
             try? FileManager.default.removeItem(at: directory)
             app.terminate(nil)
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 60) { app.terminate(nil) }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 240) { app.terminate(nil) }
         app.run()
+    }
+
+    private static func value(after flag: String, in arguments: [String]) -> String? {
+        guard let index = arguments.firstIndex(of: flag), arguments.indices.contains(index + 1) else { return nil }
+        return arguments[index + 1]
     }
 
     private struct FrontWindow {

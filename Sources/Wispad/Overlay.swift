@@ -110,7 +110,7 @@ struct PillMetrics {
 @MainActor
 enum OverlayLayout {
     /// Assez grand pour l'état d'erreur, l'ombre et le rebond d'apparition : le panneau ne bouge plus.
-    static let panelSize = CGSize(width: 560, height: 176)
+    static let panelSize = CGSize(width: 560, height: 198)
     /// Bulle de dictée du style par défaut (Noir profond) ; selon le style, `PillMetrics.of(_:)`.
     static let pillHeight = PillMetrics.black.height
     /// Message sur une ligne : pastille de 26 pt dans 42 pt de haut ; deux lignes de texte au plus.
@@ -120,8 +120,9 @@ enum OverlayLayout {
     static let messageMaxWidth: CGFloat = 520
     /// Cartes : texte prêt à copier, mots appris.
     static let cardWidth: CGFloat = 392
-    /// Espace transparent sous la pilule, pour l'ombre.
-    static let bottomMargin: CGFloat = 10
+    /// Espace transparent sous la pilule : toute l'ombre portée y tient (flou de 12 pt décalé de 4 pt). À 10 pt, le
+    /// bord du panneau la coupait net.
+    static let bottomMargin: CGFloat = 32
     static let space = "wispad-overlay"
     static let spectrumPadding = PillMetrics.black.spectrumPadding
     static let spectrumPillWidth = PillMetrics.black.spectrumWidth
@@ -221,11 +222,12 @@ enum OverlayStyle {
     static let morph = Animation.spring(response: 0.4, dampingFraction: 0.8)
     static let fade = Animation.easeInOut(duration: 0.2)
 
-    /// Ombre portée sous la bulle : elle la détache du fond, comme les éléments en verre de macOS. Dessinée hors de
-    /// la forme seulement, pour ne pas assombrir le verre.
-    static let shadowOpacity = 0.42
-    static let shadowRadius: CGFloat = 10
-    static let shadowOffset: CGFloat = 5
+    /// Ombre portée sous la bulle : douce et large, elle la détache du fond comme les éléments flottants de macOS.
+    /// Dessinée hors de la forme seulement, pour ne pas assombrir le verre. Le panneau lui laisse toute sa place
+    /// (`OverlayLayout.bottomMargin`) : coupée par son bord, elle faisait un rectangle sombre sous la bulle.
+    static let shadowOpacity = 0.26
+    static let shadowRadius: CGFloat = 12
+    static let shadowOffset: CGFloat = 4
 }
 
 /// Ombre portée d'une forme, sans la zone de la forme elle-même : sous un verre transparent, une ombre pleine
@@ -240,12 +242,50 @@ struct ShapeShadow<S: Shape>: View {
             .offset(y: OverlayStyle.shadowOffset)
             .mask {
                 ZStack {
-                    Rectangle().padding(-60)
+                    Rectangle().padding(-80)
                     shape.blendMode(.destinationOut)
                 }
                 .compositingGroup()
             }
             .allowsHitTesting(false)
+    }
+}
+
+/// Verre transparent de Wispad : aucun flou, ce qu'il y a derrière reste net. Un voile (blanc en apparence claire,
+/// noir en sombre), un reflet sur le haut, des bords intérieurs plus denses comme l'épaisseur d'une lentille, un
+/// liseré lumineux et une ombre douce hors de la forme suffisent à le lire comme du verre.
+struct GlassLens<S: Shape>: View {
+    var shape: S
+    var veil: Double
+    var dark: Bool
+    /// Ombre portée ; éteinte pour un bouton caché sous la pilule.
+    var shadow = true
+
+    var body: some View {
+        let tone = dark ? Color.black : Color.white
+        ZStack {
+            ShapeShadow(shape: shape, opacity: shadow ? OverlayStyle.shadowOpacity : 0)
+            shape.fill(tone.opacity(veil))
+            // Reflet : le haut du verre capte la lumière, puis s'éteint avant le milieu.
+            shape.fill(LinearGradient(stops: [
+                .init(color: .white.opacity(dark ? 0.14 : 0.3), location: 0),
+                .init(color: .white.opacity(0), location: 0.5),
+            ], startPoint: .top, endPoint: .bottom))
+            // Épaisseur : un dégradé sombre le long du bord intérieur, plus marqué en bas.
+            shape.stroke(LinearGradient(colors: [.black.opacity(dark ? 0.18 : 0.08), .black.opacity(dark ? 0.4 : 0.2)],
+                                        startPoint: .top, endPoint: .bottom), lineWidth: 6)
+                .blur(radius: 3)
+                .clipShape(shape)
+            // Liseré : lumière en haut à gauche, rappel plus discret en bas à droite.
+            shape.stroke(LinearGradient(stops: [
+                .init(color: .white.opacity(0.85), location: 0),
+                .init(color: .white.opacity(0.18), location: 0.45),
+                .init(color: .white.opacity(0.08), location: 0.7),
+                .init(color: .white.opacity(0.4), location: 1),
+            ], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 2)
+                .clipShape(shape)
+        }
+        .allowsHitTesting(false)
     }
 }
 
@@ -379,7 +419,11 @@ struct OverlayCluster: View {
     }
 
     @ViewBuilder private var dictation: some View {
-        if #available(macOS 26, *), glassEnabled {
+        let lens = model.settings.bubbleStyle == .glass && model.settings.bubbleGlass.isLens
+        if lens {
+            // Verre transparent : chaque forme porte sa propre ombre, rien ne se dessine sous la pilule.
+            cluster(glassy: false)
+        } else if #available(macOS 26, *), glassEnabled {
             GlassEffectContainer(spacing: OverlayLayout.orbGap - 2) { cluster(glassy: true) }
         } else {
             cluster(glassy: false).shadow(color: .black.opacity(0.3), radius: 6, y: 2)
@@ -397,7 +441,7 @@ struct OverlayCluster: View {
         return ZStack {
             // Mouvement réduit : les boutons paraissent en fondu à leur place, sans glisser.
             if Self.showsOrbs(mode, reduceMotion: reduceMotion) {
-                OverlayOrbButton(symbol: "xmark", tint: model.settings.bubbleStyle == .glass ? Color.primary.opacity(0.75) : .white.opacity(0.78),
+                OverlayOrbButton(symbol: "xmark", tint: model.settings.bubbleStyle == .glass ? Color.primary.opacity(0.8) : .white.opacity(0.78),
                                  help: String(localized: "Annuler (Échap)"), glassID: "cancel", namespace: glass, revealed: handsFree) {
                     coordinator.cancel()
                 }
@@ -477,7 +521,11 @@ private struct OverlayGlass<S: InsettableShape>: ViewModifier {
                     .opacity(rim && !clear ? 1 : 0)
                     .animation(.easeOut(duration: 0.12), value: rim)
             )
-        if #available(macOS 26, *), glassEnabled {
+        if clear, glassSettings.isLens {
+            clipped.background {
+                GlassLens(shape: shape, veil: glassSettings.lensVeil(message: false), dark: scheme == .dark, shadow: rim)
+            }
+        } else if #available(macOS 26, *), glassEnabled {
             clipped
                 .glassEffect((clear ? glassSettings.glass(for: scheme) : Glass.clear.tint(OverlayStyle.glassTint)).interactive(interactive), in: shape)
                 .glassEffectID(id, in: namespace)
@@ -487,7 +535,7 @@ private struct OverlayGlass<S: InsettableShape>: ViewModifier {
         } else if clear {
             clipped
                 .background(shape.fill(glassSettings.tint(for: scheme) ?? .clear))
-                .background(shape.fill(glassSettings.variant == .clear ? Material.ultraThinMaterial : Material.regularMaterial))
+                .background(shape.fill(Material.regularMaterial))
         } else {
             clipped
                 .background(shape.fill(OverlayStyle.background))
@@ -506,6 +554,29 @@ struct LiveSpectrum: View {
         let tint = coordinator.relay == nil ? OverlayStyle.red : OverlayStyle.relay
         SpectrumBars(levels: coordinator.spectrum, color: tint.opacity(coordinator.isListening ? 1 : 0.45),
                      scale: PillMetrics.of(style).spectrumScale)
+            .lensHalo()
+    }
+}
+
+extension View {
+    /// Sous le verre transparent, le fond reste net : un halo fin (blanc en apparence claire, noir en sombre) garde le
+    /// spectre et les symboles lisibles sur un fond de leur couleur.
+    func lensHalo() -> some View {
+        modifier(LensHalo())
+    }
+}
+
+private struct LensHalo: ViewModifier {
+    @Environment(\.bubbleStyle) private var style
+    @Environment(\.bubbleGlass) private var glassSettings
+    @Environment(\.colorScheme) private var scheme
+
+    @ViewBuilder func body(content: Content) -> some View {
+        if style == .glass, glassSettings.isLens {
+            content.shadow(color: scheme == .dark ? .black.opacity(0.6) : .white.opacity(0.75), radius: 1.2)
+        } else {
+            content
+        }
     }
 }
 
@@ -554,6 +625,7 @@ struct ProcessingBars: View {
             let idle = style == .glass ? Color.primary.opacity(0.5) : Color.white.opacity(0.55)
             SpectrumBars(levels: levels, color: model.coordinator.relay == nil ? idle : OverlayStyle.relay.opacity(0.8),
                          scale: PillMetrics.of(style).spectrumScale)
+                .lensHalo()
         }
     }
 
@@ -588,6 +660,7 @@ struct OverlayOrbButton: View {
             Image(systemName: symbol)
                 .font(.system(size: pill.symbolSize, weight: .bold))
                 .foregroundStyle(tint)
+                .lensHalo()
                 .opacity(revealed ? 1 : 0)
                 // L'icône s'efface avant que le bouton ne repasse sur le spectre, et revient une fois sorti.
                 .animation(revealed ? .easeIn(duration: 0.18).delay(0.08) : .easeOut(duration: 0.1), value: revealed)
@@ -824,12 +897,16 @@ private struct MessageSurface<S: Shape>: ViewModifier {
                     .shadow(color: .black.opacity(0.35), radius: 8, y: 3)
             }
         case .glass:
-            if #available(macOS 26, *), glassEnabled {
+            if glassSettings.isLens {
+                content.background {
+                    GlassLens(shape: shape, veil: glassSettings.lensVeil(message: true), dark: scheme == .dark)
+                }
+            } else if #available(macOS 26, *), glassEnabled {
                 content.glassEffect(glassSettings.glass(for: scheme), in: shape)
                     .background { ShapeShadow(shape: shape, opacity: 0.3) }
             } else {
                 content.background {
-                    shape.fill(glassSettings.variant == .clear ? Material.ultraThinMaterial : Material.regularMaterial)
+                    shape.fill(Material.regularMaterial)
                         .overlay(shape.fill(glassSettings.tint(for: scheme) ?? .clear))
                         .shadow(color: .black.opacity(0.18), radius: 8, y: 3)
                 }
