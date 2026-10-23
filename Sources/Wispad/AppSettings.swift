@@ -142,6 +142,9 @@ struct AppSettings: Codable, Equatable {
     var appearance: AppAppearance = .system
     /// Style de la bulle et de ses messages (Réglages › Bulle et messages) : noir profond par défaut, ou verre.
     var bubbleStyle: BubbleStyle = .black
+    /// Taille de la bulle de dictée (spectre et boutons des mains libres), de 80 % à 160 % ; les messages gardent la
+    /// leur.
+    var bubbleSize = 1.0
     /// Verre du style Verre : transparent ou dépoli, et intensité de sa teinte.
     var bubbleGlass = BubbleGlass()
 
@@ -215,12 +218,14 @@ struct AppSettings: Codable, Equatable {
         overlayPlacement = value(.overlayPlacement, defaults.overlayPlacement)
         appearance = value(.appearance, defaults.appearance)
         bubbleStyle = value(.bubbleStyle, defaults.bubbleStyle)
+        bubbleSize = number(.bubbleSize, defaults.bubbleSize, in: Self.bubbleSizeRange)
         bubbleGlass = value(.bubbleGlass, defaults.bubbleGlass)
     }
 
     /// Bornes des réglages de conservation, partagées avec leurs contrôles dans Réglages.
     static let temporaryHoursRange = 1...24 * 14
     static let maxStorageMBRange = 20...5_000
+    static let bubbleSizeRange = 0.8...1.6
 
     /// Modèle de voix retiré du catalogue : le modèle par défaut du même fournisseur le remplace.
     private static func knownLiveModel(_ model: String, provider: ProviderID) -> String {

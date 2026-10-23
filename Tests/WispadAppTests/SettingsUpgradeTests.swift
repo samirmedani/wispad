@@ -95,6 +95,7 @@ struct SettingsUpgradeTests {
         settings.overlayPlacement.setAnchor(OverlayAnchor(x: 0.25, y: 0.75), for: .info)
         settings.appearance = .dark
         settings.bubbleStyle = .glass
+        settings.bubbleSize = 1.3
         settings.bubbleGlass = BubbleGlass(variant: .regular, intensity: 0.6, appearance: .dark)
         return settings
     }
@@ -126,6 +127,23 @@ struct SettingsUpgradeTests {
         let read = try decode(#"{"cleanupRelay": "off", "voiceRelay": "gpt-4o-mini-transcribe"}"#)
         #expect(read.cleanupRelay == .off)
         #expect(read.voiceRelay == "gpt-4o-mini-transcribe")
+    }
+
+    /// Nouvelle installation : bulle en noir profond, à sa taille d'origine. Rien d'enregistré ne change ce choix.
+    @Test func aFreshInstallStartsWithTheBlackBubble() throws {
+        let fixture = try Defaults()
+        defer { fixture.dispose() }
+        #expect(AppSettings().bubbleStyle == .black)
+        let fresh = AppSettings.load(from: fixture.defaults)
+        #expect(fresh.bubbleStyle == .black)
+        #expect(fresh.bubbleSize == 1)
+    }
+
+    /// Taille de la bulle : absente (avant la 0.3.2) ou hors bornes, la taille d'origine ; lue, elle reste.
+    @Test func bubbleSizeIsReadTolerantly() throws {
+        #expect(try decode(#"{"provider": "openai"}"#).bubbleSize == 1)
+        #expect(try decode(#"{"bubbleSize": 9}"#).bubbleSize == 1)
+        #expect(try decode(#"{"bubbleSize": 1.4}"#).bubbleSize == 1.4)
     }
 
     /// Verre de la bulle lu champ par champ : une intensité hors bornes reprend son défaut, le verre choisi reste.
