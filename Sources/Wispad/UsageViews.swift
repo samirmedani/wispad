@@ -58,8 +58,9 @@ struct UsageView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
-            if period == .all, let span, !events.isEmpty {
-                MonthlyComparisonCard(totalUSD: summary.totalUSD, incomplete: incomplete, span: span)
+            if let span, !events.isEmpty {
+                MonthlyComparisonCard(totalUSD: summary.totalUSD, incomplete: incomplete, period: period,
+                                      days: MonthlyCost.days(for: period, usedDays: span.days))
             }
             FallbackStatsCard(period: period)
             if summary.rows.isEmpty {

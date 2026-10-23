@@ -9049,32 +9049,6 @@
         }
       }
     },
-    "Moyenne sur %@ d'utilisation, sans taxe." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Average over %@ of use, without tax."
-          }
-        }
-      }
-    },
-    "Moyenne sur %@ d'utilisation, taxe de %@ comprise." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Average over %1$@ of use, including %2$@ tax."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Moyenne sur %1$@ d'utilisation, taxe de %2$@ comprise."
-          }
-        }
-      }
-    },
     "par mois avec Wispad" : {
       "localizations" : {
         "en" : {
@@ -10953,6 +10927,56 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "See what's new"
+          }
+        }
+      }
+    },
+    "%@, taxe de %@ comprise." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, %2$@ tax included."
+          }
+        }
+      }
+    },
+    "%@, sans taxe." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@, no tax."
+          }
+        }
+      }
+    },
+    "Au rythme d'aujourd'hui" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "At today's pace"
+          }
+        }
+      }
+    },
+    "Au rythme des %lld derniers jours" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "At the pace of the last %lld days"
+          }
+        }
+      }
+    },
+    "Moyenne sur %@ d'utilisation" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Average over %@ of use"
           }
         }
       }

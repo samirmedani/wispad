@@ -900,13 +900,16 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
   même compte pour 1 jour). Moins d'un mois : en jours ; au-delà, en mois et jours (« 1 mois et 4 jours »), puis
   en années (« 1 an, 2 mois et 3 jours »). Premier jour : la plus ancienne dictée (Accueil), le plus ancien appel
   enregistré (Consommation).
-- Carte « Coût par mois, face aux abonnements », en période « Tout » seulement : la dépense de tous les appels
-  ramenée à un mois moyen (total ÷ jours d'utilisation × 30,44), taxe comprise, en dollars ; « ≥ » si des coûts sont
-  inconnus. Barres comparées aux abonnements de dictée publics, au mois et hors taxes, relevés le 16 octobre 2026 :
+- Carte « Coût par mois, face aux abonnements », sur chaque période : la dépense de la période ramenée à un mois
+  moyen (total ÷ jours × 30,44), taxe comprise, en dollars ; « ≥ » si des coûts sont inconnus. Jours comptés : un
+  pour « Aujourd'hui » (« Au rythme d'aujourd'hui »), 7 ou 30 pour les derniers jours (« Au rythme des 7 derniers
+  jours »), sans dépasser les jours d'utilisation (« Moyenne sur 12 jours d'utilisation » pour 30 jours après
+  12 jours d'usage), tous les jours d'utilisation pour « Tout ». Sans appel sur la période, pas de carte. Barres
+  comparées aux abonnements de dictée publics, au mois et hors taxes, relevés le 16 octobre 2026 :
   Wispr Flow Pro (15 $), Willow Voice Pro (15 $), Superwhisper Pro (8,49 $), chacun lié à sa page de tarifs, avec
   l'écart (« 7,8 fois plus cher ») quand il dépasse 10 %. Une phrase chiffre l'économie face à Wispr Flow Pro, par
   mois et par an (« jusqu'à » si des coûts sont inconnus), ou dit que Wispad revient plus cher à ce rythme. Moins de
-  7 jours d'utilisation : l'estimation est dite provisoire. Les prix à l'année sont rappelés en note.
+  7 jours comptés : l'estimation est dite provisoire. Les prix à l'année sont rappelés en note.
 - Curseur « Taxes » de 0 à 27 % (20 % par défaut, la TVA française) : les prix publiés étant hors taxes, le taux
   s'ajoute aux abonnements comme aux appels d'API. Sous le curseur, le pays de repère au taux le plus proche, avec
   son drapeau et son nom dans la langue du Mac (« Taxe de 🇫🇷 France », « Taxe proche de 🇷🇴 Roumanie (21 %) »),

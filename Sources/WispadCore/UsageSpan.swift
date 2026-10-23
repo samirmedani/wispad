@@ -26,7 +26,7 @@ public struct UsageSpan: Equatable, Sendable {
     }
 }
 
-/// Dépense ramenée à un mois, taxe comprise (Consommation, période « Tout »).
+/// Dépense ramenée à un mois, taxe comprise (Consommation, toutes périodes).
 public enum MonthlyCost {
     /// Longueur moyenne d'un mois du calendrier grégorien.
     public static let averageMonthDays = 365.2425 / 12
@@ -35,6 +35,18 @@ public enum MonthlyCost {
     public static func perMonth(total: Double, days: Int) -> Double {
         guard days > 0 else { return 0 }
         return total / Double(days) * averageMonthDays
+    }
+
+    /// Jours sur lesquels ramener à un mois la dépense d'une période : un pour aujourd'hui, 7 ou 30 pour les derniers
+    /// jours, sans dépasser les jours d'utilisation (une semaine d'usage ne se divise pas par 30), tous pour « Tout ».
+    public static func days(for period: StatsPeriod, usedDays: Int) -> Int {
+        let used = max(1, usedDays)
+        switch period {
+        case .today: return 1
+        case .days7: return min(7, used)
+        case .days30: return min(30, used)
+        case .all: return used
+        }
     }
 
     /// Montant taxe comprise ; `rate` en pourcentage (20 = 20 %).

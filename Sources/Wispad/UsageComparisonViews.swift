@@ -66,13 +66,16 @@ enum TaxText {
     }
 }
 
-/// Consommation › Tout : la dépense ramenée à un mois, taxe comprise, face aux abonnements de dictée publics, taxés
-/// de la même façon.
+/// Consommation : la dépense de la période ramenée à un mois, taxe comprise, face aux abonnements de dictée publics,
+/// taxés de la même façon. « Tout » fait la moyenne sur tous les jours d'utilisation ; les autres périodes donnent le
+/// rythme d'aujourd'hui ou des derniers jours.
 struct MonthlyComparisonCard: View {
     @Environment(AppModel.self) private var model
     var totalUSD: Double
     var incomplete: Bool
-    var span: UsageSpan
+    var period: StatsPeriod
+    /// Jours de la période ramenés à un mois (`MonthlyCost.days(for:usedDays:)`).
+    var days: Int
     @State private var draftRate: Double?
     @State private var editing = false
 
@@ -80,7 +83,7 @@ struct MonthlyComparisonCard: View {
 
     var body: some View {
         let rate = self.rate
-        let monthly = MonthlyCost.withTax(MonthlyCost.perMonth(total: totalUSD, days: span.days), rate: rate)
+        let monthly = MonthlyCost.withTax(MonthlyCost.perMonth(total: totalUSD, days: days), rate: rate)
         let references = SubscriptionReference.all
         let prices = references.map { MonthlyCost.withTax($0.monthlyUSD, rate: rate) }
         let scale = max(prices.max() ?? 1, monthly, 0.0001)
@@ -127,12 +130,23 @@ struct MonthlyComparisonCard: View {
     }
 
     private func caption(rate: Double) -> String {
-        let days = SpanText.days(span.days)
         var text = rate >= 0.05
-            ? String(localized: "Moyenne sur \(days) d'utilisation, taxe de \(TaxText.percent(rate)) comprise.")
-            : String(localized: "Moyenne sur \(days) d'utilisation, sans taxe.")
-        if span.days < 7 { text += " " + String(localized: "L'estimation s'affinera avec les jours.") }
+            ? String(localized: "\(basis), taxe de \(TaxText.percent(rate)) comprise.")
+            : String(localized: "\(basis), sans taxe.")
+        if days < 7 { text += " " + String(localized: "L'estimation s'affinera avec les jours.") }
         return text
+    }
+
+    /// D'où vient la moyenne : tous les jours d'utilisation, ou le rythme de la période choisie.
+    private var basis: String {
+        switch period {
+        case .today:
+            return String(localized: "Au rythme d'aujourd'hui")
+        case .days7 where days == 7, .days30 where days == 30:
+            return String(localized: "Au rythme des \(days) derniers jours")
+        case .days7, .days30, .all:
+            return String(localized: "Moyenne sur \(SpanText.days(days)) d'utilisation")
+        }
     }
 
     /// « 7,8 fois plus cher », « 42 fois plus cher » : seulement quand l'écart est net, au dixième sous 10.

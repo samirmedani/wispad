@@ -3,6 +3,13 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.3.5 — 23 octobre 2026
+
+La comparaison avec les abonnements reste visible sur toutes les périodes.
+
+**Amélioré**
+- Consommation › Coût par mois, face aux abonnements : aussi sur Aujourd'hui, 7 jours et 30 jours, au rythme de la période choisie (« Au rythme des 7 derniers jours »). Tout garde la moyenne sur tous tes jours d'utilisation.
+
 ## 0.3.4 — 23 octobre 2026
 
 Le bas de la barre latérale tient sur une ligne, bien rangé.
