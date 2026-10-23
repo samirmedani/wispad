@@ -1055,11 +1055,25 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
   guidée ; la bulle ne prend ni le focus ni le premier plan. Coupé par une dictée qui commence, il reparaît à la fin
   de celle-ci. Une version rappelée (réglage `updateRemindedVersion`) ne l'est plus jamais, même après une relance ;
   une version plus récente l'est à son tour. La barre latérale la propose toujours.
-- **Fenêtre de mise à jour** : la version disponible et celle installée, les notes de version (le corps de la
-  release en markdown simple : titres, puces, listes numérotées, paragraphes, blocs de code ; gras, italique, liens
-  et `code` dans la ligne ; texte sélectionnable), « Voir sur GitHub », « Plus tard » et « Mettre à jour ». Pendant
-  l'installation : l'étape et sa progression, et « Annuler » tant que rien n'est remplacé. En cas d'échec : la
-  raison, « Ouvrir la page de la release » et « Réessayer ».
+- **Fenêtre de mise à jour** : en tête, « Wispad 0.3.3 », une étiquette « Nouvelle version » et « Tu as la 0.3.2 »
+  (« · 2 versions à rattraper » si d'autres sont sorties depuis). Dessous, l'accroche de la version (première phrase
+  de ses notes) en titre, puis une carte par version à rattraper, de la plus récente à la plus ancienne (8 au plus,
+  lues dans les 20 dernières releases de GitHub ; sans réponse, la seule version disponible) : numéro, date de
+  publication, accroche (sauf pour la plus récente), puis ses rubriques en couleur avec leur icône, **Nouveau**
+  (rouge de l'app), **Corrigé** (orange), **Amélioré** (bleu), et leurs points : un point « titre : détail » montre
+  le titre en gras et le détail dessous. Ce qui ne sert que sur GitHub n'y est pas : les citations (conseil pour une
+  ancienne version) et l'empreinte SHA-256. Texte sélectionnable. En pied : ce que fait le clic (« Wispad télécharge
+  cette version (8,6 Mo), vérifie qu'elle vient bien de son développeur, puis redémarre. Tes réglages, tes clés et
+  ton historique restent. »), « Voir sur GitHub », « Plus tard » et « Mettre à jour ». Pendant l'installation :
+  quatre étapes numérotées (Téléchargement, Vérification, Installation, Redémarrage), cochées en vert une fois
+  faites, celle en cours en rouge ; dessous, son détail, sa progression, et « Annuler » tant que rien n'est
+  remplacé. En cas d'échec : la raison, « Ouvrir la page de la release » et « Réessayer ».
+- **Nouveautés de cette version** (Réglages › Aide › Mises à jour, « Voir les nouveautés ») : la même fenêtre pour la
+  version installée, lue sur GitHub, avec l'étiquette « Installée » et sa date, sans installation (« Voir sur
+  GitHub » et « Fermer »). Hors ligne ou pour une version non publiée : « Nouveautés indisponibles pour l'instant :
+  vérifie ta connexion. »
+- Notes publiées (`scripts/release.sh`) : celles du CHANGELOG, telles quelles ; l'empreinte du disque n'y est plus
+  ajoutée (GitHub l'affiche à côté du fichier, et l'app vérifie celle que l'API annonce).
 - **Installation en un clic** (« Mettre à jour » de la fenêtre de mise à jour, qui reste ouverte pour suivre
   l'avancement ; la barre latérale le résume) :
   1. téléchargement de `Wispad.dmg` (asset de la release, seulement depuis

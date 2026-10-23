@@ -774,6 +774,19 @@ final class AppModel {
         onOpenWindow?(selectedSection)
     }
 
+    /// « Nouveautés de cette version » (Réglages › Aide) : les notes de la version installée, dans la fenêtre de mise à
+    /// jour, sans installation. Faux si GitHub ne les rend pas (hors ligne, version de développement).
+    @discardableResult
+    func showWhatsNew() async -> Bool {
+        guard let version = BuildStatus.shared.version.flatMap(SemanticVersion.init),
+              let release = await BuildStatus.fetchRelease(version) else {
+            statusBanner = String(localized: "Nouveautés indisponibles pour l'instant : vérifie ta connexion.")
+            return false
+        }
+        updateSheet = release
+        return true
+    }
+
     /// « Rechercher une mise à jour » (barre latérale, Réglages › Aide) : une version plus récente ouvre tout de suite la
     /// fenêtre de mise à jour, sans rappel dans la bulle ensuite.
     func checkForUpdates() {

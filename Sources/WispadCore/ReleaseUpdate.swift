@@ -117,15 +117,19 @@ public struct ReleaseInfo: Equatable, Sendable, Identifiable {
     public var pageURL: URL
     /// Disque d'installation ; nil s'il manque : seule la page de la release est proposée.
     public var diskImage: DiskImageAsset?
+    /// Date de publication annoncée par GitHub.
+    public var publishedAt: Date?
 
     public var id: String { tag }
 
-    public init(version: SemanticVersion, tag: String, notes: String, pageURL: URL, diskImage: DiskImageAsset?) {
+    public init(version: SemanticVersion, tag: String, notes: String, pageURL: URL, diskImage: DiskImageAsset?,
+                publishedAt: Date? = nil) {
         self.version = version
         self.tag = tag
         self.notes = notes
         self.pageURL = pageURL
         self.diskImage = diskImage
+        self.publishedAt = publishedAt
     }
 }
 
@@ -145,6 +149,13 @@ public enum ReleaseCheckResult: Equatable, Sendable {
 public enum ReleaseCheck {
     public static let repository = BuildFreshnessCheck.repository
     public static let latestURL = URL(string: "https://api.github.com/repos/\(repository)/releases/latest")!
+    /// Les 20 dernières releases : notes des versions sautées, dans la fenêtre de mise à jour.
+    public static let historyURL = URL(string: "https://api.github.com/repos/\(repository)/releases?per_page=20")!
+
+    /// Release d'une version donnée (« Nouveautés de cette version »).
+    public static func tagURL(_ version: SemanticVersion) -> URL {
+        URL(string: "https://api.github.com/repos/\(repository)/releases/tags/v\(version.description)")!
+    }
     /// Toutes les releases : repli quand la page d'une release est inconnue.
     public static let releasesURL = URL(string: "https://github.com/\(repository)/releases")!
     /// Disque d'installation publié avec chaque release (`scripts/release.sh`).
@@ -197,9 +208,31 @@ public enum ReleaseCheck {
 
     /// Release lue dans le corps d'une réponse 200 ; nil si le tag n'est pas une version ou si ce n'est pas une
     /// release publiée.
-    static func release(from data: Data) -> ReleaseInfo? {
-        guard let latest = try? JSONDecoder().decode(GitHubRelease.self, from: data),
-              latest.draft != true, latest.prerelease != true,
+    public static func release(from data: Data) -> ReleaseInfo? {
+        guard let latest = try? JSONDecoder().decode(GitHubRelease.self, from: data) else { return nil }
+        return info(latest)
+    }
+
+    /// Réponse de `releases?per_page=20` : les releases publiées et lisibles, une illisible écartée seule.
+    public static func releases(from data: Data) -> [ReleaseInfo] {
+        let list = (try? JSONDecoder().decode([LenientElement<GitHubRelease>].self, from: data)) ?? []
+        return list.compactMap { $0.value.flatMap(info) }
+    }
+
+    /// Versions que la fenêtre de mise à jour présente : toutes celles publiées après la version installée, jusqu'à
+    /// la plus récente, de la plus récente à la plus ancienne (8 au plus). La plus récente y est toujours.
+    public static func missed(_ releases: [ReleaseInfo], after current: SemanticVersion?, upTo latest: ReleaseInfo) -> [ReleaseInfo] {
+        var seen: Set<SemanticVersion> = [latest.version]
+        var older: [ReleaseInfo] = []
+        for release in releases.sorted(by: { $0.version > $1.version }) where release.version < latest.version {
+            guard let current, release.version > current, seen.insert(release.version).inserted else { continue }
+            older.append(release)
+        }
+        return Array(([latest] + older).prefix(8))
+    }
+
+    private static func info(_ latest: GitHubRelease) -> ReleaseInfo? {
+        guard latest.draft != true, latest.prerelease != true,
               let version = SemanticVersion(latest.tagName) else { return nil }
         let uploaded = (latest.assets ?? []).compactMap { $0.value }.first { candidate in
             candidate.name == diskImageName && (candidate.state ?? "uploaded") == "uploaded"
@@ -209,7 +242,8 @@ public enum ReleaseCheck {
             tag: latest.tagName,
             notes: latest.body ?? "",
             pageURL: pageURL(latest.htmlURL, tag: latest.tagName),
-            diskImage: uploaded.flatMap { diskImage($0) }
+            diskImage: uploaded.flatMap { diskImage($0) },
+            publishedAt: latest.publishedAt.flatMap { ISO8601DateFormatter().date(from: $0) }
         )
     }
 
@@ -256,6 +290,7 @@ private struct GitHubRelease: Decodable {
     var draft: Bool?
     var prerelease: Bool?
     var assets: [LenientElement<GitHubAsset>]?
+    var publishedAt: String?
 
     enum CodingKeys: String, CodingKey {
         case tagName = "tag_name"
@@ -264,6 +299,7 @@ private struct GitHubRelease: Decodable {
         case draft
         case prerelease
         case assets
+        case publishedAt = "published_at"
     }
 }
 
@@ -455,5 +491,120 @@ public enum ReleaseNotes {
         let marks = line.filter { $0 != " " }
         guard marks.count >= 3, let first = marks.first, "-*_".contains(first) else { return false }
         return marks.allSatisfy { $0 == first }
+    }
+}
+
+// MARK: - Notes prêtes à montrer
+
+/// Notes d'une version telles que la fenêtre de mise à jour les montre : une phrase d'accroche, puis des rubriques
+/// (Nouveau, Corrigé, Amélioré) faites de points « titre : détail ». Ce qui ne sert que sur GitHub y reste : les
+/// citations (conseil pour une ancienne version bloquée) et l'empreinte SHA-256 du disque.
+public struct ReleaseDigest: Equatable, Sendable {
+    public enum Kind: Equatable, Sendable {
+        case new, fixed, improved
+        case other(String)
+    }
+
+    public struct Item: Equatable, Sendable {
+        /// Ce qui change, en gras (« Taille de la bulle ») ; nil pour un point d'une seule phrase.
+        public var title: String?
+        public var text: String
+
+        public init(title: String? = nil, text: String) {
+            self.title = title
+            self.text = text
+        }
+    }
+
+    public struct Section: Equatable, Sendable {
+        public var kind: Kind
+        public var items: [Item]
+
+        public init(kind: Kind, items: [Item]) {
+            self.kind = kind
+            self.items = items
+        }
+    }
+
+    public var headline: String?
+    public var sections: [Section]
+
+    public init(headline: String? = nil, sections: [Section] = []) {
+        self.headline = headline
+        self.sections = sections
+    }
+
+    public var isEmpty: Bool { headline == nil && sections.allSatisfy { $0.items.isEmpty } }
+}
+
+extension ReleaseNotes {
+    public static func digest(_ markdown: String) -> ReleaseDigest {
+        let kept = markdown.replacingOccurrences(of: "\r\n", with: "\n").replacingOccurrences(of: "\r", with: "\n")
+            .components(separatedBy: "\n")
+            .filter { line in
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                return !trimmed.hasPrefix(">") && !trimmed.lowercased().hasPrefix("sha-256") && !trimmed.lowercased().hasPrefix("sha256")
+            }
+            .joined(separator: "\n")
+        var digest = ReleaseDigest()
+        func add(_ item: ReleaseDigest.Item) {
+            if digest.sections.isEmpty { digest.sections.append(ReleaseDigest.Section(kind: .other(""), items: [])) }
+            digest.sections[digest.sections.count - 1].items.append(item)
+        }
+        for block in blocks(kept) {
+            switch block {
+            case .heading(_, let text):
+                digest.sections.append(ReleaseDigest.Section(kind: kind(text), items: []))
+            case .bullet(let text), .numbered(_, let text):
+                add(item(text))
+            case .paragraph(let text):
+                var prose: [String] = []
+                func flush() {
+                    guard !prose.isEmpty else { return }
+                    let joined = prose.joined(separator: " ")
+                    prose.removeAll()
+                    if digest.headline == nil, digest.sections.isEmpty { digest.headline = joined } else { add(ReleaseDigest.Item(text: joined)) }
+                }
+                for line in text.components(separatedBy: "\n") {
+                    if let title = boldLine(line) {
+                        flush()
+                        digest.sections.append(ReleaseDigest.Section(kind: kind(title), items: []))
+                    } else {
+                        prose.append(line)
+                    }
+                }
+                flush()
+            case .code:
+                continue
+            }
+        }
+        digest.sections.removeAll { $0.items.isEmpty }
+        return digest
+    }
+
+    /// « **Nouveau** » seul sur sa ligne : un titre de rubrique.
+    private static func boldLine(_ line: String) -> String? {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard trimmed.count > 4, trimmed.hasPrefix("**"), trimmed.hasSuffix("**") else { return nil }
+        let inner = trimmed.dropFirst(2).dropLast(2).trimmingCharacters(in: .whitespaces)
+        return inner.isEmpty || inner.contains("**") ? nil : inner
+    }
+
+    private static func kind(_ title: String) -> ReleaseDigest.Kind {
+        let key = title.lowercased().folding(options: .diacriticInsensitive, locale: nil)
+        if ["nouveau", "nouveaute", "nouveautes", "new"].contains(key) { return .new }
+        if ["corrige", "corriges", "correction", "corrections", "correctifs", "fixed", "fixes"].contains(key) { return .fixed }
+        if ["ameliore", "amelioration", "ameliorations", "improved", "improvements"].contains(key) { return .improved }
+        return .other(title)
+    }
+
+    /// « Taille de la bulle : de 80 % à 160 %. » → titre « Taille de la bulle », détail « De 80 % à 160 %. ». Un
+    /// point sans début court avant « : » reste une seule phrase.
+    static func item(_ text: String) -> ReleaseDigest.Item {
+        guard let colon = text.range(of: " : ") else { return ReleaseDigest.Item(text: text) }
+        let lead = text[..<colon.lowerBound].replacingOccurrences(of: "**", with: "").trimmingCharacters(in: .whitespaces)
+        let rest = text[colon.upperBound...].trimmingCharacters(in: .whitespaces)
+        guard !lead.isEmpty, lead.count <= 90, !rest.isEmpty, !lead.contains(". ") else { return ReleaseDigest.Item(text: text) }
+        return ReleaseDigest.Item(title: lead, text: rest.prefix(1).uppercased() + rest.dropFirst())
     }
 }

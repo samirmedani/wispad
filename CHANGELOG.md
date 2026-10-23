@@ -3,6 +3,19 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.3.3 — 23 octobre 2026
+
+La fenêtre de mise à jour devient claire : ce qui change, en rubriques, et ce que fait le clic.
+
+**Nouveau**
+- Fenêtre de mise à jour : l'accroche de la version en titre, puis une carte par version avec ses rubriques Nouveau, Corrigé et Amélioré. Chaque point a son titre en gras et son détail dessous.
+- Versions sautées : si tu en as manqué, leurs notes sont là aussi, de la plus récente à la plus ancienne.
+- Une phrase dit ce que fait « Mettre à jour » : téléchargement et sa taille, vérification de la signature, redémarrage, réglages gardés. Pendant l'installation, quatre étapes se cochent une à une.
+- Réglages › Aide › Nouveautés de cette version : les notes de la version installée, dans la même fenêtre.
+
+**Corrigé**
+- Les notes n'affichent plus l'empreinte SHA-256 ni un vieux conseil de dépannage qui disait « déjà installée » pour la version proposée.
+
 ## 0.3.2 — 23 octobre 2026
 
 La bulle de dictée se règle à ta taille.

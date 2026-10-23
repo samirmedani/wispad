@@ -111,26 +111,6 @@
         }
       }
     },
-    "Tu utilises la version %@." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "You're using version %@."
-          }
-        }
-      }
-    },
-    "Notes de version" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Release notes"
-          }
-        }
-      }
-    },
     "Pas de notes pour cette version." : {
       "localizations" : {
         "en" : {
@@ -10793,6 +10773,206 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "The spectrum and its buttons grow with it; messages keep their size."
+          }
+        }
+      }
+    },
+    "Amélioré" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Improved"
+          }
+        }
+      }
+    },
+    "Ce qui a changé dans la %@, en rubriques claires." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What changed in %@, in clear sections."
+          }
+        }
+      }
+    },
+    "Chargement…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading…"
+          }
+        }
+      }
+    },
+    "Corrigé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fixed"
+          }
+        }
+      }
+    },
+    "En un clic : Wispad télécharge cette version (%@), vérifie qu'elle vient bien de son développeur, puis redémarre. Tes réglages, tes clés et ton historique restent." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In one click: Wispad downloads this version (%@), checks that it really comes from its developer, then restarts. Your settings, keys and history stay."
+          }
+        }
+      }
+    },
+    "En un clic : Wispad télécharge cette version, vérifie qu'elle vient bien de son développeur, puis redémarre. Tes réglages, tes clés et ton historique restent." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In one click: Wispad downloads this version, checks that it really comes from its developer, then restarts. Your settings, keys and history stay."
+          }
+        }
+      }
+    },
+    "Étape %lld sur 4 : %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Step %1$lld of 4: %2$@"
+          }
+        }
+      }
+    },
+    "Installation" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installation"
+          }
+        }
+      }
+    },
+    "Installée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installed"
+          }
+        }
+      }
+    },
+    "Nouveau" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New"
+          }
+        }
+      }
+    },
+    "Nouveautés de cette version" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What's new in this version"
+          }
+        }
+      }
+    },
+    "Nouveautés indisponibles pour l'instant : vérifie ta connexion." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What's new is unavailable for now: check your connection."
+          }
+        }
+      }
+    },
+    "Nouvelle version" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New version"
+          }
+        }
+      }
+    },
+    "Publiée le %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Released on %@"
+          }
+        }
+      }
+    },
+    "Redémarrage" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restart"
+          }
+        }
+      }
+    },
+    "Ta version actuelle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your current version"
+          }
+        }
+      }
+    },
+    "Téléchargement" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download"
+          }
+        }
+      }
+    },
+    "Tu as la %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You have %@"
+          }
+        }
+      }
+    },
+    "Tu as la %@ · %lld versions à rattraper" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You have %1$@ · %2$lld versions to catch up"
+          }
+        }
+      }
+    },
+    "Voir les nouveautés" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "See what's new"
           }
         }
       }

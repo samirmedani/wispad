@@ -219,6 +219,12 @@ enum DesignPreview {
                 if arguments.contains("--report-preview"), let record = model.history.first {
                     reportSnapshot(record: record, model: model, to: URL(fileURLWithPath: path))
                 }
+                // `--update-preview` : fenêtre de mise à jour avec deux versions à rattraper ; `--installed-preview` :
+                // nouveautés de la version installée. Notes d'exemple, rien n'est demandé à GitHub.
+                if arguments.contains("--update-preview") || arguments.contains("--installed-preview") {
+                    updateSnapshot(model: model, installed: arguments.contains("--installed-preview"),
+                                   to: URL(fileURLWithPath: path))
+                }
                 model.historyPlayer.close()
                 try? FileManager.default.removeItem(at: directory)
                 exit(0)
@@ -414,6 +420,58 @@ enum DesignPreview {
         }
         window.contentView?.layoutSubtreeIfNeeded()
         snapshot(window, to: url.deletingPathExtension().appendingPathExtension("report.png"))
+        window.orderOut(nil)
+    }
+
+    /// Fenêtre de mise à jour hors écran, avec des notes d'exemple de la forme des vraies.
+    private static func updateSnapshot(model: AppModel, installed: Bool, to url: URL) {
+        let current = BuildStatus.shared.version.flatMap(SemanticVersion.init) ?? SemanticVersion(major: 0, minor: 3, patch: 0)
+        func release(_ patch: Int, _ notes: String, daysAgo: Double) -> ReleaseInfo {
+            let version = SemanticVersion(major: current.major, minor: current.minor, patch: current.patch + patch)
+            return ReleaseInfo(version: version, tag: "v" + version.description, notes: notes, pageURL: ReleaseCheck.releasesURL,
+                               diskImage: DiskImageAsset(url: ReleaseCheck.releasesURL, size: 8_600_000),
+                               publishedAt: Date().addingTimeInterval(-daysAgo * 86_400))
+        }
+        let latest = release(installed ? 0 : 2, """
+        La bulle de dictée se règle à ta taille.
+
+        > Ancien conseil pour une mise à jour bloquée, réservé à GitHub.
+
+        **Nouveau**
+        - Réglages › Bulle › Taille de la bulle : de 80 % à 160 %. Le spectre et les boutons des mains libres grandissent avec elle.
+        - Une nouvelle installation commence toujours avec la bulle en Noir profond.
+
+        **Corrigé**
+        - Ombre de la bulle : elle tient entière, sans rectangle sombre.
+
+        SHA-256 de Wispad.dmg : 0000
+        """, daysAgo: 0)
+        let older = release(1, """
+        Si tu sors du champ pendant que tu dictes, Wispad le voit et te garde le texte prêt.
+
+        **Corrigé**
+        - Curseur sorti du champ pendant la dictée : Wispad ne colle plus dans le vide et affiche la carte « Texte prêt à copier ».
+        """, daysAgo: 1)
+        let window = NSWindow(contentRect: NSRect(x: -20_000, y: -20_000, width: 600, height: 600),
+                              styleMask: [.borderless], backing: .buffered, defer: false)
+        window.contentView = NSHostingView(rootView: UpdateSheet(release: latest, releases: installed ? [latest] : [latest, older])
+            .environment(model).tint(Theme.brand)
+            .background(Color(nsColor: .windowBackgroundColor)))
+        window.orderFrontRegardless()
+        guard !NSScreen.screens.contains(where: { $0.frame.intersects(window.frame) }) else {
+            window.orderOut(nil)
+            return
+        }
+        window.contentView?.layoutSubtreeIfNeeded()
+        snapshot(window, to: url.deletingPathExtension().appendingPathExtension("update.png"))
+        if !installed {
+            // Installation en cours : vérification de la signature, étapes 1 faite et 2 en cours.
+            model.updater.previewPhase(.verifying)
+            window.contentView?.layoutSubtreeIfNeeded()
+            RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+            snapshot(window, to: url.deletingPathExtension().appendingPathExtension("update-progress.png"))
+            model.updater.previewPhase(.idle)
+        }
         window.orderOut(nil)
     }
 
