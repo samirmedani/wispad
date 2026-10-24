@@ -690,35 +690,98 @@ public enum CleanupModel {
 }
 
 /// Modèle de correction, ou son relais, choisi dans Fournisseurs › Modèles. Automatique : l'ordre des clés actives
-/// (DeepSeek, OpenAI, puis le fournisseur de voix). `off` : aucun relais.
-public enum CleanupChoice: String, Codable, CaseIterable, Sendable {
-    case automatic = "auto"
-    case off = "off"
-    case deepSeekFlash = "deepseek-flash"
-    case openAIMini = "gpt-5.4-mini"
-    case openAILuna = "gpt-5.6-luna"
-    case grok = "grok-4.7"
+/// (DeepSeek, OpenAI, puis le fournisseur de voix). « off » : aucun relais. Tout modèle de texte d'une clé se choisit :
+/// les quatre modèles d'origine gardent leur nom seul (réglages déjà enregistrés), les autres s'écrivent
+/// « compte/modèle » (« openai/gpt-4.1-mini »).
+public struct CleanupChoice: RawRepresentable, Hashable, Codable, Sendable {
+    public let rawValue: String
 
-    /// Les modèles seuls, sans « automatique » ni « aucun ».
+    public static let automatic = CleanupChoice(uncheckedRawValue: "auto")
+    public static let off = CleanupChoice(uncheckedRawValue: "off")
+    public static let deepSeekFlash = CleanupChoice(uncheckedRawValue: "deepseek-flash")
+    public static let openAIMini = CleanupChoice(uncheckedRawValue: "gpt-5.4-mini")
+    public static let openAILuna = CleanupChoice(uncheckedRawValue: "gpt-5.6-luna")
+    public static let grok = CleanupChoice(uncheckedRawValue: "grok-4.7")
+
+    /// Les modèles d'origine, recommandés, sans « automatique » ni « aucun ».
     public static let models: [CleanupChoice] = [.deepSeekFlash, .openAIMini, .openAILuna, .grok]
+
+    /// Comptes dont un modèle de texte peut corriger.
+    public static let accounts = [CleanupModel.deepSeekAccount, ProviderID.openAI.rawValue, ProviderID.xai.rawValue]
+
+    private init(uncheckedRawValue: String) {
+        rawValue = uncheckedRawValue
+    }
+
+    /// nil pour une valeur inconnue (réglage d'une version future) : le réglage revient alors à sa valeur par défaut.
+    public init?(rawValue: String) {
+        if rawValue == "auto" || rawValue == "off" || Self.models.contains(where: { $0.rawValue == rawValue }) {
+            self.rawValue = rawValue
+            return
+        }
+        guard let slash = rawValue.firstIndex(of: "/"),
+              Self.accounts.contains(String(rawValue[..<slash])),
+              !rawValue[rawValue.index(after: slash)...].trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
+        self.rawValue = rawValue
+    }
+
+    /// Un modèle d'un compte : son nom d'origine s'il en a un, sinon « compte/modèle ».
+    public init(account: String, model: String) {
+        if let known = Self.models.first(where: { $0.account == account && $0.model == model }) {
+            self = known
+        } else {
+            rawValue = "\(account)/\(model)"
+        }
+    }
+
+    /// Un service de correction déjà résolu (« OpenAI », « gpt-4.1-mini ») ; nil si son fournisseur est inconnu.
+    public init?(providerName: String, model: String) {
+        guard let account = Self.accounts.first(where: { Self.providerName(account: $0) == providerName }) else { return nil }
+        self.init(account: account, model: model)
+    }
+
+    public init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        guard let choice = CleanupChoice(rawValue: raw) else {
+            throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Modèle de correction inconnu"))
+        }
+        self = choice
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(rawValue)
+    }
 
     /// Compte de la clé qui sert ce modèle ; nil pour l'automatique et « aucun ».
     public var account: String? {
-        switch self {
-        case .automatic, .off: return nil
-        case .deepSeekFlash: return CleanupModel.deepSeekAccount
-        case .openAIMini, .openAILuna: return ProviderID.openAI.rawValue
-        case .grok: return ProviderID.xai.rawValue
+        switch rawValue {
+        case "auto", "off": return nil
+        case "deepseek-flash": return CleanupModel.deepSeekAccount
+        case "gpt-5.4-mini", "gpt-5.6-luna": return ProviderID.openAI.rawValue
+        case "grok-4.7": return ProviderID.xai.rawValue
+        default: return rawValue.split(separator: "/", maxSplits: 1).first.map(String.init)
         }
+    }
+
+    /// Identifiant du modèle chez son fournisseur ; nil pour l'automatique et « aucun ».
+    public var model: String? {
+        guard account != nil else { return nil }
+        guard let slash = rawValue.firstIndex(of: "/") else { return rawValue }
+        return String(rawValue[rawValue.index(after: slash)...])
     }
 
     /// Fournisseur du modèle, en clair ; nil pour l'automatique et « aucun ».
     public var providerName: String? {
-        switch self {
-        case .automatic, .off: return nil
-        case .deepSeekFlash: return "DeepSeek"
-        case .openAIMini, .openAILuna: return ProviderID.openAI.displayName
-        case .grok: return ProviderID.xai.displayName
+        account.flatMap(Self.providerName(account:))
+    }
+
+    public static func providerName(account: String) -> String? {
+        switch account {
+        case CleanupModel.deepSeekAccount: return "DeepSeek"
+        case ProviderID.openAI.rawValue: return ProviderID.openAI.displayName
+        case ProviderID.xai.rawValue: return ProviderID.xai.displayName
+        default: return nil
         }
     }
 }
@@ -840,17 +903,17 @@ public enum TextCleaner {
 
     /// Un modèle choisi dans Fournisseurs, avec la clé de son fournisseur ; nil en automatique, sans relais ou sans clé.
     static func modelRoute(_ choice: CleanupChoice, key: String?) -> Route? {
-        guard let key, !key.isEmpty else { return nil }
-        let model = choice.rawValue
-        switch choice {
-        case .automatic, .off:
+        guard let key, !key.isEmpty, let account = choice.account, let model = choice.model,
+              let provider = choice.providerName else { return nil }
+        switch account {
+        case CleanupModel.deepSeekAccount:
+            return Route(api: .deepSeekCleanup, model: model, url: deepSeekURL, key: key, provider: provider, isFallback: false)
+        case ProviderID.openAI.rawValue:
+            return Route(api: .openAICleanup, model: model, url: openAIURL, key: key, provider: provider, isFallback: false)
+        case ProviderID.xai.rawValue:
+            return Route(api: .xaiCleanup, model: model, url: xaiURL, key: key, provider: provider, isFallback: false)
+        default:
             return nil
-        case .deepSeekFlash:
-            return Route(api: .deepSeekCleanup, model: model, url: deepSeekURL, key: key, provider: "DeepSeek", isFallback: false)
-        case .openAIMini, .openAILuna:
-            return Route(api: .openAICleanup, model: model, url: openAIURL, key: key, provider: ProviderID.openAI.displayName, isFallback: false)
-        case .grok:
-            return Route(api: .xaiCleanup, model: model, url: xaiURL, key: key, provider: ProviderID.xai.displayName, isFallback: false)
         }
     }
 
@@ -1056,10 +1119,14 @@ public enum TextCleaner {
         case .xaiCleanup:
             body["max_tokens"] = maxTokens
             body["temperature"] = 0
-            if includeReasoning { body["reasoning_effort"] = "low" }
+            if includeReasoning, let effort = TextModelCatalog.reasoningEffort(api: route.api, model: route.model) {
+                body["reasoning_effort"] = effort
+            }
         default:
             body["max_completion_tokens"] = maxTokens
-            if includeReasoning { body["reasoning_effort"] = "none" }
+            if includeReasoning, let effort = TextModelCatalog.reasoningEffort(api: route.api, model: route.model) {
+                body["reasoning_effort"] = effort
+            }
         }
         var http = URLRequest(url: route.url)
         http.httpMethod = "POST"

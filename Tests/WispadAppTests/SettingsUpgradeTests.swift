@@ -83,6 +83,8 @@ struct SettingsUpgradeTests {
         settings.updateRemindedVersion = "0.1.2"
         settings.homePeriod = .days30
         settings.usagePeriod = .all
+        settings.profilePeriod = .days30
+        settings.profileHiddenWords = ["fixture"]
         settings.usageTaxRate = 8.1
         settings.lastSection = .dictionary
         settings.settingsTab = .permissions

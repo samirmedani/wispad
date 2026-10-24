@@ -642,7 +642,7 @@ final class AppModel {
         speech.cleanupPrimaryDown = false
         let services = TextCleaner.services(speech)
         guard services.count > 1 else { return nil }
-        return CleanupChoice(rawValue: services[1].model)
+        return CleanupChoice(providerName: services[1].provider, model: services[1].model)
     }
 
     /// Relais de la correction tel qu'affiché dans Fournisseurs : le choix enregistré, ou tant qu'il n'y en a pas, celui

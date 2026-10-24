@@ -5,6 +5,7 @@ import WispadCore
 enum AppSection: String, CaseIterable, Identifiable, Codable {
     case home
     case history
+    case profile
     case usage
     case dictionary
     case providers
@@ -16,6 +17,7 @@ enum AppSection: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .home: return String(localized: "Accueil")
         case .history: return String(localized: "Historique")
+        case .profile: return String(localized: "Profil")
         case .usage: return String(localized: "Consommation")
         case .dictionary: return String(localized: "Dictionnaire")
         case .providers: return String(localized: "Fournisseurs")
@@ -125,6 +127,9 @@ struct AppSettings: Codable, Equatable {
     /// de Consommation (indépendantes), dernière section ouverte et filtres du dictionnaire.
     var homePeriod: StatsPeriod = .days7
     var usagePeriod: StatsPeriod = .today
+    /// Période du Profil, et mots que la personne a retirés de ses classements et du cerveau.
+    var profilePeriod: StatsPeriod = .all
+    var profileHiddenWords: [String] = []
     /// Taxe ajoutée aux prix comparés dans Consommation › Tout, en pourcentage (20 % par défaut, la TVA française).
     var usageTaxRate = SalesTax.defaultRate
     var lastSection: AppSection = .home
@@ -207,6 +212,8 @@ struct AppSettings: Codable, Equatable {
         updateRemindedVersion = value(.updateRemindedVersion, defaults.updateRemindedVersion)
         homePeriod = value(.homePeriod, defaults.homePeriod)
         usagePeriod = value(.usagePeriod, defaults.usagePeriod)
+        profilePeriod = value(.profilePeriod, defaults.profilePeriod)
+        profileHiddenWords = value(.profileHiddenWords, defaults.profileHiddenWords)
         usageTaxRate = number(.usageTaxRate, defaults.usageTaxRate, in: SalesTax.range)
         lastSection = value(.lastSection, defaults.lastSection)
         settingsTab = value(.settingsTab, defaults.settingsTab)
