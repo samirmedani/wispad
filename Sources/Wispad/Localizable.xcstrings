@@ -11620,6 +11620,36 @@
           }
         }
       }
+    },
+    "·" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "·"
+          }
+        }
+      }
+    },
+    "%@ mots" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ words"
+          }
+        }
+      }
+    },
+    "Mots dictés par jour, sur les 18 dernières semaines. Survole une case pour voir son jour." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Words dictated per day, over the last 18 weeks. Hover a square to see its day."
+          }
+        }
+      }
     }
   },
   "version" : "1.0"
