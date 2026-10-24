@@ -206,9 +206,24 @@ public enum Pricing {
             // Jev (TypeSafe) : seule l'entrée est facturée.
             return TokenRate(input: 0.042, cachedInput: 0.042, output: 0)
         default:
-            return nil
+            return listRates[model] ?? TextModelCatalog.undated(model).flatMap { listRates[$0] }
         }
     }
+
+    /// Tarifs publics d'autres modèles de texte que l'on peut choisir pour corriger, par million de jetons.
+    static let listRates: [String: TokenRate] = [
+        "gpt-5": TokenRate(input: 1.25, cachedInput: 0.125, output: 10.00),
+        "gpt-5-mini": TokenRate(input: 0.25, cachedInput: 0.025, output: 2.00),
+        "gpt-5-nano": TokenRate(input: 0.05, cachedInput: 0.005, output: 0.40),
+        "gpt-4.1": TokenRate(input: 2.00, cachedInput: 0.50, output: 8.00),
+        "gpt-4.1-mini": TokenRate(input: 0.40, cachedInput: 0.10, output: 1.60),
+        "gpt-4.1-nano": TokenRate(input: 0.10, cachedInput: 0.025, output: 0.40),
+        "gpt-4o": TokenRate(input: 2.50, cachedInput: 1.25, output: 10.00),
+        "gpt-4o-mini": TokenRate(input: 0.15, cachedInput: 0.075, output: 0.60),
+        "o4-mini": TokenRate(input: 1.10, cachedInput: 0.275, output: 4.40),
+        "o3": TokenRate(input: 2.00, cachedInput: 0.50, output: 8.00),
+        "gpt-3.5-turbo": TokenRate(input: 0.50, cachedInput: 0.50, output: 1.50)
+    ]
 
     /// Tarif d'un modèle, en clair, pour l'aide au survol de l'écran Consommation.
     public static func rateDescription(model: String, at date: Date = Date()) -> String? {

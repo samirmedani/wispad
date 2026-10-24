@@ -180,6 +180,31 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 - Une app passée en plein écran après la première bulle reçoit une bulle neuve : macOS ne rattache une fenêtre de
   tous les bureaux à un espace plein écran qu'à sa première apparition.
 
+## Profil
+
+- Section Profil de la barre latérale, sous Historique : ce que les dictées conservées disent de la façon de parler.
+  Tout est calculé sur ce Mac, à partir de l'historique, sans appel à un fournisseur. Période en haut à droite
+  (Aujourd'hui, 7 jours, 30 jours, Tout ; Tout par défaut), retrouvée au lancement suivant.
+- Chiffres clés : mots dictés, équivalent (« 15 pages » à 250 mots la page, « 2,3 romans » à 80 000 mots dès un
+  demi-roman), temps économisé, mots par minute, série en cours (jours d'affilée jusqu'à aujourd'hui ou hier),
+  meilleure série, jours actifs, plus longue dictée.
+- Ton rythme : dictées par heure (24 barres) et par jour de la semaine, le pic en couleur vive (« Surtout vers 11 h,
+  et le mercredi »). Tes jours : mots dictés par jour sur les 18 dernières semaines, en cases.
+- Ton cerveau : les 48 mots les plus fréquents (vus dans au moins deux dictées), en nuage 3D. Deux mots sont reliés
+  quand ils reviennent dans les mêmes dictées (les 4 liens les plus forts de chaque mot, deux dictées communes au
+  moins), et colorés par famille (propagation d'étiquettes sur les liens). Le placement est calculé (forces), le même
+  à chaque calcul. Le nuage tourne lentement seul, sauf avec « Réduire les animations » ; glisser le tourne et arrête
+  la rotation, pincer ou « + / − » zoome, la flèche recentre. Une étiquette qui en chevaucherait une autre n'est pas
+  écrite. Cliquer un mot montre ses dictées et ses voisins (« Souvent avec »), cliquables, et éclaire ses liens.
+- Tes mots : les 40 mots les plus dits, taille selon la fréquence. Tes tics de langage : « euh », « genre »,
+  « du coup », « tu vois »… comptés dans la transcription brute. Ce que Wispad corrige le plus : un mot entendu
+  remplacé par un autre à la correction, vu au moins deux fois (« cloud → claude »). Langues : part des dictées
+  surtout en français ou en anglais. Applications : les plus dictées.
+- Ne sont jamais montrés : mots vides (articles, pronoms, liaisons, en français et en anglais), mots de moins de
+  3 lettres ou de plus de 24, mots avec un chiffre, une adresse, un lien ou un signe (« @ », « / », « : »…).
+  Clic droit sur un mot, ou « Masquer ce mot » dans le cerveau, le retire de tout le Profil ; les mots masqués sont
+  listés en bas et se réaffichent d'un clic.
+
 ## Fenêtre
 
 - Ouverte depuis le menu de la barre des menus, le Dock ou un raccourci de section, elle vient sur le bureau où
@@ -384,8 +409,21 @@ Le micro standard, réglage coupé, ne change pas.
   OpenAI : DeepSeek seul s'il a une clé, sinon le modèle de correction d'OpenAI. 2,5 s chacun, 4 s pour un service
   seul, plus 1 s par 800 caractères dictés. Au-delà, le texte transcrit est inséré tel quel (avec les seules
   commandes explicites de mise en page).
-- Modèle au choix (Fournisseurs › Modèles, étape 3) : « Automatique · selon tes clés » par défaut, ou DeepSeek
-  `deepseek-flash`, OpenAI `gpt-5.4-mini` ou `gpt-5.6-luna`, xAI `grok-4.7`, parmi ceux dont la clé est active. Le
+- Modèle au choix (Fournisseurs › Modèles, étape 3) : « Automatique · selon tes clés » par défaut, ou n'importe quel
+  modèle de texte d'une clé active DeepSeek, OpenAI ou xAI. Le menu a une section par fournisseur : ses modèles
+  recommandés (`deepseek-flash`, `gpt-5.4-mini`, `gpt-5.6-luna`, `grok-4.7`), puis « Tous les modèles … (N) », un sous-menu
+  rangé en Rapides, Équilibrés et Lents. La liste vient du fournisseur (« /models »), lue quand la clé est active et
+  relue au plus une fois par jour ; sans réponse, les modèles recommandés restent proposés, et le modèle choisi reste
+  dans la liste même s'il en disparaît. En sont écartés les modèles qui ne rendent pas de texte de chat (voix,
+  images, vidéo, embeddings, modération, recherche, code) et les versions datées d'un modèle qui existe sans date.
+  Chaque ligne dit sa rapidité (« ≈ 0,92 s chez toi », médiane des corrections réussies de ce modèle, sinon « rapide »,
+  « moyen » ou « lent » devinés sur son nom) et son coût estimé pour 100 corrections typiques (1 800 jetons en entrée,
+  150 en sortie), ou « prix inconnu ». Ordre : recommandés, puis du plus rapide au plus lent, du moins cher au plus
+  cher. Un modèle hors des quatre recommandés s'enregistre « compte/modèle » (« openai/gpt-4.1-mini »). Le réglage de
+  raisonnement n'est envoyé qu'aux modèles qui l'acceptent (« none » pour GPT-5.1 et suivants, « minimal » pour
+  GPT-5, « low » pour la série o et Grok hors « non-reasoning ») : un autre modèle n'a pas de requête refusée puis
+  refaite. Le modèle choisi passe en premier avec la clé de son fournisseur. Choisir comme modèle le relais en cours
+  remet le relais sur « Aucun relais ». Le
   modèle choisi passe en premier avec la clé de son fournisseur. Sa clé absente ou coupée, le premier de l'ordre
   automatique le remplace, et l'étape le dit en orange. Un choix illisible (version plus récente) se lit
   « Automatique », sans toucher aux autres réglages.

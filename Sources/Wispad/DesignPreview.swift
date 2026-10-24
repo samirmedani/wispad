@@ -82,6 +82,7 @@ enum DesignPreview {
                 try seedDictionaryInsights(model.store)
             }
             if arguments.contains("--details-preview") { try seedDetails(model.store) }
+            if arguments.contains("--profile-preview") { try seedProfile(model.store) }
             if arguments.contains("--fallback-preview") { try seedFallbacks(model.store) }
             if arguments.contains("--usage-accuracy-preview") {
                 for api in [UsageAPI.deepSeekCleanup, .openAIFile] {
@@ -104,6 +105,7 @@ enum DesignPreview {
             model.historyPlayer.stop()
         }
         if arguments.contains("--fallback-preview") || arguments.contains("--usage-accuracy-preview") { model.selectedSection = .usage }
+        if arguments.contains("--profile-preview") { model.selectedSection = .profile }
         if arguments.contains("--blur-recent") { model.settings.blurRecentDictations = true }
         // `--glass-bubble` : style Verre, pour voir ses réglages et leur aperçu ; `--glass-variant clear|regular` et
         // `--glass-appearance light|dark|system` choisissent le verre.
@@ -581,6 +583,42 @@ enum DesignPreview {
         // Un délai sans aucun appel réussi autour (réseau peut-être coupé) : « incertain ».
         try store.insertUsage(UsageEvent(createdAt: now.addingTimeInterval(-7_200), api: .deepSeekCleanup, model: "fixture",
                                          costUSD: nil, latencyMs: 2_500, succeeded: false, failureCause: .timeout))
+    }
+
+    /// « --profile-preview » : quatre mois de dictées fictives sur quatre sujets, avec tics et mots mal entendus dans
+    /// la transcription brute, pour le Profil et son cerveau.
+    private static func seedProfile(_ store: HistoryStore) throws {
+        let themes: [[(raw: String, final: String)]] = [
+            [("euh je pousse le build sur github et le déploiement part sur vercel", "Je pousse le build sur GitHub et le déploiement part sur Vercel."),
+             ("du coup les tests passent sur la branche principale avant le déploiement", "Les tests passent sur la branche principale avant le déploiement."),
+             ("demande à cloud de relire la pull request et les tests", "Demande à Claude de relire la pull request et les tests."),
+             ("le build casse sur github depuis la dernière pull request", "Le build casse sur GitHub depuis la dernière pull request.")],
+            [("genre on réserve le train pour lyon et l'hôtel près de la gare", "On réserve le train pour Lyon et l'hôtel près de la gare."),
+             ("le train pour lyon part vendredi et l'hôtel confirme la réservation", "Le train pour Lyon part vendredi et l'hôtel confirme la réservation."),
+             ("en fait la réservation de l'hôtel est décalée au weekend", "La réservation de l'hôtel est décalée au weekend.")],
+            [("tu vois la recette du gâteau au chocolat demande du beurre et des œufs", "La recette du gâteau au chocolat demande du beurre et des œufs."),
+             ("euh ajoute chocolat beurre et farine à la liste des courses", "Ajoute chocolat, beurre et farine à la liste des courses."),
+             ("la liste des courses pour la recette du dîner de samedi", "La liste des courses pour la recette du dîner de samedi.")],
+            [("du coup la facture du client part demain avec le devis signé", "La facture du client part demain avec le devis signé."),
+             ("relance le client pour le devis et la facture de septembre", "Relance le client pour le devis et la facture de septembre."),
+             ("genre le client valide le devis si le budget tient", "Le client valide le devis si le budget tient.")]
+        ]
+        var generator = SeededGenerator(seed: 7)
+        let now = Date()
+        for index in 0..<220 {
+            let theme = themes[index % themes.count]
+            let pick = theme[Int.random(in: 0..<theme.count, using: &generator)]
+            let day = Double(Int.random(in: 0..<120, using: &generator)) * (index % 5 == 0 ? 0.3 : 1)
+            let hour = [9, 10, 11, 14, 15, 16, 18, 21][Int.random(in: 0..<8, using: &generator)]
+            let date = Calendar.current.date(bySettingHour: hour, minute: Int.random(in: 0..<60, using: &generator), second: 0,
+                                             of: now.addingTimeInterval(-day * 86_400)) ?? now
+            let words = WordCount.count(pick.final)
+            let app = apps[Int.random(in: 0..<apps.count, using: &generator)]
+            try store.insert(DictationRecord(createdAt: min(date, now), finalText: pick.final, rawText: pick.raw,
+                                             durationSeconds: Double(words) / 2.6, wordCount: words, provider: "xAI",
+                                             model: "grok-voice-transcribe-2.0", targetApp: app.name, targetBundle: app.bundle,
+                                             insertionStatus: InsertionStatus.inserted.rawValue))
+        }
     }
 
     private static func seedDetails(_ store: HistoryStore) throws {

@@ -3,6 +3,18 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.4.0 — 24 octobre 2026
+
+Un Profil pour voir comment tu parles, et tous les modèles de tes clés pour corriger.
+
+**Nouveau**
+- Profil : tes chiffres (mots dictés, équivalent en pages ou en romans, temps gagné, séries de jours), ton rythme par heure et par jour, tes mots favoris, tes tics de langage et ce que Wispad corrige le plus. Tout est calculé sur ton Mac.
+- Ton cerveau : tes mots fréquents en 3D, reliés quand tu les dis ensemble et colorés par sujet. Tu le fais tourner, tu zoomes, tu cliques un mot pour voir ses voisins. Un mot que tu ne veux pas voir se masque d'un clic droit.
+- Tous les modèles de tes clés : la correction et son relais se choisissent parmi tous les modèles de texte de tes clés DeepSeek, OpenAI et xAI, dans un sous-menu par fournisseur rangé en rapides, équilibrés et lents, avec le coût estimé pour 100 dictées et la vitesse mesurée chez toi.
+
+**Amélioré**
+- Modèles sans réglage de raisonnement : Wispad ne leur envoie plus ce réglage, la correction ne fait plus de deuxième essai inutile.
+
 ## 0.3.6 — 23 octobre 2026
 
 La fenêtre de mise à jour montre toutes les versions que tu as ratées.

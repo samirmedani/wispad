@@ -221,64 +221,29 @@ struct ModelStepsSection: View {
 
     // MARK: Étape 3 : correction
 
-    private static let cleanupGroups: [(name: String, choices: [CleanupChoice])] = [
-        ("DeepSeek", [.deepSeekFlash]),
-        (ProviderID.openAI.displayName, [.openAIMini, .openAILuna]),
-        (ProviderID.xai.displayName, [.grok])
-    ]
-
     private var correctionPicker: some View {
-        Picker(String(localized: "Modèle de correction"), selection: Binding(
+        CleanupModelMenu(title: String(localized: "Modèle de correction"), selection: Binding(
             get: { model.settings.cleanupChoice },
             set: { choice in
                 guard choice.account.map({ model.hasKey(account: $0) }) ?? true else { return }
                 model.settings.cleanupChoice = choice
+                if model.settings.cleanupRelay == choice { model.settings.cleanupRelay = .off }
                 model.saveSettings()
             }
-        )) {
-            Text("Automatique · selon tes clés").tag(CleanupChoice.automatic)
-            ForEach(Self.cleanupGroups, id: \.name) { group in
-                Section(group.name) {
-                    ForEach(group.choices, id: \.self) { choice in
-                        let account = choice.account ?? ""
-                        Text(option(group.name, choice.rawValue,
-                                    availability(account) ?? (choice == .deepSeekFlash ? String(localized: "la moins chère") : nil)))
-                            .tag(choice)
-                            .selectionDisabled(!model.hasKey(account: account))
-                    }
-                }
-            }
-        }
-        .labelsHidden()
-        .fixedSize()
+        ), neutral: .automatic, neutralLabel: String(localized: "Automatique · selon tes clés"))
     }
 
     /// Relais de la correction : « Aucun relais » ou un modèle dont la clé est active, autre que le service principal.
     private func cleanupRelayPicker(primary: CleanupService?) -> some View {
-        Picker(String(localized: "Relais de la correction"), selection: Binding(
+        CleanupModelMenu(title: String(localized: "Relais de la correction"), selection: Binding(
             get: { model.displayedCleanupRelay },
             set: { choice in
                 guard choice == .off || (choice.account.map { model.hasKey(account: $0) } ?? false) else { return }
                 model.settings.cleanupRelay = choice
                 model.saveSettings()
             }
-        )) {
-            Text("Aucun relais").tag(CleanupChoice.off)
-            ForEach(Self.cleanupGroups, id: \.name) { group in
-                Section(group.name) {
-                    ForEach(group.choices, id: \.self) { choice in
-                        let account = choice.account ?? ""
-                        let isPrimary = primary?.model == choice.rawValue
-                        Text(option(group.name, choice.rawValue,
-                                    availability(account) ?? (isPrimary ? String(localized: "déjà en premier") : nil)))
-                            .tag(choice)
-                            .selectionDisabled(!model.hasKey(account: account) || isPrimary)
-                    }
-                }
-            }
-        }
-        .labelsHidden()
-        .fixedSize()
+        ), neutral: .off, neutralLabel: String(localized: "Aucun relais"),
+           excluded: primary.flatMap { CleanupChoice(providerName: $0.provider, model: $0.model) })
     }
 
     private func correctionStatus(services: [CleanupService], speech: SpeechRequest) -> StepStatus {

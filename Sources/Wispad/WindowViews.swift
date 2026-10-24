@@ -7,6 +7,7 @@ extension AppSection {
         switch self {
         case .home: return "house"
         case .history: return "clock.arrow.circlepath"
+        case .profile: return "brain.head.profile"
         case .usage: return "chart.bar.xaxis"
         case .dictionary: return "character.book.closed"
         case .providers: return "key.horizontal"
@@ -80,6 +81,7 @@ struct SectionScreen: View {
         switch section {
         case .home: HomeView()
         case .history: HistoryView()
+        case .profile: ProfileView()
         case .usage: UsageView()
         case .dictionary: DictionaryView()
         case .providers: ProvidersView()
