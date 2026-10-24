@@ -435,6 +435,9 @@ Le micro standard, réglage coupé, ne change pas.
   la phrase parle de ce mot, le mot entre guillemets (« ces »). Un mot de la phrase qui sonne comme une lettre est
   rattaché selon le sens (« c'est » et C, « t'es » et T, « elle » et L), une lettre répétée par erreur disparaît.
   Jamais de lettre isolée sans sens ; une lettre qui en a un reste (« vitamine C », « plan B »).
+  Hors épellation, une lettre seule au milieu d'une phrase est lue comme un mot coupé par un débit rapide : la
+  correction remet le mot que la phrase demande (« v le bas » → « vers le bas »). Un mot épelé entre guillemets
+  s'écrit normalement (« vert », pas « VERT »).
 - Banc réseau de ces règles, transcriptions brutes inventées passées directement à la correction (sans audio) :
   `BENCH_ONLY=h,r,g,l,e,d,n scripts/franglais-bench.sh <nom>` (mots mal entendus, tics, citations, lettres épelées,
   anglais, dates et heures, nombres mal entendus).
