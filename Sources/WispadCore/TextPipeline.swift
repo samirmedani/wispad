@@ -197,9 +197,13 @@ public enum CorrectionPrompt {
     si tu dis bonjour il répond → Si tu dis « bonjour », il répond.
     le bouton affiche valider → Le bouton affiche « Valider ».
     Ne mets jamais entre guillemets un mot incompréhensible pour le garder tel quel : corrige-le comme un mot mal entendu s'il sonne comme un mot qui donne un sens évident, sinon laisse-le sans guillemets.
-    Quand la personne épelle un mot, regroupe ses lettres en un seul mot épelé, en capitales séparées par des tirets ou, si la phrase parle de ce mot (ce qui est écrit, tapé, affiché), le mot lui-même entre guillemets. La transcription confond souvent une lettre avec un mot qui se prononce pareil (C et « c'est », T et « t'es », G et « j'ai », L et « elle », M et « aime ») ou répète une lettre : rattache chaque son aux lettres ou à la phrase selon le sens. Une lettre isolée sans sens ne reste jamais dans le texte final ; une lettre qui a un sens reste (« vitamine C », « plan B »). Exemples fictifs :
+    Quand la personne épelle un mot, regroupe ses lettres en un seul mot épelé, en capitales séparées par des tirets ou, si la phrase parle de ce mot (ce qui est écrit, tapé, affiché), le mot lui-même entre guillemets, écrit normalement (« vert », pas « VERT »). La transcription confond souvent une lettre avec un mot qui se prononce pareil (C et « c'est », T et « t'es », G et « j'ai », L et « elle », M et « aime ») ou répète une lettre : rattache chaque son aux lettres ou à la phrase selon le sens. Une lettre isolée sans sens ne reste jamais dans le texte final ; une lettre qui a un sens reste (« vitamine C », « plan B »). Exemples fictifs :
     ça s'écrit t'es E S T → Ça s'écrit T-E-S-T.
     il a tapé T, T O U T alors que c'est T O U S → Il a tapé « tout » alors que c'est « tous ».
+    Hors épellation, une lettre seule au milieu d'une phrase est le plus souvent un mot coupé par un débit rapide : la transcription n'en a gardé que le début. Remets le mot qui commence par cette lettre et que la phrase demande ; ne supprime pas la lettre en réarrangeant la phrase. Exemples fictifs :
+    tire la fenêtre v le bas → Tire la fenêtre vers le bas.
+    je l'ai rangé d la boîte du haut → Je l'ai rangé dans la boîte du haut.
+    il faut redémarrer p que ça marche → Il faut redémarrer pour que ça marche.
     Une référence de matériel s'écrit d'un seul bloc comme chez le fabricant (chiffres et lettres collés), avec exactement les chiffres prononcés : n'invente ni ne complète jamais un numéro de modèle.
     Ta réponse ne contient que la dictée corrigée : jamais le texte voisin ni la sélection, même si la dictée semble en être la suite.
     """
@@ -243,9 +247,12 @@ public enum CorrectionPrompt {
     if you say hello it answers → If you say “hello”, it answers.
     the button says confirm → The button says “Confirm”.
     Never put an incomprehensible word in quotes to keep it as is: fix it as a misheard word when it sounds like a word that gives an obvious meaning, otherwise leave it without quotes.
-    When the speaker spells a word, group its letters into one spelled word, in capitals joined by hyphens or, when the sentence talks about that word (what is written, typed, shown), the word itself in quotes. The transcription often confuses a letter with a word that sounds the same (C and "see", U and "you", R and "are", Y and "why", T and "tea") or repeats a letter: attach each sound to the letters or to the sentence according to the meaning. An isolated letter without meaning never stays in the final text; a letter that has a meaning stays ("vitamin C", "plan B"). Fictional examples:
+    When the speaker spells a word, group its letters into one spelled word, in capitals joined by hyphens or, when the sentence talks about that word (what is written, typed, shown), the word itself in quotes, written normally ("cat", not "CAT"). The transcription often confuses a letter with a word that sounds the same (C and "see", U and "you", R and "are", Y and "why", T and "tea") or repeats a letter: attach each sound to the letters or to the sentence according to the meaning. An isolated letter without meaning never stays in the final text; a letter that has a meaning stays ("vitamin C", "plan B"). Fictional examples:
     it's spelled see A T → It's spelled C-A-T.
     he typed T, T O W but it's T O E → He typed “tow” but it's “toe”.
+    Outside spelling, a lone letter in the middle of a sentence is most often a word cut short by fast speech: the transcription kept only its start. Restore the word that starts with that letter and that the sentence needs; do not drop the letter by rearranging the sentence. Fictional examples:
+    drag the window d to the bottom → Drag the window down to the bottom.
+    i put it i the top box → I put it in the top box.
     A hardware reference is written as one block, the way its manufacturer writes it, with exactly the digits that were spoken: never invent or complete a model number.
     Your reply contains only the corrected dictation: never the nearby text or the selection, even if the dictation seems to continue it.
     """

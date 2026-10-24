@@ -11,6 +11,9 @@ La fenêtre de mise à jour montre toutes les versions que tu as ratées.
 - Notes prêtes d'avance : les notes des versions ratées sont chargées dès que Wispad trouve la mise à jour ; la fenêtre s'ouvre complète, même si GitHub ne répond plus.
 - Toutes les versions ratées : jusqu'à 30, les 3 plus récentes dépliées, les autres derrière « Afficher les versions précédentes ».
 
+**Corrigé**
+- Mot coupé : quand tu parles vite et qu'il ne reste qu'une lettre (« v le bas »), la correction remet le mot (« vers le bas ») au lieu de laisser la lettre ou de bouleverser la phrase.
+
 ## 0.3.5 — 23 octobre 2026
 
 La comparaison avec les abonnements reste visible sur toutes les périodes.
