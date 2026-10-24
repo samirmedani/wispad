@@ -11650,6 +11650,66 @@
           }
         }
       }
+    },
+    "Quand la dictée s'arrête ou est annulée." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When dictation stops or is cancelled."
+          }
+        }
+      }
+    },
+    "Quand le micro s'ouvre." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When the microphone opens."
+          }
+        }
+      }
+    },
+    "Règle les deux sons à la fois." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sets both sounds at once."
+          }
+        }
+      }
+    },
+    "Son de début" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start sound"
+          }
+        }
+      }
+    },
+    "Son de fin" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "End sound"
+          }
+        }
+      }
+    },
+    "Volume des sons" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sound volume"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

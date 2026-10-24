@@ -4,6 +4,8 @@ import WispadCore
 
 enum SoundCues {
     @MainActor private static var sounds: [DictationCue: NSSound] = [:]
+    /// Niveau d'origine de chaque son, avant le volume réglé.
+    static func baseVolume(_ cue: DictationCue) -> Float { cue == .start ? 0.7 : 0.25 }
 
     /// Charge les sons avant la première dictée, sans les jouer et sans ouvrir le microphone.
     @MainActor static func prepare() {
@@ -37,9 +39,11 @@ enum SoundCues {
         return data
     }
 
-    @MainActor static func play(_ cue: DictationCue) {
+    /// « volume » : le réglage, de 0 (muet) à 1 (niveau d'origine).
+    @MainActor static func play(_ cue: DictationCue, volume: Double = 1) {
         prepare()
-        guard let sound = sounds[cue] else { return }
+        guard volume > 0, let sound = sounds[cue] else { return }
+        sound.volume = baseVolume(cue) * Float(min(1, volume))
         sound.stop()
         sound.play()
     }

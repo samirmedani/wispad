@@ -69,7 +69,7 @@ private final class StyleFixture {
             if request.commandSelection != nil { return CleanupOutcome(text: self?.transformed ?? "", usage: usage) }
             return CleanupOutcome(text: text, usage: usage)
         }
-        deps.playCue = { _ in }
+        deps.playCue = { _, _ in }
         deps.muteOutput = { _, _ in }
         deps.restoreOutput = {}
         deps.watchCorrections = { _, _, _, _ in }

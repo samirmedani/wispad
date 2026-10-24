@@ -70,7 +70,7 @@ private final class OfflineFixture {
             self?.cleanEnabled.append(enabled)
             return CleanupOutcome(text: text)
         }
-        deps.playCue = { _ in }
+        deps.playCue = { _, _ in }
         deps.muteOutput = { _, _ in }
         deps.restoreOutput = {}
         deps.watchCorrections = { _, _, _, _ in }

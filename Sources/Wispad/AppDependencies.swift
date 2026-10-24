@@ -123,7 +123,7 @@ struct AppDependencies {
     /// un fournisseur de voix.
     var probeDeepSeek: (String) async -> UsageEvent? = { await HealthProbe.deepSeek(key: $0) }
     var probeVoice: (ProviderID, String) async -> Bool = { await HealthProbe.voice($0, key: $1) }
-    var playCue: (DictationCue) -> Void = { SoundCues.play($0) }
+    var playCue: (DictationCue, Double) -> Void = { SoundCues.play($0, volume: $1) }
     /// Son du Mac coupé pendant la dictée, puis rétabli. Simulé dans les tests : jamais de vrai son touché.
     var muteOutput: (Bool, OutputMuteMode) -> Void = { OutputMuter.mute(enabled: $0, mode: $1) }
     var restoreOutput: () -> Void = { OutputMuter.restore() }

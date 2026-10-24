@@ -113,6 +113,11 @@ struct AppSettings: Codable, Equatable {
     var pasteLastShortcut = PasteShortcut.standard
     var typingWPM = 40.0
     var soundsEnabled = true
+    /// Volume des sons de dictée, de 0 à 100 % : général, puis début et fin (l'annulation suit la fin). Le son joué
+    /// prend le général multiplié par le sien ; 100 % partout est le niveau d'origine.
+    var soundsVolume = 1.0
+    var startSoundVolume = 1.0
+    var endSoundVolume = 1.0
     var learnCorrections = true
     /// Masque les extraits de la carte d'accueil, sans changer les dictées conservées.
     var blurRecentDictations = false
@@ -204,6 +209,9 @@ struct AppSettings: Codable, Equatable {
         pasteLastShortcut = PasteShortcut.restored(try? container.decodeIfPresent(PasteShortcut.self, forKey: .pasteLastShortcut))
         typingWPM = number(.typingWPM, defaults.typingWPM, in: 1...1_000)
         soundsEnabled = value(.soundsEnabled, defaults.soundsEnabled)
+        soundsVolume = number(.soundsVolume, defaults.soundsVolume, in: Self.soundVolumeRange)
+        startSoundVolume = number(.startSoundVolume, defaults.startSoundVolume, in: Self.soundVolumeRange)
+        endSoundVolume = number(.endSoundVolume, defaults.endSoundVolume, in: Self.soundVolumeRange)
         learnCorrections = value(.learnCorrections, defaults.learnCorrections)
         blurRecentDictations = value(.blurRecentDictations, defaults.blurRecentDictations)
         muteWhileDictating = value(.muteWhileDictating, defaults.muteWhileDictating)
@@ -233,6 +241,12 @@ struct AppSettings: Codable, Equatable {
     static let temporaryHoursRange = 1...24 * 14
     static let maxStorageMBRange = 20...5_000
     static let bubbleSizeRange = 0.8...1.6
+    static let soundVolumeRange = 0.0...1.0
+
+    /// Volume d'un son de dictée : le général multiplié par celui du début ou de la fin.
+    func volume(for cue: DictationCue) -> Double {
+        soundsVolume * (cue == .start ? startSoundVolume : endSoundVolume)
+    }
 
     /// Modèle de voix retiré du catalogue : le modèle par défaut du même fournisseur le remplace.
     private static func knownLiveModel(_ model: String, provider: ProviderID) -> String {

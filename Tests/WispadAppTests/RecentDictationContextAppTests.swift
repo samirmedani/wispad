@@ -65,7 +65,7 @@ private final class RecentContextFixture {
             self?.requests.append(request)
             return CleanupOutcome(text: text)
         }
-        dependencies.playCue = { _ in }
+        dependencies.playCue = { _, _ in }
         dependencies.muteOutput = { _, _ in }
         dependencies.restoreOutput = {}
         dependencies.watchCorrections = { _, _, _, _ in }

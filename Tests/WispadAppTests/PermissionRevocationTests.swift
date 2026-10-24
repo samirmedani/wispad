@@ -386,7 +386,7 @@ private final class DictationFixture {
         deps.transcribe = { _, _ in "Phrase de test." }
         deps.clean = { text, _, _, _ in CleanupOutcome(text: text) }
         deps.copyText = { [weak self] in self?.copied.append($0) }
-        deps.playCue = { [weak self] in self?.cues.append($0) }
+        deps.playCue = { [weak self] cue, _ in self?.cues.append(cue) }
         deps.muteOutput = { _, _ in }
         deps.restoreOutput = {}
         deps.watchCorrections = { _, _, _, _ in }

@@ -356,6 +356,21 @@ enum SettingsPresentation {
         summary: String(localized: "Pour la bulle de dictée comme pour ses messages ; le spectre garde ses couleurs.")
     )
 
+    static let soundsVolume = SettingText(
+        title: String(localized: "Volume des sons"),
+        summary: String(localized: "Règle les deux sons à la fois.")
+    )
+
+    static let startSoundVolume = SettingText(
+        title: String(localized: "Son de début"),
+        summary: String(localized: "Quand le micro s'ouvre.")
+    )
+
+    static let endSoundVolume = SettingText(
+        title: String(localized: "Son de fin"),
+        summary: String(localized: "Quand la dictée s'arrête ou est annulée.")
+    )
+
     static let bubbleSize = SettingText(
         title: String(localized: "Taille de la bulle"),
         summary: String(localized: "Le spectre et ses boutons grandissent avec elle ; les messages gardent leur taille.")
@@ -598,6 +613,37 @@ struct SectionTitle: View {
                 .fontWeight(.regular)
                 .foregroundStyle(.secondary)
                 .textCase(nil)
+        }
+    }
+}
+
+/// Un curseur de volume des sons, de 0 à 100 % par pas de 5 %. Au relâchement, le réglage s'enregistre et le son
+/// concerné se joue au nouveau niveau.
+struct SoundVolumeRow: View {
+    @Environment(AppModel.self) private var model
+    var text: SettingText
+    var value: WritableKeyPath<AppSettings, Double>
+    var preview: DictationCue
+
+    var body: some View {
+        SettingRow(text: text) {
+            Image(systemName: "speaker.fill").font(.system(size: 10)).foregroundStyle(.secondary)
+            Slider(value: Binding(
+                get: { model.settings[keyPath: value] },
+                set: { model.settings[keyPath: value] = ($0 * 20).rounded() / 20 }
+            ), in: AppSettings.soundVolumeRange) { editing in
+                guard !editing else { return }
+                model.saveSettings()
+                model.dependencies.playCue(preview, model.settings.volume(for: preview))
+            }
+            .labelsHidden()
+            .frame(width: 150)
+            .accessibilityLabel(text.title)
+            Image(systemName: "speaker.wave.3.fill").font(.system(size: 10)).foregroundStyle(.secondary)
+            Text(model.settings[keyPath: value], format: .percent.precision(.fractionLength(0)))
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+                .frame(width: 42, alignment: .trailing)
         }
     }
 }

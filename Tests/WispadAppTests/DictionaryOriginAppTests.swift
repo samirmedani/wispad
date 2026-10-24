@@ -36,7 +36,7 @@ private final class OriginFixture {
         dependencies.refreshKeys = { true }
         dependencies.judgeTerms = judge
         dependencies.copyText = { _ in }
-        dependencies.playCue = { _ in }
+        dependencies.playCue = { _, _ in }
         var settings = AppSettings()
         settings.onboardingCompleted = true
         model = try AppModel(supportDirectory: directory, settings: settings, dependencies: dependencies)

@@ -234,7 +234,7 @@ private final class Fixture {
         deps.makeCapture = { [audio] in audio }
         deps.makeSession = { [stream] _ in stream }
         deps.transcribe = { [weak self] _, _ in self?.transcriptions += 1; return "Phrase de test." }
-        deps.playCue = { [weak self] in self?.cues.append($0) }
+        deps.playCue = { [weak self] cue, _ in self?.cues.append(cue) }
         deps.watchCorrections = { [weak self] text, pid, known, learned in
             self?.watches.append((text, pid, known, learned))
         }
@@ -902,7 +902,7 @@ struct AppRegressionTests {
         let heard = AsyncResult<Void>()
         var cues: [DictationCue] = []
         let f = try Fixture {
-            $0.playCue = { cue in
+            $0.playCue = { cue, _ in
                 cues.append(cue)
                 if cue == .start { heard.resolve(.success(())) }
             }
@@ -2623,7 +2623,7 @@ struct AppRegressionTests {
         let f = try Fixture {
             $0.muteOutput = { _, _ in order.append("mute") }
             $0.restoreOutput = { order.append("restore") }
-            $0.playCue = { order.append("\($0)") }
+            $0.playCue = { cue, _ in order.append("\(cue)") }
         }
         defer { f.dispose() }
         await f.model.coordinator.begin(.toggle)

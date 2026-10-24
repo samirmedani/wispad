@@ -244,6 +244,11 @@ sa rangée, une explication d'une ligne sous son libellé, en langage simple (ni
 modèle). Les détails (fournisseurs et modèles réellement utilisés, coût, délais, ce qui est envoyé ou gardé)
 s'ouvrent dans un popover avec le bouton ⓘ de la rangée ; ceux de la correction suivent les clés enregistrées.
 
+- Sons de dictée (Réglages › Général) : « Sons de début et de fin » les allume ou les coupe. Allumés, trois curseurs
+  de 0 à 100 % par pas de 5 % : « Volume des sons » pour les deux à la fois, « Son de début » et « Son de fin » chacun
+  (la fin vaut aussi pour l'annulation). Le son joué prend le général multiplié par le sien ; 100 % partout est le
+  niveau d'origine. Au relâchement d'un curseur, le son concerné se joue au nouveau niveau. À 0 %, le son n'est pas
+  joué et le son du Mac se coupe sans l'attendre.
 - **Raccourci** : chaque raccourci (dictée, « Coller la dernière dictée ») est dessiné en touches de clavier Mac
   compactes, toutes de la même hauteur, une par touche à enfoncer, symbole et nom sur une ligne, séparées par un
   petit « + » : « ⌃ control + ⌥ option + V », « 🌐 fn ». Les deux rangées ont la même disposition : libellé et

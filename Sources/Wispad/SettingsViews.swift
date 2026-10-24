@@ -91,6 +91,11 @@ struct SettingsView: View {
                 get: { model.settings.soundsEnabled },
                 set: { model.settings.soundsEnabled = $0; model.saveSettings() }
             ))
+            if model.settings.soundsEnabled {
+                SoundVolumeRow(text: SettingsPresentation.soundsVolume, value: \.soundsVolume, preview: .start)
+                SoundVolumeRow(text: SettingsPresentation.startSoundVolume, value: \.startSoundVolume, preview: .start)
+                SoundVolumeRow(text: SettingsPresentation.endSoundVolume, value: \.endSoundVolume, preview: .stop)
+            }
             SettingToggle(text: SettingsPresentation.mute, isOn: Binding(
                 get: { model.settings.muteWhileDictating },
                 set: { model.settings.muteWhileDictating = $0; model.saveSettings() }

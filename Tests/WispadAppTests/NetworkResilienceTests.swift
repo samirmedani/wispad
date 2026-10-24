@@ -133,7 +133,7 @@ private final class ResilienceFixture {
             guard let status = self?.keyStatus else { throw URLError(.notConnectedToInternet) }
             return status
         }
-        deps.playCue = { _ in }
+        deps.playCue = { _, _ in }
         deps.muteOutput = { _, _ in }
         deps.restoreOutput = {}
         deps.watchCorrections = { _, _, _, _ in }

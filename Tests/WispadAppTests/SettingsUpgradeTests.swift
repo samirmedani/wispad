@@ -75,6 +75,9 @@ struct SettingsUpgradeTests {
         settings.pasteLastShortcut = PasteShortcut(keyCode: 11, modifiers: ModifierMask.control | ModifierMask.option, enabled: false)
         settings.typingWPM = 52.5
         settings.soundsEnabled = false
+        settings.soundsVolume = 0.6
+        settings.startSoundVolume = 0.3
+        settings.endSoundVolume = 0
         settings.learnCorrections = false
         settings.blurRecentDictations = true
         settings.muteWhileDictating = false
@@ -158,6 +161,20 @@ struct SettingsUpgradeTests {
         #expect(dark.bubbleGlass == BubbleGlass(variant: .clear, intensity: 0, appearance: .dark))
         let unknown = try decode(#"{"bubbleGlass":{"variant":"clear","intensity":0,"appearance":"neon"}}"#)
         #expect(unknown.bubbleGlass.appearance == .light)
+    }
+
+    /// Le son joué prend le volume général multiplié par celui du début ou de la fin ; l'annulation suit la fin, et un
+    /// volume illisible ou hors bornes revient à 100 %.
+    @Test func soundVolumesCombine() throws {
+        var settings = AppSettings()
+        #expect(settings.volume(for: .start) == 1 && settings.volume(for: .stop) == 1)
+        settings.soundsVolume = 0.5
+        settings.startSoundVolume = 0.4
+        settings.endSoundVolume = 0
+        #expect(abs(settings.volume(for: .start) - 0.2) < 0.0001)
+        #expect(settings.volume(for: .stop) == 0)
+        #expect(settings.volume(for: .cancel) == 0)
+        #expect(try decode(#"{"soundsVolume": 7}"#).soundsVolume == 1)
     }
 
     /// La fixture couvre tous les réglages, y compris ceux ajoutés plus tard.
