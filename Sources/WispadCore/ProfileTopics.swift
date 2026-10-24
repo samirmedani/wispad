@@ -264,9 +264,22 @@ extension WordGraph {
     public static func topics(_ analysis: TopicAnalysis) -> WordGraph {
         var byCategory: [String: [TopicAnalysis.Topic]] = [:]
         for topic in analysis.topics { byCategory[topic.category, default: []].append(topic) }
-        let ranked = byCategory.map { (name: $0.key, topics: $0.value, size: Set($0.value.flatMap(\.dictations)).count) }
-            .sorted { $0.size != $1.size ? $0.size > $1.size : $0.name < $1.name }
-            .prefix(8)
+        struct Category {
+            var name: String
+            var topics: [TopicAnalysis.Topic]
+            var size: Int
+        }
+        var all: [Category] = []
+        for (name, topics) in byCategory {
+            var ids = Set<String>()
+            for topic in topics { ids.formUnion(topic.dictations) }
+            all.append(Category(name: name, topics: topics, size: ids.count))
+        }
+        all.sort { (a: Category, b: Category) -> Bool in
+            if a.size != b.size { return a.size > b.size }
+            return a.name < b.name
+        }
+        let ranked = all.prefix(8)
         var nodes: [Node] = []
         var edges: [Edge] = []
         var topicDictations: [(id: Int, dictations: Set<String>)] = []
