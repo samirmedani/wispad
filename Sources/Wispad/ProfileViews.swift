@@ -44,7 +44,7 @@ struct ProfileView: View {
                     DaysCard(profile: data.profile)
                 }
                 .fixedSize(horizontal: false, vertical: true)
-                BrainCard(graph: data.graph, selected: $selectedWord, hide: hide)
+                BrainSection(wordGraph: data.graph, profile: data.profile, selected: $selectedWord, hide: hide)
                 WordsCard(words: data.profile.topWords, hide: hide)
                 HStack(alignment: .top, spacing: 12) {
                     TicsCard(tics: data.profile.tics)

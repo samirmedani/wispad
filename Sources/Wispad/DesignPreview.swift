@@ -106,6 +106,32 @@ enum DesignPreview {
         }
         if arguments.contains("--fallback-preview") || arguments.contains("--usage-accuracy-preview") { model.selectedSection = .usage }
         if arguments.contains("--profile-preview") { model.selectedSection = .profile }
+        if arguments.contains("--profile-topics-preview") {
+            model.selectedSection = .profile
+            model.settings.profileTopicsEnabled = true
+            model.settings.profilePortraitEnabled = true
+            let ids = model.history.map(\.id)
+            func slice(_ start: Int, _ count: Int) -> [String] { Array(ids.dropFirst(start).prefix(count)) }
+            let topic = { (name: String, category: String, keywords: [String], start: Int, count: Int) in
+                TopicAnalysis.Topic(name: name, category: category, keywords: keywords, dictations: slice(start, count))
+            }
+            ProfileTopicsController.shared.inject(TopicAnalysis(
+                topics: [
+                    topic("Application Wispad", "Code", ["build", "GitHub", "tests"], 0, 60),
+                    topic("Déploiement Vercel", "Code", ["deploy", "branche"], 20, 30),
+                    topic("Pull requests", "Code", ["relecture", "merge"], 40, 24),
+                    topic("Voyage à Lyon", "Voyages", ["train", "hôtel", "gare"], 60, 40),
+                    topic("Réservations", "Voyages", ["hôtel", "weekend"], 80, 18),
+                    topic("Recettes", "Cuisine", ["chocolat", "beurre"], 100, 35),
+                    topic("Liste de courses", "Cuisine", ["farine", "œufs"], 115, 22),
+                    topic("Devis et factures", "Travail", ["client", "devis", "budget"], 140, 50),
+                    topic("Relances clients", "Travail", ["septembre", "relance"], 160, 20)
+                ],
+                analyzedAt: Date().addingTimeInterval(-3_600), dictationCount: ids.count,
+                newestDictation: model.history.dropFirst(5).first?.createdAt, service: "DeepSeek deepseek-flash", costUSD: 0.0123,
+                portrait: "Tu passes l'essentiel de ton temps sur ton application et ses mises en ligne. Entre deux livraisons, tu gères devis et clients. Et tu prépares déjà ton prochain week-end à Lyon."
+            ))
+        }
         if arguments.contains("--blur-recent") { model.settings.blurRecentDictations = true }
         // `--glass-bubble` : style Verre, pour voir ses réglages et leur aperçu ; `--glass-variant clear|regular` et
         // `--glass-appearance light|dark|system` choisissent le verre.
