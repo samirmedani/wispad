@@ -85,7 +85,7 @@ private final class RetentionFixture {
         deps.transcribe = { _, _ in RetentionStream.text }
         deps.isOnline = { true }
         deps.clean = { text, _, _, _ in CleanupOutcome(text: text) }
-        deps.playCue = { _ in }
+        deps.playCue = { _, _ in }
         deps.muteOutput = { _, _ in }
         deps.restoreOutput = {}
         deps.watchCorrections = { _, _, _, _ in }

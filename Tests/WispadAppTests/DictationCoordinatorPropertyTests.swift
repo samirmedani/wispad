@@ -1017,7 +1017,7 @@ private final class ModelWorld {
         }
         deps.probeDeepSeek = { _ in nil }
         deps.probeVoice = { _, _ in true }
-        deps.playCue = { [weak self] in self?.cue($0) }
+        deps.playCue = { [weak self] cue, _ in self?.cue(cue) }
         deps.muteOutput = { [weak self] _, _ in self?.mute() }
         deps.restoreOutput = { [weak self] in self?.restore() }
         deps.watchCorrections = { [weak self] text, pid, _, learned in self?.watch(text, pid: pid, learned) }

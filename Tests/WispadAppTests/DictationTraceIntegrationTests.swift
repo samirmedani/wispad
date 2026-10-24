@@ -89,7 +89,7 @@ private final class TraceFixture {
             return "TRANSCRIPT_PRIVATE_SENTINEL"
         }
         dependencies.clean = { text, _, _, _ in CleanupOutcome(text: text) }
-        dependencies.playCue = { _ in }
+        dependencies.playCue = { _, _ in }
         dependencies.muteOutput = { _, _ in }
         dependencies.restoreOutput = {}
         dependencies.watchCorrections = { _, _, _, _ in }

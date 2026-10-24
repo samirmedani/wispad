@@ -1398,7 +1398,7 @@ final class DictationCoordinator {
     private func muteOutputAfterCue(_ current: Capture) {
         guard let model, model.settings.muteWhileDictating else { return }
         Task { @MainActor [weak self] in
-            if model.settings.soundsEnabled { try? await Task.sleep(nanoseconds: 250_000_000) }
+            if model.settings.soundsEnabled, model.settings.volume(for: .start) > 0 { try? await Task.sleep(nanoseconds: 250_000_000) }
             guard let self, self.capture === current, current.listening, !self.outputMuted else { return }
             self.outputMuted = true
             model.dependencies.muteOutput(model.settings.muteWhileDictating, model.settings.muteMode)
@@ -1406,8 +1406,10 @@ final class DictationCoordinator {
     }
 
     private func cue(_ sound: DictationCue) {
-        guard model?.settings.soundsEnabled == true else { return }
-        model?.dependencies.playCue(sound)
+        guard let model, model.settings.soundsEnabled else { return }
+        let volume = model.settings.volume(for: sound)
+        guard volume > 0 else { return }
+        model.dependencies.playCue(sound, volume)
     }
 
     private func changed() {

@@ -81,7 +81,7 @@ private final class TrialFixture {
             if let gate = self.cleanGate { try? await gate.value() }
             return CleanupOutcome(text: text)
         }
-        dependencies.playCue = { _ in }
+        dependencies.playCue = { _, _ in }
         dependencies.muteOutput = { _, _ in }
         dependencies.restoreOutput = {}
         dependencies.watchCorrections = { _, _, _, _ in }

@@ -68,7 +68,7 @@ private final class StructureAppFixture {
             self?.cleanupModes.append(enabled)
             return CleanupOutcome(text: request.structureDictation ? DictationStructure.format(text) : text)
         }
-        dependencies.playCue = { _ in }
+        dependencies.playCue = { _, _ in }
         dependencies.muteOutput = { _, _ in }
         dependencies.restoreOutput = {}
         dependencies.watchCorrections = { _, _, _, _ in }

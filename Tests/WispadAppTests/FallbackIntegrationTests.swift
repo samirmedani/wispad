@@ -106,7 +106,7 @@ private final class FallbackFixture {
             return "Phrase fictive du fichier."
         }
         dependencies.clean = { text, _, _, _ in CleanupOutcome(text: text) }
-        dependencies.playCue = { _ in }
+        dependencies.playCue = { _, _ in }
         dependencies.muteOutput = { _, _ in }
         dependencies.restoreOutput = {}
         dependencies.watchCorrections = { _, _, _, _ in }

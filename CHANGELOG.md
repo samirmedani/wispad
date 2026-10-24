@@ -3,6 +3,13 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.4.2 — 24 octobre 2026
+
+Les sons de dictée se règlent au volume voulu.
+
+**Nouveau**
+- Volume des sons : dans Réglages › Général, un curseur pour les deux sons à la fois, puis un pour le son de début et un pour le son de fin, de 0 à 100 %. Le son se fait entendre au nouveau niveau dès que tu lâches le curseur.
+
 ## 0.4.1 — 24 octobre 2026
 
 Les jours du Profil se lisent au survol.
