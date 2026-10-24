@@ -11710,6 +11710,206 @@
           }
         }
       }
+    },
+    "%lld nouvelles dictées depuis" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld new dictations since"
+          }
+        }
+      }
+    },
+    "Analysé le %@ · %lld dictées · %@ · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Analyzed %1$@ · %2$lld dictations · %3$@ · %4$@"
+          }
+        }
+      }
+    },
+    "Analyser mes sujets avec l'IA" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Analyze my topics with AI"
+          }
+        }
+      }
+    },
+    "Arrêter" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop"
+          }
+        }
+      }
+    },
+    "Aucune clé de correction active : ajoute-en une dans Fournisseurs." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No active correction key: add one in Providers."
+          }
+        }
+      }
+    },
+    "Catégorie" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Category"
+          }
+        }
+      }
+    },
+    "Cerveau" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Brain"
+          }
+        }
+      }
+    },
+    "Écrire mon portrait" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Write my portrait"
+          }
+        }
+      }
+    },
+    "environ %@ jetons" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "about %@ tokens"
+          }
+        }
+      }
+    },
+    "environ %@ jetons avec %@, prix inconnu" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "about %1$@ tokens with %2$@, unknown price"
+          }
+        }
+      }
+    },
+    "environ %@ jetons, ≈ %@ avec %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "about %1$@ tokens, ≈ %2$@ with %3$@"
+          }
+        }
+      }
+    },
+    "L'analyse n'a pas abouti : le service de correction n'a pas répondu. Réessaie plus tard." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The analysis didn't finish: the correction service didn't respond. Try again later."
+          }
+        }
+      }
+    },
+    "Lance l'analyse pour voir tes sujets." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Run the analysis to see your topics."
+          }
+        }
+      }
+    },
+    "Lancer l'analyse · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Run analysis · %@"
+          }
+        }
+      }
+    },
+    "Lot %lld sur %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Batch %1$lld of %2$lld"
+          }
+        }
+      }
+    },
+    "Relancer l'analyse · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Run analysis again · %@"
+          }
+        }
+      }
+    },
+    "Sujets · IA" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Topics · AI"
+          }
+        }
+      }
+    },
+    "Tes sujets, lus par une IA dans tout ton historique et rangés en grandes catégories. Un sujet est relié à sa catégorie, et à un autre quand tu en parles dans les mêmes dictées." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your topics, read by an AI across your whole history and grouped into broad categories. A topic is linked to its category, and to another when you talk about both in the same dictations."
+          }
+        }
+      }
+    },
+    "Trois phrases sur ce qui t'occupe, d'après tes sujets et tes chiffres : %@ de plus." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Three sentences about what keeps you busy, from your topics and numbers: %@ more."
+          }
+        }
+      }
+    },
+    "Une IA relit tout ton historique (%lld dictées) pour en tirer tes sujets et tes catégories. Elle utilise ta clé de correction : %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An AI reads your whole history (%1$lld dictations) to find your topics and categories. It uses your correction key: %2$@."
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

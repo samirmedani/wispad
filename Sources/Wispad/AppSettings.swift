@@ -135,6 +135,10 @@ struct AppSettings: Codable, Equatable {
     /// Période du Profil, et mots que la personne a retirés de ses classements et du cerveau.
     var profilePeriod: StatsPeriod = .all
     var profileHiddenWords: [String] = []
+    /// Cerveau par sujets (une IA relit l'historique avec la clé de correction) et portrait écrit : coupés par défaut,
+    /// chacun allumé par la personne après avoir vu son coût estimé.
+    var profileTopicsEnabled = false
+    var profilePortraitEnabled = false
     /// Taxe ajoutée aux prix comparés dans Consommation › Tout, en pourcentage (20 % par défaut, la TVA française).
     var usageTaxRate = SalesTax.defaultRate
     var lastSection: AppSection = .home
@@ -222,6 +226,8 @@ struct AppSettings: Codable, Equatable {
         usagePeriod = value(.usagePeriod, defaults.usagePeriod)
         profilePeriod = value(.profilePeriod, defaults.profilePeriod)
         profileHiddenWords = value(.profileHiddenWords, defaults.profileHiddenWords)
+        profileTopicsEnabled = value(.profileTopicsEnabled, defaults.profileTopicsEnabled)
+        profilePortraitEnabled = value(.profilePortraitEnabled, defaults.profilePortraitEnabled)
         usageTaxRate = number(.usageTaxRate, defaults.usageTaxRate, in: SalesTax.range)
         lastSection = value(.lastSection, defaults.lastSection)
         settingsTab = value(.settingsTab, defaults.settingsTab)

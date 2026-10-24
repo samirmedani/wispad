@@ -6,7 +6,12 @@ import WispadCore
 struct BrainCard: View {
     var graph: WordGraph
     @Binding var selected: Int?
-    var hide: (String) -> Void
+    /// Masquer un mot (cerveau par mots) ; nil pour les sujets.
+    var hide: ((String) -> Void)?
+    var caption: String
+    var emptyText: String
+    var modePicker: AnyView?
+    var accessory: AnyView?
 
     @Environment(\.interactionReduceMotion) private var reduceMotion
     @State private var yaw = 0.4
@@ -23,16 +28,19 @@ struct BrainCard: View {
         VStack(alignment: .leading, spacing: 12) {
             CardTitle(title: String(localized: "Ton cerveau")) {
                 HStack(spacing: 4) {
+                    if let modePicker { modePicker.padding(.trailing, 8) }
                     zoomButton("minus.magnifyingglass", String(localized: "Dézoomer")) { zoom = max(0.6, zoom / 1.2) }
                     zoomButton("plus.magnifyingglass", String(localized: "Zoomer")) { zoom = min(2.6, zoom * 1.2) }
                     zoomButton("arrow.counterclockwise", String(localized: "Recentrer")) { reset() }
                 }
             }
-            Text("Tes mots les plus fréquents, reliés quand tu les dis dans les mêmes dictées. Chaque couleur est une famille de sujets.")
+            Text(caption)
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            if let accessory { accessory }
             if graph.nodes.count < 3 {
-                Text("Encore quelques dictées et ton cerveau prendra forme.")
+                Text(emptyText)
                     .font(.system(size: 12))
                     .foregroundStyle(.tertiary)
                     .frame(maxWidth: .infinity, minHeight: 120)
@@ -78,6 +86,13 @@ struct BrainCard: View {
                 }
                 Text(node.count == 1 ? String(localized: "Dans 1 dictée") : String(localized: "Dans \(node.count) dictées"))
                     .font(.system(size: 12)).foregroundStyle(.secondary)
+                if node.isCategory {
+                    Text("Catégorie").font(.system(size: 11, weight: .semibold)).foregroundStyle(color(node.cluster))
+                }
+                if !node.details.isEmpty {
+                    Text(node.details.joined(separator: " · ")).font(.system(size: 12)).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 let neighbors = graph.neighbors(of: id)
                 if neighbors.isEmpty {
                     Text("Aucun mot souvent dit avec lui.").font(.system(size: 12)).foregroundStyle(.tertiary)
@@ -98,10 +113,12 @@ struct BrainCard: View {
                         }
                     }
                 }
-                Button(String(localized: "Masquer ce mot")) { hide(node.word) }
-                    .buttonStyle(.borderless)
-                    .font(.system(size: 12))
-                    .padding(.top, 4)
+                if let hide {
+                    Button(String(localized: "Masquer ce mot")) { hide(node.word) }
+                        .buttonStyle(.borderless)
+                        .font(.system(size: 12))
+                        .padding(.top, 4)
+                }
             }
         } else {
             VStack(alignment: .leading, spacing: 8) {
@@ -174,25 +191,29 @@ struct BrainCard: View {
             let weight = (Double(item.node.count) / maxCount).squareRoot()
             let dimmed = selected != nil && !focus.contains(item.node.id)
             let fade = (dimmed ? 0.18 : 1) * (0.45 + 0.55 * (1 - item.depth) / 2)
-            let radius = (3 + 7 * weight) * item.scale
+            let radius = (item.node.isCategory ? 10 + 6 * weight : 3 + 7 * weight) * item.scale
             let dot = CGRect(x: item.point.x - radius, y: item.point.y - radius, width: radius * 2, height: radius * 2)
             let tint = color(item.node.cluster)
             if selected == item.node.id {
                 context.fill(Path(ellipseIn: dot.insetBy(dx: -5, dy: -5)), with: .color(tint.opacity(0.25)))
             }
             context.fill(Path(ellipseIn: dot), with: .color(tint.opacity(fade)))
+            if item.node.isCategory {
+                context.stroke(Path(ellipseIn: dot.insetBy(dx: -3, dy: -3)), with: .color(tint.opacity(fade * 0.6)), lineWidth: 1.5)
+            }
         }
         // Étiquettes, du premier plan vers le fond : un mot dont l'étiquette chevaucherait une étiquette déjà posée
         // reste sans texte (il se lit en tournant le nuage ou en le choisissant).
         var placed: [CGRect] = []
-        for item in projected.sorted(by: { $0.depth < $1.depth }) {
+        for item in projected.sorted(by: { $0.node.isCategory != $1.node.isCategory ? $0.node.isCategory : $0.depth < $1.depth }) {
             let weight = (Double(item.node.count) / maxCount).squareRoot()
             let isFocus = selected != nil && focus.contains(item.node.id)
             guard selected == nil || isFocus else { continue }
             let fade = 0.45 + 0.55 * (1 - item.depth) / 2
-            let radius = (3 + 7 * weight) * item.scale
+            let radius = (item.node.isCategory ? 10 + 6 * weight : 3 + 7 * weight) * item.scale
             let label = context.resolve(Text(item.node.word)
-                .font(.system(size: (10 + 5 * weight) * item.scale, weight: weight > 0.6 || selected == item.node.id ? .semibold : .medium))
+                .font(.system(size: (item.node.isCategory ? 14 + 3 * weight : 10 + 5 * weight) * item.scale,
+                              weight: item.node.isCategory ? .bold : weight > 0.6 || selected == item.node.id ? .semibold : .medium))
                 .foregroundStyle(Color.primary.opacity(fade)))
             let size = label.measure(in: CGSize(width: 300, height: 40))
             let frame = CGRect(x: item.point.x - size.width / 2, y: item.point.y - radius - 2 - size.height,

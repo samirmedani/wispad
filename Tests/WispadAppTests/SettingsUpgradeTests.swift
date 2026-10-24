@@ -88,6 +88,8 @@ struct SettingsUpgradeTests {
         settings.usagePeriod = .all
         settings.profilePeriod = .days30
         settings.profileHiddenWords = ["fixture"]
+        settings.profileTopicsEnabled = true
+        settings.profilePortraitEnabled = true
         settings.usageTaxRate = 8.1
         settings.lastSection = .dictionary
         settings.settingsTab = .permissions

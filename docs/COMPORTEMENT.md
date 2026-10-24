@@ -198,6 +198,22 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   à chaque calcul. Le nuage tourne lentement seul, sauf avec « Réduire les animations » ; glisser le tourne et arrête
   la rotation, pincer ou « + / − » zoome, la flèche recentre. Une étiquette qui en chevaucherait une autre n'est pas
   écrite. Cliquer un mot montre ses dictées et ses voisins (« Souvent avec »), cliquables, et éclaire ses liens.
+- Cerveau par sujets (« Mots | Sujets · IA » en haut de la carte) : coupé par défaut. « Analyser mes sujets avec
+  l'IA » l'allume ; la ligne dit avant tout appel combien de dictées seront relues, les jetons et le coût estimés
+  avec le premier service de correction (« environ 9 k jetons, ≈ 0,002 $ avec DeepSeek deepseek-flash », « prix
+  inconnu » sans tarif ; estimation prudente, 3,6 caractères par jeton). Rien n'est envoyé tant que « Lancer
+  l'analyse · coût » n'est pas cliqué. L'IA relit tout l'historique (700 caractères au plus par dictée), par lots de
+  36 000 caractères, trois lots à la fois, et rend des sujets concrets (projet, activité, thème), leur catégorie
+  (Code, Travail, Voyages…), 3 à 5 mots-clés et les dictées qui en parlent ; mots vides, verbes, tics et données
+  personnelles sont exclus par la consigne. Les sujets de même nom sont réunis. Le cerveau montre les 8 plus grandes
+  catégories (gros nœuds cerclés, nom toujours écrit) et leurs 6 sujets principaux, reliés à leur catégorie et entre
+  eux quand ils partagent deux dictées ; cliquer un sujet montre ses mots-clés. Progression « Lot 3 sur 12 » et
+  « Arrêter » pendant l'analyse. Le résultat est gardé sur ce Mac (sujets et numéros de dictées, pas de texte) avec
+  sa date, le nombre de dictées relues, le service, le coût réel et les dictées nouvelles depuis ; « Relancer
+  l'analyse · coût » la refait. Chaque appel compte dans Consommation. Couper l'interrupteur efface le résultat.
+  « Écrire mon portrait » (sous le premier, coupé par défaut, avec son coût en plus) ajoute trois phrases sur ce qui
+  occupe la personne, d'après ses sujets et ses chiffres. Sans clé de correction active, le lancement est remplacé par
+  « Aucune clé de correction active ». Le cerveau s'ouvre sur les sujets quand l'analyse est allumée et faite.
 - Tes mots : les 40 mots les plus dits, taille selon la fréquence. Tes tics de langage : « euh », « genre »,
   « du coup », « tu vois »… comptés dans la transcription brute. Ce que Wispad corrige le plus : un mot entendu
   remplacé par un autre à la correction, vu au moins deux fois (« cloud → claude »). Langues : part des dictées

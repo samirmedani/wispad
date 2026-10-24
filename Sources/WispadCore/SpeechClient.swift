@@ -1089,20 +1089,23 @@ public enum TextCleaner {
     }
 
     static func send(system: String, user: String, route: Route, maxTokens: Int, includeReasoning: Bool, allowTruncated: Bool = false,
-                     transport: @escaping HTTPTransport = httpTransport, requests: RequestLog = RequestLog(), fallback: APIFallback? = nil) async throws -> Reply {
+                     transport: @escaping HTTPTransport = httpTransport, requests: RequestLog = RequestLog(), fallback: APIFallback? = nil,
+                     requestTimeout: TimeInterval = 8) async throws -> Reply {
         do {
             return try await sendAttempt(system: system, user: user, route: route, maxTokens: maxTokens,
                                          includeReasoning: includeReasoning, allowTruncated: allowTruncated,
-                                         transport: transport, requests: requests, fallback: fallback)
+                                         transport: transport, requests: requests, fallback: fallback, requestTimeout: requestTimeout)
         } catch ResponseError.status(400) where includeReasoning {
             // Deux requêtes distinctes ; la seconde reste chez le même fournisseur.
             return try await send(system: system, user: user, route: route, maxTokens: maxTokens,
-                                  includeReasoning: false, allowTruncated: allowTruncated, transport: transport, requests: requests)
+                                  includeReasoning: false, allowTruncated: allowTruncated, transport: transport, requests: requests,
+                                  requestTimeout: requestTimeout)
         }
     }
 
     private static func sendAttempt(system: String, user: String, route: Route, maxTokens: Int, includeReasoning: Bool, allowTruncated: Bool,
-                                    transport: @escaping HTTPTransport, requests: RequestLog, fallback: APIFallback?) async throws -> Reply {
+                                    transport: @escaping HTTPTransport, requests: RequestLog, fallback: APIFallback?,
+                                    requestTimeout: TimeInterval) async throws -> Reply {
         try Task.checkCancellation()
         var body: [String: Any] = [
             "model": route.model,
@@ -1135,7 +1138,7 @@ public enum TextCleaner {
         }
         http.setValue("application/json", forHTTPHeaderField: "Content-Type")
         http.httpBody = try JSONSerialization.data(withJSONObject: body)
-        http.timeoutInterval = 8
+        http.timeoutInterval = requestTimeout
         try Task.checkCancellation()
         let id = requests.begin(route: route, fallback: fallback)
         var tokens: TokenUsage?

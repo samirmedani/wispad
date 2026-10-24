@@ -3,6 +3,18 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.4.3 — 24 octobre 2026
+
+Ton cerveau comprend enfin de quoi tu parles.
+
+**Nouveau**
+- Cerveau par sujets : dans Profil, choisis « Sujets · IA ». Une IA relit tout ton historique avec ta clé de correction et en tire tes sujets concrets (un projet, une activité, un voyage), rangés en grandes catégories comme Code, Travail ou Voyages. Clique un sujet pour voir ses mots-clés.
+- Coût annoncé avant tout appel : l'option est coupée par défaut. Tu vois les jetons et le coût estimés, puis tu lances l'analyse toi-même. Le résultat reste sur ton Mac et le coût réel s'affiche ensuite.
+- Portrait écrit : une option de plus, avec son propre coût, pour trois phrases sur ce qui t'occupe.
+
+**Amélioré**
+- Cerveau par mots : les verbes et formules courantes (« passe », « d'accord », « utiliser », « vas-y »…) n'y apparaissent plus.
+
 ## 0.4.2 — 24 octobre 2026
 
 Les sons de dictée se règlent au volume voulu.

@@ -66,7 +66,12 @@ public enum ProfileBuilder {
     faudrait pourrait peux veut vraiment enfin bref puis cas coup temps beaucoup peut-être ouais nan également \
     the and or but if of to in on at for with by from as is are was were be been being it its this that these those i \
     you he she we they me him her us them my your his our their do does did have has had not no yes so just like \
-    what which who when where why how all any can could would should will about there here then than too very also
+    what which who when where why how all any can could would should will about there here then than too very also \
+    passe passer accord utiliser utilise voir vois regarde regarder mettre mets mis met vas-y etc exemple gros vrai \
+    mieux aimerais aime besoin directement sorte question personne gens jour dois doit aller allez prendre prends pris \
+    donner donne trouve trouver sais savoir pense crois vouloir pouvoir normalement actuellement maintenant toujours \
+    jamais souvent plein petit petite grand bonne autres chaque plusieurs niveau manière faites partie moment ceux \
+    merci salut bonjour fais-le dessus dessous ailleurs vraiment tellement quelque quelques fin début part dit-il
     """.split(whereSeparator: { $0.isWhitespace }).map { String($0) })
 
     /// Tics de langage cherchés dans la transcription brute, avant correction.
@@ -208,6 +213,9 @@ public struct WordGraph: Equatable, Sendable {
         public var x: Double
         public var y: Double
         public var z: Double
+        /// Cerveau par sujets : une grande catégorie (et non un sujet), et les mots-clés d'un sujet.
+        public var isCategory = false
+        public var details: [String] = []
     }
 
     public struct Edge: Equatable, Sendable {
