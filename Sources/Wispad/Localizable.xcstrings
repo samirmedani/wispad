@@ -11910,6 +11910,16 @@
           }
         }
       }
+    },
+    "environ %@ jetons, %@ avec %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "about %1$@ tokens, %2$@ with %3$@"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

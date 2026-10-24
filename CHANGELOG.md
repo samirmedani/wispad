@@ -3,6 +3,16 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.4.4 — 24 octobre 2026
+
+Un coût minuscule ne s'affiche plus comme gratuit.
+
+**Corrigé**
+- Profil › Ton cerveau : un coût estimé sous 0,001 $ s'affiche « < 0,001 $ » au lieu de « ≈ 0,00 $ ».
+
+**Amélioré**
+- README : captures refaites sur la version actuelle (données de démonstration), avec le Profil et son cerveau par sujets.
+
 ## 0.4.3 — 24 octobre 2026
 
 Ton cerveau comprend enfin de quoi tu parles.

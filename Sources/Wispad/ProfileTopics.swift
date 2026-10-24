@@ -216,7 +216,9 @@ private struct TopicsControls: View {
         let tokens = (estimate.tokens.input + estimate.tokens.output).formatted(.number.notation(.compactName).locale(appLocale))
         guard let service else { return String(localized: "environ \(tokens) jetons") }
         if let usd = estimate.costUSD {
-            return String(localized: "environ \(tokens) jetons, ≈ \(MoneyFormat.price(max(usd, 0.0001))) avec \(service.label)")
+            // Sous 0,001 $, « ≈ 0,00 $ » ferait croire à un appel gratuit.
+            let price = usd < 0.001 ? "< " + MoneyFormat.price(0.001) : "≈ " + MoneyFormat.price(usd)
+            return String(localized: "environ \(tokens) jetons, \(price) avec \(service.label)")
         }
         return String(localized: "environ \(tokens) jetons avec \(service.label), prix inconnu")
     }
