@@ -191,7 +191,8 @@ struct BrainCard: View {
             let weight = (Double(item.node.count) / maxCount).squareRoot()
             let dimmed = selected != nil && !focus.contains(item.node.id)
             let fade = (dimmed ? 0.18 : 1) * (0.45 + 0.55 * (1 - item.depth) / 2)
-            let radius = (item.node.isCategory ? 10 + 6 * weight : 3 + 7 * weight) * item.scale
+            let baseRadius: Double = item.node.isCategory ? 10 + 6 * weight : 3 + 7 * weight
+            let radius: Double = baseRadius * item.scale
             let dot = CGRect(x: item.point.x - radius, y: item.point.y - radius, width: radius * 2, height: radius * 2)
             let tint = color(item.node.cluster)
             if selected == item.node.id {
@@ -205,16 +206,31 @@ struct BrainCard: View {
         // Étiquettes, du premier plan vers le fond : un mot dont l'étiquette chevaucherait une étiquette déjà posée
         // reste sans texte (il se lit en tournant le nuage ou en le choisissant).
         var placed: [CGRect] = []
-        for item in projected.sorted(by: { $0.node.isCategory != $1.node.isCategory ? $0.node.isCategory : $0.depth < $1.depth }) {
+        let labelOrder = projected.sorted { (a: Projected, b: Projected) -> Bool in
+            if a.node.isCategory != b.node.isCategory { return a.node.isCategory }
+            return a.depth < b.depth
+        }
+        for item in labelOrder {
             let weight = (Double(item.node.count) / maxCount).squareRoot()
             let isFocus = selected != nil && focus.contains(item.node.id)
             guard selected == nil || isFocus else { continue }
             let fade = 0.45 + 0.55 * (1 - item.depth) / 2
-            let radius = (item.node.isCategory ? 10 + 6 * weight : 3 + 7 * weight) * item.scale
-            let label = context.resolve(Text(item.node.word)
-                .font(.system(size: (item.node.isCategory ? 14 + 3 * weight : 10 + 5 * weight) * item.scale,
-                              weight: item.node.isCategory ? .bold : weight > 0.6 || selected == item.node.id ? .semibold : .medium))
-                .foregroundStyle(Color.primary.opacity(fade)))
+            let isCategory: Bool = item.node.isCategory
+            let baseRadius: Double = isCategory ? 10 + 6 * weight : 3 + 7 * weight
+            let radius: Double = baseRadius * item.scale
+            let baseSize: Double = isCategory ? 14 + 3 * weight : 10 + 5 * weight
+            let fontWeight: Font.Weight
+            if isCategory {
+                fontWeight = .bold
+            } else if weight > 0.6 || selected == item.node.id {
+                fontWeight = .semibold
+            } else {
+                fontWeight = .medium
+            }
+            let text = Text(item.node.word)
+                .font(.system(size: CGFloat(baseSize * item.scale), weight: fontWeight))
+                .foregroundStyle(Color.primary.opacity(fade))
+            let label = context.resolve(text)
             let size = label.measure(in: CGSize(width: 300, height: 40))
             let frame = CGRect(x: item.point.x - size.width / 2, y: item.point.y - radius - 2 - size.height,
                                width: size.width, height: size.height).insetBy(dx: -2, dy: -1)
