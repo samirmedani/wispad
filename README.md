@@ -252,7 +252,6 @@ Wispad te rend service ? Une ⭐ sur GitHub aide d'autres personnes à le trouve
 ## Contributeurs
 
 - [@samirmedani](https://github.com/samirmedani) : mainteneur.
-- [@iamsupersocks](https://github.com/iamsupersocks) : contributeur.
 - Claude (Anthropic) : assistant de développement.
 
 Pour contribuer à ton tour : voir [CONTRIBUTING.md](CONTRIBUTING.md).
