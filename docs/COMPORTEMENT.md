@@ -189,7 +189,9 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   demi-roman), temps économisé, mots par minute, série en cours (jours d'affilée jusqu'à aujourd'hui ou hier),
   meilleure série, jours actifs, plus longue dictée.
 - Ton rythme : dictées par heure (24 barres) et par jour de la semaine, le pic en couleur vive (« Surtout vers 11 h,
-  et le mercredi »). Tes jours : mots dictés par jour sur les 18 dernières semaines, en cases.
+  et le mercredi »). Tes jours : mots dictés par jour sur les 18 dernières semaines, en cases. Au survol d'une case, sans délai, sa date et
+  ses mots s'affichent au-dessus de la grille (« vendredi 24 octobre · 1 240 mots », « Aucune dictée ») et la case est
+  entourée.
 - Ton cerveau : les 48 mots les plus fréquents (vus dans au moins deux dictées), en nuage 3D. Deux mots sont reliés
   quand ils reviennent dans les mêmes dictées (les 4 liens les plus forts de chaque mot, deux dictées communes au
   moins), et colorés par famille (propagation d'étiquettes sur les liens). Le placement est calculé (forces), le même

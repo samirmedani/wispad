@@ -195,27 +195,58 @@ private struct Bars: View {
 
 // MARK: Jours
 
-/// Mots dictés par jour sur 18 semaines, en cases comme sur GitHub.
+/// Mots dictés par jour sur 18 semaines, en cases comme sur GitHub. Au survol d'une case, sa date et ses mots
+/// s'affichent tout de suite au-dessus de la grille, et la case est entourée.
 private struct DaysCard: View {
     var profile: DictationProfile
+    @State private var hovered: Int?
 
     var body: some View {
-        let weeks = stride(from: 0, to: profile.daily.count, by: 7).map { Array(profile.daily[$0..<min($0 + 7, profile.daily.count)]) }
+        let count = profile.daily.count
         let maximum = max(1, profile.daily.max() ?? 1)
         VStack(alignment: .leading, spacing: 12) {
             CardTitle(String(localized: "Tes jours"))
-            Text("Mots dictés par jour, sur les 18 dernières semaines.")
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
+            Group {
+                if let hovered, profile.daily.indices.contains(hovered) {
+                    let value = profile.daily[hovered]
+                    HStack(spacing: 6) {
+                        Text(date(for: hovered, count: count).formatted(.dateTime.weekday(.wide).day().month(.wide).locale(appLocale)))
+                            .fontWeight(.semibold)
+                        Text("·").foregroundStyle(.tertiary)
+                        Text(value == 0 ? String(localized: "Aucune dictée") : value == 1 ? String(localized: "1 mot")
+                             : String(localized: "\(value.formatted(.number.locale(appLocale))) mots"))
+                            .monospacedDigit()
+                            .foregroundStyle(value == 0 ? Color.secondary : Theme.brand)
+                    }
+                } else {
+                    Text("Mots dictés par jour, sur les 18 dernières semaines. Survole une case pour voir son jour.")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .font(.system(size: 12))
+            .lineLimit(1)
+            .frame(height: 16, alignment: .leading)
             HStack(alignment: .top, spacing: 3) {
-                ForEach(weeks.indices, id: \.self) { week in
+                ForEach(Array(stride(from: 0, to: count, by: 7)), id: \.self) { start in
                     VStack(spacing: 3) {
-                        ForEach(weeks[week].indices, id: \.self) { day in
-                            let value = weeks[week][day]
+                        ForEach(start..<min(start + 7, count), id: \.self) { index in
+                            let value = profile.daily[index]
                             RoundedRectangle(cornerRadius: 2.5, style: .continuous)
                                 .fill(value == 0 ? Theme.subtleFill : Theme.brand.opacity(0.25 + 0.75 * Double(value) / Double(maximum)))
+                                .overlay {
+                                    if hovered == index {
+                                        RoundedRectangle(cornerRadius: 2.5, style: .continuous)
+                                            .strokeBorder(Color.primary.opacity(0.85), lineWidth: 1.5)
+                                    }
+                                }
                                 .frame(width: 11, height: 11)
-                                .help(String(localized: "\(value) mots"))
+                                .contentShape(Rectangle().inset(by: -1.5))
+                                .onHover { inside in
+                                    if inside { hovered = index } else if hovered == index { hovered = nil }
+                                }
+                                .accessibilityElement()
+                                .accessibilityLabel(Text(date(for: index, count: count).formatted(date: .complete, time: .omitted)))
+                                .accessibilityValue(Text("\(value) mots"))
                         }
                     }
                 }
@@ -233,6 +264,11 @@ private struct DaysCard: View {
         .padding(16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .card()
+    }
+
+    /// La dernière case est aujourd'hui ; chaque case avant elle, un jour plus tôt.
+    private func date(for index: Int, count: Int) -> Date {
+        Calendar.current.date(byAdding: .day, value: index - (count - 1), to: Calendar.current.startOfDay(for: Date())) ?? Date()
     }
 }
 
