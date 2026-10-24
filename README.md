@@ -85,7 +85,13 @@ curseur : messagerie, e-mail, éditeur de code, terminal, navigateur.
     </td>
     <td width="50%" align="center">
       <img src="docs/images/ecran-providers.png" alt="Écran Fournisseurs : les 4 étapes d'une dictée, chacune avec son modèle, puis les clés API">
-      <br><b>Fournisseurs</b> · un modèle par étape (voix, vérification, correction, mots appris) et tes clés.
+      <br><b>Fournisseurs</b> · un modèle par étape, choisi parmi tous les modèles de tes clés, classés par vitesse et coût.
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center">
+      <img src="docs/images/ecran-profile.png" alt="Profil, carte Ton cerveau : sujets de démonstration (Code, Travail, Voyages, Cuisine) reliés en 3D, avec le coût estimé de l'analyse et un portrait écrit" width="70%">
+      <br><b>Profil</b> · tes chiffres, ton rythme, tes mots et tes tics ; ton cerveau en 3D, par mots ou par sujets lus par une IA, avec le coût annoncé avant.
     </td>
   </tr>
 </table>
@@ -132,6 +138,14 @@ curseur : messagerie, e-mail, éditeur de code, terminal, navigateur.
   le dictionnaire, d'un simple Oui / Non dans la bulle.
 - **Signaler une erreur** depuis le détail d'une dictée garde, sur ton Mac, de quoi mesurer les progrès.
 
+### Ton profil
+
+- **Tes chiffres** : mots dictés (en pages ou en romans), temps gagné, séries de jours, ton rythme par heure et par
+  jour, tes mots favoris, tes tics de langage et ce que Wispad corrige le plus. Tout est calculé sur ton Mac.
+- **Ton cerveau en 3D** : tes mots reliés quand tu les dis ensemble, à faire tourner et zoomer. En option, une IA
+  relit ton historique avec ta clé de correction et le range par **sujets et catégories** (Code, Travail,
+  Voyages…), avec un portrait écrit. Coupé par défaut, coût annoncé avant, rien ne part sans ton clic.
+
 ## Fournisseurs
 
 Wispad n'a pas de serveur : il parle directement aux API, avec **tes clés**. **Tu paies directement chaque
@@ -140,7 +154,7 @@ fournisseur**, à l'usage, et l'écran Consommation estime le coût de chaque ap
 | Étape | Qui s'en charge | À savoir |
 | :--- | :--- | :--- |
 | **Transcription** (ta voix) | **xAI** Grok Voice Transcribe 2.0 *(recommandé)* ou **OpenAI** GPT Live Transcribe | En direct pendant l'écoute ; chez xAI, 0,20 $ de l'heure en direct. |
-| **Correction** (le texte) | Au choix dans Fournisseurs › Modèles, ou automatique : **DeepSeek** d'abord s'il a une clé, puis **OpenAI**, puis le modèle du fournisseur de voix (**xAI** ou **OpenAI**) | Seul le texte part à la correction, jamais l'audio. |
+| **Correction** (le texte) | N'importe quel modèle de texte de tes clés **DeepSeek**, **OpenAI** ou **xAI**, choisi dans Fournisseurs › Modèles (rangés par vitesse, avec leur coût), ou automatique : **DeepSeek** d'abord s'il a une clé, puis **OpenAI**, puis le modèle du fournisseur de voix (**xAI** ou **OpenAI**) | Seul le texte part à la correction, jamais l'audio. |
 | **Relais** | Au choix dans Fournisseurs › Modèles, pour la voix et pour la correction, ou aucun | Un service en panne est mis de côté, puis repris dès qu'il répond. |
 
 Une seule clé suffit pour commencer (xAI ou OpenAI). Clés facultatives : clé de gestion xAI (solde réel affiché
@@ -153,6 +167,8 @@ dans Consommation) et TypeSafe (Jev, premier avis sur les mots appris ; sans ell
 - 📵 **Pas de télémétrie** : ni statistiques ni journal envoyés. En dehors de tes fournisseurs, Wispad ne contacte
   que GitHub : son API publique, pour savoir si une nouvelle version est publiée (sans clé ni cookie), et le
   téléchargement de cette version quand tu cliques sur « Mettre à jour ».
+- 🧠 **Profil calculé sur ton Mac** : seule l'analyse par sujets, si tu l'allumes et la lances, envoie ton
+  historique à ton service de correction, après t'en avoir annoncé le coût.
 - 💻 **Historique et audio sur ton Mac**, avec une durée de conservation de l'audio réglable. Les journaux ne
   contiennent jamais ce que tu dictes.
 - 🔑 **Clés lisibles par ton seul compte** : `~/Library/Application Support/Wispad/api-keys.json`, ou ton propre
