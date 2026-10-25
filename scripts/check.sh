@@ -8,7 +8,14 @@ cd "$(dirname "$0")/.."
 step() { print -P "%B== $1%b" }
 
 step "Tests locaux"
-scripts/test.sh 2>&1 | grep -E "Test run with|tests skipped|error:|✘" | sort -u
+test_log=$(mktemp -t wispad-tests)
+if ! scripts/test.sh > "$test_log" 2>&1; then
+  grep -E "Test run with|tests skipped|error:|✘" "$test_log" | sort -u
+  # Plantage du compilateur : sa trace (« While … », « Stack dump ») nomme le fichier et la déclaration en cause.
+  grep -E "Stack dump|While |Please submit|^[0-9]+\.[[:space:]]" "$test_log" | head -40 || true
+  exit 1
+fi
+grep -E "Test run with|tests skipped|error:|✘" "$test_log" | sort -u
 
 step "Traductions"
 scripts/localize.sh check
