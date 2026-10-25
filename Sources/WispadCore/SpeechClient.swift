@@ -687,6 +687,10 @@ public enum CleanupModel {
     public static let deepSeekAccount = "deepseek"
     /// Relais OpenAI quand DeepSeek ne répond pas : moins d'une seconde par correction.
     public static let openAIFallback = "gpt-5.4-mini"
+    /// Serveur de modèles sur ce Mac, compatible OpenAI (Ollama, LM Studio, llama.cpp…) : sa « clé » est son adresse.
+    public static let localAccount = "local"
+    public static let ollamaURL = "http://localhost:11434/v1"
+    public static let lmStudioURL = "http://localhost:1234/v1"
 }
 
 /// Modèle de correction, ou son relais, choisi dans Fournisseurs › Modèles. Automatique : l'ordre des clés actives
@@ -707,7 +711,8 @@ public struct CleanupChoice: RawRepresentable, Hashable, Codable, Sendable {
     public static let models: [CleanupChoice] = [.deepSeekFlash, .openAIMini, .openAILuna, .grok]
 
     /// Comptes dont un modèle de texte peut corriger.
-    public static let accounts = [CleanupModel.deepSeekAccount, ProviderID.openAI.rawValue, ProviderID.xai.rawValue]
+    public static let accounts = [CleanupModel.deepSeekAccount, ProviderID.openAI.rawValue, ProviderID.xai.rawValue,
+                                  CleanupModel.localAccount]
 
     private init(uncheckedRawValue: String) {
         rawValue = uncheckedRawValue
@@ -781,6 +786,7 @@ public struct CleanupChoice: RawRepresentable, Hashable, Codable, Sendable {
         case CleanupModel.deepSeekAccount: return "DeepSeek"
         case ProviderID.openAI.rawValue: return ProviderID.openAI.displayName
         case ProviderID.xai.rawValue: return ProviderID.xai.displayName
+        case CleanupModel.localAccount: return "Local"
         default: return nil
         }
     }
@@ -912,9 +918,24 @@ public enum TextCleaner {
             return Route(api: .openAICleanup, model: model, url: openAIURL, key: key, provider: provider, isFallback: false)
         case ProviderID.xai.rawValue:
             return Route(api: .xaiCleanup, model: model, url: xaiURL, key: key, provider: provider, isFallback: false)
+        case CleanupModel.localAccount:
+            // La « clé » du modèle local est l'adresse de son serveur ; il n'a pas de clé.
+            guard let base = localBase(key) else { return nil }
+            return Route(api: .localCleanup, model: model, url: base.appendingPathComponent("chat/completions"), key: "",
+                         provider: provider, isFallback: false)
         default:
             return nil
         }
+    }
+
+    /// Adresse d'un serveur local compatible OpenAI (« http://localhost:11434/v1 »), sans « / » final ; nil si ce n'est
+    /// pas une adresse http(s).
+    public static func localBase(_ text: String) -> URL? {
+        var trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        while trimmed.hasSuffix("/") { trimmed.removeLast() }
+        guard let url = URL(string: trimmed), let scheme = url.scheme?.lowercased(), ["http", "https"].contains(scheme),
+              url.host?.isEmpty == false else { return nil }
+        return url
     }
 
     /// Ordre automatique : DeepSeek, puis OpenAI (gpt-5.4-mini), puis le modèle du fournisseur vocal.
@@ -942,6 +963,8 @@ public enum TextCleaner {
     /// Délai d'un service de correction seul, puis de chacun quand un relais le suit.
     public static let singleRouteSeconds = 4.0
     public static let perRouteSeconds = 2.5
+    /// Un modèle local charge ses poids au premier appel et calcule sur le Mac : plus de marge.
+    public static let localRouteSeconds = 15.0
 
     /// La correction de cette dictée, en clair : services essayés dans l'ordre (« DeepSeek deepseek-flash ») et
     /// attente maximale avant d'insérer le texte brut (hors allongement des longues dictées).
@@ -977,7 +1000,7 @@ public enum TextCleaner {
             guard !Task.isCancelled else { break }
             let transition = fallback(for: index, routes: routes, speech: speech, stage: .correction)
             // Deux essais au plus : le texte brut reste inséré si aucun service ne répond à temps.
-            let base = routes.count == 1 ? singleRouteSeconds : perRouteSeconds
+            let base = route.api == .localCleanup ? localRouteSeconds : routes.count == 1 ? singleRouteSeconds : perRouteSeconds
             let timeout = base + extraSeconds
             do {
                 let reply = try await withTimeout(seconds: timeout) {
@@ -1072,7 +1095,8 @@ public enum TextCleaner {
             api: route.api,
             model: route.model,
             tokens: tokens ?? TokenUsage(),
-            costUSD: tokens.flatMap { Pricing.tokenCost(model: route.model, tokens: $0, at: started) },
+            // Un modèle local ne coûte rien.
+            costUSD: route.api == .localCleanup ? 0 : tokens.flatMap { Pricing.tokenCost(model: route.model, tokens: $0, at: started) },
             latencyMs: latency,
             succeeded: succeeded,
             fallback: fallback
@@ -1119,6 +1143,9 @@ public enum TextCleaner {
             body["max_tokens"] = maxTokens
             body["temperature"] = 0
             body["thinking"] = ["type": "disabled"]
+        case .localCleanup:
+            body["max_tokens"] = maxTokens
+            body["temperature"] = 0
         case .xaiCleanup:
             body["max_tokens"] = maxTokens
             body["temperature"] = 0

@@ -139,6 +139,10 @@ struct AppSettings: Codable, Equatable {
     /// chacun allumé par la personne après avoir vu son coût estimé.
     var profileTopicsEnabled = false
     var profilePortraitEnabled = false
+    /// Analyse par sujets remise à jour seule chaque semaine, sur les seules dictées nouvelles.
+    var profileTopicsWeekly = false
+    /// Adresse d'un serveur de modèles sur ce Mac, compatible OpenAI (Ollama, LM Studio…) ; vide : aucun.
+    var localModelURL = ""
     /// Taxe ajoutée aux prix comparés dans Consommation › Tout, en pourcentage (20 % par défaut, la TVA française).
     var usageTaxRate = SalesTax.defaultRate
     var lastSection: AppSection = .home
@@ -228,6 +232,8 @@ struct AppSettings: Codable, Equatable {
         profileHiddenWords = value(.profileHiddenWords, defaults.profileHiddenWords)
         profileTopicsEnabled = value(.profileTopicsEnabled, defaults.profileTopicsEnabled)
         profilePortraitEnabled = value(.profilePortraitEnabled, defaults.profilePortraitEnabled)
+        profileTopicsWeekly = value(.profileTopicsWeekly, defaults.profileTopicsWeekly)
+        localModelURL = value(.localModelURL, defaults.localModelURL)
         usageTaxRate = number(.usageTaxRate, defaults.usageTaxRate, in: SalesTax.range)
         lastSection = value(.lastSection, defaults.lastSection)
         settingsTab = value(.settingsTab, defaults.settingsTab)

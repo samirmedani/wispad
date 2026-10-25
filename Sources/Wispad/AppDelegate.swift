@@ -68,6 +68,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                 Task { @MainActor in
                     model?.purgeAudio()
                     await model?.checkDownServices()
+                    if let model { ProfileTopicsController.shared.runIfDue(model: model) }
                 }
             }
             // Toujours chaque minute, à quelques secondes près : macOS peut grouper ce réveil avec d'autres au repos.

@@ -16,13 +16,14 @@ final class TextModelDirectory {
     }
 
     private(set) var listings: [String: Listing] = [:]
-    /// Comptes dont la lecture est en cours.
+    /// Comptes dont la lecture est en cours, et ceux dont la dernière lecture n'a pas répondu.
     private(set) var loading: Set<String> = []
+    private(set) var failed: Set<String> = []
 
     /// Lecture de la liste d'un compte ; remplaçable dans les tests.
     var fetch: @Sendable (_ url: URL, _ key: String) async -> [String]? = { url, key in
         var request = URLRequest(url: url)
-        request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+        if !key.isEmpty { request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization") }
         request.timeoutInterval = 10
         guard let (data, response) = try? await URLSession.shared.data(for: request),
               (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
@@ -52,15 +53,22 @@ final class TextModelDirectory {
         await withTaskGroup(of: (String, [String]?).self) { group in
             for (account, key) in keys where !key.isEmpty && !loading.contains(account) {
                 if !force, let listing = listings[account], now.timeIntervalSince(listing.loadedAt) < Self.freshness { continue }
-                guard let url = TextModelCatalog.listURL(account: account) else { continue }
+                guard let url = TextModelCatalog.listURL(account: account, key: key) else { continue }
                 loading.insert(account)
                 let fetch = self.fetch
-                group.addTask { (account, await fetch(url, key)) }
+                // Le serveur local n'a pas de clé : sa « clé » est son adresse, jamais envoyée en en-tête.
+                let header = account == CleanupModel.localAccount ? "" : key
+                group.addTask { (account, await fetch(url, header)) }
             }
             for await (account, identifiers) in group {
                 loading.remove(account)
-                if let identifiers, !identifiers.isEmpty {
+                if let identifiers {
+                    failed.remove(account)
                     listings[account] = Listing(identifiers: identifiers, loadedAt: now)
+                } else {
+                    failed.insert(account)
+                    // Un serveur local éteint ne garde pas une ancienne liste : ses modèles ne sont plus là.
+                    if account == CleanupModel.localAccount { listings[account] = nil }
                 }
             }
         }
@@ -122,6 +130,9 @@ struct CleanupModelMenu: View {
                         ForEach(all.filter(\.isRecommended)) { item in
                             pick(item.choice, label: line(item, latencies: latencies, note: String(localized: "recommandé")))
                         }
+                        if all.isEmpty {
+                            Text(String(localized: "Aucun modèle trouvé"))
+                        } else {
                         Menu(String(localized: "Tous les modèles \(name) (\(all.count))")) {
                             ForEach(TextModel.Speed.allCases, id: \.self) { speed in
                                 let group = all.filter { TextModelCatalog.speed($0.model, measuredMilliseconds: latencies[$0.model]) == speed }
@@ -134,8 +145,10 @@ struct CleanupModelMenu: View {
                                 }
                             }
                         }
+                        }
                     } else {
-                        Text(model.hasStoredKey(account: account) ? String(localized: "Clé coupée") : String(localized: "Aucune clé : ajoute-la plus bas"))
+                        Text(account == CleanupModel.localAccount ? String(localized: "Aucun modèle local : configure-le plus bas")
+                             : model.hasStoredKey(account: account) ? String(localized: "Clé coupée") : String(localized: "Aucune clé : ajoute-la plus bas"))
                     }
                 }
             }
@@ -185,7 +198,9 @@ struct CleanupModelMenu: View {
         } else {
             parts.append(TextModelCatalog.speed(item.model).short)
         }
-        if let cost = TextModelCatalog.costPerHundred(item.model) {
+        if item.account == CleanupModel.localAccount {
+            parts.append(String(localized: "gratuit, sur ce Mac"))
+        } else if let cost = TextModelCatalog.costPerHundred(item.model) {
             parts.append(String(localized: "≈ \(MoneyFormat.price(cost)) / 100 dictées"))
         } else {
             parts.append(String(localized: "prix inconnu"))

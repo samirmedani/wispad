@@ -59,10 +59,16 @@ final class AppModel {
     /// Le coffre (ou le fichier des clés) a répondu à la dernière lecture.
     var keysReachable = true
     var statusBanner: String?
+    /// Historique ouvert sur les dictées d'un sujet ou d'un mot du cerveau ; nil : toutes les dictées.
+    var historyFilter: HistoryFilter?
     /// Section affichée, retrouvée au lancement suivant (`AppSettings.lastSection`).
     var selectedSection: AppSection = .home {
         didSet {
-            if selectedSection != .history { historyPlayer.close() }
+            if selectedSection != .history {
+                historyPlayer.close()
+                // Le filtre d'un sujet ne vaut que pour l'ouverture depuis le cerveau.
+                historyFilter = nil
+            }
             setDisplayChoice(\.lastSection, selectedSection)
         }
     }
@@ -550,6 +556,10 @@ final class AppModel {
 
     /// Clé enregistrée, même coupée : pour l'afficher masquée ou la revérifier, jamais pour un appel.
     func storedKey(_ account: String) -> String? {
+        // Le modèle local n'a pas de clé : son adresse en tient lieu, et elle vit dans les réglages.
+        if account == CleanupModel.localAccount {
+            return TextCleaner.localBase(settings.localModelURL) == nil ? nil : settings.localModelURL
+        }
         _ = keysLoadedAt
         guard let value = dependencies.loadKey(account), !value.isEmpty else { return nil }
         return value
@@ -896,13 +906,41 @@ final class AppModel {
         }
         guard await dependencies.saveKey(account, draft) else {
             keyChecks[account] = .notSaved
-            keyMessages[account] = String(localized: "Impossible d'enregistrer la clé \(dependencies.keyStore.place).")
+            keyMessages[account] = saveFailure(account)
             return
         }
         keysLoadedAt = Date()
         keyChecks[account] = .valid
         if unchanged() { keyDrafts[account] = nil }
         keyMessages[account] = String(localized: "Clé enregistrée \(dependencies.keyStore.place).")
+    }
+
+    /// Clé vérifiée mais pas enregistrée : une source distante se lit seulement, la clé s'ajoute avec son outil.
+    func saveFailure(_ account: String) -> String {
+        if usesRemoteKeySource {
+            return String(localized: "Ta source de clés se lit seulement : ajoute \(keyLocation(for: account)) dans ton gestionnaire, puis recharge.")
+        }
+        return String(localized: "Impossible d'enregistrer la clé \(dependencies.keyStore.place).")
+    }
+
+    /// Clés lues sur un serveur ou dans un gestionnaire de secrets choisi dans Fournisseurs (lecture seule).
+    var usesRemoteKeySource: Bool {
+        _ = keysLoadedAt
+        return dependencies.keyStore == .vault && !APIKeys.Vault.canWrite && APIKeys.Vault.remoteCommand() != nil
+    }
+
+    /// Change la source des clés (« nil » : fichier de ce Mac), puis relit toutes les clés.
+    func setRemoteKeySource(_ command: String?) async {
+        let defaults = UserDefaults.standard
+        if let command {
+            defaults.set("remote", forKey: "wispad.keystore")
+            defaults.set(command, forKey: "wispad.remoteCommand")
+        } else {
+            defaults.removeObject(forKey: "wispad.keystore")
+        }
+        keysReachable = await APIKeys.reconfigure()
+        keysLoadedAt = Date()
+        settleRelays()
     }
 
     /// Revérifie chez le fournisseur une clé déjà enregistrée (premier lancement guidé), sans la réécrire.
@@ -976,7 +1014,7 @@ final class AppModel {
             switch result {
             case .valid:
                 guard await dependencies.saveKey(account, draft) else {
-                    keysMessage = String(localized: "Impossible d'enregistrer la clé \(dependencies.keyStore.place).")
+                    keysMessage = saveFailure(account)
                     return false
                 }
                 keysLoadedAt = Date()
@@ -1356,4 +1394,10 @@ final class AppModel {
         }
         return StatsCalculator.filter(samples: all, period: period, now: Date())
     }
+}
+
+/// Dictées d'un sujet ou d'un mot choisi dans le cerveau du Profil.
+struct HistoryFilter: Equatable {
+    var title: String
+    var dictations: Set<String>
 }

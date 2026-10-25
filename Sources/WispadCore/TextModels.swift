@@ -105,6 +105,12 @@ public enum TextModelCatalog {
         return .balanced
     }
 
+    /// Adresse de la liste des modèles d'un compte, avec la « clé » de ce compte (l'adresse du serveur pour le local).
+    public static func listURL(account: String, key: String) -> URL? {
+        if account == CleanupModel.localAccount { return TextCleaner.localBase(key)?.appendingPathComponent("models") }
+        return listURL(account: account)
+    }
+
     /// Coût estimé de 100 corrections typiques, en dollars ; nil si le tarif du modèle est inconnu.
     public static func costPerHundred(_ model: String, tokens: TokenUsage = typicalTokens, at date: Date = Date()) -> Double? {
         Pricing.tokenCost(model: model, tokens: tokens, at: date).map { $0 * 100 }
@@ -146,7 +152,7 @@ public enum TextModelCatalog {
     public static func reasoningEffort(api: UsageAPI, model: String) -> String? {
         let lower = model.lowercased()
         switch api {
-        case .deepSeekCleanup:
+        case .deepSeekCleanup, .localCleanup:
             return nil
         case .xaiCleanup:
             return lower.contains("non-reasoning") ? nil : "low"

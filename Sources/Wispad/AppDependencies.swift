@@ -80,7 +80,12 @@ extension LiveSpeechSession: SpeechStreaming {}
 @MainActor
 struct AppDependencies {
     /// Fichier de l'app par défaut, ou coffre de secrets s'il est configuré (voir APIKeys).
-    var keyStore: KeyStoreKind = APIKeys.kind
+    var keyStore: KeyStoreKind {
+        get { keyStoreSource() }
+        set { keyStoreSource = { newValue } }
+    }
+    /// Source actuelle : elle peut changer pendant que l'app tourne (Fournisseurs › Clés API).
+    var keyStoreSource: () -> KeyStoreKind = { APIKeys.kind }
     var loadKey: (String) -> String? = { APIKeys.cached($0) }
     var saveKey: (String, String) async -> Bool = { await APIKeys.save($0, $1) }
     var deleteKey: (String) async -> Bool = { await APIKeys.delete($0) }

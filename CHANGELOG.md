@@ -3,6 +3,19 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.5.0 — 25 octobre 2026
+
+Tes clés où tu veux, un modèle local gratuit, et un cerveau qui se tient à jour.
+
+**Nouveau**
+- Clés depuis un serveur : dans Fournisseurs › Clés API, choisis « Serveur ou gestionnaire » et donne une commande (SSH vers ton serveur, 1Password, Doppler, Infisical, Bitwarden, curl…). Tester dit quelles clés sont trouvées, sans jamais les afficher ; rien n'est écrit sur ton Mac.
+- Modèle local : branche Ollama, LM Studio ou tout serveur compatible OpenAI. Ses modèles corrigent tes dictées et lisent tes sujets, gratuitement, sans que le texte quitte ton Mac.
+- Sujets à jour : « Mettre à jour » ne relit que les nouvelles dictées, pour presque rien. En option, la mise à jour se fait seule chaque semaine, avec son coût annoncé.
+- Du cerveau à l'Historique : clique un mot ou un sujet, puis « Voir ses dictées » ouvre l'Historique filtré sur elles.
+
+**Amélioré**
+- Publication : si Apple met trop de temps à valider une version, elle est soumise à nouveau toute seule.
+
 ## 0.4.4 — 24 octobre 2026
 
 Un coût minuscule ne s'affiche plus comme gratuit.
