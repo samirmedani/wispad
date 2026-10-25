@@ -732,16 +732,21 @@ struct ServiceStatusSection: View {
     }
 }
 
+/// Serveur de modèles choisi dans Fournisseurs › Modèle local.
+enum LocalModelPreset: Hashable {
+    case none
+    case ollama
+    case lmStudio
+    case custom
+}
+
 /// Fournisseurs › Modèle local : un serveur de modèles sur ce Mac, compatible OpenAI (Ollama, LM Studio, llama.cpp…).
 /// Sans clé ni coût, il corrige les dictées et lit les sujets du Profil sans que le texte quitte le Mac.
 struct LocalModelSection: View {
     @Environment(AppModel.self) private var model
     @State private var draft = ""
 
-    private enum Preset: String, CaseIterable, Identifiable {
-        case none, ollama, lmStudio, custom
-        var id: String { rawValue }
-    }
+    private typealias Preset = LocalModelPreset
 
     private var directory: TextModelDirectory { .shared }
     private var account: String { CleanupModel.localAccount }
@@ -750,7 +755,7 @@ struct LocalModelSection: View {
         Section {
             SettingRow(text: SettingText(title: String(localized: "Serveur"),
                                          summary: String(localized: "L'app qui fait tourner le modèle sur ton Mac."))) {
-                Picker(String(localized: "Serveur"), selection: Binding(get: { preset }, set: choose)) {
+                Picker(String(localized: "Serveur"), selection: Binding(get: { preset }, set: { choose($0) })) {
                     Text("Aucun").tag(Preset.none)
                     Text("Ollama").tag(Preset.ollama)
                     Text("LM Studio").tag(Preset.lmStudio)
