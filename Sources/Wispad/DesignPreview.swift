@@ -106,6 +106,17 @@ enum DesignPreview {
         }
         if arguments.contains("--fallback-preview") || arguments.contains("--usage-accuracy-preview") { model.selectedSection = .usage }
         if arguments.contains("--profile-preview") { model.selectedSection = .profile }
+        if arguments.contains("--remote-keys-preview") {
+            KeySourceRow.previewCommand = "ssh mon-serveur 'cat ~/.secrets/{name}'"
+        }
+        if arguments.contains("--history-filter-preview") {
+            model.historyFilter = HistoryFilter(title: "Application Wispad", dictations: Set(model.history.prefix(60).map(\.id)))
+            model.selectedSection = .history
+        }
+        // « --local-model-url http://127.0.0.1:18434/v1 » : modèle local branché sur ce serveur.
+        if let index = arguments.firstIndex(of: "--local-model-url"), arguments.indices.contains(index + 1) {
+            model.settings.localModelURL = arguments[index + 1]
+        }
         if arguments.contains("--profile-topics-preview") {
             model.selectedSection = .profile
             model.settings.profileTopicsEnabled = true

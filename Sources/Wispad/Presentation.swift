@@ -14,6 +14,7 @@ extension UsageAPI {
         case .deepSeekCleanup: return String(localized: "DeepSeek · correction")
         case .xaiCleanup: return String(localized: "xAI · correction")
         case .openAICleanup: return String(localized: "OpenAI · correction")
+        case .localCleanup: return String(localized: "Modèle local · correction")
         case .typesafeJudge: return String(localized: "TypeSafe · Jev (dictionnaire)")
         }
     }

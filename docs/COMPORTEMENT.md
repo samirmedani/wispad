@@ -209,11 +209,18 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   catégories (gros nœuds cerclés, nom toujours écrit) et leurs 6 sujets principaux, reliés à leur catégorie et entre
   eux quand ils partagent deux dictées ; cliquer un sujet montre ses mots-clés. Progression « Lot 3 sur 12 » et
   « Arrêter » pendant l'analyse. Le résultat est gardé sur ce Mac (sujets et numéros de dictées, pas de texte) avec
-  sa date, le nombre de dictées relues, le service, le coût réel et les dictées nouvelles depuis ; « Relancer
-  l'analyse · coût » la refait. Chaque appel compte dans Consommation. Couper l'interrupteur efface le résultat.
+  sa date, le nombre de dictées relues, le service, le coût réel et les dictées nouvelles depuis ; « Mettre à jour · N
+  nouvelles dictées · coût » ne relit que les dictées arrivées depuis (sujets fusionnés, coût cumulé) ; « Tout relire ·
+  coût » refait tout. « Mettre à jour chaque semaine » (coupé par défaut, coût d'une semaine type affiché : les
+  dictées des 4 dernières semaines divisées par 4) lance seul cette mise à jour quand l'analyse a 7 jours et que des
+  dictées sont arrivées, vérifié chaque minute ; jamais une première analyse. Les dictées supprimées sont oubliées
+  des sujets. Avec un modèle local, le coût affiché est « gratuit ». Chaque appel compte dans Consommation. Couper l'interrupteur efface le résultat.
   « Écrire mon portrait » (sous le premier, coupé par défaut, avec son coût en plus) ajoute trois phrases sur ce qui
   occupe la personne, d'après ses sujets et ses chiffres. Sans clé de correction active, le lancement est remplacé par
   « Aucune clé de correction active ». Le cerveau s'ouvre sur les sujets quand l'analyse est allumée et faite.
+- Historique d'un nœud : un mot, un sujet ou une catégorie choisi dans le cerveau propose « Voir ses N dictées ».
+  L'Historique s'ouvre filtré sur elles, avec « Dictées de « … » · N dictées » et « Toutes les dictées » pour enlever
+  le filtre ; la recherche s'applique dans le filtre. Quitter l'Historique enlève le filtre.
 - Tes mots : les 40 mots les plus dits, taille selon la fréquence. Tes tics de langage : « euh », « genre »,
   « du coup », « tu vois »… comptés dans la transcription brute. Ce que Wispad corrige le plus : un mot entendu
   remplacé par un autre à la correction, vu au moins deux fois (« cloud → claude »). Langues : part des dictées
@@ -992,6 +999,25 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
 
 ## Clés API
 
+- Où sont tes clés ? (en tête de Fournisseurs › Clés API) : « Sur ce Mac » (fichier de l'app) ou « Serveur ou
+  gestionnaire » : une commande lancée dans un shell de connexion de l'utilisateur (son PATH : Homebrew, op…), où
+  « {name} » devient le nom de la clé (WISPAD_XAI_API_KEY, WISPAD_OPENAI_API_KEY, WISPAD_DEEPSEEK_API_KEY,
+  WISPAD_XAI_MANAGEMENT_KEY, TYPESAFE_API_KEY). « Modèles » propose SSH vers un serveur, 1Password, Doppler, Infisical,
+  Bitwarden et une adresse web (curl). « Tester » lit chaque clé sans la choisir et dit lesquelles sont trouvées (« 3
+  clés trouvées : xAI, OpenAI, DeepSeek »), jamais leur valeur ; « Utiliser cette source » n'est possible qu'après un
+  test réussi de cette commande exacte. La source s'applique tout de suite, sans relance, et les clés sont relues à
+  chaque lancement. Code 0 avec une valeur : clé trouvée ; code 0 vide ou code 1 : absente ; autre code ou plus de
+  20 s : source injoignable (deux nouveaux essais). Rien n'est écrit sur ce Mac ; la source se lit seulement :
+  « Ajouter une clé » est remplacé par « ajoute une clé dans ton serveur ou ton gestionnaire, puis recharge ». Revenir
+  à « Sur ce Mac » relit le fichier. Un coffre configuré à part (WISPAD_SECRET_COMMAND ou wispad.secretCommand) garde
+  la priorité : la ligne dit seulement « Clés lues dans ton coffre de secrets (outil) ».
+- Modèle local (section sous Clés API) : Aucun, Ollama (http://localhost:11434/v1), LM Studio
+  (http://localhost:1234/v1) ou une autre adresse compatible OpenAI, et un interrupteur. Wispad lit la liste de ses
+  modèles (« 2 modèles : qwen2.5, llama3.2 », modèles d'embedding écartés) ou dit « Aucun serveur ne répond à … ».
+  Ses modèles apparaissent dans le menu de la correction, section Local, « gratuit, sur ce Mac » ; ils servent aussi
+  à l'analyse des sujets. Aucune clé ni réglage de raisonnement n'est envoyé ; délai de 15 s (chargement du modèle).
+  Les appels comptent dans Consommation à 0 $ (« Modèle local · correction »). Repasser sur Aucun remet la correction
+  en automatique si elle utilisait le modèle local.
 - Fournisseurs › Clés API liste les clés enregistrées, une ligne par clé : fournisseur, rôle, clé masquée (son
   début connu, comme « xai- » ou « sk-proj- », et ses quatre derniers caractères : « xai-••••3f9a »), un interrupteur
   et, pour le fichier de l'app, une corbeille (après confirmation). Une clé coupée reste enregistrée mais n'est plus

@@ -11,6 +11,8 @@ public enum UsageAPI: String, CaseIterable, Sendable, Codable {
     case xaiCleanup = "xai.cleanup"
     case openAICleanup = "openai.cleanup"
     case typesafeJudge = "typesafe.judge"
+    /// Serveur de modèles sur ce Mac (Ollama, LM Studio…) : gratuit.
+    case localCleanup = "local.cleanup"
 
     public var title: String {
         switch self {
@@ -22,6 +24,7 @@ public enum UsageAPI: String, CaseIterable, Sendable, Codable {
         case .xaiCleanup: return "xAI · correction"
         case .openAICleanup: return "OpenAI · correction"
         case .typesafeJudge: return "TypeSafe · Jev (dictionnaire)"
+        case .localCleanup: return "Modèle local · correction"
         }
     }
 
@@ -31,13 +34,14 @@ public enum UsageAPI: String, CaseIterable, Sendable, Codable {
         case .openAIStreaming, .openAIFile, .openAICleanup: return "OpenAI"
         case .deepSeekCleanup: return "DeepSeek"
         case .typesafeJudge: return "TypeSafe"
+        case .localCleanup: return "Local"
         }
     }
 
     public var isAudio: Bool {
         switch self {
         case .xaiStreaming, .xaiFile, .openAIStreaming, .openAIFile: return true
-        case .deepSeekCleanup, .xaiCleanup, .openAICleanup, .typesafeJudge: return false
+        case .deepSeekCleanup, .xaiCleanup, .openAICleanup, .typesafeJudge, .localCleanup: return false
         }
     }
 

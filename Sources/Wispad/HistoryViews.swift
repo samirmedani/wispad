@@ -27,6 +27,25 @@ struct HistoryView: View {
                     .disabled(model.history.isEmpty)
                 }
                 SearchField(text: $query, prompt: String(localized: "Rechercher dans les dictées"))
+                if let filter = model.historyFilter {
+                    HStack(spacing: 8) {
+                        Image(systemName: "brain.head.profile").foregroundStyle(Theme.brand)
+                        Text("Dictées de « \(filter.title) »").fontWeight(.medium)
+                        Text(filter.dictations.count == 1 ? String(localized: "1 dictée") : String(localized: "\(filter.dictations.count) dictées"))
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Button {
+                            model.historyFilter = nil
+                        } label: {
+                            Label(String(localized: "Toutes les dictées"), systemImage: "xmark.circle.fill")
+                        }
+                        .buttonStyle(.borderless)
+                    }
+                    .font(.system(size: 12))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Capsule().fill(Theme.brand.opacity(0.1)))
+                }
             }
             .padding(.horizontal, 32)
             .padding(.top, 14)
@@ -103,9 +122,10 @@ struct HistoryView: View {
 
     private var filtered: [DictationRecord] {
         let needle = appliedQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !needle.isEmpty else { return model.history }
+        let scoped = model.historyFilter.map { filter in model.history.filter { filter.dictations.contains($0.id) } } ?? model.history
+        guard !needle.isEmpty else { return scoped }
         // Ce qui a été entendu compte aussi : une correction partie à côté ne cache pas la dictée.
-        return model.history.filter { $0.matches(search: needle) }
+        return scoped.filter { $0.matches(search: needle) }
     }
 }
 

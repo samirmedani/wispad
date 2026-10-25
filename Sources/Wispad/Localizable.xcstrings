@@ -11920,6 +11920,526 @@
           }
         }
       }
+    },
+    "%lld clés trouvées : %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld keys found: %2$@"
+          }
+        }
+      }
+    },
+    "%lld modèles : %@%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld models: %2$@%3$@"
+          }
+        }
+      }
+    },
+    "1 clé trouvée : %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 key found: %@"
+          }
+        }
+      }
+    },
+    "1 modèle : %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 model: %@"
+          }
+        }
+      }
+    },
+    "Adresse" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Address"
+          }
+        }
+      }
+    },
+    "Adresse du serveur" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Server address"
+          }
+        }
+      }
+    },
+    "Adresse web (curl)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Web address (curl)"
+          }
+        }
+      }
+    },
+    "Aucun modèle local : configure-le plus bas" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No local model: set it up below"
+          }
+        }
+      }
+    },
+    "Aucun modèle trouvé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No model found"
+          }
+        }
+      }
+    },
+    "Aucun serveur ne répond à %@. Lance-le, puis réessaie." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No server responds at %@. Start it, then try again."
+          }
+        }
+      }
+    },
+    "Autre adresse" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Other address"
+          }
+        }
+      }
+    },
+    "Clés lues dans ton coffre de secrets (%@)." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keys read from your secrets vault (%@)."
+          }
+        }
+      }
+    },
+    "Commande" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Command"
+          }
+        }
+      }
+    },
+    "Compatible OpenAI, avec son « /v1 »." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OpenAI-compatible, with its “/v1”."
+          }
+        }
+      }
+    },
+    "Dictées de « %@ »" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dictations about “%@”"
+          }
+        }
+      }
+    },
+    "environ %@ jetons, gratuit avec ton modèle local %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "about %1$@ tokens, free with your local model %2$@"
+          }
+        }
+      }
+    },
+    "gratuit" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "free"
+          }
+        }
+      }
+    },
+    "Gratuit et privé : la correction et l'analyse des sujets tournent sur ton Mac, le texte ne part nulle part. Plus lent qu'un modèle en ligne, surtout au premier appel. Lance Ollama ou LM Studio avec un modèle téléchargé, puis choisis-le dans Correction." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Free and private: correction and topic analysis run on your Mac, the text goes nowhere. Slower than an online model, especially on the first call. Start Ollama or LM Studio with a downloaded model, then pick it in Correction."
+          }
+        }
+      }
+    },
+    "gratuit, sur ce Mac" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "free, on this Mac"
+          }
+        }
+      }
+    },
+    "L'app qui fait tourner le modèle sur ton Mac." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The app that runs the model on your Mac."
+          }
+        }
+      }
+    },
+    "La commande n'a pas répondu : vérifie-la dans ton terminal." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The command didn't respond: check it in your terminal."
+          }
+        }
+      }
+    },
+    "La commande répond, mais aucune clé n'a été trouvée." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The command responds, but no key was found."
+          }
+        }
+      }
+    },
+    "Le serveur répond, mais n'a aucun modèle de texte : télécharges-en un." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The server responds but has no text model: download one."
+          }
+        }
+      }
+    },
+    "Les clés sont lues sur ta source à chaque lancement et restent en mémoire : rien n'est écrit sur ce Mac." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keys are read from your source at every launch and stay in memory: nothing is written on this Mac."
+          }
+        }
+      }
+    },
+    "LM Studio" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LM Studio"
+          }
+        }
+      }
+    },
+    "Mettre à jour · %lld nouvelles dictées · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update · %1$lld new dictations · %2$@"
+          }
+        }
+      }
+    },
+    "Mettre à jour chaque semaine" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update every week"
+          }
+        }
+      }
+    },
+    "Modèle local" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Local model"
+          }
+        }
+      }
+    },
+    "Modèle local · correction" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Local model · correction"
+          }
+        }
+      }
+    },
+    "Ollama" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ollama"
+          }
+        }
+      }
+    },
+    "Où sont tes clés ?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Where are your keys?"
+          }
+        }
+      }
+    },
+    "Recharger depuis la source" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reload from source"
+          }
+        }
+      }
+    },
+    "Recherche du serveur…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Looking for the server…"
+          }
+        }
+      }
+    },
+    "Relit tout l'historique, par exemple après avoir changé de modèle de correction." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reads your whole history again, for example after changing the correction model."
+          }
+        }
+      }
+    },
+    "Serveur" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Server"
+          }
+        }
+      }
+    },
+    "Serveur ou gestionnaire" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Server or manager"
+          }
+        }
+      }
+    },
+    "Serveur par SSH" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Server over SSH"
+          }
+        }
+      }
+    },
+    "Source enregistrée : les clés sont relues à chaque lancement." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Source saved: keys are read again at every launch."
+          }
+        }
+      }
+    },
+    "Sur ce Mac" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On this Mac"
+          }
+        }
+      }
+    },
+    "Ta source de clés se lit seulement : ajoute %@ dans ton gestionnaire, puis recharge." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your key source is read-only: add %@ in your manager, then reload."
+          }
+        }
+      }
+    },
+    "Ta source de clés se lit seulement : ajoute une clé dans ton serveur ou ton gestionnaire, puis recharge." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your key source is read-only: add a key on your server or in your manager, then reload."
+          }
+        }
+      }
+    },
+    "Teste d'abord la commande." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Test the command first."
+          }
+        }
+      }
+    },
+    "Tester" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Test"
+          }
+        }
+      }
+    },
+    "Tout relire · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Read everything again · %@"
+          }
+        }
+      }
+    },
+    "Toutes les dictées" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All dictations"
+          }
+        }
+      }
+    },
+    "Trois phrases sur ce qui t'occupe, d'après tes sujets et tes chiffres : %@ de plus à chaque analyse." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Three sentences about what keeps you busy, from your topics and numbers: %@ more per analysis."
+          }
+        }
+      }
+    },
+    "Une commande lancée dans ton terminal, où {name} devient le nom de la clé (WISPAD_XAI_API_KEY, WISPAD_OPENAI_API_KEY, WISPAD_DEEPSEEK_API_KEY…). Elle écrit la clé et rien d'autre ; code 1 ou rien : clé absente." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A command run in your terminal, where {name} becomes the key name (WISPAD_XAI_API_KEY, WISPAD_OPENAI_API_KEY, WISPAD_DEEPSEEK_API_KEY…). It prints the key and nothing else; exit code 1 or no output: key missing."
+          }
+        }
+      }
+    },
+    "Une fois par semaine, seules les nouvelles dictées sont relues, sans rien te demander. À ton rythme actuel : %@ par semaine." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Once a week, only new dictations are read, without asking you. At your current pace: %@ per week."
+          }
+        }
+      }
+    },
+    "Utiliser cette source" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use this source"
+          }
+        }
+      }
+    },
+    "Utiliser le modèle local" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use the local model"
+          }
+        }
+      }
+    },
+    "Voir sa dictée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "See its dictation"
+          }
+        }
+      }
+    },
+    "Voir ses %lld dictées" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "See its %lld dictations"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

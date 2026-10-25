@@ -291,7 +291,7 @@ enum CallText {
         switch api {
         case .xaiStreaming, .openAIStreaming: return String(localized: "Transcription en direct")
         case .xaiFile, .openAIFile: return String(localized: "Transcription du fichier")
-        case .deepSeekCleanup, .xaiCleanup, .openAICleanup: return String(localized: "Correction")
+        case .deepSeekCleanup, .xaiCleanup, .openAICleanup, .localCleanup: return String(localized: "Correction")
         case .typesafeJudge: return String(localized: "Dictionnaire")
         }
     }

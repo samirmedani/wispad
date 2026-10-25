@@ -73,14 +73,47 @@ public struct TopicEstimate: Equatable, Sendable {
     public var costUSD: Double?
 }
 
+extension TopicAnalysis {
+    /// Sans les dictées supprimées depuis l'analyse ; un sujet qui n'a plus de dictée disparaît.
+    public func pruned(keeping existing: Set<String>) -> TopicAnalysis {
+        var copy = self
+        copy.topics = topics.compactMap { topic in
+            var kept = topic
+            kept.dictations = topic.dictations.filter(existing.contains)
+            return kept.dictations.isEmpty ? nil : kept
+        }
+        return copy
+    }
+
+    /// Dictées arrivées depuis l'analyse.
+    public func newSources(in sources: [TopicSource]) -> [TopicSource] {
+        guard let newest = newestDictation else { return sources }
+        return sources.filter { $0.date > newest }
+    }
+
+    /// Mise à jour hebdomadaire due : l'analyse a au moins une semaine et des dictées sont arrivées depuis.
+    public func isDueForWeeklyUpdate(sources: [TopicSource], now: Date = Date()) -> Bool {
+        now.timeIntervalSince(analyzedAt) >= TopicAnalyzer.weeklyInterval && !newSources(in: sources).isEmpty
+    }
+}
+
 public enum TopicAnalyzer {
+    public static let weeklyInterval: TimeInterval = 7 * 86_400
+
+    /// Coût d'une semaine type : les dictées des 4 dernières semaines, divisées par 4.
+    public static func weeklyEstimate(_ sources: [TopicSource], model: String?, portrait: Bool, now: Date = Date()) -> TopicEstimate {
+        let recent = sources.filter { now.timeIntervalSince($0.date) <= 4 * weeklyInterval }
+        let week = Array(recent.prefix(max(1, recent.count / 4)))
+        return estimate(recent.isEmpty ? [] : week, model: model, portrait: portrait)
+    }
+
     /// Texte relu par dictée au plus, et texte d'un lot : un lot tient dans le contexte de tout modèle de correction.
     static let maxCharactersPerDictation = 700
     static let maxCharactersPerBatch = 36_000
     /// Jetons de la consigne, et réponse attendue par lot ; environ 3,6 caractères par jeton en français.
     static let promptTokens = 650
     static let outputTokensPerBatch = 1_100
-    static let portraitTokens = TokenUsage(input: 1_400, cachedInput: 0, output: 260)
+    public static let portraitTokens = TokenUsage(input: 1_400, cachedInput: 0, output: 260)
 
     /// Dictées non vides, de la plus ancienne à la plus récente, coupées à leur longueur relue.
     static func prepared(_ sources: [TopicSource]) -> [TopicSource] {
@@ -199,10 +232,12 @@ public enum TopicAnalyzer {
         speech: SpeechRequest,
         portrait: Bool,
         stats: String,
+        previous: TopicAnalysis? = nil,
         progress: @escaping @Sendable (Int, Int) async -> Void
     ) async throws -> (analysis: TopicAnalysis, usage: [UsageEvent]) {
         guard let route = TextCleaner.routes(speech).first else { throw SpeechError.message("Aucune clé de correction active") }
-        let lots = batches(sources)
+        // Mise à jour : seules les dictées arrivées depuis l'analyse précédente sont relues.
+        let lots = batches(previous?.newSources(in: sources) ?? sources)
         let requests = TextCleaner.RequestLog()
         var found: [TopicAnalysis.Topic] = []
         var done = 0
@@ -229,7 +264,7 @@ public enum TopicAnalyzer {
             }
         }
         if failures == lots.count, !lots.isEmpty { throw SpeechError.message("Le service n'a rendu aucun sujet lisible") }
-        let topics = merge(found)
+        let topics = merge((previous?.topics ?? []) + found)
         var text: String?
         if portrait, !topics.isEmpty {
             let list = topics.prefix(25).map { "\($0.name) (\($0.category), \($0.dictations.count) dictées)" }.joined(separator: "\n")
@@ -245,14 +280,16 @@ public enum TopicAnalyzer {
         }
         let usage = requests.events
         let costs = usage.map(\.costUSD)
+        var cost: Double? = costs.contains(where: { $0 == nil }) ? nil : costs.compactMap { $0 }.reduce(0, +)
+        if let previous { cost = cost.flatMap { now in previous.costUSD.map { $0 + now } } }
         let analysis = TopicAnalysis(
             topics: topics,
             analyzedAt: Date(),
-            dictationCount: lots.joined().count,
-            newestDictation: lots.last?.last?.date,
+            dictationCount: (previous?.dictationCount ?? 0) + lots.joined().count,
+            newestDictation: lots.last?.last?.date ?? previous?.newestDictation,
             service: "\(route.provider) \(route.model)",
-            costUSD: costs.contains(where: { $0 == nil }) ? nil : costs.compactMap { $0 }.reduce(0, +),
-            portrait: text
+            costUSD: cost,
+            portrait: text ?? (portrait ? previous?.portrait : nil)
         )
         return (analysis, usage)
     }
@@ -285,12 +322,15 @@ extension WordGraph {
         var topicDictations: [(id: Int, dictations: Set<String>)] = []
         for (rank, category) in ranked.enumerated() {
             let categoryID = nodes.count
+            var categoryIDs: [String] = []
+            var seen = Set<String>()
+            for topic in category.topics { for id in topic.dictations where seen.insert(id).inserted { categoryIDs.append(id) } }
             nodes.append(Node(id: categoryID, word: category.name, count: category.size, cluster: rank, x: 0, y: 0, z: 0,
-                              isCategory: true, details: []))
+                              isCategory: true, details: [], dictations: categoryIDs))
             for topic in category.topics.prefix(6) {
                 let id = nodes.count
                 nodes.append(Node(id: id, word: topic.name, count: topic.dictations.count, cluster: rank, x: 0, y: 0, z: 0,
-                                  isCategory: false, details: topic.keywords))
+                                  isCategory: false, details: topic.keywords, dictations: topic.dictations))
                 edges.append(Edge(a: categoryID, b: id, weight: topic.dictations.count))
                 topicDictations.append((id, Set(topic.dictations)))
             }

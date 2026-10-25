@@ -7,6 +7,7 @@ struct ProvidersView: View {
         FormScreen(title: String(localized: "Fournisseurs"), subtitle: String(localized: "Où ta voix est transcrite, et ce qui corrige le texte.")) {
             ModelStepsSection()
             APIKeysSection()
+            LocalModelSection()
             ServiceStatusSection()
         }
     }
@@ -472,6 +473,7 @@ struct APIKeysSection: View {
     var body: some View {
         let accounts = APIKeys.accounts.filter { model.hasStoredKey(account: $0) }
         Section {
+            KeySourceRow()
             if !model.keysReachable {
                 Label(model.dependencies.keyStore == .vault ? String(localized: "Coffre injoignable") : String(localized: "Clés illisibles"),
                       systemImage: "exclamationmark.triangle.fill")
@@ -483,14 +485,22 @@ struct APIKeysSection: View {
             ForEach(accounts, id: \.self) { account in
                 APIKeyListRow(account: account)
             }
-            AddKeyRow()
+            if model.usesRemoteKeySource {
+                Text("Ta source de clés se lit seulement : ajoute une clé dans ton serveur ou ton gestionnaire, puis recharge.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            } else {
+                AddKeyRow()
+            }
             if let message = model.keysMessage {
                 Label(message, systemImage: "info.circle")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
             if model.dependencies.keyStore == .vault {
-                Button("Recharger depuis le coffre") { Task { await model.refreshKeys() } }
+                Button(model.usesRemoteKeySource ? String(localized: "Recharger depuis la source") : String(localized: "Recharger depuis le coffre")) {
+                    Task { await model.refreshKeys() }
+                }
                     .hoverFeedback()
             }
         } header: {
@@ -510,6 +520,8 @@ struct APIKeysSection: View {
 
     private var footer: String {
         switch model.dependencies.keyStore {
+        case .vault where model.usesRemoteKeySource:
+            return String(localized: "Les clés sont lues sur ta source à chaque lancement et restent en mémoire : rien n'est écrit sur ce Mac.")
         case .vault:
             return String(localized: "Les clés viennent de ton coffre de secrets et restent en mémoire, rien n'est écrit sur ce Mac. Une nouvelle clé est enregistrée dans le coffre.")
         case .file:
@@ -716,6 +728,288 @@ struct ServiceStatusSection: View {
             Text("Après deux échecs de suite, un service est mis de côté et ses dictées passent par le relais. Il est réessayé chaque minute, et repris au plus tard après 30 minutes.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+        }
+    }
+}
+
+/// Serveur de modèles choisi dans Fournisseurs › Modèle local.
+enum LocalModelPreset: Hashable {
+    case none
+    case ollama
+    case lmStudio
+    case custom
+}
+
+/// Fournisseurs › Modèle local : un serveur de modèles sur ce Mac, compatible OpenAI (Ollama, LM Studio, llama.cpp…).
+/// Sans clé ni coût, il corrige les dictées et lit les sujets du Profil sans que le texte quitte le Mac.
+struct LocalModelSection: View {
+    @Environment(AppModel.self) private var model
+    @State private var draft = ""
+
+    private typealias Preset = LocalModelPreset
+
+    private var directory: TextModelDirectory { .shared }
+    private var account: String { CleanupModel.localAccount }
+
+    var body: some View {
+        Section {
+            SettingRow(text: SettingText(title: String(localized: "Serveur"),
+                                         summary: String(localized: "L'app qui fait tourner le modèle sur ton Mac."))) {
+                Picker(String(localized: "Serveur"), selection: Binding(get: { preset }, set: { choose($0) })) {
+                    Text("Aucun").tag(Preset.none)
+                    Text("Ollama").tag(Preset.ollama)
+                    Text("LM Studio").tag(Preset.lmStudio)
+                    Text("Autre adresse").tag(Preset.custom)
+                }
+                .labelsHidden()
+                .fixedSize()
+                if preset != .none {
+                    Toggle(String(localized: "Utiliser le modèle local"), isOn: Binding(
+                        get: { model.isKeyEnabled(account) },
+                        set: { model.setKeyEnabled(account, $0) }
+                    ))
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+                }
+            }
+            if preset == .custom {
+                SettingRow(text: SettingText(title: String(localized: "Adresse"),
+                                             summary: String(localized: "Compatible OpenAI, avec son « /v1 »."))) {
+                    TextField(String(localized: "Adresse du serveur"), text: $draft, prompt: Text(verbatim: "http://localhost:8080/v1"))
+                        .labelsHidden()
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 260)
+                        .onSubmit { save(draft) }
+                    Button(String(localized: "Enregistrer")) { save(draft) }
+                        .disabled(TextCleaner.localBase(draft) == nil)
+                }
+            }
+            if preset != .none {
+                statusLine
+            }
+        } header: {
+            Text("Modèle local")
+        } footer: {
+            Text("Gratuit et privé : la correction et l'analyse des sujets tournent sur ton Mac, le texte ne part nulle part. Plus lent qu'un modèle en ligne, surtout au premier appel. Lance Ollama ou LM Studio avec un modèle téléchargé, puis choisis-le dans Correction.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+        .onAppear { draft = model.settings.localModelURL }
+        .task(id: model.settings.localModelURL) { await check() }
+    }
+
+    @ViewBuilder
+    private var statusLine: some View {
+        let found = directory.listings[account]?.identifiers.filter(TextModelCatalog.isTextModel) ?? []
+        HStack(spacing: 8) {
+            if directory.loading.contains(account) {
+                ProgressView().controlSize(.small)
+                Text("Recherche du serveur…").foregroundStyle(.secondary)
+            } else if directory.failed.contains(account) {
+                Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                Text("Aucun serveur ne répond à \(model.settings.localModelURL). Lance-le, puis réessaie.")
+                    .foregroundStyle(.orange)
+            } else if found.isEmpty {
+                Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                Text("Le serveur répond, mais n'a aucun modèle de texte : télécharges-en un.").foregroundStyle(.orange)
+            } else {
+                Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                Text(found.count == 1 ? String(localized: "1 modèle : \(found[0])")
+                     : String(localized: "\(found.count) modèles : \(found.prefix(3).joined(separator: ", "))\(found.count > 3 ? "…" : "")"))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            Spacer()
+            Button(String(localized: "Réessayer")) { Task { await check() } }
+                .buttonStyle(.borderless)
+                .disabled(directory.loading.contains(account))
+        }
+        .font(.system(size: 12))
+    }
+
+    private var preset: Preset {
+        switch model.settings.localModelURL {
+        case "": return .none
+        case CleanupModel.ollamaURL: return .ollama
+        case CleanupModel.lmStudioURL: return .lmStudio
+        default: return .custom
+        }
+    }
+
+    private func choose(_ preset: Preset) {
+        switch preset {
+        case .none:
+            save("")
+            if model.settings.cleanupChoice.account == account { model.settings.cleanupChoice = .automatic }
+            if model.settings.cleanupRelay.account == account { model.settings.cleanupRelay = .off }
+            model.saveSettings()
+        case .ollama: save(CleanupModel.ollamaURL)
+        case .lmStudio: save(CleanupModel.lmStudioURL)
+        case .custom:
+            draft = model.settings.localModelURL.isEmpty ? "http://localhost:8080/v1" : model.settings.localModelURL
+            save(draft)
+        }
+    }
+
+    private func save(_ address: String) {
+        let trimmed = address.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.isEmpty || TextCleaner.localBase(trimmed) != nil else { return }
+        model.settings.localModelURL = trimmed
+        model.saveSettings()
+    }
+
+    private func check() async {
+        guard let url = model.key(account) else { return }
+        await directory.refresh(keys: [account: url], force: true)
+    }
+}
+
+/// Fournisseurs › Clés API › « Où sont tes clés ? » : sur ce Mac, ou lues sur un serveur ou dans un gestionnaire de
+/// secrets par une commande où « {name} » devient le nom de la clé. Un coffre configuré à part (variable
+/// WISPAD_SECRET_COMMAND ou préférence wispad.secretCommand) garde la main et n'est pas modifiable ici.
+struct KeySourceRow: View {
+    @Environment(AppModel.self) private var model
+    @State private var remote = false
+    @State private var command = ""
+    @State private var testing = false
+    @State private var report: String?
+    @State private var reportOK = false
+    /// Commande dont le test a réussi : « Utiliser » ne vaut que pour elle.
+    @State private var tested: String?
+
+    struct Template: Identifiable {
+        var id: String { name }
+        var name: String
+        var command: String
+    }
+
+    #if DEBUG
+    /// Aperçus : source distante affichée sans toucher aux préférences du Mac.
+    static var previewCommand: String?
+    #endif
+
+    static let templates = [
+        Template(name: String(localized: "Serveur par SSH"), command: "ssh mon-serveur 'cat ~/.secrets/{name}'"),
+        Template(name: "1Password", command: "op read \"op://Wispad/{name}/credential\""),
+        Template(name: "Doppler", command: "doppler secrets get {name} --plain"),
+        Template(name: "Infisical", command: "infisical secrets get {name} --plain --silent"),
+        Template(name: "Bitwarden", command: "bws secret get {name} | jq -r .value"),
+        Template(name: String(localized: "Adresse web (curl)"), command: "curl -fsS -H \"Authorization: Bearer $WISPAD_TOKEN\" https://mon-serveur/secrets/{name} || exit 1")
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if model.dependencies.keyStore == .vault, APIKeys.Vault.canWrite, !isPreview {
+                Label(String(localized: "Clés lues dans ton coffre de secrets (\(APIKeys.Vault.tool?.lastPathComponent ?? ""))."),
+                      systemImage: "lock.shield")
+                    .foregroundStyle(.secondary)
+            } else {
+                HStack {
+                    Text("Où sont tes clés ?").font(.system(size: 13, weight: .medium))
+                    Spacer()
+                    Picker(String(localized: "Où sont tes clés ?"), selection: Binding(get: { remote }, set: { value in
+                        remote = value
+                        report = nil
+                        if !value, model.usesRemoteKeySource { Task { await model.setRemoteKeySource(nil) } }
+                    })) {
+                        Text("Sur ce Mac").tag(false)
+                        Text("Serveur ou gestionnaire").tag(true)
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .fixedSize()
+                }
+                if remote {
+                    Text("Une commande lancée dans ton terminal, où {name} devient le nom de la clé (WISPAD_XAI_API_KEY, WISPAD_OPENAI_API_KEY, WISPAD_DEEPSEEK_API_KEY…). Elle écrit la clé et rien d'autre ; code 1 ou rien : clé absente.")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    HStack(spacing: 8) {
+                        TextField(String(localized: "Commande"), text: $command, prompt: Text(verbatim: "ssh mon-serveur 'cat ~/.secrets/{name}'"))
+                            .labelsHidden()
+                            .textFieldStyle(.roundedBorder)
+                            .font(.system(size: 12, design: .monospaced))
+                        Menu(String(localized: "Modèles")) {
+                            ForEach(Self.templates) { template in
+                                Button(template.name) { command = template.command; report = nil }
+                            }
+                        }
+                        .fixedSize()
+                    }
+                    HStack(spacing: 10) {
+                        Button {
+                            Task { await test() }
+                        } label: {
+                            if testing { ProgressView().controlSize(.small) } else { Text("Tester") }
+                        }
+                        .disabled(testing || !command.contains("{name}"))
+                        Button(String(localized: "Utiliser cette source")) {
+                            Task {
+                                await model.setRemoteKeySource(trimmed)
+                                report = String(localized: "Source enregistrée : les clés sont relues à chaque lancement.")
+                                reportOK = true
+                                tested = trimmed
+                            }
+                        }
+                        .disabled(tested != trimmed || testing || !command.contains("{name}"))
+                        .help(String(localized: "Teste d'abord la commande."))
+                        if let report, !reportOK || tested == trimmed {
+                            Label(report, systemImage: reportOK ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                                .foregroundStyle(reportOK ? .green : .orange)
+                                .lineLimit(2)
+                        }
+                    }
+                    .font(.system(size: 12))
+                }
+            }
+        }
+        .padding(.vertical, 4)
+        .onAppear {
+            #if DEBUG
+            if let preview = Self.previewCommand {
+                remote = true
+                command = preview
+                report = String(localized: "3 clés trouvées : xAI, OpenAI, DeepSeek")
+                reportOK = true
+                tested = preview
+                return
+            }
+            #endif
+            let current = APIKeys.Vault.remoteCommand()
+            remote = current != nil
+            command = current ?? UserDefaults.standard.string(forKey: "wispad.remoteCommand") ?? ""
+            tested = current
+        }
+    }
+
+    private var trimmed: String { command.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+    private var isPreview: Bool {
+        #if DEBUG
+        return Self.previewCommand != nil
+        #else
+        return false
+        #endif
+    }
+
+    /// Lit chaque clé avec la commande, sans la choisir : dit lesquelles sont trouvées, jamais leur valeur.
+    private func test() async {
+        testing = true
+        defer { testing = false }
+        let checked = trimmed
+        let results = await APIKeys.Vault.probe(command: checked)
+        let found = results.filter(\.found).map { APIKeys.title($0.account) }
+        if results.contains(where: { !$0.reachable }) && found.isEmpty {
+            report = String(localized: "La commande n'a pas répondu : vérifie-la dans ton terminal.")
+            reportOK = false
+        } else if found.isEmpty {
+            report = String(localized: "La commande répond, mais aucune clé n'a été trouvée.")
+            reportOK = false
+        } else {
+            report = found.count == 1 ? String(localized: "1 clé trouvée : \(found[0])")
+                : String(localized: "\(found.count) clés trouvées : \(found.joined(separator: ", "))")
+            reportOK = true
+            tested = checked
         }
     }
 }

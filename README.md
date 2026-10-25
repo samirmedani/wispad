@@ -155,7 +155,11 @@ fournisseur**, à l'usage, et l'écran Consommation estime le coût de chaque ap
 | :--- | :--- | :--- |
 | **Transcription** (ta voix) | **xAI** Grok Voice Transcribe 2.0 *(recommandé)* ou **OpenAI** GPT Live Transcribe | En direct pendant l'écoute ; chez xAI, 0,20 $ de l'heure en direct. |
 | **Correction** (le texte) | N'importe quel modèle de texte de tes clés **DeepSeek**, **OpenAI** ou **xAI**, choisi dans Fournisseurs › Modèles (rangés par vitesse, avec leur coût), ou automatique : **DeepSeek** d'abord s'il a une clé, puis **OpenAI**, puis le modèle du fournisseur de voix (**xAI** ou **OpenAI**) | Seul le texte part à la correction, jamais l'audio. |
+| **Modèle local** *(facultatif)* | **Ollama**, **LM Studio** ou tout serveur compatible OpenAI sur ton Mac | Gratuit, rien ne quitte ton Mac ; plus lent qu'un modèle en ligne. |
 | **Relais** | Au choix dans Fournisseurs › Modèles, pour la voix et pour la correction, ou aucun | Un service en panne est mis de côté, puis repris dès qu'il répond. |
+
+Tes clés peuvent rester **sur ton Mac** ou être **lues sur ton serveur ou dans ton gestionnaire de secrets** (SSH,
+1Password, Doppler, Infisical, Bitwarden, curl…), sans rien écrire sur le Mac.
 
 Une seule clé suffit pour commencer (xAI ou OpenAI). Clés facultatives : clé de gestion xAI (solde réel affiché
 dans Consommation) et TypeSafe (Jev, premier avis sur les mots appris ; sans elle, le service de correction juge seul).

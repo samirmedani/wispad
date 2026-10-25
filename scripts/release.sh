@@ -118,8 +118,27 @@ codesign --verify --strict --verbose=2 "$dmg"
 
 step "Notarisation et agrafage"
 notary=(--key "$WISPAD_NOTARY_KEY" --key-id "$WISPAD_NOTARY_KEY_ID" --issuer "$WISPAD_NOTARY_ISSUER")
-xcrun notarytool submit "$dmg" "${notary[@]}" --wait --timeout 1h --output-format json > "$out/notarisation.json" || true
-verdict=$(plutil -extract status raw -o - "$out/notarisation.json" 2>/dev/null || true)
+# La file d'Apple reste parfois bloquée plus d'une heure sur une soumission alors qu'une nouvelle passe en quelques
+# minutes (23 et 24 octobre 2026) : trois essais de 12 minutes. Avant chaque nouvel essai, les soumissions précédentes
+# sont relues : l'une d'elles a pu aboutir entre-temps.
+verdict=""
+submissions=()
+for attempt in 1 2 3; do
+  xcrun notarytool submit "$dmg" "${notary[@]}" --wait --timeout 12m --output-format json > "$out/notarisation.json" || true
+  verdict=$(plutil -extract status raw -o - "$out/notarisation.json" 2>/dev/null || true)
+  submission=$(plutil -extract id raw -o - "$out/notarisation.json" 2>/dev/null || true)
+  [[ -n "$submission" ]] && submissions+=("$submission")
+  [[ "$verdict" == "Accepted" || "$verdict" == "Invalid" || "$verdict" == "Rejected" ]] && break
+  for previous in "${submissions[@]}"; do
+    earlier=$(xcrun notarytool info "$previous" "${notary[@]}" --output-format json 2>/dev/null \
+      | plutil -extract status raw -o - - 2>/dev/null || true)
+    if [[ "$earlier" == "Accepted" ]]; then
+      verdict=Accepted
+      break 2
+    fi
+  done
+  print "Notarisation sans réponse (essai $attempt, ${verdict:-aucun statut}) : nouvelle soumission."
+done
 if [[ "$verdict" != "Accepted" ]]; then
   submission=$(plutil -extract id raw -o - "$out/notarisation.json" 2>/dev/null || true)
   if [[ -n "$submission" ]]; then

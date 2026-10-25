@@ -5,9 +5,11 @@ import WispadCore
 /// Où vivent les clés API.
 /// - `file` (par défaut) : fichier de l'app (`Application Support/Wispad/api-keys.json`), lisible par le seul
 ///   utilisateur du Mac.
-/// - `vault` : coffre de secrets choisi par l'utilisateur, sans rien écrire sur le Mac. C'est une commande qui répond
+/// - `vault` : coffre de secrets choisi par l'utilisateur, sans rien écrire sur le Mac. Soit une commande qui répond
 ///   à `get NOM` (valeur sur la sortie, code 1 si absente) et `put NOM` (valeur sur l'entrée), indiquée par
-///   `WISPAD_SECRET_COMMAND` ou la préférence `wispad.secretCommand`. Clés gardées en mémoire.
+///   `WISPAD_SECRET_COMMAND` ou la préférence `wispad.secretCommand` ; soit une source distante en lecture seule,
+///   choisie dans Fournisseurs : une ligne de commande où « {name} » devient le nom de la clé (serveur par SSH,
+///   1Password, Doppler, Infisical, curl…). Clés gardées en mémoire.
 enum KeyStoreKind: Equatable {
     case vault
     case file
@@ -20,8 +22,8 @@ enum KeyStoreKind: Equatable {
         if environment["WISPAD_KEYSTORE"] == "file" || defaults.string(forKey: "wispad.keystore") == "file" {
             return .file
         }
-        guard let vaultTool else { return .file }
-        return FileManager.default.isExecutableFile(atPath: vaultTool.path) ? .vault : .file
+        if let vaultTool, FileManager.default.isExecutableFile(atPath: vaultTool.path) { return .vault }
+        return APIKeys.Vault.remoteCommand(defaults: defaults) == nil ? .file : .vault
     }
 
     /// « dans le coffre » / « sur ce Mac », pour les messages.
@@ -71,7 +73,18 @@ enum APIKeys {
         account == xaiManagement ? "xAI" : title(account)
     }
 
-    static let kind = KeyStoreKind.detect()
+    /// Source des clés, relue quand on la change dans Fournisseurs (« reconfigure »).
+    private static let source = OSAllocatedUnfairLock(initialState: KeyStoreKind.detect())
+    static var kind: KeyStoreKind { source.withLock { $0 } }
+
+    /// Relit la source choisie (fichier, coffre ou source distante), puis toutes les clés.
+    @discardableResult
+    static func reconfigure() async -> Bool {
+        let detected = KeyStoreKind.detect()
+        source.withLock { $0 = detected }
+        cache.withLock { $0.removeAll() }
+        return await refresh()
+    }
     private static let cache = OSAllocatedUnfairLock(initialState: [String: String]())
     private static let log = Logger.wispad("cles")
 
@@ -116,7 +129,21 @@ enum APIKeys {
     // MARK: - Coffre de secrets (commande externe)
 
     enum Vault {
-        static let tool = configuredTool()
+        static var tool: URL? { configuredTool() }
+
+        /// Source distante choisie dans Fournisseurs : la commande, si « wispad.keystore » vaut « remote ».
+        static func remoteCommand(defaults: UserDefaults = .standard) -> String? {
+            guard defaults.string(forKey: "wispad.keystore") == "remote",
+                  let command = defaults.string(forKey: "wispad.remoteCommand")?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  command.contains("{name}") else { return nil }
+            return command
+        }
+
+        /// Une source distante se lit seulement : une nouvelle clé s'ajoute avec son propre outil.
+        static var canWrite: Bool {
+            guard let tool else { return false }
+            return FileManager.default.isExecutableFile(atPath: tool.path)
+        }
 
         /// Commande indiquée par `WISPAD_SECRET_COMMAND`, sinon par la préférence `wispad.secretCommand` (« ~ » accepté).
         static func configuredTool(environment: [String: String] = ProcessInfo.processInfo.environment,
@@ -153,11 +180,21 @@ enum APIKeys {
         /// et l'une peut échouer (9 octobre : clés lues sauf une). 1 = absente, autre code = coffre injoignable.
         static let retryDelays: [Double] = [0.5, 1.5]
 
-        private static func read(_ account: String) async -> (String, String?, Bool) {
+        private static func read(_ account: String, command: String? = nil) async -> (String, String?, Bool) {
+            // Commande à essayer : celle donnée (test d'une source pas encore choisie), le coffre s'il existe, sinon la
+            // source distante.
+            let remote = command ?? (canWrite ? nil : remoteCommand())
             for name in names(for: account) {
                 var attempt = 0
                 while true {
-                    let (status, output) = await run(["get", name])
+                    let answer: (Int32, String)
+                    if let remote {
+                        answer = await runRemote(remote, name: name)
+                    } else {
+                        answer = await run(["get", name])
+                    }
+                    let status = answer.0
+                    let output = answer.1
                     if status == 0 {
                         let value = output.trimmingCharacters(in: .whitespacesAndNewlines)
                         if !value.isEmpty { return (account, value, true) }
@@ -173,9 +210,59 @@ enum APIKeys {
         }
 
         static func write(_ account: String, _ secret: String) async -> Bool {
-            guard let name = names(for: account).first else { return false }
+            guard canWrite, let name = names(for: account).first else { return false }
             let (status, _) = await run(["put", name], input: secret)
             return status == 0
+        }
+
+        /// Teste une source distante sans la choisir : pour chaque compte, clé trouvée ou non, et source joignable.
+        static func probe(command: String) async -> [(account: String, found: Bool, reachable: Bool)] {
+            await withTaskGroup(of: (String, Bool, Bool).self) { group in
+                for account in APIKeys.accounts {
+                    group.addTask {
+                        let (_, value, reachable) = await read(account, command: command)
+                        return (account, value != nil, reachable)
+                    }
+                }
+                var results: [(account: String, found: Bool, reachable: Bool)] = []
+                for await (account, found, reachable) in group { results.append((account, found, reachable)) }
+                return APIKeys.accounts.compactMap { account in results.first { $0.account == account } }
+            }
+        }
+
+        /// Délai d'une lecture distante (connexion SSH, déverrouillage d'un gestionnaire…).
+        static let remoteTimeout: TimeInterval = 20
+
+        /// Lance la commande distante dans un shell de connexion (PATH de l'utilisateur : Homebrew, op, doppler…),
+        /// « {name} » remplacé par le nom de la clé, un nom fixe en capitales choisi par l'app. Rien n'est envoyé sur
+        /// l'entrée ; la valeur est lue sur la sortie et n'apparaît jamais en argument. Code 0 avec une valeur : clé
+        /// trouvée ; code 0 vide ou code 1 : absente ; autre code ou délai dépassé : source injoignable.
+        static func runRemote(_ command: String, name: String) async -> (Int32, String) {
+            let line = command.replacingOccurrences(of: "{name}", with: name)
+            return await withCheckedContinuation { continuation in
+                DispatchQueue.global(qos: .userInitiated).async {
+                    let process = Process()
+                    process.executableURL = URL(fileURLWithPath: "/bin/zsh")
+                    process.arguments = ["-l", "-c", line]
+                    let output = Pipe()
+                    process.standardOutput = output
+                    process.standardError = FileHandle.nullDevice
+                    process.standardInput = FileHandle.nullDevice
+                    do {
+                        try process.run()
+                    } catch {
+                        continuation.resume(returning: (-1, ""))
+                        return
+                    }
+                    let deadline = DispatchWorkItem { if process.isRunning { process.terminate() } }
+                    DispatchQueue.global().asyncAfter(deadline: .now() + remoteTimeout, execute: deadline)
+                    let data = output.fileHandleForReading.readDataToEndOfFile()
+                    process.waitUntilExit()
+                    deadline.cancel()
+                    let status = process.terminationReason == .uncaughtSignal ? -2 : process.terminationStatus
+                    continuation.resume(returning: (status, String(decoding: data, as: UTF8.self)))
+                }
+            }
         }
 
         static func run(_ arguments: [String], input: String? = nil, tool: URL? = Vault.tool) async -> (Int32, String) {

@@ -90,6 +90,8 @@ struct SettingsUpgradeTests {
         settings.profileHiddenWords = ["fixture"]
         settings.profileTopicsEnabled = true
         settings.profilePortraitEnabled = true
+        settings.profileTopicsWeekly = true
+        settings.localModelURL = "http://localhost:11434/v1"
         settings.usageTaxRate = 8.1
         settings.lastSection = .dictionary
         settings.settingsTab = .permissions

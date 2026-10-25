@@ -216,6 +216,8 @@ public struct WordGraph: Equatable, Sendable {
         /// Cerveau par sujets : une grande catégorie (et non un sujet), et les mots-clés d'un sujet.
         public var isCategory = false
         public var details: [String] = []
+        /// Dictées d'un sujet ou d'une catégorie, pour ouvrir l'Historique sur elles.
+        public var dictations: [String] = []
     }
 
     public struct Edge: Equatable, Sendable {
@@ -240,7 +242,8 @@ public struct WordGraph: Equatable, Sendable {
     }
 
     public static func build(records: [DictationRecord], hidden: Set<String> = [], size: Int = 48) -> WordGraph {
-        let documents = records.prefix(3_000).map { Set(ProfileBuilder.meaningful($0.finalText, hidden: hidden)) }
+        let read = Array(records.prefix(3_000))
+        let documents = read.map { Set(ProfileBuilder.meaningful($0.finalText, hidden: hidden)) }
         var frequency: [String: Int] = [:]
         for words in documents { for word in words { frequency[word, default: 0] += 1 } }
         let chosen = ProfileBuilder.top(frequency.filter { $0.value >= 2 }, limit: size).map(\.label)
@@ -262,9 +265,13 @@ public struct WordGraph: Equatable, Sendable {
         let edges = kept.sorted().map { Edge(a: $0 / n, b: $0 % n, weight: pairs[$0] ?? 0) }
         let families = clusters(count: n, edges: edges)
         let positions = layout(count: n, edges: edges, clusters: families)
+        var dictations = Array(repeating: [String](), count: n)
+        for (record, words) in zip(read, documents) {
+            for word in words { if let id = index[word] { dictations[id].append(record.id) } }
+        }
         let nodes = chosen.enumerated().map { offset, word in
             Node(id: offset, word: word, count: frequency[word] ?? 0, cluster: families[offset],
-                 x: positions[offset].x, y: positions[offset].y, z: positions[offset].z)
+                 x: positions[offset].x, y: positions[offset].y, z: positions[offset].z, dictations: dictations[offset])
         }
         return WordGraph(nodes: nodes, edges: edges)
     }

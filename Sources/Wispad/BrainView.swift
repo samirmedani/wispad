@@ -12,6 +12,8 @@ struct BrainCard: View {
     var emptyText: String
     var modePicker: AnyView?
     var accessory: AnyView?
+    /// Ouvre l'Historique sur les dictées d'un mot ou d'un sujet.
+    var openHistory: ((HistoryFilter) -> Void)?
 
     @Environment(\.interactionReduceMotion) private var reduceMotion
     @State private var yaw = 0.4
@@ -112,6 +114,17 @@ struct BrainCard: View {
                             .help(String(localized: "Ensemble dans \(neighbor.weight) dictées"))
                         }
                     }
+                }
+                if !node.dictations.isEmpty, let openHistory {
+                    Button {
+                        openHistory(HistoryFilter(title: node.word, dictations: Set(node.dictations)))
+                    } label: {
+                        Label(node.dictations.count == 1 ? String(localized: "Voir sa dictée") : String(localized: "Voir ses \(node.dictations.count) dictées"),
+                              systemImage: "clock.arrow.circlepath")
+                    }
+                    .buttonStyle(.borderless)
+                    .font(.system(size: 12, weight: .medium))
+                    .padding(.top, 4)
                 }
                 if let hide {
                     Button(String(localized: "Masquer ce mot")) { hide(node.word) }
