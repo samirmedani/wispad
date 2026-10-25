@@ -187,7 +187,14 @@ enum APIKeys {
             for name in names(for: account) {
                 var attempt = 0
                 while true {
-                    let (status, output) = if let remote { await runRemote(remote, name: name) } else { await run(["get", name]) }
+                    let answer: (Int32, String)
+                    if let remote {
+                        answer = await runRemote(remote, name: name)
+                    } else {
+                        answer = await run(["get", name])
+                    }
+                    let status = answer.0
+                    let output = answer.1
                     if status == 0 {
                         let value = output.trimmingCharacters(in: .whitespacesAndNewlines)
                         if !value.isEmpty { return (account, value, true) }

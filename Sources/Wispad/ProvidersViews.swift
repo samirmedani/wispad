@@ -880,7 +880,7 @@ struct KeySourceRow: View {
 
     #if DEBUG
     /// Aperçus : source distante affichée sans toucher aux préférences du Mac.
-    nonisolated(unsafe) static var previewCommand: String?
+    static var previewCommand: String?
     #endif
 
     static let templates = [
