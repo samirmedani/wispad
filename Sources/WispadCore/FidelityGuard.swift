@@ -40,7 +40,9 @@ public enum FidelityGuard {
         }
         // Une transcription sans mot (« … ») dont la réponse n'était qu'une référence inventée : rien ne resterait à coller.
         if dated.allSatisfy(\.isWhitespace) { return transcript }
-        return restoreDroppedPercents(heard: transcript, corrected: dated)
+        let percents = restoreDroppedPercents(heard: transcript, corrected: dated)
+        guard let alternative, !alternative.isEmpty else { return percents }
+        return CorrectionPatch.keepHeardWord(corrected: percents, transcript: transcript, alternative: alternative)
     }
 
     /// Un pourcentage dit (« cent pour cent », « 15 % », « fifteen percent ») dont la correction a gardé le nombre

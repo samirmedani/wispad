@@ -210,4 +210,30 @@ struct ShortDictationGuardTests {
         #expect(user.contains("abliterated"))
         #expect(user.contains("Hugging Face"))
     }
+
+    /// Le 28 octobre 2026 : « envoie-le » dans le fichier, « envoie-lui » en direct, et la correction a écrit
+    /// « envoie-la », que personne n'a entendu. Le texte garde un mot entendu.
+    @Test func aThirdSmallWordGivesWayToTheOtherHearing() {
+        let file = "Si t'as pas envoyé la réponse, envoie-le.", live = "Si t'as pas envoyé la réponse, envoie-lui."
+        #expect(FidelityGuard.check(transcript: file, corrected: "Si tu n'as pas envoyé la réponse, envoie-la.", alternative: live)
+            == "Si tu n'as pas envoyé la réponse, envoie-lui.")
+        // Un mot entendu par l'une des deux écoutes reste.
+        #expect(FidelityGuard.check(transcript: file, corrected: live, alternative: live) == live)
+        #expect(FidelityGuard.check(
+            transcript: "Prends le dossier et envoie-le à Paul.", corrected: "Prends le dossier et envoie-le à Paul.",
+            alternative: "Prends le dossier et envoie-lui à Paul."
+        ) == "Prends le dossier et envoie-le à Paul.")
+        // Sans autre écoute, la correction reste seule juge.
+        #expect(FidelityGuard.check(transcript: file, corrected: "Si t'as pas envoyé la réponse, envoie-la.")
+            == "Si t'as pas envoyé la réponse, envoie-la.")
+        // Un écart sur un mot plein n'est pas concerné.
+        #expect(FidelityGuard.check(
+            transcript: "On range les ulti dans le garage.", corrected: "On range les outils dans le garage.",
+            alternative: "On range les outils dans le garage."
+        ) == "On range les outils dans le garage.")
+        // Les voisins désignent la place : seul le mot où les écoutes divergent change.
+        #expect(FidelityGuard.check(
+            transcript: "Donne-le et prends-le.", corrected: "Donne-la et prends-la.", alternative: "Donne-lui et prends-le."
+        ) == "Donne-lui et prends-la.")
+    }
 }

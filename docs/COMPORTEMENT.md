@@ -576,6 +576,9 @@ Après la correction, `FidelityGuard` rejette ou répare :
   mot. La transcription est collée. Une correction courte faite de mots dits (« … non, oublie tout, écris juste
   merci » → « Merci. ») et des nombres mis en forme (« vingt-quatre octobre » → « 24/10 ») restent ;
 - un mot traduit (« outils » → « tools ») : le mot entendu est remis ;
+- là où les deux écoutes diffèrent d'un seul petit mot (pronom, article, déterminant : « envoie-le » dans le fichier,
+  « envoie-lui » en direct), un troisième que personne n'a entendu (« envoie-la », pour accorder la phrase) : le mot
+  de l'autre écoute le remplace, seulement à une place que les mêmes voisins désignent sans ambiguïté ;
 - un mot repris du contexte (page visible, texte voisin, dictées précédentes) à la place de mots dits qui ne lui
   ressemblent pas à l'oreille, d'au moins cinq lettres et absent de ce qui a été dit : les mots entendus sont remis
   (« les versions habilitée RAID » ne devient pas « les versions quantifiées », mot de la page). Une correction
