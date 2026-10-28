@@ -3,6 +3,14 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.6.2 — 28 octobre 2026
+
+La correction tranche quand les deux écoutes ne sont pas d'accord.
+
+**Corrigé**
+- « Va falloir que j'investisse dans un deuxième abonnement » ne devient plus « dans 1/2 abonnement », ni « des mots » « des mope ». Wispad écoute ta voix deux fois, en direct et sur l'enregistrement complet. Quand les deux différaient d'un ou deux mots, il recopiait ceux de l'enregistrement complet sans que la correction les juge. Il ne le fait plus quand l'enregistrement met des chiffres à la place de mots, ou un mot qui n'existe pas à la place de vrais mots : la correction reçoit les deux écoutes et garde la bonne.
+- « T'as » ne s'écrit plus « T as » : une apostrophe ne se perd plus quand les deux écoutes diffèrent sur ce mot.
+
 ## 0.6.1 — 28 octobre 2026
 
 Les termes anglais dits avec l'accent français sont compris.

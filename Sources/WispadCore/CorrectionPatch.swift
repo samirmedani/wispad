@@ -2,7 +2,9 @@ import Foundation
 
 /// Le fichier contredit le flux sur un ou deux endroits : on reporte ses mots dans la correction du flux, déjà prête
 /// ou presque, au lieu d'en relancer une complète (environ 0,9 s, mesuré du 4 au 11 octobre 2026).
-/// Rend nil dès que le report n'est pas sûr ; la correction complète du texte du fichier reste alors la règle.
+/// Rend nil dès que le report n'est pas sûr ; la correction complète du texte du fichier reste alors la règle : elle
+/// reçoit les deux écoutes et choisit, vu la phrase. Le fichier se trompe parfois là où le flux avait juste : le
+/// 28 octobre 2026, « un deuxième abonnement » est devenu « 1/2 abonnement » et « des mots », « des mope ».
 public enum CorrectionPatch {
     /// Au plus deux endroits, de trois mots au plus de chaque côté : au-delà, le sens a pu changer.
     static let maxBlocks = 2
@@ -27,7 +29,10 @@ public enum CorrectionPatch {
     }
 
     /// `corrected` est la correction du flux. `protected` : termes du dictionnaire, jamais remplacés par le fichier.
-    public static func apply(corrected: String, stream: String, file: String, protected: [String] = []) -> String? {
+    /// `knownWord` : vrai si un mot écrit existe dans la langue de la dictée, le dictionnaire ou le vocabulaire
+    /// technique ; sans lui, seuls les chiffres sont vérifiés (voir `doubtful`).
+    public static func apply(corrected: String, stream: String, file: String, protected: [String] = [],
+                             knownWord: ((String) -> Bool)? = nil) -> String? {
         let streamWords = words(in: stream), fileWords = words(in: file)
         guard let blocks = blocks(streamWords, fileWords) else { return nil }
         let protectedKeys = Set(protected.flatMap { words(in: $0).map(\.key) })
@@ -35,6 +40,8 @@ public enum CorrectionPatch {
         var replacements: [(range: Range<String.Index>, text: String)] = []
         for block in blocks {
             guard !repeatsNeighbor(block, stream: streamWords, file: fileWords) else { return nil }
+            guard !doubtful(block, streamWords: streamWords, fileWords: fileWords, stream: stream, file: file,
+                            knownWord: knownWord) else { return nil }
             if block.stream.isEmpty {
                 // Mot ajouté par le fichier (« je ne sais pas ») : entre les deux mêmes voisins, sans ponctuation à placer.
                 guard let gap = insertionGap(at: block.stream.lowerBound, stream: streamWords, corrected: correctedWords, in: corrected),
@@ -42,6 +49,10 @@ public enum CorrectionPatch {
                 replacements.append((gap, " " + token + " "))
                 continue
             }
+            // Élision coupée par le découpage en mots (« t'as » lu « t » puis « as ») : le report écrivait « t as »
+            // (8 dictées en 28 jours, « T as aussi des images »). La correction complète l'écrit en entier.
+            guard !endsInElision(block.file, of: fileWords, in: file),
+                  !endsInElision(block.stream, of: streamWords, in: stream) else { return nil }
             guard !streamWords[block.stream].contains(where: { protectedKeys.contains($0.key) }),
                   let found = locate(block, stream: streamWords, corrected: correctedWords) else { return nil }
             let target = correctedWords[found.lowerBound].range.lowerBound..<correctedWords[found.upperBound - 1].range.upperBound
@@ -217,6 +228,44 @@ public enum CorrectionPatch {
         let before = side.lowerBound >= count ? words[(side.lowerBound - count)..<side.lowerBound].map(\.key) : nil
         let after = side.upperBound + count <= words.count ? words[side.upperBound..<(side.upperBound + count)].map(\.key) : nil
         return before == keys || after == keys
+    }
+
+    /// Écart que la correction doit trancher, sans report : le fichier écrit en chiffres ce que le flux disait en
+    /// lettres (« un deuxième » → « 1/2 », alors que la correction du flux écrit déjà les nombres au format choisi),
+    /// ou met un mot inconnu à la place de mots connus (« mots » → « mope »). Un mot du fichier connu (« bagnère » →
+    /// « bannière ») ou deux mots inconnus (« calotrack » → « calotrax ») se reportent comme avant. Les mots se lisent
+    /// entiers, élision comprise (« t'as », « qu'il ») ; une lettre seule ne compte pas.
+    static func doubtful(_ block: Block, streamWords: [Word], fileWords: [Word], stream: String, file: String,
+                         knownWord: ((String) -> Bool)?) -> Bool {
+        let fromFile = tokens(block.file, of: fileWords, in: file)
+        guard !fromFile.isEmpty else { return false }
+        let fromStream = tokens(block.stream, of: streamWords, in: stream)
+        let hasDigit = { (tokens: [String]) in tokens.contains { $0.contains(where: \.isNumber) } }
+        if hasDigit(fromFile), !hasDigit(fromStream) { return true }
+        guard let knownWord else { return false }
+        let written = { (tokens: [String]) in tokens.filter { $0.count >= 2 && !$0.contains(where: \.isNumber) && $0.contains(where: \.isLetter) } }
+        let spoken = written(fromStream)
+        guard !spoken.isEmpty, spoken.allSatisfy(knownWord) else { return false }
+        return written(fromFile).contains { !knownWord($0) }
+    }
+
+    /// Vrai si le dernier mot est suivi d'une apostrophe : le début d'une élision (« t » de « t'as »).
+    static func endsInElision(_ range: Range<Int>, of words: [Word], in text: String) -> Bool {
+        guard !range.isEmpty else { return false }
+        let end = words[range.upperBound - 1].range.upperBound
+        return end < text.endIndex && "'’".contains(text[end])
+    }
+
+    /// Mots écrits (entre espaces) qui portent ces mots, ponctuation des bords retirée : « qu » se lit « qu'il ».
+    static func tokens(_ range: Range<Int>, of words: [Word], in text: String) -> [String] {
+        guard !range.isEmpty else { return [] }
+        var lower = words[range.lowerBound].range.lowerBound, upper = words[range.upperBound - 1].range.upperBound
+        while lower > text.startIndex, !text[text.index(before: lower)].isWhitespace { lower = text.index(before: lower) }
+        while upper < text.endIndex, !text[upper].isWhitespace { upper = text.index(after: upper) }
+        let edges = CharacterSet.punctuationCharacters.union(.symbols).subtracting(CharacterSet(charactersIn: "/"))
+        return text[lower..<upper].split(whereSeparator: \.isWhitespace)
+            .map { $0.trimmingCharacters(in: edges) }
+            .filter { !$0.isEmpty }
     }
 
     /// Majuscule initiale de la correction gardée ; un mot à capitales internes (« GitHub ») reste tel quel.
