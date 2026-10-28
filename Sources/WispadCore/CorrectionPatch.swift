@@ -249,6 +249,48 @@ public enum CorrectionPatch {
         return written(fromFile).contains { !knownWord($0) }
     }
 
+    /// Petits mots qui changent le sens sans se confondre à l'oreille : pronoms, articles et déterminants.
+    static let functionWords: Set<String> = [
+        "le", "la", "les", "lui", "leur", "leurs", "un", "une", "des", "du", "il", "elle", "ils", "elles", "on", "ce", "cet",
+        "cette", "ces", "son", "sa", "ses", "mon", "ma", "mes", "ton", "ta", "tes", "y", "en", "me", "te", "se", "nous", "vous",
+        "he", "she", "it", "they", "him", "her", "them", "his", "its", "their",
+    ]
+
+    /// Là où les deux écoutes diffèrent d'un seul petit mot (« envoie-le » dans la Transcription, « envoie-lui » dans
+    /// l'autre écoute), le texte garde l'un des deux, jamais un troisième que personne n'a entendu. Le 28 octobre 2026,
+    /// la correction a « accordé » le mot de la Transcription avec « la réponse » et écrit « envoie-la » ; la consigne,
+    /// même explicite, ne l'en empêchait pas. En le changeant, elle l'a écarté : le mot de l'autre écoute prend sa place.
+    /// Seulement à un endroit sûr : mêmes voisins que dans la Transcription, une seule place possible, pas d'élision.
+    public static func keepHeardWord(corrected: String, transcript: String, alternative: String) -> String {
+        let file = words(in: transcript), stream = words(in: alternative), written = words(in: corrected)
+        guard let blocks = blocks(stream, file) else { return corrected }
+        var replacements: [(range: Range<String.Index>, text: String)] = []
+        for block in blocks where block.stream.count == 1 && block.file.count == 1 {
+            let saidLive = stream[block.stream.lowerBound], saidFile = file[block.file.lowerBound]
+            guard functionWords.contains(saidLive.key), functionWords.contains(saidFile.key),
+                  !endsInElision(block.stream, of: stream, in: alternative),
+                  !endsInElision(block.file, of: file, in: transcript) else { continue }
+            let before = block.file.lowerBound > 0 ? file[block.file.lowerBound - 1].key : nil
+            let after = block.file.upperBound < file.count ? file[block.file.upperBound].key : nil
+            let slots = written.indices.filter { index in
+                let fitsBefore = before.map { index > 0 && written[index - 1].key == $0 } ?? (index == 0)
+                let fitsAfter = after.map { index + 1 < written.count && written[index + 1].key == $0 } ?? (index == written.count - 1)
+                return fitsBefore && fitsAfter
+            }
+            guard slots.count == 1 else { continue }
+            let slot = slots[0]
+            let chosen = written[slot]
+            guard functionWords.contains(chosen.key), chosen.key != saidLive.key, chosen.key != saidFile.key,
+                  !endsInElision(slot..<(slot + 1), of: written, in: corrected) else { continue }
+            replacements.append((chosen.range, matchCase(String(alternative[saidLive.range]), like: String(corrected[chosen.range]))))
+        }
+        var result = corrected
+        for replacement in replacements.sorted(by: { $0.range.lowerBound > $1.range.lowerBound }) {
+            result.replaceSubrange(replacement.range, with: replacement.text)
+        }
+        return result
+    }
+
     /// Vrai si le dernier mot est suivi d'une apostrophe : le début d'une élision (« t » de « t'as »).
     static func endsInElision(_ range: Range<Int>, of words: [Word], in text: String) -> Bool {
         guard !range.isEmpty else { return false }

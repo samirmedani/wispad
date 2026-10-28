@@ -3,6 +3,13 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.6.3 — 28 octobre 2026
+
+Wispad n'écrit plus un petit mot que personne n'a dit.
+
+**Corrigé**
+- « Envoie-lui » ne devient plus « envoie-la ». Quand les deux écoutes de Wispad entendent un petit mot différent (« envoie-le » et « envoie-lui »), la correction pouvait en écrire un troisième pour accorder la phrase. Le texte garde maintenant l'un des mots entendus.
+
 ## 0.6.2 — 28 octobre 2026
 
 La correction tranche quand les deux écoutes ne sont pas d'accord.
