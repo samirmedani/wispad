@@ -3,6 +3,15 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.6.0 — 28 octobre 2026
+
+Ta configuration te suit d'un appareil à l'autre, sans compte.
+
+**Nouveau**
+- Exporter la configuration : dans Réglages › Général, un fichier lisible qui dit quand il a été exporté, depuis quelle version et ce qu'il contient. Il garde tes réglages (voix, correction, mise en forme, raccourcis, sons, bulle, apparence) et ton dictionnaire, chaque mot avec son origine. Jamais tes clés API, ton historique ni ton audio.
+- Importer une configuration : depuis Réglages, ou en ouvrant le fichier avec Wispad. Avant tout changement, Wispad montre ce qui changera, et tu choisis les réglages, le dictionnaire, ou les deux. Le micro, les clés et les réglages propres à ce Mac ne bougent pas.
+- Configurer avec ton agent : copie un prompt pour Codex, Claude Code ou un autre agent. Il installe Wispad sur l'autre appareil, applique ta configuration, puis te demande tes clés.
+
 ## 0.5.1 — 28 octobre 2026
 
 Un pourcentage dit ne perd plus son « % ».

@@ -37,12 +37,22 @@ struct RootView: View {
     @Environment(\.interactionReduceMotion) private var reduceMotion
 
     var body: some View {
-        if let onboarding = model.onboarding {
-            OnboardingView(controller: onboarding)
-                .frame(minWidth: 820, minHeight: 540)
+        Group {
+            if let onboarding = model.onboarding {
+                OnboardingView(controller: onboarding)
+                    .frame(minWidth: 820, minHeight: 540)
+                    .tint(Theme.brand)
+            } else {
+                main
+            }
+        }
+        // Configuration ouverte : montrée aussi pendant le premier lancement guidé, où l'agent l'ouvre juste après
+        // l'installation. Le guide reprend ensuite avec les réglages importés ; il n'écrit que des réglages propres à
+        // l'appareil, que l'import ne touche jamais.
+        .sheet(item: Binding(get: { model.pendingConfigurationImport }, set: { model.pendingConfigurationImport = $0 })) { pending in
+            ConfigurationImportSheet(pending: pending)
+                .environment(model)
                 .tint(Theme.brand)
-        } else {
-            main
         }
     }
 

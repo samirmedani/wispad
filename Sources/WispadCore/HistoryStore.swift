@@ -621,7 +621,7 @@ public final class HistoryStore: @unchecked Sendable {
     /// par toi » ni un juge par défaut. Un mot déjà présent, à la casse près, garde son entrée et son origine.
     /// `heard` et `source` : ce que la reconnaissance avait écrit, et d'où vient le terme.
     public func addTerm(_ term: String, origin: DictionaryOrigin = .unknown, heard: String? = nil,
-                        source: DictionarySource? = nil) throws {
+                        source: DictionarySource? = nil, createdAt: Date = Date()) throws {
         let cleaned = term.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleaned.isEmpty else { return }
         let heard = heard?.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -633,7 +633,7 @@ public final class HistoryStore: @unchecked Sendable {
         ) { statement in
             bind(UUID().uuidString, at: 1, statement)
             bind(cleaned, at: 2, statement)
-            sqlite3_bind_double(statement, 3, Date().timeIntervalSince1970)
+            sqlite3_bind_double(statement, 3, createdAt.timeIntervalSince1970)
             bindOptional(origin.storedValue, at: 4, statement)
             bindOptional(origin.judge?.provider, at: 5, statement)
             bindOptional(origin.judge?.model, at: 6, statement)

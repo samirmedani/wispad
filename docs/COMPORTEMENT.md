@@ -267,6 +267,21 @@ sa rangée, une explication d'une ligne sous son libellé, en langage simple (ni
 modèle). Les détails (fournisseurs et modèles réellement utilisés, coût, délais, ce qui est envoyé ou gardé)
 s'ouvrent dans un popover avec le bouton ⓘ de la rangée ; ceux de la correction suivent les clés enregistrées.
 
+- Configuration (Réglages › Général) : « Exporter… » écrit un fichier JSON lisible, le même pour toutes les plateformes
+  (Wispad-configuration-AAAA-MM-JJ.json) : format et version, date et heure d'export, app, version et système
+  d'origine, notes lisibles (contenu, ce qui n'est jamais inclus, comment l'importer), réglages et dictionnaire (chaque
+  terme avec sa date d'ajout, son origine, son juge, ce qui avait été entendu). Jamais inclus : les clés API,
+  l'historique et l'audio. Propres à l'appareil, ni exportés ni remplacés : le micro, l'ouverture à la connexion, les
+  clés coupées, le modèle local, l'état du premier lancement et la navigation. « Importer… », un fichier ouvert avec
+  Wispad (Finder › Ouvrir avec, ou « open -a Wispad fichier.json ») ou glissé sur son icône ouvre d'abord une fenêtre :
+  provenance, nombre de réglages qui changeront, termes nouveaux (ceux déjà présents, à la casse près, ne sont pas
+  doublés), chaque partie à cocher. Rien ne change avant « Importer ». Pendant le premier lancement guidé, cette
+  fenêtre s'ouvre par-dessus le guide, qui reprend ensuite avec les réglages importés. Un réglage du fichier
+  illisible ici (version plus récente, autre plateforme) garde sa valeur actuelle ; un champ inconnu est ignoré ; un
+  fichier d'une version plus récente le dit. Un fichier qui n'est pas une configuration de Wispad le dit, rien ne
+  change. Wispad est proposé pour ouvrir les JSON sans devenir leur app par défaut. « Copier le prompt » copie un
+  texte pour un agent (Codex, Claude Code…) : installer Wispad, enregistrer la configuration qu'il contient, l'ouvrir
+  avec Wispad, puis demander les clés API une par une sans les écrire dans un fichier, et vérifier les autorisations.
 - Sons de dictée (Réglages › Général) : « Sons de début et de fin » les allume ou les coupe. Allumés, trois curseurs
   de 0 à 100 % par pas de 5 % : « Volume des sons » pour les deux à la fois, « Son de début » et « Son de fin » chacun
   (la fin vaut aussi pour l'annulation). Le son joué prend le général multiplié par le sien ; 100 % partout est le

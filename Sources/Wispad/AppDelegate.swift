@@ -10,6 +10,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     private var window: NSWindow?
     private var retentionTimer: Timer?
     private var pendingReopen = false
+    /// Fichier ouvert avec Wispad avant la fin du lancement : montré dès que l'app est prête.
+    private var pendingConfigurationURL: URL?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         #if DEBUG
@@ -47,6 +49,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             self.hotkeys = hotkeys
             model.onOpenWindow = { [weak self] section in
                 self?.show(section: section)
+            }
+            if let url = pendingConfigurationURL {
+                pendingConfigurationURL = nil
+                DispatchQueue.main.async { [weak self] in self?.openConfiguration(url) }
             }
             model.coordinator.onChange = { [weak self] in
                 self?.updateIcon()
@@ -110,6 +116,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         model?.historyPlayer.close()
         model?.coordinator.cancel()
         OutputMuter.restore()
+    }
+
+    /// Fichier ouvert avec Wispad (Finder, « open -a Wispad fichier.json », agent) : une configuration est montrée
+    /// dans la fenêtre avant tout changement.
+    func application(_ application: NSApplication, open urls: [URL]) {
+        guard let url = urls.first else { return }
+        guard model != nil else {
+            pendingConfigurationURL = url
+            return
+        }
+        openConfiguration(url)
+    }
+
+    private func openConfiguration(_ url: URL) {
+        guard let model else { return }
+        show(section: model.selectedSection)
+        model.openConfiguration(at: url)
     }
 
     func show(section: AppSection) {

@@ -12440,6 +12440,446 @@
           }
         }
       }
+    },
+    "%lld nouveaux termes sur %lld : %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld new terms out of %2$lld: %3$@"
+          }
+        }
+      }
+    },
+    "%lld réglages changeront" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld settings will change"
+          }
+        }
+      }
+    },
+    "%lld réglages changés" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld settings changed"
+          }
+        }
+      }
+    },
+    "%lld termes ajoutés" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld terms added"
+          }
+        }
+      }
+    },
+    "1 nouveau terme : %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 new term: %@"
+          }
+        }
+      }
+    },
+    "1 réglage changé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 setting changed"
+          }
+        }
+      }
+    },
+    "1 réglage changera" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 setting will change"
+          }
+        }
+      }
+    },
+    "1 terme ajouté" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 term added"
+          }
+        }
+      }
+    },
+    "Aucun terme dans le fichier" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No terms in the file"
+          }
+        }
+      }
+    },
+    "Ce fichier n'est pas une configuration de Wispad." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This file is not a Wispad configuration."
+          }
+        }
+      }
+    },
+    "Configuration" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configuration"
+          }
+        }
+      }
+    },
+    "Configuration de Wispad." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wispad configuration."
+          }
+        }
+      }
+    },
+    "Configuration exportée : %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configuration exported: %@."
+          }
+        }
+      }
+    },
+    "Configuration importée : %@, %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configuration imported: %1$@, %2$@."
+          }
+        }
+      }
+    },
+    "Configure Wispad, l'app de dictée vocale, sur cet appareil avec ma configuration ci-dessous." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set up Wispad, the voice dictation app, on this device with my configuration below."
+          }
+        }
+      }
+    },
+    "Configurer avec ton agent" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set up with your agent"
+          }
+        }
+      }
+    },
+    "Contenu : %lld réglages (voix, correction, mise en forme, raccourcis, sons, bulle, apparence) et %lld termes du dictionnaire." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Contents: %1$lld settings (voice, correction, formatting, shortcuts, sounds, bubble, appearance) and %2$lld dictionary terms."
+          }
+        }
+      }
+    },
+    "Copier le prompt" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy the prompt"
+          }
+        }
+      }
+    },
+    "Enregistre la configuration ci-dessous, telle quelle, dans un fichier wispad-configuration.json." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save the configuration below, unchanged, in a file named wispad-configuration.json."
+          }
+        }
+      }
+    },
+    "Exportée le %@ depuis %@ %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exported on %1$@ from %2$@ %3$@"
+          }
+        }
+      }
+    },
+    "Exporter" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export"
+          }
+        }
+      }
+    },
+    "Exporter…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export…"
+          }
+        }
+      }
+    },
+    "Fichier d'une version plus récente : ce que cette version ne connaît pas est ignoré." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "File from a newer version: what this version doesn't know is ignored."
+          }
+        }
+      }
+    },
+    "Identiques à ceux de ce Mac" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Same as on this Mac"
+          }
+        }
+      }
+    },
+    "Importer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import"
+          }
+        }
+      }
+    },
+    "Importer une configuration" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import a configuration"
+          }
+        }
+      }
+    },
+    "Importer…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import…"
+          }
+        }
+      }
+    },
+    "Impossible d'écrire le fichier de configuration." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't write the configuration file."
+          }
+        }
+      }
+    },
+    "Impossible de lire ce fichier." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't read this file."
+          }
+        }
+      }
+    },
+    "Installe Wispad s'il ne l'est pas : télécharge la dernière version sur https://github.com/samirmedani/wispad/releases/latest (Wispad.dmg pour macOS), puis place l'app dans Applications." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Install Wispad if it isn't already: download the latest version from https://github.com/samirmedani/wispad/releases/latest (Wispad.dmg for macOS), then put the app in Applications."
+          }
+        }
+      }
+    },
+    "Jamais inclus : les clés API, l'historique des dictées et l'audio. Les clés s'ajoutent sur chaque appareil." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Never included: API keys, dictation history and audio. Keys are added on each device."
+          }
+        }
+      }
+    },
+    "Les %lld termes sont déjà dans ton dictionnaire" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All %lld terms are already in your dictionary"
+          }
+        }
+      }
+    },
+    "Les clés API ne font pas partie de la configuration : demande-les-moi une par une et ajoute-les dans Wispad › Fournisseurs › Clés API. Ne les écris dans aucun fichier." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API keys are not part of the configuration: ask me for them one by one and add them in Wispad › Providers › API keys. Never write them to a file."
+          }
+        }
+      }
+    },
+    "Montre ce que contient le fichier avant de changer quoi que ce soit." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shows what the file contains before changing anything."
+          }
+        }
+      }
+    },
+    "Ouvre ce fichier avec Wispad (sur macOS : open -a Wispad wispad-configuration.json) et laisse-moi confirmer l'import dans la fenêtre qui s'ouvre." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open this file with Wispad (on macOS: open -a Wispad wispad-configuration.json) and let me confirm the import in the window that opens."
+          }
+        }
+      }
+    },
+    "Passe tes réglages et ton dictionnaire d'un appareil à l'autre. Les clés API n'en font jamais partie." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Move your settings and dictionary from one device to another. API keys are never part of it."
+          }
+        }
+      }
+    },
+    "Pour l'importer : Wispad › Réglages › Général › Importer, ou ouvre ce fichier avec Wispad." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To import it: Wispad › Settings › General › Import, or open this file with Wispad."
+          }
+        }
+      }
+    },
+    "Prompt copié : colle-le dans ton agent, sur l'autre appareil." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prompt copied: paste it into your agent on the other device."
+          }
+        }
+      }
+    },
+    "Propres à chaque appareil, non inclus : le micro, l'ouverture à la connexion, les clés coupées et le modèle local." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Specific to each device, not included: microphone, open at login, turned-off keys and local model."
+          }
+        }
+      }
+    },
+    "Restent ceux de ce Mac : les clés API, le micro, l'ouverture à la connexion, les clés coupées et le modèle local." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "These stay as on this Mac: API keys, microphone, open at login, turned-off keys and local model."
+          }
+        }
+      }
+    },
+    "sur %@ %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "on %1$@ %2$@"
+          }
+        }
+      }
+    },
+    "Un fichier lisible : sa date, son contenu, tes réglages et ton dictionnaire." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A readable file: its date, its contents, your settings and your dictionary."
+          }
+        }
+      }
+    },
+    "Un prompt pour Codex, Claude Code ou un autre agent : il installe Wispad sur l'autre appareil et applique ta configuration." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A prompt for Codex, Claude Code or another agent: it installs Wispad on the other device and applies your configuration."
+          }
+        }
+      }
+    },
+    "Vérifie avec moi les autorisations de Wispad (micro, accessibilité, surveillance de l'entrée), puis fais une dictée d'essai." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check Wispad's permissions with me (microphone, accessibility, input monitoring), then do a test dictation."
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

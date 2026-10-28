@@ -191,6 +191,9 @@ Ensuite, Wispad se met à jour lui-même : quand une version est publiée, la ba
 Un clic télécharge la nouvelle version, vérifie sa signature, la met à la place de l'ancienne et relance Wispad ;
 réglages, clés, historique et dictionnaire restent.
 
+Déjà configuré ailleurs ? Réglages › Général › Exporter sur l'ancien Mac, puis Importer sur le nouveau : réglages et
+dictionnaire suivent, les clés API s'ajoutent à nouveau. « Copier le prompt » le fait faire par ton agent.
+
 Toutes les versions : [Releases](https://github.com/samirmedani/wispad/releases) ; ce qui change à chacune :
 [CHANGELOG.md](CHANGELOG.md).
 

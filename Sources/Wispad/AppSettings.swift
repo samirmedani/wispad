@@ -366,6 +366,10 @@ struct AppSettings: Codable, Equatable {
         guard let data = try? JSONEncoder().encode(settings) else { return [:] }
         return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
     }
+
+    /// Lecture et écriture clé par clé, pour l'export et l'import d'une configuration.
+    static func decodedObject(_ object: [String: Any]) -> AppSettings? { decoded(object) }
+    static func encodedObject(_ settings: AppSettings) -> [String: Any] { encoded(settings) }
 }
 
 /// Élément lu à part dans une liste ou un dictionnaire : illisible, il devient nil sans faire échouer ses voisins.
