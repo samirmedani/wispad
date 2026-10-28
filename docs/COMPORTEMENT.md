@@ -390,7 +390,12 @@ Toujours chez un fournisseur, au choix dans Fournisseurs › Modèles (étape 1)
   correction grâce aux voisins de l'écoute (un voisin s'il ne désigne qu'un endroit, sinon les deux, et toujours les
   deux pour un mot retiré) et aucun terme du dictionnaire n'est touché. Les mots du fichier sont alors reportés dans
   la correction du flux, sans second appel, si elle est déjà prête ou si elle finit avant la correction complète du
-  fichier, lancée aussitôt sans attendre 0,3 s une correction obsolète ;
+  fichier, lancée aussitôt sans attendre 0,3 s une correction obsolète. Pas de report, et la correction complète
+  choisit entre les deux écoutes vu la phrase, quand le fichier écrit en chiffres ce que le flux disait en lettres
+  (« un deuxième abonnement » → « 1/2 abonnement »), met un mot que l'orthographe de macOS ne connaît pas dans la
+  langue de la dictée à la place de mots qu'elle connaît (« des mots » → « des mope » ; dictionnaire et vocabulaire
+  technique comptent comme connus), ou quand un mot à reporter est coupé par une apostrophe (« tu as » / « t'as »,
+  qui donnait « t as ») ;
 - fichier en échec, sans aucun mot ou trop lent (1,2 s + 0,06 s par seconde d'audio, 4 s au plus) : le flux est
   gardé. Il l'est aussi quand le réglage est coupé et qu'une fin de flux peu fiable rappelle un fichier vide.
 

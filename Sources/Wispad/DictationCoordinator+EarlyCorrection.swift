@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import WispadCore
 
@@ -107,6 +108,22 @@ extension DictationCoordinator {
         }
     }
 
+    /// Mot connu pour le report du fichier (`CorrectionPatch`) : terme du dictionnaire ou du vocabulaire technique, ou
+    /// mot que l'orthographe de macOS connaît dans la langue de la dictée. nil si macOS n'a pas cette langue : le
+    /// report ne vérifie alors que les chiffres.
+    static func knownWord(for file: String, language: DictationLanguage, terms: [String]) -> ((String) -> Bool)? {
+        let spoken = language == .auto ? TranscriptLanguage.guess(file) : language
+        let code = spoken == .english ? "en" : "fr"
+        let checker = NSSpellChecker.shared
+        guard checker.availableLanguages.contains(where: { $0.hasPrefix(code) }) else { return nil }
+        let known = Set((terms + TechVocabulary.correction).flatMap { $0.split(whereSeparator: \.isWhitespace) }.map { $0.lowercased() })
+        return { word in
+            known.contains(word.lowercased())
+                || checker.checkSpelling(of: word, startingAt: 0, language: code, wrap: false, inSpellDocumentWithTag: 0,
+                                         wordCount: nil).location == NSNotFound
+        }
+    }
+
     /// Vrai si `ledger` termine avant `other` (ou est déjà prête). Attendre l'une n'annule jamais l'autre.
     static func finishesFirst(_ ledger: CorrectionLedger, before other: CorrectionLedger) async -> Bool {
         if ledger.ready != nil { return true }
@@ -129,7 +146,8 @@ extension DictationCoordinator {
         _ = await ledger.account(model: model, run: current.run)
         guard prepared.outcome.usage?.succeeded == true,
               let text = CorrectionPatch.apply(
-                  corrected: prepared.outcome.text, stream: stream, file: file, protected: model.dictionary.map(\.term)
+                  corrected: prepared.outcome.text, stream: stream, file: file, protected: model.dictionary.map(\.term),
+                  knownWord: Self.knownWord(for: file, language: model.settings.language, terms: model.dictionary.map(\.term))
               ) else { return nil }
         var patched = prepared
         // Les mots du fichier arrivent tels qu'entendus (« mètres carrés », « quatorze heures ») : ils reprennent le
