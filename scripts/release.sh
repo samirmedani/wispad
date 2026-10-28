@@ -113,6 +113,10 @@ ditto "$app" "$stage/Wispad.app"
 ln -s /Applications "$stage/Applications"
 dmg="$out/Wispad.dmg"
 hdiutil create -volname Wispad -srcfolder "$stage" -format UDZO -ov "$dmg"
+# hdiutil laisse parfois son assistant (diskimages-helper) ouvert sur l'image : notarytool restait alors bloqué à
+# l'ouverture du fichier, sans délai maximal (28 octobre 2026, 18 minutes). Une copie neuve n'est tenue par personne.
+cp "$dmg" "$dmg.neuf"
+mv -f "$dmg.neuf" "$dmg"
 codesign --force --timestamp --sign "$WISPAD_SIGNING_IDENTITY" "$dmg"
 codesign --verify --strict --verbose=2 "$dmg"
 
