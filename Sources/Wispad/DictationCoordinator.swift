@@ -1447,7 +1447,7 @@ extension DictationCoordinator {
         learnedLine([term])
     }
 
-    /// Ligne de la bulle : « « Vinted » ajouté au dictionnaire », « « A » et « B » ajoutés au dictionnaire »… La
+    /// Ligne de la bulle : « « Figma » ajouté au dictionnaire », « « A » et « B » ajoutés au dictionnaire »… La
     /// conjonction suit la langue de l'app.
     static func learnedLine(_ terms: [String]) -> String {
         let quoted = terms.map { String(localized: "« \($0) »") }

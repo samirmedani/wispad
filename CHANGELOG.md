@@ -3,6 +3,13 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.6.4 — 29 octobre 2026
+
+Un mot entendu ne se double plus.
+
+**Corrigé**
+- Quand les deux écoutes de Wispad entendent un petit mot différent, la correction pouvait garder les deux à la fois (« donne-le-lui » au lieu de « donne-lui »). Seul le mot entendu reste.
+
 ## 0.6.3 — 28 octobre 2026
 
 Wispad n'écrit plus un petit mot que personne n'a dit.
@@ -15,7 +22,7 @@ Wispad n'écrit plus un petit mot que personne n'a dit.
 La correction tranche quand les deux écoutes ne sont pas d'accord.
 
 **Corrigé**
-- « Va falloir que j'investisse dans un deuxième abonnement » ne devient plus « dans 1/2 abonnement », ni « des mots » « des mope ». Wispad écoute ta voix deux fois, en direct et sur l'enregistrement complet. Quand les deux différaient d'un ou deux mots, il recopiait ceux de l'enregistrement complet sans que la correction les juge. Il ne le fait plus quand l'enregistrement met des chiffres à la place de mots, ou un mot qui n'existe pas à la place de vrais mots : la correction reçoit les deux écoutes et garde la bonne.
+- « Prends un deuxième billet » ne devient plus « Prends 1/2 billet », ni « des mots » « des mope ». Wispad écoute ta voix deux fois, en direct et sur l'enregistrement complet. Quand les deux différaient d'un ou deux mots, il recopiait ceux de l'enregistrement complet sans que la correction les juge. Il ne le fait plus quand l'enregistrement met des chiffres à la place de mots, ou un mot qui n'existe pas à la place de vrais mots : la correction reçoit les deux écoutes et garde la bonne.
 - « T'as » ne s'écrit plus « T as » : une apostrophe ne se perd plus quand les deux écoutes diffèrent sur ce mot.
 
 ## 0.6.1 — 28 octobre 2026
@@ -23,7 +30,7 @@ La correction tranche quand les deux écoutes ne sont pas d'accord.
 Les termes anglais dits avec l'accent français sont compris.
 
 **Corrigé**
-- Termes anglais entendus comme du français : « Tu vois les versions habilitée RAID d'un modèle ? » devient « Tu vois les versions abliterated d'un modèle ? ». Quand des mots français ne veulent rien dire ensemble et que le sujet appelle un terme technique anglais qui sonne pareil, la correction l'écrit. Une phrase française qui a un sens garde ses mots (« les personnes habilitées », « un RAID 5 »).
+- Termes anglais entendus comme du français : dans une phrase sur les modèles d'IA, « habilitée RAID » devient « abliterated ». Quand des mots français ne veulent rien dire ensemble et que le sujet appelle un terme technique anglais qui sonne pareil, la correction l'écrit. Une phrase française qui a un sens garde ses mots (« les personnes habilitées », « un RAID 5 »).
 - Mot de la page à la place de ce que tu as dit : la correction ne peut plus remplacer tes mots par un mot lu dans la fenêtre qui ne leur ressemble pas (« habilitée RAID » pouvait devenir « quantifiées »).
 - « Tu vois » qui pose une question n'est plus retiré comme un tic de langage.
 
@@ -44,7 +51,7 @@ Ta configuration te suit d'un appareil à l'autre, sans compte.
 Un pourcentage dit ne perd plus son « % ».
 
 **Corrigé**
-- Pourcentage perdu : quand la correction gardait le nombre mais oubliait le « % » (« je suis sûr à cent pour cent » collé « je suis sûr à 100 »), Wispad le remet de lui-même : « je suis sûr à 100 % ». Les autres nombres de la phrase ne bougent pas.
+- Pourcentage perdu : quand la correction gardait le nombre mais oubliait le « % » (« c'est fiable à cent pour cent » collé « c'est fiable à 100 »), Wispad le remet de lui-même : « c'est fiable à 100 % ». Les autres nombres de la phrase ne bougent pas.
 
 ## 0.5.0 — 25 octobre 2026
 
@@ -234,7 +241,7 @@ Un mot appris s'annonce en une ligne discrète.
 > La 0.2.12 est déjà installée.
 
 **Corrigé**
-- L'ajout d'un mot au dictionnaire prenait une grande carte pendant 8 secondes. C'est maintenant une ligne de la taille de « Collé » : « « Vinted » ajouté au dictionnaire », avec Voir et Retirer, pendant 5 secondes. Le pointeur sur la bulle arrête toujours le décompte.
+- L'ajout d'un mot au dictionnaire prenait une grande carte pendant 8 secondes. C'est maintenant une ligne de la taille de « Collé » : « « Figma » ajouté au dictionnaire », avec Voir et Retirer, pendant 5 secondes. Le pointeur sur la bulle arrête toujours le décompte.
 
 ## 0.2.11 — 22 octobre 2026
 

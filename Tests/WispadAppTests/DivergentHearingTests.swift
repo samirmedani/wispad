@@ -7,7 +7,7 @@ import Testing
 @MainActor
 struct DivergentHearingTests {
     @Test func knownWordsComeFromMacOSTheDictionaryAndTheVocabulary() {
-        guard let known = DictationCoordinator.knownWord(for: "Et même sur des mots", language: .french, terms: ["Wispad"]) else { return }
+        guard let known = DictationCoordinator.knownWord(for: "Le correcteur bloque sur des mots", language: .french, terms: ["Wispad"]) else { return }
         #expect(known("mots"))
         #expect(!known("mope"))
         #expect(known("t'as"))
@@ -20,9 +20,9 @@ struct DivergentHearingTests {
     @Test func unknownWordFromTheFileIsNotReported() {
         guard let known = DictationCoordinator.knownWord(for: "x", language: .french, terms: []) else { return }
         #expect(CorrectionPatch.apply(
-            corrected: "Et même sur des mots, on dirait que la correction ne se fait pas réellement.",
-            stream: "Et même sur des mots. On dirait que la correction ne se fait pas réellement.",
-            file: "Et même sur des mope, on dirait que la correction ne se fait pas réellement.",
+            corrected: "Le correcteur bloque sur des mots, même très courts.",
+            stream: "Le correcteur bloque sur des mots. Même très courts.",
+            file: "Le correcteur bloque sur des mope, même très courts.",
             knownWord: known
         ) == nil)
     }

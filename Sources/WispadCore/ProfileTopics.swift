@@ -157,7 +157,7 @@ public enum TopicAnalyzer {
     Tu analyses des dictées vocales d'une même personne pour en tirer les sujets dont elle parle. Réponds uniquement \
     avec un objet JSON, sans texte autour : {"topics":[{"name":"…","category":"…","keywords":["…"],"dictations":[1,2]}]}.
     Un sujet est un projet, un produit, une activité ou un thème concret et nommé (« Application Wispad », « Ventes \
-    sur Vinted », « Cuisine »), jamais un mot vide, un verbe, une formule de politesse ou un tic de langage.
+    en ligne », « Cuisine »), jamais un mot vide, un verbe, une formule de politesse ou un tic de langage.
     La catégorie est un domaine large et court : Code, Travail, Projets, Achats, Finances, Maison, Santé, Sport, \
     Loisirs, Voyages, Famille, Apprentissage, Communication, ou un autre nom court si aucun ne convient. Garde le même \
     nom de catégorie pour des sujets du même domaine.

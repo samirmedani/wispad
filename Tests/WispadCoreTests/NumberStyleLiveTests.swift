@@ -16,7 +16,7 @@ final class NumberStyleLiveTests: XCTestCase {
     }
 
     private static let cases: [Case] = [
-        Case(transcript: "non le logo il est cyan les 2 premières barres elles sont bleues foncées", expected: [#"deux premi"#], refused: [#"\b2 premi"#]),
+        Case(transcript: "non le bouton il est vert les 2 premières lignes elles sont grises", expected: [#"deux premi"#], refused: [#"\b2 premi"#]),
         Case(transcript: "j'ai relancé le build 3 fois et ça marche toujours pas", expected: [#"trois fois"#], refused: [#"\b3 fois"#]),
         Case(transcript: "attends 2 minutes j'arrive", expected: [#"deux minutes"#]),
         Case(transcript: "il faut 4 serveurs avec des rtx 5090", expected: [#"quatre serveurs"#, #"RTX 5090"#]),
@@ -36,9 +36,9 @@ final class NumberStyleLiveTests: XCTestCase {
         Case(transcript: "franchement ils veulent quoi 2 mois", expected: [#"quoi de moi"#], refused: [#"\b2 mois"#, #"deux mois"#]),
         Case(transcript: "il est parti 100 rien dire", expected: [#"sans rien dire"#]),
         Case(transcript: "rendez-vous le 24 octobre 2026 à 14 h 30 pour 2 heures", expected: [#"24/10/2026"#]),
-        Case(transcript: "the first 2 bars are dark blue and I retried 3 times", language: .english, expected: [#"first two bars"#, #"three times"#]),
+        Case(transcript: "the first 2 rows are grey and I retried 3 times", language: .english, expected: [#"first two rows"#, #"three times"#]),
         Case(transcript: "latency is 5 seconds at 60 frames per second", language: .english, expected: [#"\b5 seconds"#, #"\b60 frames"#]),
-        Case(transcript: "non le logo il est cyan les 2 premières barres elles sont bleues foncées", inWords: false, expected: [#"\b2 premi"#]),
+        Case(transcript: "non le bouton il est vert les 2 premières lignes elles sont grises", inWords: false, expected: [#"\b2 premi"#]),
         Case(transcript: "j'ai relancé le build 3 fois et ça marche toujours pas", inWords: false, expected: [#"\b3 fois"#]),
         Case(transcript: "attends 2 minutes j'arrive", inWords: false, expected: [#"\b2 minutes"#]),
     ]
