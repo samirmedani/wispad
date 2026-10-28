@@ -3,6 +3,18 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.6.1 — 28 octobre 2026
+
+Les termes anglais dits avec l'accent français sont compris.
+
+**Corrigé**
+- Termes anglais entendus comme du français : « Tu vois les versions habilitée RAID d'un modèle ? » devient « Tu vois les versions abliterated d'un modèle ? ». Quand des mots français ne veulent rien dire ensemble et que le sujet appelle un terme technique anglais qui sonne pareil, la correction l'écrit. Une phrase française qui a un sens garde ses mots (« les personnes habilitées », « un RAID 5 »).
+- Mot de la page à la place de ce que tu as dit : la correction ne peut plus remplacer tes mots par un mot lu dans la fenêtre qui ne leur ressemble pas (« habilitée RAID » pouvait devenir « quantifiées »).
+- « Tu vois » qui pose une question n'est plus retiré comme un tic de langage.
+
+**Amélioré**
+- La correction connaît le jargon de l'IA : abliterated, uncensored, LoRA, Ollama, Hugging Face, embeddings…
+
 ## 0.6.0 — 28 octobre 2026
 
 Ta configuration te suit d'un appareil à l'autre, sans compte.

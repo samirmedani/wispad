@@ -5,12 +5,13 @@ import XCTest
 /// Banc franglais : rejoue des audios dans la même chaîne que l'app (flux xAI en direct, puis correction)
 /// et vérifie, phrase par phrase, les termes attendus et interdits, avant et après correction.
 /// Un cas avec `transcript` saute l'audio : cette transcription brute part directement à la correction
-/// (mots mal entendus, tics, citations, lettres épelées, dates et heures, nombres mal entendus).
+/// (mots mal entendus, tics, citations, lettres épelées, dates et heures, nombres mal entendus, termes techniques
+/// anglais entendus comme des mots français).
 /// Réseau et payant (quelques centimes) : ne tourne qu'avec WISPAD_LIVE_TESTS=1, via scripts/franglais-bench.sh.
 ///
 /// Variables : BENCH_LABEL (nom du rapport), BENCH_KEYTERMS=none (sans vocabulaire), BENCH_LANGUAGE=auto
 /// (sans indice de langue), BENCH_CLEANUP=off (sans correction), BENCH_ONLY=préfixes d'identifiant séparés par
-/// des virgules (h,r,g,l,e,d,n : les cas de correction seule), BENCH_REAL_DIR (dossier d'enregistrements réels avec
+/// des virgules (h,r,g,l,e,d,n,k,j : les cas de correction seule), BENCH_REAL_DIR (dossier d'enregistrements réels avec
 /// cases.json, hors Git).
 final class FranglaisBenchmarkTests: XCTestCase {
     struct Case: Decodable {
@@ -21,6 +22,8 @@ final class FranglaisBenchmarkTests: XCTestCase {
         var transcript: String?
         /// Dictées précédentes de la même app, envoyées comme contexte à la correction.
         var previous: [String]?
+        /// Conversation visible dans la fenêtre, envoyée comme contexte à la correction.
+        var window: String?
         /// Langue de ce cas (fr, en) ; sinon celle du banc pour la reconnaissance, le français pour la correction.
         var language: DictationLanguage?
         /// Format des dates et des heures de ce cas ; sinon celui d'une nouvelle installation.
@@ -106,7 +109,7 @@ final class FranglaisBenchmarkTests: XCTestCase {
                 var final = prepared
                 if cleanup {
                     var request = CorrectionRequest(transcript: prepared, dictionary: [], previousDictations: item.previous ?? [],
-                                                    language: item.language ?? .french)
+                                                    windowText: item.window, language: item.language ?? .french)
                     request.dateFormat = item.dateFormat ?? DictationDateFormat()
                     final = Self.finish(await TextCleaner.clean(transcript: prepared, request: request, speech: speech, enabled: true).text)
                 }

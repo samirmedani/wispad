@@ -172,4 +172,42 @@ struct ShortDictationGuardTests {
         let corrected = "Je pense que c'était trop bien fait."
         #expect(FidelityGuard.check(transcript: heard, corrected: corrected) == corrected)
     }
+
+    /// Un mot de la page lue, mis à la place de mots dits qui ne lui ressemblent pas, est refusé. Le 28 octobre 2026,
+    /// « habilitée RAID » (abliterated, dit avec l'accent) est devenu « quantifiées », mot de la page.
+    @Test func contextWordSwappedForUnlikeSpeechIsRestored() {
+        let page = "Des variantes de la communauté retirent les refus du modèle ; d'autres sont quantifiées en GGUF."
+        let heard = "Tu vois les versions habilitée RAID d'un modèle ?"
+        let swapped = FidelityGuard.check(transcript: heard, corrected: "Tu vois les versions quantifiées d'un modèle ?",
+                                          previousDictations: [page])
+        #expect(swapped == heard)
+        // Le terme dit avec l'accent sonne comme les mots transcrits : il reste, avec ou sans contexte.
+        let fixed = "Tu vois les versions abliterated d'un modèle ?"
+        #expect(FidelityGuard.check(transcript: heard, corrected: fixed, previousDictations: [page + " Qwen3-abliterated."]) == fixed)
+        #expect(FidelityGuard.check(transcript: heard, corrected: fixed) == fixed)
+    }
+
+    /// Une vraie correction d'écoute reste, même quand le mot juste figure aussi dans le contexte.
+    @Test(arguments: [
+        ("Le mer a inauguré la nouvelle école du quartier.", "Le maire a inauguré la nouvelle école du quartier.", "Le maire de la ville était là."),
+        ("Ce soir le compte parle d'un loup et de trois cochons.", "Ce soir, le conte parle d'un loup et de trois cochons.", "Je lis un conte aux enfants."),
+        ("Tire la fenêtre v le bas pour voir la suite.", "Tire la fenêtre vers le bas pour voir la suite.", "Glisse la carte vers le haut."),
+        ("Il est parti cent rien dire à personne.", "Il est parti sans rien dire à personne.", "Il est parti sans prévenir."),
+        ("Hier j'écris le train pour aller voir mamie.", "Hier, j'ai pris le train pour aller voir mamie.", "J'ai pris le métro ce matin."),
+        ("On fait tourner le modèle avec au lama sur le Mac.", "On fait tourner le modèle avec Ollama sur le Mac.", "Lance Ollama avant le test."),
+    ])
+    func hearingFixConfirmedByContextStays(heard: String, corrected: String, context: String) {
+        #expect(FidelityGuard.check(transcript: heard, corrected: corrected, previousDictations: [context]) == corrected)
+    }
+
+    /// Le jargon de l'IA va à la correction, pas aux mots-clés de la reconnaissance : limités à 100, ils restent ceux
+    /// mesurés sur les bancs.
+    @Test func aiJargonReachesTheCorrectionButNotTheRecognitionHints() {
+        let hints = RecognitionHints.keyterms(dictionary: [], context: [])
+        #expect(hints == KeytermList.sanitize(TechVocabulary.all))
+        #expect(!hints.contains("abliterated"))
+        let user = CorrectionPrompt.userText(CorrectionRequest(transcript: "x"))
+        #expect(user.contains("abliterated"))
+        #expect(user.contains("Hugging Face"))
+    }
 }

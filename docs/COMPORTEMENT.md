@@ -505,10 +505,16 @@ Le micro standard, réglage coupé, ne change pas.
   trompé » → « Il s'est trompé. », « un vers d'eau » → « un verre d'eau ». Une phrase qui a déjà un sens n'est pas réécrite, aucune idée
   n'est ajoutée et un mot plausible reste (« J'écris un mail » ne change pas). Un nombre devant une unité garde sa
   règle : il faut que le contexte le confirme.
+  Un terme technique anglais dit avec l'accent français ressort souvent en mots français qui ne veulent rien dire
+  ensemble : quand le sujet (la phrase, la conversation visible, les dictées précédentes) appelle un terme anglais qui
+  se prononce presque pareil, la correction l'écrit, même hors du vocabulaire intégré : « les versions habilitée RAID
+  d'un modèle » → « les versions abliterated d'un modèle », « entraîner un l'aura » → « entraîner un LoRA ». Le terme
+  doit sonner comme les mots transcrits, jamais un mot du contexte qui ne leur ressemble pas. Une phrase française
+  qui a un sens garde ses mots (« les personnes habilitées », « un RAID 5 », « une aura incroyable »).
 - **Tics et répétitions** : répétitions inutiles et tics répétés retirés (« par exemple, par exemple », « genre »,
   « en fait » ou « tu vois » répétés, « nan nan nan », mot doublé). Une occurrence reste quand elle porte le sens :
-  « par exemple » qui introduit un vrai exemple, « ce genre de film », un « nan » qui répond. Rien d'autre n'est
-  retiré à ce titre.
+  « par exemple » qui introduit un vrai exemple, « ce genre de film », un « nan » qui répond, un « tu vois » qui pose
+  une vraie question (« Tu vois le bouton rouge ? »). Rien d'autre n'est retiré à ce titre.
 - **Citations** : paroles rapportées, mot donné en exemple, texte affiché, « si tu dis… », « tu mets… »,
   « genre… » : la citation va entre guillemets français (anglais : “ ”), les mots qui l'introduisent restent dehors
   (« si tu dis bonjour il répond » → Si tu dis « bonjour », il répond.). Un mot incompréhensible n'est jamais mis
@@ -522,8 +528,9 @@ Le micro standard, réglage coupé, ne change pas.
   correction remet le mot que la phrase demande (« v le bas » → « vers le bas »). Un mot épelé entre guillemets
   s'écrit normalement (« vert », pas « VERT »).
 - Banc réseau de ces règles, transcriptions brutes inventées passées directement à la correction (sans audio) :
-  `BENCH_ONLY=h,r,g,l,e,d,n scripts/franglais-bench.sh <nom>` (mots mal entendus, tics, citations, lettres épelées,
-  anglais, dates et heures, nombres mal entendus).
+  `BENCH_ONLY=h,r,g,l,e,d,n,k,j scripts/franglais-bench.sh <nom>` (mots mal entendus, tics, citations, lettres
+  épelées, anglais, dates et heures, nombres mal entendus, mots coupés, termes anglais entendus comme des mots
+  français, avec des phrases témoins qui doivent rester en français).
 - La correction ne répond jamais au contenu dicté et ne recopie jamais le contexte.
 - **Correction préparée pendant l'écoute** : à chaque pause de la parole (segment final du flux, puis 0,25 s sans
   nouveau mot), le texte entendu part déjà à la correction. Si l'on arrête sans rien ajouter (même texte à la
@@ -564,6 +571,10 @@ Après la correction, `FidelityGuard` rejette ou répare :
   mot. La transcription est collée. Une correction courte faite de mots dits (« … non, oublie tout, écris juste
   merci » → « Merci. ») et des nombres mis en forme (« vingt-quatre octobre » → « 24/10 ») restent ;
 - un mot traduit (« outils » → « tools ») : le mot entendu est remis ;
+- un mot repris du contexte (page visible, texte voisin, dictées précédentes) à la place de mots dits qui ne lui
+  ressemblent pas à l'oreille, d'au moins cinq lettres et absent de ce qui a été dit : les mots entendus sont remis
+  (« les versions habilitée RAID » ne devient pas « les versions quantifiées », mot de la page). Une correction
+  d'écoute confirmée par le contexte reste (« le mer » → « le maire », « v le bas » → « vers le bas ») ;
 - une marque, un nom ou une référence absents de ce qui a été dit et qui ne lui ressemblent pas à l'oreille, même
   mis entre guillemets ;
 - une référence lettres puis chiffres (DDR4, i9) dont les chiffres n'ont pas été prononcés ;
@@ -597,7 +608,8 @@ novembre » → « 03/11/2026 » devient « 03/11 ».
 ## Franglais technique
 
 - Vocabulaire technique intégré (`TechVocabulary`) envoyé comme mots-clés à xAI après le dictionnaire et le
-  contexte (100 au plus).
+  contexte (100 au plus). La correction et le garde-fou reçoivent en plus le jargon de l'IA (abliterated, uncensored,
+  LoRA, Ollama, Hugging Face, embeddings…), qui ne passe pas dans ces mots-clés.
 - Retouches déterministes prudentes (`FranglaisNormalizer`) : références matérielles recollées, « Auth 2.0 »
   → OAuth 2.0 (« Auth » seul seulement avec un contexte OAuth), « j'ai fixe le bug » → « j'ai fix le bug ». Chaque règle exige un indice
   impossible en français correct ; une liste de pièges est verrouillée par les tests.
