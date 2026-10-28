@@ -37,6 +37,18 @@ public enum TechVocabulary {
 
     /// Assemblé une fois : la liste sert à chaque dictée (mots-clés, consigne, garde-fou).
     public static let all: [String] = products + phrases + hardware + shortWords
+
+    /// Jargon de l'IA, fréquent dans une dictée technique et souvent entendu comme des mots français : le
+    /// 28 octobre 2026, abliterated est devenu « habilitée RAID ». Donné à la correction et au garde-fou seulement :
+    /// les mots-clés de la reconnaissance (100 au plus chez xAI) restent ceux mesurés sur les bancs. Pas de mot dont
+    /// l'équivalent français est le plus courant à l'oral (« raisonnement », « quantifié ») : il ne doit pas être traduit.
+    public static let ai = [
+        "abliterated", "uncensored", "fine-tuning", "LoRA", "dataset", "embeddings", "RAG", "prompt", "system prompt",
+        "Ollama", "Hugging Face", "GGUF", "open weights", "jailbreak",
+    ]
+
+    /// Vocabulaire de la correction et du garde-fou : celui de la reconnaissance, puis le jargon de l'IA.
+    public static let correction: [String] = all + ai
 }
 
 /// Mots-clés envoyés à la reconnaissance : d'abord le dictionnaire de l'utilisateur, puis les termes du

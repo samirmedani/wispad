@@ -324,6 +324,8 @@ public enum FidelityGuard {
     /// Une marque ou une référence absente de tout contexte, et qui ne sonne pas comme les mots remplacés,
     /// est une invention : on remet aussi les mots entendus. Un nombre dicté écrit en chiffres ne l'est pas, ni une
     /// date ou une heure dite écrite au format choisi (« quatorze heures trente » → « 14h30 »).
+    /// Un mot repris du contexte à la place de mots entendus qui ne lui ressemblent pas est une substitution : on
+    /// remet aussi les mots entendus (`takenFromContext`).
     static func restoreTranslatedWords(
         heard: [String],
         written: [String],
@@ -355,6 +357,19 @@ public enum FidelityGuard {
             return keys
         }
         let otherKeys = Set(alsoHeard.map { CorrectionLearner.key(strip($0)) }).subtracting([""])
+        // Mots du texte voisin, de la page visible et des dictées précédentes : lus seulement quand un mot écrit ne
+        // ressemble pas à ce qui a été dit.
+        var contextWords: Set<String>?
+        func seenInContext() -> Set<String> {
+            if let contextWords { return contextWords }
+            var keys = Set<String>()
+            for text in [context].compactMap({ $0 }) + previousDictations {
+                for word in CorrectionLearner.words(in: text) { keys.insert(CorrectionLearner.key(strip(word))) }
+            }
+            contextWords = keys
+            return keys
+        }
+        let saidKeys = Set(said.map(CorrectionLearner.key))
         let output = NSMutableString(string: corrected)
         for hunk in hunks.reversed() {
             // Tous les mots écrits viennent de l'autre écoute du même audio : rien à remettre.
@@ -377,7 +392,9 @@ public enum FidelityGuard {
                 && !spelled
                 && !moment
             let coined = !spoken && !spelled && !moment && similarity < 0.45 && hasUngroundedCoinage(hunk, written: spokenWritten, known: known)
-            guard vocabularyTranslation || coined else { continue }
+            let substituted = !spoken && !spelled && !moment && similarity < 0.45
+                && takenFromContext(hunk, said: saidKeys, context: seenInContext)
+            guard vocabularyTranslation || coined || substituted else { continue }
             let restored = hunk.newWords.map(strip)
             if hunk.oldWords.count == restored.count {
                 // Les plages restent celles du texte d'origine : ni indentation, ni retours,
@@ -482,7 +499,7 @@ public enum FidelityGuard {
             if index + 2 < heard.count { keys.insert(heard[index] + heard[index + 1] + heard[index + 2]) }
         }
         for term in dictionary { absorb(term) }
-        for term in TechVocabulary.all { absorb(term) }
+        for term in TechVocabulary.correction { absorb(term) }
         return keys
     }
 
@@ -516,6 +533,25 @@ public enum FidelityGuard {
             if !known().contains(CorrectionLearner.key(strip(raw))) { return true }
         }
         return false
+    }
+
+    /// Mots écrits à la place de mots entendus, repris du contexte (texte voisin, page visible, dictées précédentes) et
+    /// qui ne leur ressemblent pas à l'oreille : une substitution, pas une correction d'écoute. Le 28 octobre 2026, sur
+    /// une page qui parlait de modèles, « les versions habilitée RAID » (abliterated, dit avec l'accent) est devenu
+    /// « les versions quantifiées », mot de la page. Seulement des mots d'au moins cinq lettres, absents de ce qui a été
+    /// dit : les petits mots courants (« sans », « vers », « hein ») suivent leurs propres règles, comme un mot coupé
+    /// réduit à sa première lettre (« v le bas » → « vers le bas ») et les nombres.
+    private static func takenFromContext(_ hunk: CorrectionLearner.Hunk, said: Set<String>, context: () -> Set<String>) -> Bool {
+        guard (1...3).contains(hunk.oldWords.count), (1...4).contains(hunk.newWords.count) else { return false }
+        let written = hunk.oldWords.map(strip), heard = hunk.newWords.map(strip)
+        if (written + heard).contains(where: { $0.contains(where: \.isNumber) }) { return false }
+        if heard.count == 1, heard[0].count == 1, written.count == 1,
+           written[0].lowercased().hasPrefix(heard[0].lowercased()) { return false }
+        let keys = written.map(CorrectionLearner.key).filter { $0.count >= 5 }
+        guard !keys.isEmpty, keys.allSatisfy({ !said.contains($0) }) else { return false }
+        if PhoneticKey.soundsAlike(written, heard) { return false }
+        let seen = context()
+        return keys.allSatisfy(seen.contains)
     }
 
     /// Nombres et unités prononcés (français ou anglais), réécrits en chiffres ou en sigle (2666 MHz, 9950X3D).
@@ -567,7 +603,7 @@ public enum FidelityGuard {
         return result
     }
 
-    private static let vocabulary: Set<String> = Set(TechVocabulary.all.flatMap { CorrectionLearner.words(in: $0) }.map(CorrectionLearner.key))
+    private static let vocabulary: Set<String> = Set(TechVocabulary.correction.flatMap { CorrectionLearner.words(in: $0) }.map(CorrectionLearner.key))
         .union(["outil", "outils", "parametres", "parametre", "reglages", "requete", "requetes", "latence", "debit", "deploiement", "erreurs"])
 
     private static func isVocabulary(_ text: String) -> Bool {

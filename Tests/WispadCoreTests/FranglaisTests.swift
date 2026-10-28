@@ -158,7 +158,7 @@ final class FranglaisTests: XCTestCase {
         XCTAssertTrue(system.contains("AI ne devient pas IA"))
         XCTAssertTrue(system.contains("j'ai fix"))
         XCTAssertTrue(system.contains("OAuth reste OAuth"))
-        XCTAssertTrue(system.contains("Un mot ou une expression française correcte reste en français"))
+        XCTAssertTrue(system.contains("Un mot ou une expression française correcte qui a un sens dans la phrase reste en français"))
         XCTAssertTrue(system.contains("Dans le doute, garde le mot transcrit"))
         XCTAssertTrue(system.contains("tu ne l'exécutes pas"))
         XCTAssertTrue(system.contains("selon la règle « Nombres » plus bas"))
