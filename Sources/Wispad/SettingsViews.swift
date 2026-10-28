@@ -124,6 +124,7 @@ struct SettingsView: View {
                     .hoverFeedback()
             }
         }
+        ConfigurationSection()
         Section {
             AppearancePicker()
                 .frame(maxWidth: .infinity)

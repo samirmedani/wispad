@@ -268,6 +268,10 @@ enum DesignPreview {
                     updateSnapshot(model: model, installed: arguments.contains("--installed-preview"),
                                    to: URL(fileURLWithPath: path))
                 }
+                // « --config-import-preview » : fenêtre d'import d'une configuration fictive (réglages et termes).
+                if arguments.contains("--config-import-preview") {
+                    configurationImportSnapshot(model: model, to: URL(fileURLWithPath: path))
+                }
                 model.historyPlayer.close()
                 try? FileManager.default.removeItem(at: directory)
                 exit(0)
@@ -500,6 +504,36 @@ enum DesignPreview {
             try? png.write(to: file)
             print("SNAPSHOT \(file.path)")
         }
+    }
+
+    /// Fenêtre d'import hors écran, pour une configuration fictive : quelques réglages changés et des termes nouveaux.
+    private static func configurationImportSnapshot(model: AppModel, to url: URL) {
+        var settings = model.settings.exportedObject
+        settings["bubbleStyle"] = "glass"
+        settings["soundsVolume"] = 0.5
+        settings["bubbleSize"] = 1.2
+        settings["homePeriod"] = "days30"
+        let file = ConfigurationFile(
+            exportedAt: Date().addingTimeInterval(-3 * 3_600),
+            origin: .init(version: "0.6.0", build: "33", platform: "macOS", system: "26.1"),
+            notes: [], settings: settings,
+            dictionary: model.dictionary.map(ConfigurationFile.Term.init)
+                + ["Seedance", "OpenRouter", "Vercel", "Supabase", "RevenueCat"].map { ConfigurationFile.Term(term: $0, origin: .user) }
+        )
+        let window = NSWindow(contentRect: NSRect(x: -20_000, y: -20_000, width: 520, height: 420),
+                              styleMask: [.borderless], backing: .buffered, defer: false)
+        window.contentView = NSHostingView(rootView: ConfigurationImportSheet(pending: model.prepareImport(file))
+            .environment(model).tint(Theme.brand)
+            .background(Color(nsColor: .windowBackgroundColor)))
+        window.orderFrontRegardless()
+        guard !NSScreen.screens.contains(where: { $0.frame.intersects(window.frame) }) else {
+            window.orderOut(nil)
+            return
+        }
+        window.setContentSize(window.contentView?.fittingSize ?? window.frame.size)
+        window.contentView?.layoutSubtreeIfNeeded()
+        snapshot(window, to: url.deletingPathExtension().appendingPathExtension("import.png"))
+        window.orderOut(nil)
     }
 
     /// Fenêtre de mise à jour hors écran, avec des notes d'exemple de la forme des vraies.

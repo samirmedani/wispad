@@ -760,6 +760,8 @@ final class AppModel {
     let updater = UpdateInstaller()
     /// Release dont la fenêtre de mise à jour est ouverte : notes de version, installation et son avancement.
     var updateSheet: ReleaseInfo?
+    /// Fichier de configuration ouvert, montré avant d'être appliqué (Réglages › Général › Importer, Finder, agent).
+    var pendingConfigurationImport: ConfigurationImport?
     /// Recherche à la main en cours : la version trouvée s'ouvre dans sa fenêtre, pas dans la bulle.
     @ObservationIgnored private var checkingForUpdates = false
     /// Fenêtre principale à l'écran (posé par le délégué de l'app) : la nouvelle version la rouvre après la relance.
