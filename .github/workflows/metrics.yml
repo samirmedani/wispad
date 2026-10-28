@@ -1,0 +1,53 @@
+name: Métriques
+
+# Compteur de téléchargements du README : relevé toutes les heures et à chaque nouvelle version, gardé avec ses
+# graphiques sur la branche de données « metrics » (jamais sur main). Un commit seulement si un chiffre change, et au
+# moins un relevé par jour pour que la courbe avance.
+on:
+  schedule:
+    - cron: "23 * * * *"
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: metrics
+  cancel-in-progress: false
+
+jobs:
+  downloads:
+    name: Compteur de téléchargements
+    if: github.repository == 'samirmedani/wispad'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+      - name: Relevé et graphiques
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          script="$RUNNER_TEMP/download-stats.py"
+          cp scripts/download-stats.py "$script"
+          if git ls-remote --exit-code --heads origin metrics > /dev/null; then
+            git fetch --quiet --depth 1 origin metrics
+            git switch --quiet -C metrics FETCH_HEAD
+          else
+            git switch --quiet --orphan metrics
+          fi
+          python3 "$script" --repo "$GITHUB_REPOSITORY" --dir .
+          git add downloads.csv downloads-light.svg downloads-dark.svg README.md
+          if git diff --cached --quiet; then
+            echo "Aucun changement."
+            exit 0
+          fi
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit --quiet -m "Relevé des téléchargements"
+          git push --quiet origin metrics
