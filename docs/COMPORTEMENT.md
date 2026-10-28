@@ -574,6 +574,11 @@ Dates et heures : la même date ou la même heure, autrement écrite, n'est ni u
 dite (en chiffres, en lettres, « twenty twenty-six » ou sur deux chiffres) est retirée de la date : « le trois
 novembre » → « 03/11/2026 » devient « 03/11 ».
 
+- Pourcentage perdu : un pourcentage dit (« cent pour cent », « 15 % », « fifteen percent ») dont la correction a
+  gardé le nombre sans le « % » le retrouve (« sûr à 100 » → « sûr à 100 % »), au format choisi. Seulement quand
+  chaque nombre en cause revient autant de fois dans la correction que dans ce qui a été dit : seule l'occurrence qui
+  suivait « pour cent » reçoit le signe (« 100 € et sûr à 100 » → « 100 € et sûr à 100 % »). Un nombre changé,
+  reformulé ou écrit en lettres laisse le texte tel quel ; « pour cent euros » n'est pas un pourcentage.
 ## Franglais technique
 
 - Vocabulaire technique intégré (`TechVocabulary`) envoyé comme mots-clés à xAI après le dictionnaire et le

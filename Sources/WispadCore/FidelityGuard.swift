@@ -40,7 +40,104 @@ public enum FidelityGuard {
         }
         // Une transcription sans mot (« … ») dont la réponse n'était qu'une référence inventée : rien ne resterait à coller.
         if dated.allSatisfy(\.isWhitespace) { return transcript }
-        return dated
+        return restoreDroppedPercents(heard: transcript, corrected: dated)
+    }
+
+    /// Un pourcentage dit (« cent pour cent », « 15 % », « fifteen percent ») dont la correction a gardé le nombre
+    /// mais perdu le « % » le retrouve : « je suis sûr à 100 » → « je suis sûr à 100% », que la mise en forme des
+    /// nombres écrit ensuite au format choisi. Le 28 octobre 2026, « sûr à cent pour cent » est devenu « sûr à 100 ».
+    /// Seulement quand chaque nombre en cause apparaît autant de fois dans la correction que dans ce qui a été dit :
+    /// les occurrences se suivent alors dans le même ordre, et seule celle qui suivait « pour cent » reçoit le signe.
+    /// Un nombre réécrit, changé ou mis en lettres laisse le texte tel quel.
+    static func restoreDroppedPercents(heard: String, corrected: String) -> String {
+        let said = spokenNumbers(heard)
+        let percentValues = Set(said.filter(\.isPercent).map(\.value))
+        guard !percentValues.isEmpty else { return corrected }
+        let written = writtenNumbers(corrected)
+        var insertions: [Int] = []
+        for value in percentValues {
+            let saidHere = said.filter { $0.value == value }
+            let writtenHere = written.filter { $0.value == value }
+            guard saidHere.count == writtenHere.count else { continue }
+            for (spoken, number) in zip(saidHere, writtenHere) where spoken.isPercent && !number.isPercent {
+                insertions.append(number.end)
+            }
+        }
+        guard !insertions.isEmpty else { return corrected }
+        let result = NSMutableString(string: corrected)
+        for location in insertions.sorted(by: >) { result.insert("%", at: location) }
+        return result as String
+    }
+
+    /// Un nombre d'un texte : sa valeur (« 100 », « 2.5 », « 1250 »), s'il est suivi d'un pourcentage, et la fin de
+    /// ses chiffres dans le texte écrit (position UTF-16).
+    struct NumberMention: Equatable {
+        var value: String
+        var isPercent: Bool
+        var end: Int = 0
+    }
+
+    private static let numberPattern = try! NSRegularExpression(
+        pattern: #"[0-9]+(?:[ \x{00A0}\x{202F}][0-9]{3})*(?:[.,][0-9]+)?"#)
+    private static let spokenTokenPattern = try! NSRegularExpression(
+        pattern: #"[0-9]+(?:[ \x{00A0}\x{202F}][0-9]{3})*(?:[.,][0-9]+)?|%|\p{L}+"#)
+
+    /// Valeur comparable d'un nombre écrit en chiffres : sans espace de milliers, décimale avec un point.
+    private static func canonical(_ digits: String) -> String {
+        digits.filter { !$0.isWhitespace && $0 != "\u{00A0}" && $0 != "\u{202F}" }.replacingOccurrences(of: ",", with: ".")
+    }
+
+    /// Nombres de ce qui a été dit, en chiffres ou en lettres, et ceux qui précèdent « pour cent », « percent » ou « % ».
+    static func spokenNumbers(_ text: String) -> [NumberMention] {
+        let lower = text.lowercased() as NSString
+        let raw = spokenTokenPattern.matches(in: lower as String, range: NSRange(location: 0, length: lower.length))
+            .map { lower.substring(with: $0.range) }
+        // « pour cent », « per cent », « pourcent(s) » et « percent » deviennent « % » avant de lire les nombres en
+        // lettres : le « cent » de « pour cent » n'est pas un nombre.
+        var tokens: [String] = []
+        var index = 0
+        while index < raw.count {
+            let token = raw[index]
+            if (token == "pour" || token == "per"), index + 1 < raw.count, raw[index + 1] == "cent" || raw[index + 1] == "cents" {
+                tokens.append("%")
+                index += 2
+                continue
+            }
+            tokens.append(["pourcent", "pourcents", "percent"].contains(token) ? "%" : token)
+            index += 1
+        }
+        let spelled = SpokenNumbers.spell(tokens)
+        // « deux virgule cinq » → « 2.5 », « two point five » → « 2.5 ».
+        var merged: [String] = []
+        index = 0
+        while index < spelled.count {
+            if index + 2 < spelled.count, ["virgule", "point"].contains(spelled[index + 1]),
+               spelled[index].allSatisfy(\.isNumber), spelled[index + 2].allSatisfy(\.isNumber) {
+                merged.append(spelled[index] + "." + spelled[index + 2])
+                index += 3
+                continue
+            }
+            merged.append(spelled[index])
+            index += 1
+        }
+        return merged.indices.compactMap { position in
+            let token = merged[position]
+            guard let first = token.first, first.isNumber else { return nil }
+            return NumberMention(value: canonical(token), isPercent: position + 1 < merged.count && merged[position + 1] == "%")
+        }
+    }
+
+    /// Nombres en chiffres d'un texte corrigé, chacun avec la fin de ses chiffres et s'il est suivi d'un pourcentage.
+    static func writtenNumbers(_ text: String) -> [NumberMention] {
+        let ns = text as NSString
+        return numberPattern.matches(in: text, range: NSRange(location: 0, length: ns.length)).map { match in
+            let end = NSMaxRange(match.range)
+            let after = ns.substring(from: end).lowercased()
+            let rest = after.drop { $0 == " " || $0 == "\u{00A0}" || $0 == "\u{202F}" }
+            let percent = rest.hasPrefix("%") || rest.hasPrefix("pour cent") || rest.hasPrefix("pourcent")
+                || rest.hasPrefix("percent") || rest.hasPrefix("per cent")
+            return NumberMention(value: canonical(ns.substring(with: match.range)), isPercent: percent, end: end)
+        }
     }
 
     /// Une dictée de trois mots au plus n'offre aucun contexte au modèle : il ne peut qu'y deviner.

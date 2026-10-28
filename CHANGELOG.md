@@ -3,6 +3,13 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.5.1 — 28 octobre 2026
+
+Un pourcentage dit ne perd plus son « % ».
+
+**Corrigé**
+- Pourcentage perdu : quand la correction gardait le nombre mais oubliait le « % » (« je suis sûr à cent pour cent » collé « je suis sûr à 100 »), Wispad le remet de lui-même : « je suis sûr à 100 % ». Les autres nombres de la phrase ne bougent pas.
+
 ## 0.5.0 — 25 octobre 2026
 
 Tes clés où tu veux, un modèle local gratuit, et un cerveau qui se tient à jour.
