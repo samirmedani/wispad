@@ -19,6 +19,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/licence-MIT-e5483f" alt="Licence MIT"></a>
   <a href="https://github.com/samirmedani/wispad/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/samirmedani/wispad/ci.yml?branch=main&label=v%C3%A9rification" alt="Vérification GitHub Actions"></a>
   <a href="https://github.com/samirmedani/wispad/stargazers"><img src="https://img.shields.io/github/stars/samirmedani/wispad?logo=github&label=%C3%A9toiles" alt="Étoiles GitHub"></a>
+  <a href="#téléchargements"><img src="https://img.shields.io/github/downloads/samirmedani/wispad/total?label=t%C3%A9l%C3%A9chargements&color=e5483f" alt="Téléchargements"></a>
 </p>
 
 <p align="center">
@@ -260,6 +261,19 @@ Les tests réseau (`scripts/live-test.sh`, bancs) n'utilisent que des clés de t
 
 Les textes d'interface s'écrivent en français dans le code, puis se traduisent en anglais avec
 `scripts/localize.sh` ; `scripts/localize.sh check` doit passer.
+
+## Téléchargements
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/samirmedani/wispad/metrics/downloads-dark.svg">
+    <img src="https://raw.githubusercontent.com/samirmedani/wispad/metrics/downloads-light.svg" alt="Téléchargements de Wispad : total, évolution dans le temps et détail par version" width="100%">
+  </picture>
+</p>
+
+Relevé toutes les heures et à chaque nouvelle version par le workflow [Métriques](.github/workflows/metrics.yml),
+depuis l'API de GitHub. Une mise à jour faite depuis l'app télécharge aussi le `Wispad.dmg` : elle compte. Les relevés
+sont sur la branche [`metrics`](https://github.com/samirmedani/wispad/tree/metrics).
 
 ## Contribuer
 
