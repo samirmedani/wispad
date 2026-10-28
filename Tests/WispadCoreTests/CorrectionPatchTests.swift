@@ -169,14 +169,14 @@ struct CorrectionPatchTests {
         let known: (String) -> Bool = { lexicon.contains($0.lowercased()) }
         // Des chiffres là où le flux disait des mots.
         #expect(CorrectionPatch.apply(
-            corrected: "Va falloir que j'investisse dans un deuxième abonnement x20 Claude.",
-            stream: "Va falloir que j'investisse dans un deuxième abonnement x20 Claude",
-            file: "Va falloir que j'investisse dans 1/2 abonnement x20 Claude"
+            corrected: "Prends un deuxième billet pour le concert de samedi.",
+            stream: "prends un deuxième billet pour le concert de samedi",
+            file: "prends 1/2 billet pour le concert de samedi"
         ) == nil)
         // Un mot inconnu à la place d'un mot connu, ponctuation autour comprise.
         #expect(CorrectionPatch.apply(
-            corrected: "Et même sur des mots, on dirait que ça passe.",
-            stream: "Et même sur des mots. On dirait que ça passe", file: "Et même sur des mope, on dirait que ça passe",
+            corrected: "Le correcteur bloque sur des mots, même très courts.",
+            stream: "le correcteur bloque sur des mots. Même très courts", file: "le correcteur bloque sur des mope, même très courts",
             knownWord: known
         ) == nil)
         // Le fichier corrige un mot inconnu du flux : le report reste.

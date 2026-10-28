@@ -197,8 +197,8 @@ struct NumberStyleTests {
 
     /// Un chiffre entendu écrit en lettres par la correction reste : le garde-fou ne le prend pas pour une invention.
     @Test func theGuardKeepsANumberWrittenInWords() {
-        let corrected = "Non, le logo est cyan. Les deux premières barres sont bleu foncé."
-        #expect(FidelityGuard.check(transcript: "non le logo il est cyan les 2 premières barres elles sont bleues foncées",
+        let corrected = "Non, le bouton est vert. Les deux premières lignes sont grises."
+        #expect(FidelityGuard.check(transcript: "non le bouton il est vert les 2 premières lignes elles sont grises",
                                     corrected: corrected) == corrected)
         let english = "I retried the build three times."
         #expect(FidelityGuard.check(transcript: "I retried the build 3 times", corrected: english) == english)

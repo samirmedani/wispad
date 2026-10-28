@@ -177,12 +177,12 @@ struct ShortDictationGuardTests {
     /// « habilitée RAID » (abliterated, dit avec l'accent) est devenu « quantifiées », mot de la page.
     @Test func contextWordSwappedForUnlikeSpeechIsRestored() {
         let page = "Des variantes de la communauté retirent les refus du modèle ; d'autres sont quantifiées en GGUF."
-        let heard = "Tu vois les versions habilitée RAID d'un modèle ?"
-        let swapped = FidelityGuard.check(transcript: heard, corrected: "Tu vois les versions quantifiées d'un modèle ?",
+        let heard = "J'ai testé les versions habilitée RAID du modèle hier soir."
+        let swapped = FidelityGuard.check(transcript: heard, corrected: "J'ai testé les versions quantifiées du modèle hier soir.",
                                           previousDictations: [page])
         #expect(swapped == heard)
         // Le terme dit avec l'accent sonne comme les mots transcrits : il reste, avec ou sans contexte.
-        let fixed = "Tu vois les versions abliterated d'un modèle ?"
+        let fixed = "J'ai testé les versions abliterated du modèle hier soir."
         #expect(FidelityGuard.check(transcript: heard, corrected: fixed, previousDictations: [page + " Qwen3-abliterated."]) == fixed)
         #expect(FidelityGuard.check(transcript: heard, corrected: fixed) == fixed)
     }
@@ -214,9 +214,12 @@ struct ShortDictationGuardTests {
     /// Le 28 octobre 2026 : « envoie-le » dans le fichier, « envoie-lui » en direct, et la correction a écrit
     /// « envoie-la », que personne n'a entendu. Le texte garde un mot entendu.
     @Test func aThirdSmallWordGivesWayToTheOtherHearing() {
-        let file = "Si t'as pas envoyé la réponse, envoie-le.", live = "Si t'as pas envoyé la réponse, envoie-lui."
-        #expect(FidelityGuard.check(transcript: file, corrected: "Si tu n'as pas envoyé la réponse, envoie-la.", alternative: live)
-            == "Si tu n'as pas envoyé la réponse, envoie-lui.")
+        let file = "Si Marie attend la facture, envoie-le.", live = "Si Marie attend la facture, envoie-lui."
+        #expect(FidelityGuard.check(transcript: file, corrected: "Si Marie attend la facture, envoie-la.", alternative: live)
+            == "Si Marie attend la facture, envoie-lui.")
+        // Les deux écoutes fusionnées (« envoie-la-lui ») : seul le mot entendu reste.
+        #expect(FidelityGuard.check(transcript: file, corrected: "Si Marie attend la facture, envoie-la-lui.", alternative: live)
+            == "Si Marie attend la facture, envoie-lui.")
         // Un mot entendu par l'une des deux écoutes reste.
         #expect(FidelityGuard.check(transcript: file, corrected: live, alternative: live) == live)
         #expect(FidelityGuard.check(
@@ -224,8 +227,8 @@ struct ShortDictationGuardTests {
             alternative: "Prends le dossier et envoie-lui à Paul."
         ) == "Prends le dossier et envoie-le à Paul.")
         // Sans autre écoute, la correction reste seule juge.
-        #expect(FidelityGuard.check(transcript: file, corrected: "Si t'as pas envoyé la réponse, envoie-la.")
-            == "Si t'as pas envoyé la réponse, envoie-la.")
+        #expect(FidelityGuard.check(transcript: file, corrected: "Si Marie attend la facture, envoie-la.")
+            == "Si Marie attend la facture, envoie-la.")
         // Un écart sur un mot plein n'est pas concerné.
         #expect(FidelityGuard.check(
             transcript: "On range les ulti dans le garage.", corrected: "On range les outils dans le garage.",

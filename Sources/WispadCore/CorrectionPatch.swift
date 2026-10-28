@@ -4,7 +4,7 @@ import Foundation
 /// ou presque, au lieu d'en relancer une complète (environ 0,9 s, mesuré du 4 au 11 octobre 2026).
 /// Rend nil dès que le report n'est pas sûr ; la correction complète du texte du fichier reste alors la règle : elle
 /// reçoit les deux écoutes et choisit, vu la phrase. Le fichier se trompe parfois là où le flux avait juste : le
-/// 28 octobre 2026, « un deuxième abonnement » est devenu « 1/2 abonnement » et « des mots », « des mope ».
+/// 28 octobre 2026, « un deuxième » est devenu « 1/2 » et « mots », « mope ».
 public enum CorrectionPatch {
     /// Au plus deux endroits, de trois mots au plus de chaque côté : au-delà, le sens a pu changer.
     static let maxBlocks = 2
@@ -50,7 +50,7 @@ public enum CorrectionPatch {
                 continue
             }
             // Élision coupée par le découpage en mots (« t'as » lu « t » puis « as ») : le report écrivait « t as »
-            // (8 dictées en 28 jours, « T as aussi des images »). La correction complète l'écrit en entier.
+            // (8 dictées en 28 jours). La correction complète l'écrit en entier.
             guard !endsInElision(block.file, of: fileWords, in: file),
                   !endsInElision(block.stream, of: streamWords, in: stream) else { return nil }
             guard !streamWords[block.stream].contains(where: { protectedKeys.contains($0.key) }),
@@ -258,9 +258,10 @@ public enum CorrectionPatch {
 
     /// Là où les deux écoutes diffèrent d'un seul petit mot (« envoie-le » dans la Transcription, « envoie-lui » dans
     /// l'autre écoute), le texte garde l'un des deux, jamais un troisième que personne n'a entendu. Le 28 octobre 2026,
-    /// la correction a « accordé » le mot de la Transcription avec « la réponse » et écrit « envoie-la » ; la consigne,
+    /// la correction a « accordé » le mot de la Transcription avec un nom féminin de la phrase et écrit « envoie-la » ; la consigne,
     /// même explicite, ne l'en empêchait pas. En le changeant, elle l'a écarté : le mot de l'autre écoute prend sa place.
-    /// Seulement à un endroit sûr : mêmes voisins que dans la Transcription, une seule place possible, pas d'élision.
+    /// La correction peut aussi fusionner les deux (« envoie-la-lui ») : seul le mot entendu reste. Seulement à un
+    /// endroit sûr : mêmes voisins que dans la Transcription, une seule place possible, pas d'élision.
     public static func keepHeardWord(corrected: String, transcript: String, alternative: String) -> String {
         let file = words(in: transcript), stream = words(in: alternative), written = words(in: corrected)
         guard let blocks = blocks(stream, file) else { return corrected }
@@ -272,17 +273,25 @@ public enum CorrectionPatch {
                   !endsInElision(block.file, of: file, in: transcript) else { continue }
             let before = block.file.lowerBound > 0 ? file[block.file.lowerBound - 1].key : nil
             let after = block.file.upperBound < file.count ? file[block.file.upperBound].key : nil
-            let slots = written.indices.filter { index in
-                let fitsBefore = before.map { index > 0 && written[index - 1].key == $0 } ?? (index == 0)
-                let fitsAfter = after.map { index + 1 < written.count && written[index + 1].key == $0 } ?? (index == written.count - 1)
-                return fitsBefore && fitsAfter
+            // Place des petits mots écrits entre les mêmes voisins : un ou deux mots (« envoie-la-lui » fusionne les deux
+            // écoutes en ajoutant « la », que personne n'a dit).
+            var regions: [Range<Int>] = []
+            for start in written.indices where before.map({ start > 0 && written[start - 1].key == $0 }) ?? (start == 0) {
+                for end in (start + 1)...min(start + 2, written.count)
+                where after.map({ end < written.count && written[end].key == $0 }) ?? (end == written.count) {
+                    regions.append(start..<end)
+                }
             }
-            guard slots.count == 1 else { continue }
-            let slot = slots[0]
-            let chosen = written[slot]
-            guard functionWords.contains(chosen.key), chosen.key != saidLive.key, chosen.key != saidFile.key,
-                  !endsInElision(slot..<(slot + 1), of: written, in: corrected) else { continue }
-            replacements.append((chosen.range, matchCase(String(alternative[saidLive.range]), like: String(corrected[chosen.range]))))
+            guard regions.count == 1, let region = regions.first else { continue }
+            let keys = written[region].map(\.key)
+            guard keys.allSatisfy(functionWords.contains), keys != [saidLive.key], keys != [saidFile.key],
+                  !endsInElision(region, of: written, in: corrected) else { continue }
+            let hasLive = keys.contains(saidLive.key), hasFile = keys.contains(saidFile.key)
+            guard !(hasLive && hasFile) else { continue }
+            // Le mot entendu déjà présent reste seul ; sinon celui de l'autre écoute, que la correction n'a pas écarté.
+            let kept = hasFile ? String(transcript[saidFile.range]) : String(alternative[saidLive.range])
+            let span = written[region.lowerBound].range.lowerBound..<written[region.upperBound - 1].range.upperBound
+            replacements.append((span, matchCase(kept, like: String(corrected[written[region.lowerBound].range]))))
         }
         var result = corrected
         for replacement in replacements.sorted(by: { $0.range.lowerBound > $1.range.lowerBound }) {

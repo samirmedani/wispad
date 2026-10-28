@@ -22,6 +22,9 @@ avant d'ajouter un fournisseur, un réglage ou un écran.
 - Tests visuels uniquement hors écran (`--design-preview --offscreen`, `--bubble-gallery`). `--bubble-probe` pose
   de vraies fenêtres derrière celle du premier plan, visibles à travers une fenêtre translucide : jamais pendant que
   quelqu'un se sert du Mac.
+- Exemples inventés seulement, partout (code, tests, bancs, docs, CHANGELOG, notes de version, PR, commits) : jamais
+  une phrase dictée ou écrite par un utilisateur ou le mainteneur, même pour illustrer un bug réel. Reproduire la même
+  erreur dans une phrase neutre ; une paire de mots mal entendus (« mots » → « mope ») suffit souvent.
 - Aucune donnée personnelle dans le dépôt : ni nom, e-mail, chemin de machine, serveur, identifiant d'équipe Apple
   (il va dans `Signing.local.xcconfig`, ignoré par Git), ni enregistrement de voix.
 

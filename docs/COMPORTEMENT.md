@@ -392,7 +392,7 @@ Toujours chez un fournisseur, au choix dans Fournisseurs › Modèles (étape 1)
   la correction du flux, sans second appel, si elle est déjà prête ou si elle finit avant la correction complète du
   fichier, lancée aussitôt sans attendre 0,3 s une correction obsolète. Pas de report, et la correction complète
   choisit entre les deux écoutes vu la phrase, quand le fichier écrit en chiffres ce que le flux disait en lettres
-  (« un deuxième abonnement » → « 1/2 abonnement »), met un mot que l'orthographe de macOS ne connaît pas dans la
+  (« un deuxième billet » → « 1/2 billet »), met un mot que l'orthographe de macOS ne connaît pas dans la
   langue de la dictée à la place de mots qu'elle connaît (« des mots » → « des mope » ; dictionnaire et vocabulaire
   technique comptent comme connus), ou quand un mot à reporter est coupé par une apostrophe (« tu as » / « t'as »,
   qui donnait « t as ») ;
@@ -512,8 +512,8 @@ Le micro standard, réglage coupé, ne change pas.
   règle : il faut que le contexte le confirme.
   Un terme technique anglais dit avec l'accent français ressort souvent en mots français qui ne veulent rien dire
   ensemble : quand le sujet (la phrase, la conversation visible, les dictées précédentes) appelle un terme anglais qui
-  se prononce presque pareil, la correction l'écrit, même hors du vocabulaire intégré : « les versions habilitée RAID
-  d'un modèle » → « les versions abliterated d'un modèle », « entraîner un l'aura » → « entraîner un LoRA ». Le terme
+  se prononce presque pareil, la correction l'écrit, même hors du vocabulaire intégré : « habilitée RAID » → « abliterated »
+  dans une phrase sur les modèles d'IA, « entraîner un l'aura » → « entraîner un LoRA ». Le terme
   doit sonner comme les mots transcrits, jamais un mot du contexte qui ne leur ressemble pas. Une phrase française
   qui a un sens garde ses mots (« les personnes habilitées », « un RAID 5 », « une aura incroyable »).
 - **Tics et répétitions** : répétitions inutiles et tics répétés retirés (« par exemple, par exemple », « genre »,
@@ -578,10 +578,11 @@ Après la correction, `FidelityGuard` rejette ou répare :
 - un mot traduit (« outils » → « tools ») : le mot entendu est remis ;
 - là où les deux écoutes diffèrent d'un seul petit mot (pronom, article, déterminant : « envoie-le » dans le fichier,
   « envoie-lui » en direct), un troisième que personne n'a entendu (« envoie-la », pour accorder la phrase) : le mot
-  de l'autre écoute le remplace, seulement à une place que les mêmes voisins désignent sans ambiguïté ;
+  de l'autre écoute le remplace ; la fusion des deux (« envoie-la-lui ») garde le seul mot entendu. Seulement à une
+  place que les mêmes voisins désignent sans ambiguïté ;
 - un mot repris du contexte (page visible, texte voisin, dictées précédentes) à la place de mots dits qui ne lui
   ressemblent pas à l'oreille, d'au moins cinq lettres et absent de ce qui a été dit : les mots entendus sont remis
-  (« les versions habilitée RAID » ne devient pas « les versions quantifiées », mot de la page). Une correction
+  (« habilitée RAID » ne devient pas « quantifiées », mot de la page). Une correction
   d'écoute confirmée par le contexte reste (« le mer » → « le maire », « v le bas » → « vers le bas ») ;
 - une marque, un nom ou une référence absents de ce qui a été dit et qui ne lui ressemblent pas à l'oreille, même
   mis entre guillemets ;
@@ -609,9 +610,9 @@ dite (en chiffres, en lettres, « twenty twenty-six » ou sur deux chiffres) est
 novembre » → « 03/11/2026 » devient « 03/11 ».
 
 - Pourcentage perdu : un pourcentage dit (« cent pour cent », « 15 % », « fifteen percent ») dont la correction a
-  gardé le nombre sans le « % » le retrouve (« sûr à 100 » → « sûr à 100 % »), au format choisi. Seulement quand
+  gardé le nombre sans le « % » le retrouve (« fiable à 100 » → « fiable à 100 % »), au format choisi. Seulement quand
   chaque nombre en cause revient autant de fois dans la correction que dans ce qui a été dit : seule l'occurrence qui
-  suivait « pour cent » reçoit le signe (« 100 € et sûr à 100 » → « 100 € et sûr à 100 % »). Un nombre changé,
+  suivait « pour cent » reçoit le signe (« 100 € et fiable à 100 » → « 100 € et fiable à 100 % »). Un nombre changé,
   reformulé ou écrit en lettres laisse le texte tel quel ; « pour cent euros » n'est pas un pourcentage.
 ## Franglais technique
 
@@ -731,7 +732,7 @@ Réglages › Mise en forme : **Montants et unités** (symboles, par défaut, ou
   entendu corrigé à la main (« Sidance » → « Seedance ») est jugé : marque, nom, sigle ou jargon seulement. Avec
   une clé TypeSafe, Jev le note d'abord et tranche les cas nets ; le modèle de correction décide des autres (et
   de tous sans clé TypeSafe). Sans réponse du modèle de correction, la note de Jev suffit.
-- Les termes retenus sont ajoutés, puis une ligne discrète les présente ensemble, comme « Collé » (« « Vinted » ajouté
+- Les termes retenus sont ajoutés, puis une ligne discrète les présente ensemble, comme « Collé » (« « Figma » ajouté
   au dictionnaire », jusqu'à trois mots, 5 s, sans prendre le focus). « Voir » ouvre leur section dans le
   dictionnaire ; « Retirer » retire le groupe affiché et mémorise le refus. Sans réponse ou avec ✕, les termes restent.
   Le décompte se suspend au survol et une nouvelle dictée passe toujours avant la bulle, qui revient ensuite.

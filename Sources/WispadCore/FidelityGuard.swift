@@ -46,8 +46,8 @@ public enum FidelityGuard {
     }
 
     /// Un pourcentage dit (« cent pour cent », « 15 % », « fifteen percent ») dont la correction a gardé le nombre
-    /// mais perdu le « % » le retrouve : « je suis sûr à 100 » → « je suis sûr à 100% », que la mise en forme des
-    /// nombres écrit ensuite au format choisi. Le 28 octobre 2026, « sûr à cent pour cent » est devenu « sûr à 100 ».
+    /// mais perdu le « % » le retrouve : « c'est fiable à 100 » → « c'est fiable à 100% », que la mise en forme des
+    /// nombres écrit ensuite au format choisi. Le 28 octobre 2026, un « cent pour cent » dicté est devenu « 100 ».
     /// Seulement quand chaque nombre en cause apparaît autant de fois dans la correction que dans ce qui a été dit :
     /// les occurrences se suivent alors dans le même ordre, et seule celle qui suivait « pour cent » reçoit le signe.
     /// Un nombre réécrit, changé ou mis en lettres laisse le texte tel quel.
@@ -539,8 +539,8 @@ public enum FidelityGuard {
 
     /// Mots écrits à la place de mots entendus, repris du contexte (texte voisin, page visible, dictées précédentes) et
     /// qui ne leur ressemblent pas à l'oreille : une substitution, pas une correction d'écoute. Le 28 octobre 2026, sur
-    /// une page qui parlait de modèles, « les versions habilitée RAID » (abliterated, dit avec l'accent) est devenu
-    /// « les versions quantifiées », mot de la page. Seulement des mots d'au moins cinq lettres, absents de ce qui a été
+    /// une page qui parlait de modèles, « habilitée RAID » (abliterated, dit avec l'accent) est devenu « quantifiées »,
+    /// mot de la page. Seulement des mots d'au moins cinq lettres, absents de ce qui a été
     /// dit : les petits mots courants (« sans », « vers », « hein ») suivent leurs propres règles, comme un mot coupé
     /// réduit à sa première lettre (« v le bas » → « vers le bas ») et les nombres.
     private static func takenFromContext(_ hunk: CorrectionLearner.Hunk, said: Set<String>, context: () -> Set<String>) -> Bool {
