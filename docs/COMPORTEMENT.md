@@ -596,6 +596,10 @@ Après la correction, `FidelityGuard` rejette ou répare :
   mot. La transcription est collée. Une correction courte faite de mots dits (« … non, oublie tout, écris juste
   merci » → « Merci. ») et des nombres mis en forme (« vingt-quatre octobre » → « 24/10 ») restent ;
 - un mot traduit (« outils » → « tools ») : le mot entendu est remis ;
+- un groupe de un à trois mots ordinaires supprimé à l'intérieur de la phrase : la transcription est conservée,
+  même si un ajout ailleurs compense le nombre de mots. Les hésitations explicites, répétitions et reprises
+  orales restent permises. Une commande de ponctuation ou une liaison de liste ne s'efface que si sa mise en
+  forme est réellement présente à cet endroit ; les nombres et pourcentages gardent leurs conversions ;
 - là où les deux écoutes diffèrent d'un seul petit mot (pronom, article, déterminant : « envoie-le » dans le fichier,
   « envoie-lui » en direct), un troisième que personne n'a entendu (« envoie-la », pour accorder la phrase) : le mot
   de l'autre écoute le remplace ; la fusion des deux (« envoie-la-lui ») garde le seul mot entendu. Seulement à une

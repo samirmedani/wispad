@@ -5,9 +5,11 @@ est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
 ## 0.6.9 — 30 octobre 2026
 
-Protège les fins de mots à l'arrêt de la dictée.
+Préserve les mots dictés et les fins de voix.
 
 **Corrigé**
+- Une correction ne peut plus supprimer un petit groupe de mots ordinaires au milieu d'une phrase. Les
+  hésitations explicites, répétitions, reprises orales et commandes de mise en forme gardent leur traitement.
 - Si la voix est encore présente au relâchement, le micro garde les derniers paquets avant de terminer le flux
   et le fichier, jusqu'au silence constaté et pendant 180 ms au maximum. Une pause déjà silencieuse n'ajoute
   aucune attente. Cela évite la fermeture immédiate en pleine syllabe, notamment sur les dictées très courtes.
