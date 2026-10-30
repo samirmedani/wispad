@@ -2892,6 +2892,45 @@ struct InsertionFailureTests {
     }
 }
 
+/// La destination peut être choisie après le début de l'écoute : l'historique et l'apprentissage la suivent.
+@MainActor
+struct ChosenDictationDestinationTests {
+    @Test(arguments: [true, false])
+    func historyAndLearningUseTheChosenDestination(knownApp: Bool) async throws {
+        let origin = DictationContext()
+        origin.pid = 4_242
+        origin.appName = "Navigateur fictif"
+        origin.bundleID = "com.example.fictif.navigateur"
+        let app = knownApp ? "Éditeur fictif" : nil
+        let bundle = knownApp ? "com.example.fictif.editeur" : nil
+        var corrections = 0
+        let f = try Fixture {
+            $0.captureContext = { (origin, Task { nil }) }
+            $0.clean = { text, _, _, _ in corrections += 1; return CleanupOutcome(text: text) }
+            $0.insert = { _, context, allowed, sent in
+                guard allowed() else { return .cancelled }
+                context.pid = 5_151
+                context.appName = app
+                context.bundleID = bundle
+                sent()
+                return .inserted
+            }
+        }
+        defer { f.dispose() }
+        f.model.overlay.displaysPanel = false
+        await f.model.coordinator.begin(.toggle)
+        await f.model.coordinator.end()
+        let record = try #require(f.model.history.first)
+        #expect(record.finalText == "Phrase de test.")
+        #expect(record.insertionStatus == InsertionStatus.inserted.rawValue)
+        #expect(record.targetApp == app)
+        #expect(record.targetBundle == bundle)
+        #expect(record.usageCategory == UsageClassifier.classify(bundleIdentifier: bundle, appName: app).rawValue)
+        #expect(f.watches.first?.1 == 5_151)
+        #expect(corrections == 1)
+    }
+}
+
 /// « Coller la dernière dictée » : même collage qu'une dictée, même message sans champ.
 @MainActor
 struct PasteLastDictationTests {

@@ -75,6 +75,7 @@ struct InsertionSystem {
     var trusted: () -> Bool = { PermissionCenter.accessibilityTrusted(prompt: false) }
     var frontmostPID: () -> pid_t? = { NSWorkspace.shared.frontmostApplication?.processIdentifier }
     var bundleID: (pid_t) -> String? = { NSRunningApplication(processIdentifier: $0)?.bundleIdentifier }
+    var appName: (pid_t) -> String? = { NSRunningApplication(processIdentifier: $0)?.localizedName }
     var secureInput: () -> Bool = { IsSecureEventInputEnabled() }
     /// App qui tient la saisie sécurisée de macOS (champ de mot de passe, gestionnaire de mots de passe…), nil si
     /// macOS ne le dit pas. Demandée par un outil en ligne de commande, elle est attribuée à l'app au premier plan
@@ -158,7 +159,13 @@ enum TextInserter {
             context.accessibilityRefused = true
             return .failed
         }
-        guard let pid = context.pid ?? system.frontmostPID(), system.frontmostPID() == pid else {
+        let frontmost = system.frontmostPID()
+        // Sans champ au départ, l'utilisateur peut choisir sa destination pendant la dictée ou sa finition.
+        // Un champ reconnu ou une sélection reste lié à son app : jamais de réécriture envoyée ailleurs.
+        let followsFocus = !context.startedInTextField
+            && context.selectedText?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false
+        let target = followsFocus ? frontmost : context.pid ?? frontmost
+        guard let pid = target, frontmost == pid else {
             // Ne pas réactiver une ancienne app pendant que l'utilisateur écrit ailleurs.
             log.notice("collage retenu : app cible plus au premier plan")
             return .noTarget
@@ -181,6 +188,12 @@ enum TextInserter {
         let field = await system.read(pid)
         guard shouldProceed(), !Task.isCancelled else { return .cancelled }
         guard system.frontmostPID() == pid else { return .noTarget }
+        if context.pid != pid {
+            // L'historique et l'apprentissage doivent viser l'app réellement choisie, pas celle du démarrage.
+            context.pid = pid
+            context.bundleID = bundle
+            context.appName = system.appName(pid)
+        }
         guard !field.isSecure, !Self.secureInputBlocks(target: pid, field: field, system: system) else { return .refusedSecure }
         let kind = field.kind(bundleID: bundle)
         guard kind != .notText else { return .noTarget }

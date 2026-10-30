@@ -877,7 +877,14 @@ final class DictationCoordinator {
             model.reloadHistory()
             return
         }
-        model.persist("statut d'une dictée") { try model.store.updateStatus(id: record.id, status: status.rawValue) }
+        model.persist("statut d'une dictée") {
+            try model.store.updateDelivery(
+                id: record.id, status: status.rawValue,
+                targetApp: context.appName, targetBundle: context.bundleID,
+                usageCategory: UsageClassifier.classify(bundleIdentifier: context.bundleID, appName: context.appName).rawValue,
+                preserveUnknownTarget: false
+            )
+        }
         applyRetention(recordID: record.id, url: url, status: status, model: model)
         model.reloadHistory()
         LatencyLog.append(

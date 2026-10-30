@@ -947,7 +947,14 @@ Wispad relit ces autorisations sans jamais les redemander : une demande de macOS
   collage, qui n'attendait que 0,8 s. Toujours tenue au bout des 5 s : aucun ⌘V, la carte « Texte prêt » nomme la
   touche (« Touche ⇧ maintenue ») et Coller la colle d'un clic. Échap pendant l'attente annule la
   dictée.
-- Une app qui a perdu le premier plan n'est pas réactivée de force : la bulle propose de récupérer le texte.
+- Dictée commencée dans un champ ou sur une sélection : si son app perd le premier plan, elle n'est pas réactivée
+  de force ; la bulle propose de récupérer le texte.
+- Dictée commencée sans champ de texte reconnu ni sélection : on peut ensuite placer le curseur dans une autre
+  app, pendant l'écoute ou la finition. Le collage choisit alors l'app au premier plan et relit son champ avec les
+  mêmes contrôles (accessibilité, champ sécurisé, touches relâchées). Une fois la destination choisie, un nouveau
+  changement d'app pendant ces contrôles retient le collage. L'historique et l'apprentissage suivent la destination
+  choisie. Un champ de texte ou une sélection présents au départ restent liés à leur app ; elle n'est jamais
+  réactivée de force. Aucun appel de correction ni délai d'attente supplémentaire.
 - Lectures d'accessibilité bornées au collage : champ actif 0,3 s avant ⌘V, confirmation 1 s après. Une app qui
   construit encore son arbre (Chrome à la première dictée) ne retarde ni le texte ni la dictée suivante.
   Le focus est relu pendant la confirmation, y compris si le composant web a recréé son champ. La valeur attendue

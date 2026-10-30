@@ -387,12 +387,14 @@ public final class HistoryStore: @unchecked Sendable {
     }
 
     /// Dictée livrée plus tard (« Coller la dernière dictée ») : nouveau statut et app où elle a été collée.
-    /// Une app inconnue (nil) laisse celle déjà enregistrée.
-    public func updateDelivery(id: String, status: String, targetApp: String?, targetBundle: String?, usageCategory: String?) throws {
+    /// Une app inconnue (nil) laisse celle déjà enregistrée, sauf si la destination a explicitement changé.
+    public func updateDelivery(id: String, status: String, targetApp: String?, targetBundle: String?, usageCategory: String?,
+                               preserveUnknownTarget: Bool = true) throws {
         try run(
             """
-            UPDATE dictations SET insertion_status = ?, target_app = COALESCE(?, target_app),
-                target_bundle = COALESCE(?, target_bundle), usage_category = COALESCE(?, usage_category)
+            UPDATE dictations SET insertion_status = ?, target_app = \(preserveUnknownTarget ? "COALESCE(?, target_app)" : "?"),
+                target_bundle = \(preserveUnknownTarget ? "COALESCE(?, target_bundle)" : "?"),
+                usage_category = \(preserveUnknownTarget ? "COALESCE(?, usage_category)" : "?")
             WHERE id = ?;
             """
         ) { statement in
