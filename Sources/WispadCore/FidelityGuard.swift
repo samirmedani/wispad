@@ -41,6 +41,7 @@ public enum FidelityGuard {
         // Une transcription sans mot (« … ») dont la réponse n'était qu'une référence inventée : rien ne resterait à coller.
         if dated.allSatisfy(\.isWhitespace) { return transcript }
         let percents = restoreDroppedPercents(heard: transcript, corrected: dated)
+        if dropsShortInternalWords(heard: heard, corrected: percents) { return transcript }
         guard let alternative, !alternative.isEmpty else { return percents }
         return CorrectionPatch.keepHeardWord(corrected: percents, transcript: transcript, alternative: alternative)
     }
@@ -144,6 +145,121 @@ public enum FidelityGuard {
 
     /// Une dictée de trois mots au plus n'offre aucun contexte au modèle : il ne peut qu'y deviner.
     static let shortDictationWords = 3
+
+    /// Une nuance ou un petit complément interne ne devient pas une hésitation parce que la phrase reste lisible
+    /// sans lui. Ne juger que les suppressions pures de 1 à 3 mots, entre deux mots retenus ; les remplacements
+    /// (accords, dates, nombres…) continuent de suivre leurs contrôles habituels.
+    static func dropsShortInternalWords(heard: [String], corrected: String) -> Bool {
+        let said = spokenWords(heard).map(\.key)
+        let located = locatedWords(in: corrected).filter { isWord($0.text) }
+        let written = spokenWords(located.map(\.text)).map(\.key)
+        guard said != written else { return false }
+        for hunk in CorrectionLearner.replacements(said, written, oneSided: true)
+        where hunk.newWords.isEmpty && (1...3).contains(hunk.oldWords.count)
+            && hunk.oldStart > 0 && hunk.oldEnd < said.count {
+            let removed = hunk.oldWords
+            if removed.allSatisfy(TranscriptEquivalence.fillers.contains) { continue }
+            if repeatsNominalSubject(removed, at: hunk.oldStart, heard: said) { continue }
+            if let repeated = removed.first, removed.allSatisfy({ $0 == repeated }),
+               said[hunk.oldStart - 1] == repeated || said[hunk.oldEnd] == repeated { continue }
+            // Bégaiement ou répétition immédiatement voisine : garder une seule occurrence.
+            let count = removed.count
+            if hunk.oldStart >= count,
+               said[(hunk.oldStart - count)..<hunk.oldStart].elementsEqual(removed) { continue }
+            if hunk.oldEnd + count <= said.count,
+               said[hunk.oldEnd..<(hunk.oldEnd + count)].elementsEqual(removed) { continue }
+            if repeatedTics.contains(removed), said.indices.filter({ start in
+                start + count <= said.count && said[start..<(start + count)].elementsEqual(removed)
+            }).count > 1 { continue }
+            // Une reprise retire la valeur remplacée ET sa marque ; « enfin » ou « plutôt » seuls restent une nuance.
+            if removed.dropFirst().contains(where: correctionCues.contains) { continue }
+            if correctionPhrases.contains(where: { removed.suffix($0.count).elementsEqual($0) }) { continue }
+            if rendersFormatting(removed, at: hunk.newStart, written: located, corrected: corrected) { continue }
+            return true
+        }
+        return false
+    }
+
+    /// Dislocation orale très bornée (« le voyant il est vert », « les deux premières rangées elles sont vides »).
+    /// Le pronom doit reprendre un groupe déterminant + nombre/ordinal facultatifs + nom, juste avant est/sont.
+    private static func repeatsNominalSubject(_ removed: [String], at offset: Int, heard: [String]) -> Bool {
+        guard removed.count == 1, let pronoun = removed.first, let forms = repeatedSubjects[pronoun],
+              offset + 1 < heard.count, heard[offset + 1] == forms.verb, offset >= 2 else { return false }
+        let noun = heard[offset - 1]
+        guard noun.contains(where: \.isLetter), !subjectStops.contains(noun) else { return false }
+        for length in 2...min(4, offset) {
+            let start = offset - length
+            guard forms.determiners.contains(heard[start]),
+                  start == 0 || !subjectClitics.contains(heard[start - 1]) else { continue }
+            let modifiers = Array(heard[(start + 1)..<(offset - 1)])
+            if modifiers.isEmpty { return true }
+            if modifiers.count == 1, isSubjectNumber(modifiers[0]) || subjectOrdinals.contains(modifiers[0]) { return true }
+            if modifiers.count == 2, isSubjectNumber(modifiers[0]), subjectOrdinals.contains(modifiers[1]) { return true }
+        }
+        return false
+    }
+
+    private static func isSubjectNumber(_ word: String) -> Bool {
+        Int(word) != nil || SpokenNumbers.parse([word], from: 0)?.next == 1
+    }
+
+    private static let repeatedSubjects: [String: (verb: String, determiners: Set<String>)] = [
+        "il": ("est", ["le", "un", "ce", "cet", "mon", "ton", "son", "notre", "votre", "leur"]),
+        "elle": ("est", ["la", "une", "cette", "ma", "ta", "sa", "notre", "votre", "leur"]),
+        "ils": ("sont", ["les", "des", "ces", "mes", "tes", "ses", "nos", "vos", "leurs"]),
+        "elles": ("sont", ["les", "des", "ces", "mes", "tes", "ses", "nos", "vos", "leurs"])
+    ]
+    private static let subjectClitics: Set<String> = ["je", "tu", "il", "elle", "ils", "elles", "nous", "vous", "me", "te", "se", "ne"]
+    private static let subjectStops = CorrectionPatch.functionWords.union(subjectClitics).union([
+        "et", "ou", "mais", "donc", "car", "que", "qui", "si", "est", "sont", "a", "ont", "pas", "plus", "sans", "avec"
+    ])
+    private static let subjectOrdinals: Set<String> = [
+        "premier", "premiere", "premiers", "premieres", "deuxieme", "deuxiemes", "troisieme", "troisiemes",
+        "quatrieme", "quatriemes", "cinquieme", "cinquiemes", "sixieme", "sixiemes"
+    ]
+
+    private static let correctionCues: Set<String> = [
+        "non", "pardon", "enfin", "plutot", "attends", "no", "sorry", "rather", "actually"
+    ]
+    private static let correctionPhrases = [
+        "je veux dire", "en fait non", "i mean", "no wait", "or rather", "scratch that"
+    ].map { $0.split(separator: " ").map(String.init) }
+    private static let repeatedTics = ["genre", "en fait", "tu vois", "like", "you know"]
+        .map { $0.split(separator: " ").map(String.init) }
+
+    /// Le marqueur oral a bien reçu sa représentation écrite : pas d'exception globale pour une dictée en liste.
+    private static func rendersFormatting(_ removed: [String], at gap: Int, written: [LocatedWord], corrected: String) -> Bool {
+        let phrase = removed.joined(separator: " ")
+        if corrected.contains(where: \.isNewline) {
+            if breakPhrases.contains(phrase) { return true }
+            if listMarker.firstMatch(in: phrase, range: NSRange(phrase.startIndex..., in: phrase)) != nil { return true }
+        }
+        let ns = corrected as NSString
+        let start = gap > 0 && gap <= written.count ? NSMaxRange(written[gap - 1].range) : 0
+        let end = gap < written.count ? written[gap].range.location : ns.length
+        let between = ns.substring(with: NSRange(location: start, length: max(0, end - start)))
+        if removed.allSatisfy(listLinks.contains),
+           listBoundary.firstMatch(in: between, range: NSRange(between.startIndex..., in: between)) != nil { return true }
+        guard let mark = punctuationPhrases[phrase] else { return false }
+        // La ponctuation doit être à la place de la commande, pas seulement ailleurs dans le texte.
+        let before = gap > 0 && gap <= written.count ? written[gap - 1].text : ""
+        let after = gap < written.count ? written[gap].text : ""
+        return punctuationSuffix(before).contains(mark) || punctuationPrefix(after).contains(mark) || between.contains(mark)
+    }
+
+    private static let breakPhrases: Set<String> = [
+        "a la ligne", "nouveau paragraphe", "nouvelle ligne", "new paragraph", "new line"
+    ]
+    private static let listLinks: Set<String> = ["et", "and", "puis", "then", "aussi", "also"]
+    private static let listBoundary = try! NSRegularExpression(pattern: #"\n[ \t]*(?:[-*•]|[0-9]+[.)])[ \t]+$"#)
+    private static let punctuationPhrases: [String: Character] = [
+        "virgule": ",", "point": ".", "point virgule": ";", "deux points": ":",
+        "point dinterrogation": "?", "point dexclamation": "!", "comma": ",", "period": ".",
+        "full stop": ".", "semicolon": ";", "colon": ":", "question mark": "?", "exclamation mark": "!",
+        "pour cent": "%", "pour cents": "%", "pourcent": "%", "pourcents": "%", "percent": "%", "per cent": "%"
+    ]
+    private static let listMarker = try! NSRegularExpression(pattern:
+        #"^(?:(?:premier|premiere|deuxieme|second|seconde|troisieme|quatrieme|cinquieme|sixieme|septieme|huitieme|neuvieme|dixieme) (?:puce|point)|(?:premierement|deuxiemement|troisiemement|quatriemement|cinquiemement|sixiemement|septiemement|huitiemement|neuviemement|dixiemement)|(?:first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth) (?:bullet|point)|firstly|secondly|thirdly|fourthly|fifthly)$"#)
 
     /// À partir de ce nombre de mots dits, on peut juger qu'une correction a perdu la dictée.
     static let judgedDictationWords = 8

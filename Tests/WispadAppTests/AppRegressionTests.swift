@@ -27,6 +27,16 @@ private final class FakeAudio: AudioRecording, @unchecked Sendable {
     /// Redémarrage retenu jusqu'à sa résolution (moteur neuf qui ne rend pas la main).
     @Guarded var restartGate: AsyncResult<Void>?
     @Guarded var abandoned = 0
+    @Guarded var needsVoiceTail = false
+    @Guarded var tails = 0
+    @Guarded var stops = 0
+    let tailRelease = AsyncResult<Void>()
+    func finishVoiceTail() async {
+        tails += 1
+        await withTaskCancellationHandler {
+            try? await tailRelease.value()
+        } onCancel: { tailRelease.resolve(.success(())) }
+    }
     func start(directory: URL) async throws -> URL {
         starts += 1
         onStarting?()
@@ -41,6 +51,7 @@ private final class FakeAudio: AudioRecording, @unchecked Sendable {
         return url
     }
     func stop() -> (url: URL?, duration: Double) {
+        stops += 1
         isRunning = false
         return (url, duration)
     }
@@ -258,6 +269,7 @@ private final class Fixture {
     }
 
     func dispose() {
+        audio.tailRelease.resolve(.success(()))
         model.coordinator.cancel()
         try? FileManager.default.removeItem(at: directory)
     }
@@ -2889,6 +2901,88 @@ struct InsertionFailureTests {
         #expect(image.size.height > OverlayLayout.pillHeight)
         #expect(image.size.height <= OverlayLayout.panelSize.height - 20)
         #expect(image.size.width <= OverlayLayout.panelSize.width - 40)
+    }
+}
+
+/// Le dernier paquet de voix doit atteindre le flux et le fichier avant leur finalisation.
+@MainActor
+@Suite(.serialized, .timeLimit(.minutes(1)))
+struct VoiceTailCoordinatorTests {
+    @Test func theLastSyllableArrivesBeforeTranscriptionStarts() async throws {
+        var cleanCalls = 0
+        var fileCalls = 0
+        let complete = "Le lac est bleu."
+        let f = try Fixture {
+            $0.transcribe = { _, _ in fileCalls += 1; return complete }
+            $0.clean = { text, _, _, _ in cleanCalls += 1; return CleanupOutcome(text: text) }
+        }
+        defer { f.dispose() }
+        f.model.overlay.displaysPanel = false
+        f.audio.needsVoiceTail = true
+        f.stream.text = "Le lac est"
+        await f.model.coordinator.begin(.toggle)
+        let ending = f.model.coordinator.endCapture()
+        #expect(await waitFor { f.audio.tails == 1 })
+        #expect(f.audio.isRunning && f.audio.stops == 0)
+        #expect(fileCalls == 0 && f.inserted == 0 && cleanCalls == 0)
+        #expect(f.model.coordinator.phase == .finishing)
+        f.stream.text = complete
+        f.audio.tailRelease.resolve(.success(()))
+        await ending?.value
+        #expect(f.audio.stops == 1)
+        #expect(f.insertedTexts == [complete])
+        #expect(cleanCalls == 1)
+    }
+
+    @Test func aSilentEndingDoesNotWaitForAnyTail() async throws {
+        let f = try Fixture(); defer { f.dispose() }
+        f.model.overlay.displaysPanel = false
+        await f.model.coordinator.begin(.toggle)
+        await f.model.coordinator.end()
+        #expect(f.audio.tails == 0 && f.audio.stops == 1 && f.inserted == 1)
+    }
+
+    @Test func cancellingTheTailCannotStopTheNextRecording() async throws {
+        let f = try Fixture(); defer { f.dispose() }
+        f.model.overlay.displaysPanel = false
+        f.audio.needsVoiceTail = true
+        await f.model.coordinator.begin(.toggle)
+        let ending = f.model.coordinator.endCapture()
+        #expect(await waitFor { f.audio.tails == 1 })
+        f.model.coordinator.cancel()
+        #expect(f.audio.stops == 1 && f.inserted == 0)
+        f.audio.needsVoiceTail = false
+        await f.model.coordinator.begin(.toggle)
+        f.audio.tailRelease.resolve(.success(()))
+        await ending?.value
+        #expect(f.audio.isRunning && f.audio.stops == 1)
+        #expect(f.model.coordinator.isListening)
+    }
+
+    @Test func aNewDictationWaitsOnlyForTheTailNotThePreviousText() async throws {
+        let correction = AsyncResult<Void>()
+        let f = try Fixture {
+            $0.clean = { text, _, _, _ in
+                try? await correction.value()
+                return CleanupOutcome(text: text)
+            }
+        }
+        defer { correction.resolve(.success(())); f.dispose() }
+        f.model.overlay.displaysPanel = false
+        f.audio.needsVoiceTail = true
+        await f.model.coordinator.begin(.toggle)
+        let ending = f.model.coordinator.endCapture()
+        #expect(await waitFor { f.audio.tails == 1 })
+        let next = Task { await f.model.coordinator.begin(.toggle) }
+        f.audio.needsVoiceTail = false
+        #expect(await waitFor { f.audio.starts == 2 })
+        await next.value
+        #expect(f.audio.starts == 2 && f.audio.stops == 1)
+        #expect(f.model.coordinator.isListening)
+        #expect(f.inserted == 0)
+        correction.resolve(.success(()))
+        await ending?.value
+        #expect(f.insertedTexts == ["Phrase de test."])
     }
 }
 

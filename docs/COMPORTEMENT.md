@@ -596,6 +596,10 @@ Après la correction, `FidelityGuard` rejette ou répare :
   mot. La transcription est collée. Une correction courte faite de mots dits (« … non, oublie tout, écris juste
   merci » → « Merci. ») et des nombres mis en forme (« vingt-quatre octobre » → « 24/10 ») restent ;
 - un mot traduit (« outils » → « tools ») : le mot entendu est remis ;
+- un groupe de un à trois mots ordinaires supprimé à l'intérieur de la phrase : la transcription est conservée,
+  même si un ajout ailleurs compense le nombre de mots. Les hésitations explicites, répétitions et reprises
+  orales restent permises. Une commande de ponctuation ou une liaison de liste ne s'efface que si sa mise en
+  forme est réellement présente à cet endroit ; les nombres et pourcentages gardent leurs conversions ;
 - là où les deux écoutes diffèrent d'un seul petit mot (pronom, article, déterminant : « envoie-le » dans le fichier,
   « envoie-lui » en direct), un troisième que personne n'a entendu (« envoie-la », pour accorder la phrase) : le mot
   de l'autre écoute le remplace ; la fusion des deux (« envoie-la-lui ») garde le seul mot entendu. Seulement à une
@@ -862,6 +866,13 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
 - Le spectre passe au vert quand un relais travaille ; la première bascule d'une panne est annoncée.
 
 ## Reprise après erreur
+
+- Fin d'écoute encore parlée : les derniers paquets micro continuent d'alimenter le flux et le fichier jusqu'à
+  30 ms de silence observé, pendant 180 ms au maximum. Sans paquet récent ou après une pause déjà silencieuse,
+  l'arrêt reste immédiat. La demande d'arrêt passe la bulle en traitement ; ses délais se mesurent dès le
+  relâchement, y compris cette protection. Une annulation ou un arrêt forcé n'attend pas la fin de voix.
+  Un nouveau geste coupe cette prolongation et attend seulement que ce micro soit fermé, jamais la transcription ou la correction
+  précédente. Aucun enregistrement simultané sur le moteur partagé, aucun appel de correction ajouté.
 
 - Erreur réseau, de clé ou de quota : l'audio reste dans l'historique ; **Retranscrire** puis **Copier**.
 - Texte qui n'a pas pu être écrit : jamais en silence. La bulle le dit dans une carte « Texte prêt à copier »

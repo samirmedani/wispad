@@ -19,6 +19,9 @@ protocol AudioRecording: AnyObject, Sendable {
     func prepareVoiceIsolation()
     func start(directory: URL) async throws -> URL
     func stop() -> (url: URL?, duration: Double)
+    /// Une fin de mot est encore en cours : garder ses derniers paquets avant de fermer le flux et le fichier.
+    var needsVoiceTail: Bool { get }
+    func finishVoiceTail() async
     /// Écoute en cours mais muette : redémarre le micro sur un moteur neuf, dans le même fichier.
     func restart() async throws
     /// Démarrage ou redémarrage trop long : la dictée ne l'attend plus. Ce qu'il a ouvert pour elle se referme
@@ -27,6 +30,8 @@ protocol AudioRecording: AnyObject, Sendable {
 }
 
 extension AudioRecording {
+    var needsVoiceTail: Bool { false }
+    func finishVoiceTail() async {}
     /// Un enregistreur sans moteur à relancer (tests) : rien à faire.
     func restart() async throws {}
     func abandonStart() {}
