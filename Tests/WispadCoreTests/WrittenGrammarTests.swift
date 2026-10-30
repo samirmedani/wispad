@@ -4,6 +4,48 @@ import Testing
 
 struct WrittenGrammarTests {
     @Test(arguments: [
+        ("Faut déplacer la caisse.", "Il faut déplacer la caisse."),
+        ("Fallait prévenir le gardien.", "Il fallait prévenir le gardien."),
+        ("Faudra vérifier le stock.", "Il faudra vérifier le stock."),
+        ("Faudrait fermer la porte.", "Il faudrait fermer la porte."),
+        ("Fallut recommencer.", "Il fallut recommencer."),
+        ("Y a une table libre.", "Il y a une table libre."),
+        ("Y avait du vent.", "Il y avait du vent."),
+        ("Y aura des visiteurs.", "Il y aura des visiteurs."),
+        ("Y aurait deux places.", "Il y aurait deux places."),
+        ("Y en a.", "Il y en a."),
+        ("Y en avait.", "Il y en avait."),
+        ("Et faut fermer la porte.", "Et il faut fermer la porte."),
+        ("On attend, mais y a du retard.", "On attend, mais il y a du retard."),
+        ("Le sol glisse ; faut marcher doucement.", "Le sol glisse ; il faut marcher doucement."),
+        ("Le sol glisse. Faut marcher doucement.", "Le sol glisse. Il faut marcher doucement."),
+        ("Une consigne : faut garder le badge.", "Une consigne : il faut garder le badge."),
+        ("\n  Faut garder le badge.\nY a du monde.", "\n  Il faut garder le badge.\nIl y a du monde."),
+        ("FAUT FERMER LA PORTE.", "IL FAUT FERMER LA PORTE."),
+        ("T'as vu ? Faut prévenir le gardien.", "T'as vu ? Il faut prévenir le gardien."),
+        ("« Gardez ce badge. » Faut prévenir le gardien.", "« Gardez ce badge. » Faut prévenir le gardien."),
+        ("« Gardez ce badge ». Faut prévenir le gardien.", "« Gardez ce badge ». Il faut prévenir le gardien."),
+    ])
+    func completesOnlyCertainImpersonalSubjects(text: String, expected: String) {
+        #expect(WrittenGrammar.completeImpersonalSubjects(text) == expected)
+        #expect(WrittenGrammar.completeImpersonalSubjects(expected) == expected)
+    }
+
+    @Test(arguments: [
+        "", "Faut", "Faut.", "Faut pas…", "Faut que", "Faut qu'il", "Faut en", "Faut le.", "Faut pas mais le bus arrive.",
+        "Y a", "Y a.", "Y a une…", "Y avait des", "Y aura pas.", "Y a-t-il un abri ?",
+        "Que faut préparer ?", "Alors que faut préparer ?", "Que fallait apporter ?", "Faut-il patienter ?",
+        "La personne y a pensé.", "Cette salle y avait sa place.", "Il faut ouvrir.", "Il y a une sortie.",
+        "Faille critique.", "La faille se ferme.", "T'as une lampe.", "J'sais où aller.",
+        "« Faut fermer. Y a du vent. »", "« Faut fermer", "\"Faut fermer.\nY a du vent.\"",
+        "‘Faut fermer.’", "'Y a du vent.'", "`Faut fermer`", "```\nFaut fermer.\n```", "~~~\nY a du vent.\n~~~",
+        "https://example.org/Faut-fermer", "faut@example.org", "« la caisse »faut déplacer.",
+    ])
+    func finishingLeavesAmbiguityFragmentsAndLiteralsUntouched(_ text: String) {
+        #expect(WrittenGrammar.completeImpersonalSubjects(text) == text)
+    }
+
+    @Test(arguments: [
         ("Faut ralentir.", "Il faut ralentir."),
         ("Faut pas traverser.", "Il ne faut pas traverser."),
         ("Fallait téléphoner.", "Il fallait téléphoner."),

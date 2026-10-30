@@ -985,6 +985,14 @@ public enum TextCleaner {
         await clean(transcript: transcript, request: request, speech: speech, enabled: enabled, transport: httpTransport)
     }
 
+    /// Finition locale d'une correction réussie (complète ou reportée depuis le flux), sans nouvelle requête.
+    /// Le ton détendu, l'anglais et le repli brut gardent leur comportement.
+    public static func completeWrittenGrammar(_ text: String, language: DictationLanguage, tone: DictationTone) -> String {
+        let resolved = language == .auto ? TranscriptLanguage.guess(text) : language
+        guard resolved == .french, tone != .casual else { return text }
+        return WrittenGrammar.completeImpersonalSubjects(text)
+    }
+
     static func clean(transcript: String, request: CorrectionRequest, speech: SpeechRequest, enabled: Bool, transport: @escaping HTTPTransport) async -> CleanupOutcome {
         if let selection = request.commandSelection {
             return await transform(selection: selection, request: request, speech: speech, enabled: enabled, transport: transport)
@@ -1029,7 +1037,8 @@ public enum TextCleaner {
                                                   english: CorrectionPrompt.language(for: request) == .english)
                 let formatted = request.structureDictation ? DictationStructure.format(numbered) : numbered
                 let settled = DictationStructure.collapseLoneItem(formatted, transcript: original)
-                return CleanupOutcome(text: settled, usage: usage, failedUsages: failed, fallback: fallback)
+                let finished = completeWrittenGrammar(settled, language: CorrectionPrompt.language(for: request), tone: request.tone)
+                return CleanupOutcome(text: finished, usage: usage, failedUsages: failed, fallback: fallback)
             } catch {
                 if isCancellation(error) { break }
                 // Délai de Wispad dépassé : l'appel coupé compte comme « pas de réponse à temps ».

@@ -1,7 +1,7 @@
 import Foundation
 
-/// Référence de comparaison, jamais un texte à insérer. Les petits mots grammaticaux nécessaires à l'écrit
-/// ne sont pas des informations inventées. Seules des constructions fermées peuvent enrichir cette référence.
+/// Grammaire écrite bornée : la référence sert uniquement au garde-fou ; la finition des sujets impersonnels
+/// est distincte et ne développe jamais les contractions ni le texte protégé.
 enum WrittenGrammar {
     /// L'autorisation ne porte que sur la grammaire reconnue : mêmes mots dans le même ordre, à un « ne/n' »
     /// près. Aucun seuil phonétique, nombre, suppression ou diff incomplet ne peut autoriser une information.
@@ -34,7 +34,72 @@ enum WrittenGrammar {
     private static let boundaries: Set<String> = [".", "!", "?", ";", ":", "\n"]
     private static let negativePartners: Set<String> = ["pas", "jamais", "rien", "personne", "aucun", "aucune", "guere", "ni"]
 
+    /// Référence de comparaison seulement, jamais un texte de repli ou un texte à insérer.
     static func reference(_ transcript: String) -> String {
+        transformingUnprotected(transcript) { fragment in
+            var result = fragment
+            for rule in rules {
+                result = rule.pattern.stringByReplacingMatches(in: result,
+                    range: NSRange(result.startIndex..<result.endIndex, in: result), withTemplate: rule.replacement)
+            }
+            return result
+        }
+    }
+
+    /// Finition locale d'une correction déjà retenue : seul le sujet impersonnel certain est ajouté.
+    /// Un fragment isolé, une interrogation introduite par « que » ou un sujet déjà présent restent tels quels.
+    static func completeImpersonalSubjects(_ text: String) -> String {
+        transformingUnprotected(text) { fragment in
+            let source = fragment as NSString
+            let result = NSMutableString(string: fragment)
+            let matches = impersonalPattern.matches(in: fragment, range: NSRange(location: 0, length: source.length))
+            for match in matches.reversed() {
+                let prefix = source.substring(with: match.range(at: 1))
+                let verbRange = match.range(at: 2)
+                let verb = source.substring(with: verbRange)
+                let after = source.substring(from: NSMaxRange(verbRange))
+                // Ni inversion (« faut-il »), ni préfixe d'un identifiant.
+                if let first = after.first, !first.isWhitespace, !clauseEnds.contains(first) { continue }
+                let hasEn = verb.range(of: #"\by\s+en\s+"#, options: [.regularExpression, .caseInsensitive]) != nil
+                guard hasEn || hasImpersonalComplement(after) else { continue }
+                let sentenceStart = prefix.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    || prefix.contains(where: { ".!?\n\r".contains($0) })
+                let allCaps = verb == verb.uppercased()
+                let subject = allCaps ? "IL " : sentenceStart ? "Il " : "il "
+                result.replaceCharacters(in: verbRange, with: subject + (allCaps ? verb : verb.lowercased()))
+            }
+            return result as String
+        }
+    }
+
+    /// Exige un complément dans la même proposition ; « faut pas… » ou « y a une… » n'en sont pas.
+    private static func hasImpersonalComplement(_ suffix: String) -> Bool {
+        guard suffix.first?.isWhitespace == true else { return false }
+        let clause = String(suffix.prefix { !clauseEnds.contains($0) })
+        let ns = clause as NSString
+        let words = complementPattern.matches(in: clause, range: NSRange(location: 0, length: ns.length))
+            .map { ns.substring(with: $0.range).lowercased() }
+        let beforeNextClause = words.prefix { !nextClauseWords.contains($0) }
+        return beforeNextClause.contains { !incompleteComplementWords.contains($0) }
+    }
+
+    private static let clauseEnds: Set<Character> = Set(".!?;:,\n\r…")
+    private static let complementPattern = try! NSRegularExpression(pattern: #"[\p{L}\p{N}]+"#)
+    private static let nextClauseWords: Set<String> = ["et", "mais", "car", "donc", "sinon"]
+    private static let incompleteComplementWords: Set<String> = [
+        "ne", "n", "pas", "plus", "moins", "encore", "toujours", "vraiment", "assez", "bien", "mieux",
+        "le", "la", "les", "l", "un", "une", "des", "du", "de", "d", "ce", "cet", "cette", "ces",
+        "mon", "ma", "mes", "ton", "ta", "tes", "son", "sa", "ses", "notre", "nos", "votre", "vos", "leur", "leurs",
+        "me", "m", "te", "t", "se", "s", "lui", "en", "y", "nous", "vous", "je", "j", "tu", "il", "elle", "ils", "elles",
+        "que", "qu", "qui", "si", "à", "au", "aux", "pour", "avec", "sans", "dans", "sur", "sous", "ou", "ni",
+    ]
+    // « que » est volontairement absent : « Que faut préparer ? » n'a pas un sujet omis à compléter ici.
+    private static let impersonalPattern = try! NSRegularExpression(
+        pattern: #"(^[\t ]*|[.!?;:,\n\r][\t ]*|\b(?:et|mais|car|donc|sinon)[\t ]+)(faut|fallait|faudra|faudrait|fallut|y[\t ]+(?:en[\t ]+)?(?:a|avait|aura|aurait|ait))\b"#,
+        options: .caseInsensitive)
+
+    /// Les deux usages partagent les mêmes frontières de citations, de code et d'adresses.
+    private static func transformingUnprotected(_ transcript: String, transform: (String) -> String) -> String {
         let ns = transcript as NSString
         let protected = protectedPattern.matches(in: transcript, range: NSRange(location: 0, length: ns.length)).map(\.range)
         let result = NSMutableString(string: transcript)
@@ -48,11 +113,7 @@ enum WrittenGrammar {
         if start < ns.length { spans.append(NSRange(location: start, length: ns.length - start)) }
         for range in spans.reversed() {
             // La fin d'une citation n'est pas un début de phrase implicite.
-            var fragment = (range.location == 0 ? "" : "x") + ns.substring(with: range)
-            for rule in rules {
-                fragment = rule.pattern.stringByReplacingMatches(in: fragment,
-                    range: NSRange(fragment.startIndex..<fragment.endIndex, in: fragment), withTemplate: rule.replacement)
-            }
+            let fragment = transform((range.location == 0 ? "" : "x") + ns.substring(with: range))
             result.replaceCharacters(in: range, with: range.location == 0 ? fragment : String(fragment.dropFirst()))
         }
         return result as String

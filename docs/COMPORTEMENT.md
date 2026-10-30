@@ -749,6 +749,12 @@ Réglages › Mise en forme : **Montants et unités** (symboles, par défaut, ou
   L'ancien choix « Comme dicté » porte désormais le libellé « Naturel », sans changer les catégories réglées.
   Le ton ne change que le registre, jamais le vocabulaire ni le sens ; le garde-fou de fidélité s'applique toujours.
   Il utilise le même appel de correction, sans nouvelle passe ni attente supplémentaire.
+  Après une correction réussie, une finition locale complète les sujets impersonnels certains restés omis, dans
+  les tons Naturel et Soigné : formes de « falloir » et « y avoir » au début d'une proposition avec complément.
+  Elle ne touche ni les citations, ni le code, ni les adresses, ni les fragments incomplets, ni une interrogation
+  telle que « Que faut préparer ? ». Même finition après le report du fichier dans une correction anticipée.
+  Le repli sans réponse du correcteur reste brut. Une reprise de quantité autour d'un nom répété n'est acceptée
+  que si la valeur finale figure réellement dans le texte rendu ; valeurs, signes et pourcentages sont comparés.
 - **Consigne sur la sélection** (Réglages › Dictée › Correction › « Réécrire la sélection sur consigne », actif par défaut) : avec du texte
   sélectionné, une dictée qui commence par une consigne d'écriture (« reformule », « traduis », « résume », « corrige »,
   « raccourcis », « rends-le… », « mets ça en… », « rewrite », « translate », « make it… ») réécrit la sélection

@@ -130,7 +130,11 @@ final class WrittenFrenchLiveTests: XCTestCase {
         var raw: String?
         var networkMs = 0.0
 
-        func begin() { calls += 1 }
+        func begin() -> Bool {
+            guard calls == 0 else { return false }
+            calls += 1
+            return true
+        }
 
         func received(_ data: Data, elapsed: Double) {
             networkMs += elapsed
@@ -168,7 +172,7 @@ final class WrittenFrenchLiveTests: XCTestCase {
                       let body = request.httpBody,
                       let object = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
                       object["model"] as? String == CleanupModel.deepSeek else { throw ProbeError.unexpectedRoute }
-                await observation.begin()
+                guard await observation.begin() else { throw ProbeError.unexpectedRoute }
                 let started = ContinuousClock.now
                 let result = try await TextCleaner.httpTransport(request)
                 await observation.received(result.0, elapsed: Self.milliseconds(started.duration(to: .now)))

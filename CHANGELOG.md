@@ -14,6 +14,10 @@ Une dictée plus cohérente à l'écrit, fidèle à ta façon de parler.
   Les citations, le code et les adresses conservent leur contenu.
 - Les phrases courtes correctement complétées ne sont plus rejetées comme des ajouts inventés. Cette autorisation
   reste limitée aux constructions reconnues : elle ne permet ni un détail ajouté ni une fin de phrase supprimée.
+- Une finition locale complète les sujets impersonnels certains que le modèle aurait laissés à l'oral,
+  aussi lorsqu'une correction anticipée reçoit les derniers mots du fichier. Le mode détendu reste préservé.
+- Une reprise de quantité avec le même nom répété garde bien sa valeur finale, sans permettre la disparition
+  d'un signe négatif ou d'un pourcentage.
 - Ces améliorations partagent la correction existante, sans nouvel appel IA, changement de modèle ni attente
   volontaire supplémentaire avant le collage. Les protections des fins de voix et du collage sont conservées.
 
