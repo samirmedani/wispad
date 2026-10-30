@@ -543,20 +543,24 @@ Le micro standard, réglage coupé, ne change pas.
   épelées, anglais, dates et heures, nombres mal entendus, mots coupés, termes anglais entendus comme des mots
   français, avec des phrases témoins qui doivent rester en français).
 - La correction ne répond jamais au contenu dicté et ne recopie jamais le contexte.
-- **Pas de correction pendant les pauses** : le flux met seulement à jour ce qui a été entendu. Une longue
-  dictée, même avec de nombreuses pauses, n'envoie jamais de texte incomplet à corriger pendant l'écoute.
-- **Préparation unique à l'arrêt** : dès le relâchement, le texte déjà entendu peut partir à la correction en
-  parallèle de la finalisation du flux et de la vérification par fichier, sans temporisation ajoutée. S'il
-  correspond au texte finalement retenu (ponctuation, casse et écriture des nombres mises à part), cette
-  correction sert telle quelle, même si le flux final avait entre-temps annoncé autre chose.
-- **Deux corrections au plus** : si la préparation ne correspond pas au texte retenu, seule une correction
-  définitive de ce texte peut s'ajouter ; jamais une troisième correction sur un flux intermédiaire. Chaque
-  correction garde ses relais habituels en cas de panne. Le fichier, l'autre écoute, le contexte et les
-  garde-fous de fidélité restent utilisés comme avant ; une correction obsolète ne retarde jamais la correction
-  définitive. Une retouche locale sûre d'un ou deux mots peut encore réutiliser une correction prête. Tous les
-  appels envoyés restent comptés, y compris ceux devenus inutiles ou annulés après l'envoi. Rien ne part si la
-  correction est désactivée ou si le Mac est hors connexion. Une dictée annulée pendant l'écoute n'a donc payé
-  aucune correction.
+- **Une seule préparation anticipée** : après un segment final du flux suivi de 0,25 seconde sans nouveau
+  texte, Wispad peut préparer la correction. Les notifications identiques ne repoussent pas cette attente. Un
+  nouveau mot avant la fin de l'attente annule seulement le timer : aucun texte périmé n'est envoyé.
+- **Préparation à l'arrêt si nécessaire** : une préparation du même texte est réutilisée. Si la parole a
+  repris après la pause et que le texte a changé, une préparation de ce texte démarre au relâchement, en parallèle
+  de la finalisation du flux et de la vérification par fichier ; aucun autre flux intermédiaire n'est corrigé.
+  Chacune des deux préparations garde son texte source : le fichier peut retrouver celle de la première pause
+  même si une autre préparation tourne déjà sur le texte de l'arrêt.
+- **Trois corrections au plus** : une anticipation à une pause, une préparation à l'arrêt seulement si le texte
+  a changé, puis une correction définitive uniquement si le fichier apporte encore un texte différent qui ne peut
+  pas réutiliser une préparation. Une dictée inchangée après la pause ne paie qu'une seule correction. Chaque
+  correction garde ses relais habituels en cas de panne. Le fichier, l'autre écoute, le contexte et les garde-fous
+  de fidélité restent utilisés comme avant ; une correction obsolète ne retarde jamais la correction définitive.
+  Une retouche locale sûre d'un ou deux mots peut encore réutiliser une correction prête. Tous les appels envoyés
+  restent comptés, même devenus inutiles ou annulés après l'envoi. Échap annule le timer et les préparations ; couper
+  la correction ou perdre la connexion empêche tout nouvel envoi. Si plusieurs longues pauses sont suivies d'une
+  reprise, aucune nouvelle anticipation ne part : le budget reste borné, avec parfois moins d'avance que l'ancienne
+  version qui payait une correction à chaque pause.
 - **Refus de paramètre** : une réponse HTTP 400 n'est réessayée que si le paramètre facultatif de raisonnement
   effectivement envoyé peut être retiré. Les deux tentatives gardent leurs coûts propres et leur attribution au
   relais ; elles forment une seule bascule, avec l'issue de la dernière tentative.

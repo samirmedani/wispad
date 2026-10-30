@@ -486,6 +486,8 @@ final class DictationCoordinator {
         capture = nil
         current.audioWatch?.cancel()
         current.microphoneAccessWatch?.cancel()
+        current.earlyPauseTask?.cancel()
+        current.earlyPauseTask = nil
         stopMeter()
         let stopped = closeMicrophone(current)
         current.pcm.close()
@@ -571,6 +573,8 @@ final class DictationCoordinator {
         current.correctionClaimed = true
         current.audioWatch?.cancel()
         current.microphoneAccessWatch?.cancel()
+        current.earlyPauseTask?.cancel()
+        current.earlyPauseTask = nil
         capture = nil
         stopMeter()
         current.startTask?.cancel()
@@ -610,6 +614,8 @@ final class DictationCoordinator {
         current.cancelled = true
         current.audioWatch?.cancel()
         current.microphoneAccessWatch?.cancel()
+        current.earlyPauseTask?.cancel()
+        current.earlyPauseTask = nil
         capture = nil
         stopMeter()
         current.startTask?.cancel()
@@ -733,7 +739,7 @@ final class DictationCoordinator {
             if model.settings.cleanupEnabled {
                 current.run.trace.timings.correctionMs = prepared.milliseconds
             }
-            if current.earlyReady?.ledger === correctionLedger { current.run.trace.earlyCorrectionUsed = true }
+            if current.earlyCorrections.contains(where: { $0.ledger === correctionLedger }) { current.run.trace.earlyCorrectionUsed = true }
         } else if alternative == nil, model.settings.cleanupEnabled,
                   let early = claimEarlyCorrection(for: transcript, current: current, model: model) {
             // Rien n'a été ajouté depuis la dernière pause : la correction préparée pendant l'écoute sert telle quelle.
@@ -749,7 +755,7 @@ final class DictationCoordinator {
             cleaned = patched.outcome
             current.run.trace.timings.correctionMs = patched.milliseconds
             current.run.trace.correctionPatched = true
-            if current.earlyReady?.ledger === correctionLedger { current.run.trace.earlyCorrectionUsed = true }
+            if current.earlyCorrections.contains(where: { $0.ledger === correctionLedger }) { current.run.trace.earlyCorrectionUsed = true }
         } else {
             // Fichier différent : la correction du flux est déjà payée, on en lance une autre sur le texte retenu
             // sans l'attendre (mesuré le 5 octobre : 1,1 s puis 1,0 s en série). Elle est comptée dès qu'elle finit,
@@ -781,7 +787,7 @@ final class DictationCoordinator {
                 cleaned = patched.outcome
                 current.run.trace.timings.correctionMs = patched.milliseconds
                 current.run.trace.correctionPatched = true
-                if current.earlyReady?.ledger === correctionLedger { current.run.trace.earlyCorrectionUsed = true }
+                if current.earlyCorrections.contains(where: { $0.ledger === correctionLedger }) { current.run.trace.earlyCorrectionUsed = true }
                 Task { @MainActor in _ = await retained.account(model: model, run: current.run) }
             } else {
                 if let correctionLedger {

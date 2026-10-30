@@ -2,27 +2,57 @@ import AppKit
 import Foundation
 import WispadCore
 
-/// Une correction peut commencer au relâchement, en parallèle de la fin des transcriptions.
-/// Les pauses pendant la parole ne lancent aucun appel : leurs textes sont encore incomplets.
+/// Une seule anticipation à une pause ; une préparation à l'arrêt si le texte a changé.
+/// Reprendre la parole ne lance jamais une série de corrections aux pauses suivantes.
 extension DictationCoordinator {
+    static let earlyCorrectionPause: TimeInterval = 0.25
+
     func wireEarlyCorrection(_ live: any SpeechStreaming, for current: Capture) {
-        let heard: @Sendable (String) -> Void = { [weak current] text in
-            Task { @MainActor in current?.latestHeard = text }
+        live.onPartial = { [weak current] text in
+            Task { @MainActor in
+                guard let current else { return }
+                Self.updateHeard(text, for: current)
+            }
         }
-        live.onPartial = heard
-        live.onSettled = heard
+        live.onSettled = { [weak self, weak current] text in
+            Task { @MainActor in
+                guard let self, let current else { return }
+                Self.updateHeard(text, for: current)
+                self.scheduleEarlyCorrection(text, for: current)
+            }
+        }
     }
 
-    /// À l'arrêt, ce que le flux a déjà affiché part aussitôt à la correction, sans attendre son texte final
-    /// (0,3 à 0,5 s sur les dictées courtes, mesuré le 13 octobre 2026). Si le texte final dit la même chose
-    /// (`TranscriptEquivalence`), la fin de dictée prend cette correction ; sinon elle est seulement comptée.
-    /// Une seule préparation par dictée ; si le texte retenu diffère, lui seul aura une autre correction.
-    /// Hors connexion, rien n'est lancé : la fin de dictée corrigera si la connexion est revenue.
-    func prepareCorrectionAtRelease(_ current: Capture) {
+    private static func updateHeard(_ text: String, for current: Capture) {
+        if current.latestHeard != text {
+            current.earlyPauseTask?.cancel()
+            current.earlyPauseTask = nil
+        }
+        current.latestHeard = text
+    }
+
+    private func scheduleEarlyCorrection(_ heard: String, for current: Capture) {
+        guard let model, model.correctionReachable, isCapturing(current), !current.correctionClaimed,
+              current.earlyReady == nil, current.earlyPauseTask == nil,
+              !heard.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        current.earlyPauseTask = Task { @MainActor [weak self, weak current] in
+            do { try await Task.sleep(for: .seconds(Self.earlyCorrectionPause)) } catch { return }
+            guard !Task.isCancelled, let self, let current, self.isCapturing(current),
+                  current.latestHeard == heard else { return }
+            // L'arrêt ou un nouveau mot ne doit plus annuler la tâche réseau réservée ci-dessous.
+            current.earlyPauseTask = nil
+            self.prepareCorrection(current, heard: heard)
+        }
+    }
+
+    /// Une seule anticipation à une pause ; une autre au relâchement uniquement si le texte a changé.
+    /// Chaque créneau est réservé avant toute lecture asynchrone du contexte.
+    private func prepareCorrection(_ current: Capture, heard: String, atRelease: Bool = false) {
         guard let model, model.correctionReachable, !current.cancelled, !current.correctionClaimed,
-              current.earlyReady == nil, let speech = current.speech else { return }
-        let text = FranglaisNormalizer.normalize(current.latestHeard.trimmingCharacters(in: .whitespacesAndNewlines))
-        guard !text.isEmpty, model.commandSelection(for: text, context: current.context) == nil else { return }
+              current.earlyCorrections.count < (atRelease ? 2 : 1), let speech = current.speech else { return }
+        let text = FranglaisNormalizer.normalize(heard.trimmingCharacters(in: .whitespacesAndNewlines))
+        guard !text.isEmpty, model.commandSelection(for: text, context: current.context) == nil,
+              !current.earlyCorrections.contains(where: { TranscriptEquivalence.equivalent($0.text, text) }) else { return }
         let task = Task { @MainActor in
             let request = await self.makeCorrectionRequest(
                 transcript: text, context: current.context, field: current.field, window: current.window, model: model
@@ -35,17 +65,23 @@ extension DictationCoordinator {
             return PreparedCorrection(outcome: outcome, milliseconds: Self.milliseconds(since: began))
         }
         let ledger = CorrectionLedger(task: task)
-        current.earlyCorrections.append(ledger)
-        current.earlyReady = (text, ledger)
+        current.earlyCorrections.append(EarlyPreparation(text: text, ledger: ledger))
         current.run.trace.earlyCorrections = current.earlyCorrections.count
+    }
+
+    /// Retrouve une préparation du même texte ou prépare le texte de l'arrêt en parallèle des transcriptions.
+    /// Une correction définitive ne s'ajoutera que si le fichier apporte encore un autre texte.
+    func prepareCorrectionAtRelease(_ current: Capture) {
+        current.earlyPauseTask?.cancel()
+        current.earlyPauseTask = nil
+        prepareCorrection(current, heard: current.latestHeard, atRelease: true)
     }
 
     /// La fin de dictée prend la préparation si son texte correspond au texte retenu, au sens de
     /// `TranscriptEquivalence`. Une préparation sur un autre texte reste comptée, sans être réutilisée à tort.
     func claimEarlyCorrection(for text: String, current: Capture, model: AppModel) -> CorrectionLedger? {
         current.correctionClaimed = true
-        let ready = current.earlyReady
-        let used = ready.flatMap { TranscriptEquivalence.equivalent($0.text, text) ? $0.ledger : nil }
+        let used = current.earlyCorrections.last { TranscriptEquivalence.equivalent($0.text, text) }?.ledger
         // Vrai seulement quand le texte collé en sort (le fichier peut encore dire autre chose).
         if !current.earlyCorrections.isEmpty, current.run.trace.earlyCorrectionUsed == nil {
             current.run.trace.earlyCorrectionUsed = false
@@ -56,7 +92,8 @@ extension DictationCoordinator {
 
     /// Compte chaque correction préparée, une seule fois, même si elle finit après le collage.
     func accountEarlyCorrections(_ current: Capture, model: AppModel, except used: CorrectionLedger? = nil, cancel: Bool = false) {
-        for ledger in current.earlyCorrections where ledger !== used {
+        for prepared in current.earlyCorrections where prepared.ledger !== used {
+            let ledger = prepared.ledger
             if cancel { ledger.task.cancel() }
             Task { @MainActor in _ = await ledger.account(model: model, run: current.run) }
         }

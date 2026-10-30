@@ -3,6 +3,14 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## En développement — 0.6.6
+
+**Corrigé**
+- Une pause finale peut de nouveau préparer le texte avant l'arrêt, pour que le collage retrouve son avance.
+  Une seule anticipation est permise par dictée ; reprendre la parole ne lance pas de série de corrections.
+  Le texte de l'arrêt peut être préparé s'il a changé, puis le fichier corrigé une dernière fois seulement s'il
+  apporte encore un autre texte : trois corrections au plus, avec les mêmes vérifications audio et garde-fous.
+
 ## En développement — 0.6.5
 
 **Corrigé**

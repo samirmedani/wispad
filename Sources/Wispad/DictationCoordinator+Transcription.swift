@@ -98,7 +98,7 @@ extension DictationCoordinator {
                     early.task.cancel()
                 }
             } else if current.earlyReady == nil {
-                // Une préparation sur un texte incomplet existe déjà : ne pas en payer une troisième
+                // Une préparation sur un texte incomplet existe déjà : ne pas payer une autre préparation
                 // sur le flux intermédiaire. La décision flux/fichier choisira la correction définitive.
                 let request = await makeCorrectionRequest(
                     transcript: normalized, context: context, field: current.field, window: current.window, model: model
@@ -134,12 +134,13 @@ extension DictationCoordinator {
             await ledger.account()
             selectVerifiedTranscript(attempt, raw: raw, streamText: streamText, streamMs: streamMs, job: job, decision: &decision)
             // Le fichier peut retrouver le texte de l'arrêt alors que le flux final s'en était écarté.
-            if decision.ledger == nil, !job.cancelled, model.correctionReachable,
-               model.commandSelection(for: decision.raw, context: context) == nil {
-                decision.ledger = claimEarlyCorrection(
-                    for: FranglaisNormalizer.normalize(decision.raw), current: current, model: model
-                )
-                decision.usePrepared = decision.ledger != nil
+            if !job.cancelled, model.correctionReachable,
+               model.commandSelection(for: decision.raw, context: context) == nil,
+               let prepared = claimEarlyCorrection(
+                   for: FranglaisNormalizer.normalize(decision.raw), current: current, model: model
+               ) {
+                decision.ledger = prepared
+                decision.usePrepared = true
             }
             return decision
         }
