@@ -3,6 +3,17 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.6.9 — 30 octobre 2026
+
+Protège les fins de mots à l'arrêt de la dictée.
+
+**Corrigé**
+- Si la voix est encore présente au relâchement, le micro garde les derniers paquets avant de terminer le flux
+  et le fichier, jusqu'au silence constaté et pendant 180 ms au maximum. Une pause déjà silencieuse n'ajoute
+  aucune attente. Cela évite la fermeture immédiate en pleine syllabe, notamment sur les dictées très courtes.
+- L'annulation reste immédiate et une nouvelle dictée attend seulement la fermeture du micro précédent,
+  jamais sa transcription ou sa correction. Aucun appel IA ni modèle supplémentaire.
+
 ## 0.6.8 — 30 octobre 2026
 
 Commence à parler, puis choisis où écrire.

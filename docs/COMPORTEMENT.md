@@ -863,6 +863,13 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
 
 ## Reprise après erreur
 
+- Fin d'écoute encore parlée : les derniers paquets micro continuent d'alimenter le flux et le fichier jusqu'à
+  30 ms de silence observé, pendant 180 ms au maximum. Sans paquet récent ou après une pause déjà silencieuse,
+  l'arrêt reste immédiat. La demande d'arrêt passe la bulle en traitement ; ses délais se mesurent dès le
+  relâchement, y compris cette protection. Une annulation ou un arrêt forcé n'attend pas la fin de voix.
+  Un nouveau geste coupe cette prolongation et attend seulement que ce micro soit fermé, jamais la transcription ou la correction
+  précédente. Aucun enregistrement simultané sur le moteur partagé, aucun appel de correction ajouté.
+
 - Erreur réseau, de clé ou de quota : l'audio reste dans l'historique ; **Retranscrire** puis **Copier**.
 - Texte qui n'a pas pu être écrit : jamais en silence. La bulle le dit dans une carte « Texte prêt à copier »
   (titre de 14 points), avec sous le titre la seule raison (12 points) et des boutons de 30 points sur une ligne

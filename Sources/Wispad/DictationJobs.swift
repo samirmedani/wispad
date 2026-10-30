@@ -15,6 +15,10 @@ final class Capture {
     let marks: LatencyMarks
     let run: DictationTraceRecorder
     var listening = false
+    /// Fermeture demandée : finit la dernière syllabe sans rendre le moteur partagé à une nouvelle écoute.
+    var releaseTask: Task<Void, Never>?
+    var voiceTailTask: Task<Void, Never>?
+    let releaseFinished = AsyncResult<Void>()
     var cancelled = false
     var didSignalReady = false
     var audio: (any AudioRecording)?

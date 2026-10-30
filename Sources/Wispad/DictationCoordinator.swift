@@ -169,6 +169,13 @@ final class DictationCoordinator {
     }
 
     func begin(_ mode: ListenMode, pressedAt: Int? = nil) async {
+        let losses = keyboardLosses
+        if let ending = capture, ending.releaseTask != nil {
+            // Le geste suivant est une nouvelle phrase : ne pas l'enregistrer dans la fin de la précédente.
+            ending.voiceTailTask?.cancel()
+            try? await ending.releaseFinished.value()
+        }
+        guard keyboardLosses == losses else { return }
         guard capture == nil, let model else { return }
         guard !retrying else {
             endGesture()
@@ -176,7 +183,6 @@ final class DictationCoordinator {
         }
         let latencyMarks = LatencyMarks(pressed: pressedAt)
         let run = DictationTraceRecorder(origin: mode == .toggle ? .toggle : .hold, pressedAt: pressedAt, marks: latencyMarks)
-        let losses = keyboardLosses
         let problem = await model.voiceProblem()
         // Écoute du clavier retirée pendant la lecture de la clé : elle a oublié ce geste (`keyboardLost`).
         guard capture == nil, !retrying, keyboardLosses == losses else { return }
@@ -415,9 +421,12 @@ final class DictationCoordinator {
     /// L'écoute en cours ne peut plus continuer : elle s'arrête là, comme si on l'avait terminée (ce qui a déjà été
     /// dit est transcrit et collé), le raccourci est libre et la bulle dit pourquoi.
     private func stopListening(_ current: Capture, message: String) {
-        guard isCapturing(current) else { return }
+        guard capture === current, current.listening, !current.cancelled else { return }
+        current.releaseTask?.cancel()
+        current.voiceTailTask?.cancel()
+        current.releaseTask = nil
         endGesture()
-        endCapture()
+        endCapture(allowVoiceTail: false)
         model?.statusBanner = message
         shownFailure = ShownFailure(message: message, text: nil, offersHistory: false)
         refreshPhase()
@@ -478,11 +487,38 @@ final class DictationCoordinator {
         return (speech, nil)
     }
 
-    /// Fin de l'écoute : le micro se ferme tout de suite, la dictée se termine en arrière-plan et le raccourci
-    /// est aussitôt libre pour la suivante. Rend la tâche de fin (attendue par les tests).
+    /// Fin de l'écoute : une syllabe encore active dispose d'une fin bornée ; une pause ferme aussitôt le micro.
+    /// La prochaine écoute attend seulement cette fermeture, jamais la transcription ni la correction.
     @discardableResult
-    func endCapture() -> Task<Void, Never>? {
+    func endCapture(allowVoiceTail: Bool = true) -> Task<Void, Never>? {
         guard let current = capture, current.listening else { return nil }
+        if let pending = current.releaseTask { return pending }
+        if current.marks.released == nil { current.marks.released = KeyboardTap.now() }
+        if allowVoiceTail, !current.restarting.withLock({ $0 }), let audio = current.audio, audio.needsVoiceTail {
+            current.audioWatch?.cancel()
+            current.microphoneAccessWatch?.cancel()
+            current.earlyPauseTask?.cancel()
+            current.earlyPauseTask = nil
+            let tail = Task { await audio.finishVoiceTail() }
+            current.voiceTailTask = tail
+            let task = Task { @MainActor [weak self] in
+                await tail.value
+                guard let self, self.capture === current, !current.cancelled, !Task.isCancelled else {
+                    current.releaseFinished.resolve(.success(()))
+                    return
+                }
+                let finish = self.finishCapture(current)
+                await finish?.value
+            }
+            current.releaseTask = task
+            refreshPhase()
+            changed()
+            return task
+        }
+        return finishCapture(current)
+    }
+
+    private func finishCapture(_ current: Capture) -> Task<Void, Never>? {
         capture = nil
         current.audioWatch?.cancel()
         current.microphoneAccessWatch?.cancel()
@@ -490,8 +526,8 @@ final class DictationCoordinator {
         current.earlyPauseTask = nil
         stopMeter()
         let stopped = closeMicrophone(current)
+        current.releaseFinished.resolve(.success(()))
         current.pcm.close()
-        current.marks.released = KeyboardTap.now()
         let url = stopped?.url ?? current.audioURL
         let duration = max(0, stopped?.duration ?? 0)
         guard duration >= Self.minimumDuration else {
@@ -524,7 +560,7 @@ final class DictationCoordinator {
 
     /// Cette écoute est toujours en cours (ni arrêtée, ni annulée).
     func isCapturing(_ current: Capture) -> Bool {
-        capture === current && current.listening && !current.cancelled
+        capture === current && current.listening && current.releaseTask == nil && !current.cancelled
     }
 
     /// Termine l'écoute et attend que la dictée soit collée.
@@ -570,6 +606,9 @@ final class DictationCoordinator {
 
     private func cancelCapture(_ current: Capture) {
         current.cancelled = true
+        current.releaseTask?.cancel()
+        current.voiceTailTask?.cancel()
+        current.releaseFinished.resolve(.success(()))
         current.correctionClaimed = true
         current.audioWatch?.cancel()
         current.microphoneAccessWatch?.cancel()
@@ -612,6 +651,9 @@ final class DictationCoordinator {
     /// ouvert se referme, spectre et flux en direct compris.
     private func discard(_ current: Capture, outcome: DictationOutcome = .captureFailed) {
         current.cancelled = true
+        current.releaseTask?.cancel()
+        current.voiceTailTask?.cancel()
+        current.releaseFinished.resolve(.success(()))
         current.audioWatch?.cancel()
         current.microphoneAccessWatch?.cancel()
         current.earlyPauseTask?.cancel()
@@ -1091,7 +1133,7 @@ final class DictationCoordinator {
     private func refreshPhase() {
         let next: DictationPhase
         if let capture {
-            next = capture.listening ? .listening(capture.mode) : .starting
+            next = capture.releaseTask != nil ? .finishing : capture.listening ? .listening(capture.mode) : .starting
         } else if let shownFailure {
             next = .failure(shownFailure.message)
         } else if !jobs.isEmpty || retrying {

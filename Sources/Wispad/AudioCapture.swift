@@ -394,6 +394,20 @@ final class AudioCapture: @unchecked Sendable {
         onInterruption?()
     }
 
+    /// Fin encore parlée : attendre sa retombée, sans jamais ajouter une attente à une pause déjà silencieuse.
+    var needsVoiceTail: Bool {
+        state.withLock { $0.voiceTail.needsMoreAudio(at: CACurrentMediaTime()) }
+    }
+
+    /// Ne ferme rien : l'appelant garde l'écoute exclusive puis appelle `stop()`, ou l'annule immédiatement.
+    func finishVoiceTail() async {
+        guard needsVoiceTail else { return }
+        let deadline = CACurrentMediaTime() + VoiceTail.maximumWait
+        while !Task.isCancelled, CACurrentMediaTime() < deadline, needsVoiceTail {
+            do { try await Task.sleep(for: .milliseconds(10)) } catch { return }
+        }
+    }
+
     func stop() -> (url: URL?, duration: Double) {
         control.sync { stopAudio() }
     }
@@ -437,8 +451,10 @@ final class AudioCapture: @unchecked Sendable {
         wav?.append(data)
         let frames = analyzer.frames(pcm16: data, hop: 256)
         let arrival = CACurrentMediaTime()
+        let rms = VoiceTail.rms(pcm16: data)
         state.withLock {
             $0.timeline.push(frames, arrival: arrival, hopSeconds: 256.0 / 16_000)
+            $0.voiceTail.note(rms: rms, at: arrival)
         }
         onPCM?(data)
     }
@@ -451,4 +467,5 @@ private struct StartTickets {
 
 private struct CaptureState {
     var timeline = BandTimeline()
+    var voiceTail = VoiceTail()
 }
