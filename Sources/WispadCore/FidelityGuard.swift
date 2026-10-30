@@ -159,6 +159,7 @@ public enum FidelityGuard {
             && hunk.oldStart > 0 && hunk.oldEnd < said.count {
             let removed = hunk.oldWords
             if removed.allSatisfy(TranscriptEquivalence.fillers.contains) { continue }
+            if repeatsNominalSubject(removed, at: hunk.oldStart, heard: said) { continue }
             if let repeated = removed.first, removed.allSatisfy({ $0 == repeated }),
                said[hunk.oldStart - 1] == repeated || said[hunk.oldEnd] == repeated { continue }
             // Bégaiement ou répétition immédiatement voisine : garder une seule occurrence.
@@ -178,6 +179,44 @@ public enum FidelityGuard {
         }
         return false
     }
+
+    /// Dislocation orale très bornée (« le voyant il est vert », « les deux premières rangées elles sont vides »).
+    /// Le pronom doit reprendre un groupe déterminant + nombre/ordinal facultatifs + nom, juste avant est/sont.
+    private static func repeatsNominalSubject(_ removed: [String], at offset: Int, heard: [String]) -> Bool {
+        guard removed.count == 1, let pronoun = removed.first, let forms = repeatedSubjects[pronoun],
+              offset + 1 < heard.count, heard[offset + 1] == forms.verb, offset >= 2 else { return false }
+        let noun = heard[offset - 1]
+        guard noun.contains(where: \.isLetter), !subjectStops.contains(noun) else { return false }
+        for length in 2...min(4, offset) {
+            let start = offset - length
+            guard forms.determiners.contains(heard[start]),
+                  start == 0 || !subjectClitics.contains(heard[start - 1]) else { continue }
+            let modifiers = Array(heard[(start + 1)..<(offset - 1)])
+            if modifiers.isEmpty { return true }
+            if modifiers.count == 1, isSubjectNumber(modifiers[0]) || subjectOrdinals.contains(modifiers[0]) { return true }
+            if modifiers.count == 2, isSubjectNumber(modifiers[0]), subjectOrdinals.contains(modifiers[1]) { return true }
+        }
+        return false
+    }
+
+    private static func isSubjectNumber(_ word: String) -> Bool {
+        Int(word) != nil || SpokenNumbers.parse([word], from: 0)?.next == 1
+    }
+
+    private static let repeatedSubjects: [String: (verb: String, determiners: Set<String>)] = [
+        "il": ("est", ["le", "un", "ce", "cet", "mon", "ton", "son", "notre", "votre", "leur"]),
+        "elle": ("est", ["la", "une", "cette", "ma", "ta", "sa", "notre", "votre", "leur"]),
+        "ils": ("sont", ["les", "des", "ces", "mes", "tes", "ses", "nos", "vos", "leurs"]),
+        "elles": ("sont", ["les", "des", "ces", "mes", "tes", "ses", "nos", "vos", "leurs"])
+    ]
+    private static let subjectClitics: Set<String> = ["je", "tu", "il", "elle", "ils", "elles", "nous", "vous", "me", "te", "se", "ne"]
+    private static let subjectStops = CorrectionPatch.functionWords.union(subjectClitics).union([
+        "et", "ou", "mais", "donc", "car", "que", "qui", "si", "est", "sont", "a", "ont", "pas", "plus", "sans", "avec"
+    ])
+    private static let subjectOrdinals: Set<String> = [
+        "premier", "premiere", "premiers", "premieres", "deuxieme", "deuxiemes", "troisieme", "troisiemes",
+        "quatrieme", "quatriemes", "cinquieme", "cinquiemes", "sixieme", "sixiemes"
+    ]
 
     private static let correctionCues: Set<String> = [
         "non", "pardon", "enfin", "plutot", "attends", "no", "sorry", "rather", "actually"

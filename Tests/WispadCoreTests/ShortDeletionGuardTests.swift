@@ -66,4 +66,19 @@ struct ShortDeletionGuardTests {
         let transcript = "On sait pas si le plan est vraiment utile demain."
         #expect(FidelityGuard.check(transcript: transcript, corrected: "On ne sait pas si le plan est utile demain.") == transcript)
     }
+
+    @Test func anImmediatelyRepeatedNominalSubjectCanBeRemoved() {
+        let transcript = "Le voyant il est bleu. Les 3 premières rangées elles sont libres."
+        let corrected = "Le voyant est bleu. Les trois premières rangées sont libres."
+        #expect(FidelityGuard.check(transcript: transcript, corrected: corrected) == corrected)
+    }
+
+    @Test func subjectCleanupDoesNotExcuseLostMeaning() {
+        let transcript = "Le voyant il est assez franchement stable depuis hier."
+        #expect(FidelityGuard.check(transcript: transcript, corrected: "Le voyant est stable depuis hier.") == transcript)
+        let separateSubject = "Le plan avance et il est utile demain."
+        #expect(FidelityGuard.check(transcript: separateSubject, corrected: "Le plan avance et est utile demain.") == separateSubject)
+        let clitic = "Je le vois il est prêt pour demain."
+        #expect(FidelityGuard.check(transcript: clitic, corrected: "Je le vois est prêt pour demain.") == clitic)
+    }
 }
