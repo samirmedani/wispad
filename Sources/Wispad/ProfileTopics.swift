@@ -17,59 +17,112 @@ final class ProfileTopicsController {
     private(set) var state: State = .idle
     private(set) var analysis: TopicAnalysis?
     private var task: Task<Void, Never>?
+    private var runID: UUID?
+    private var cancelRequested = false
+    private var retry: RetryState
 
+    typealias Analyze = @Sendable (
+        [TopicSource], SpeechRequest, Bool, String, TopicAnalysis?,
+        @escaping @Sendable (UsageEvent) async -> Void,
+        @escaping @Sendable (Int, Int) async -> Void
+    ) async throws -> TopicAnalysis
+
+    private let analyze: Analyze
     private let defaults: UserDefaults
     private static let storageKey = "profileTopicAnalysis.v1"
+    private static let retryKey = "profileTopicRetry.v1"
 
-    init(defaults: UserDefaults = .standard) {
+    /// Persisté avant l'envoi : un arrêt du processus ou une annulation ne relance pas l'analyse au prochain réveil.
+    private struct RetryState: Codable {
+        var attempts = 0
+        var nextAutomaticAttempt: Date?
+
+        mutating func begin(at now: Date) {
+            attempts = min(max(attempts, 0), 2) + 1
+            let waits: [TimeInterval] = [6 * 3_600, 24 * 3_600, 7 * 86_400]
+            nextAutomaticAttempt = now.addingTimeInterval(waits[attempts - 1])
+        }
+    }
+
+    init(defaults: UserDefaults = .standard, analyze: @escaping Analyze = { sources, speech, portrait, stats, previous, onUsage, progress in
+        try await TopicAnalyzer.run(sources: sources, speech: speech, portrait: portrait, stats: stats,
+                                    previous: previous, onUsage: onUsage, progress: progress).analysis
+    }) {
         self.defaults = defaults
+        self.analyze = analyze
+        retry = defaults.data(forKey: Self.retryKey).flatMap { try? JSONDecoder().decode(RetryState.self, from: $0) } ?? RetryState()
         if let data = defaults.data(forKey: Self.storageKey) {
             analysis = try? JSONDecoder().decode(TopicAnalysis.self, from: data)
         }
     }
 
-    var isRunning: Bool {
-        if case .running = state { return true }
-        return false
+    var isRunning: Bool { task != nil }
+
+    private func saveRetry() {
+        if let data = try? JSONEncoder().encode(retry) { defaults.set(data, forKey: Self.retryKey) }
+    }
+
+    func canAttemptAutomatically(at now: Date) -> Bool {
+        retry.nextAutomaticAttempt.map { now >= $0 } ?? true
     }
 
     /// Relit l'historique avec le premier service de correction : tout (« full »), ou seulement les dictées arrivées
     /// depuis la dernière analyse. Les appels comptent dans la consommation, puis le résultat est gardé.
-    func start(model: AppModel, portrait: Bool, stats: String, full: Bool) {
+    func start(model: AppModel, portrait: Bool, stats: String, full: Bool, now: Date = Date()) {
         guard !isRunning else { return }
         let sources = model.history.map(TopicSource.init)
         let speech = model.speechRequest(context: nil)
         let previous = full ? nil : analysis?.pruned(keeping: Set(sources.map(\.id)))
         let read = previous?.newSources(in: sources) ?? sources
+        let id = UUID()
+        runID = id
+        cancelRequested = false
+        retry.begin(at: now)
+        saveRetry()
         state = .running(done: 0, total: max(1, TopicAnalyzer.batches(read).count))
+        let analyze = self.analyze
         task = Task { [weak self] in
-            do {
-                let result = try await TopicAnalyzer.run(sources: sources, speech: speech, portrait: portrait, stats: stats,
-                                                         previous: previous) { done, total in
-                    await MainActor.run { self?.state = .running(done: done, total: total) }
+            defer {
+                if let self, self.runID == id {
+                    self.task = nil
+                    self.runID = nil
                 }
-                for event in result.usage { model.recordUsage(event) }
-                guard let self else { return }
-                self.analysis = result.analysis
-                if let data = try? JSONEncoder().encode(result.analysis) { self.defaults.set(data, forKey: Self.storageKey) }
+            }
+            do {
+                let result = try await analyze(sources, speech, portrait, stats, previous, { event in
+                    // Compté même si l'utilisateur a annulé ou effacé le résultat pendant l'appel.
+                    await MainActor.run { model.recordUsage(event) }
+                }, { [weak self] done, total in
+                    await MainActor.run {
+                        guard let self, self.runID == id, !self.cancelRequested else { return }
+                        self.state = .running(done: done, total: total)
+                    }
+                })
+                guard let self, self.runID == id else { return }
+                guard !Task.isCancelled, !self.cancelRequested else { self.state = .idle; return }
+                self.analysis = result
+                if let data = try? JSONEncoder().encode(result) { self.defaults.set(data, forKey: Self.storageKey) }
+                self.retry = RetryState()
+                self.saveRetry()
                 self.state = .idle
-            } catch is CancellationError {
-                self?.state = .idle
             } catch {
-                self?.state = .failed(String(localized: "L'analyse n'a pas abouti : le service de correction n'a pas répondu. Réessaie plus tard."))
+                guard let self, self.runID == id else { return }
+                if Task.isCancelled || self.cancelRequested || error is CancellationError { self.state = .idle }
+                else { self.state = .failed(String(localized: "L'analyse n'a pas abouti : le service de correction n'a pas répondu. Réessaie plus tard.")) }
             }
         }
     }
 
-    /// Mise à jour de la semaine, appelée chaque minute par l'app : seulement si l'analyse et la mise à jour
-    /// hebdomadaire sont allumées, qu'une analyse existe déjà, qu'elle a une semaine et que des dictées sont arrivées.
+    /// Mise à jour hebdomadaire : après une tentative interrompue ou ratée, attendre 6 h, 24 h puis 7 jours.
+    /// Le lancement manuel reste possible ; les tentatives et leur échéance survivent à une relance de l'app.
     func runIfDue(model: AppModel, now: Date = Date()) {
         let settings = model.settings
         guard settings.profileTopicsEnabled, settings.profileTopicsWeekly, !isRunning, let analysis,
+              canAttemptAutomatically(at: now), model.dependencies.isOnline(),
               TextCleaner.services(model.speechRequest(context: nil)).first != nil else { return }
         let sources = model.history.map(TopicSource.init)
         guard analysis.isDueForWeeklyUpdate(sources: sources, now: now) else { return }
-        start(model: model, portrait: settings.profilePortraitEnabled, stats: Self.stats(for: model), full: false)
+        start(model: model, portrait: settings.profilePortraitEnabled, stats: Self.stats(for: model), full: false, now: now)
     }
 
     /// Chiffres donnés au portrait.
@@ -80,9 +133,11 @@ final class ProfileTopicsController {
     }
 
     func cancel() {
+        cancelRequested = true
         task?.cancel()
-        task = nil
-        state = .idle
+        // La tâche conserve son créneau jusqu'à la fin des requêtes : aucun chevauchement, même si le
+        // transport met un instant à terminer son annulation. Ses derniers usages restent comptés.
+        if task == nil { state = .idle }
     }
 
     #if DEBUG

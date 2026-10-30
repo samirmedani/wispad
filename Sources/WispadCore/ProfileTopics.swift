@@ -24,6 +24,8 @@ public struct TopicAnalysis: Codable, Equatable, Sendable {
     /// Dictées relues, et la plus récente : celles d'après sont « nouvelles depuis l'analyse ».
     public var dictationCount: Int
     public var newestDictation: Date?
+    /// Identifiants réellement analysés, y compris les dictées sans sujet. nil pour les anciens résultats.
+    public var processedDictationIDs: [String]?
     /// « DeepSeek deepseek-flash ».
     public var service: String
     /// Coût réel des appels, nil si un tarif est inconnu.
@@ -32,7 +34,7 @@ public struct TopicAnalysis: Codable, Equatable, Sendable {
     public var portrait: String?
 
     public init(topics: [Topic], analyzedAt: Date, dictationCount: Int, newestDictation: Date?, service: String,
-                costUSD: Double?, portrait: String? = nil) {
+                costUSD: Double?, portrait: String? = nil, processedDictationIDs: [String]? = nil) {
         self.topics = topics
         self.analyzedAt = analyzedAt
         self.dictationCount = dictationCount
@@ -40,6 +42,7 @@ public struct TopicAnalysis: Codable, Equatable, Sendable {
         self.service = service
         self.costUSD = costUSD
         self.portrait = portrait
+        self.processedDictationIDs = processedDictationIDs
     }
 }
 
@@ -82,11 +85,19 @@ extension TopicAnalysis {
             kept.dictations = topic.dictations.filter(existing.contains)
             return kept.dictations.isEmpty ? nil : kept
         }
+        if let processed = copy.processedDictationIDs {
+            copy.processedDictationIDs = processed.filter(existing.contains)
+            copy.dictationCount = copy.processedDictationIDs?.count ?? 0
+        }
         return copy
     }
 
-    /// Dictées arrivées depuis l'analyse.
+    /// Dictées arrivées depuis l'analyse, ou appartenant à un lot qui n'a pas abouti.
     public func newSources(in sources: [TopicSource]) -> [TopicSource] {
+        if let processedDictationIDs {
+            let processed = Set(processedDictationIDs)
+            return sources.filter { !processed.contains($0.id) }
+        }
         guard let newest = newestDictation else { return sources }
         return sources.filter { $0.date > newest }
     }
@@ -225,74 +236,133 @@ public enum TopicAnalyzer {
         .sorted { $0.dictations.count != $1.dictations.count ? $0.dictations.count > $1.dictations.count : $0.name < $1.name }
     }
 
-    /// Relit l'historique : lots envoyés trois par trois au premier service de correction, puis portrait si demandé.
-    /// « progress » reçoit le nombre de lots terminés. Les appels (réussis ou non) sont rendus pour la consommation.
+    /// Relit l'historique par lots, puis écrit le portrait. Chaque requête rend son usage immédiatement,
+    /// même si l'analyse entière échoue ou est annulée ; les lots ratés restent à relire.
     public static func run(
         sources: [TopicSource],
         speech: SpeechRequest,
         portrait: Bool,
         stats: String,
         previous: TopicAnalysis? = nil,
+        onUsage: @escaping @Sendable (UsageEvent) async -> Void = { _ in },
         progress: @escaping @Sendable (Int, Int) async -> Void
     ) async throws -> (analysis: TopicAnalysis, usage: [UsageEvent]) {
+        try await run(sources: sources, speech: speech, portrait: portrait, stats: stats, previous: previous,
+                      transport: TextCleaner.httpTransport, onUsage: onUsage, progress: progress)
+    }
+
+    static func run(
+        sources: [TopicSource], speech: SpeechRequest, portrait: Bool, stats: String, previous: TopicAnalysis? = nil,
+        transport: @escaping TextCleaner.HTTPTransport,
+        onUsage: @escaping @Sendable (UsageEvent) async -> Void = { _ in },
+        progress: @escaping @Sendable (Int, Int) async -> Void
+    ) async throws -> (analysis: TopicAnalysis, usage: [UsageEvent]) {
+        try Task.checkCancellation()
         guard let route = TextCleaner.routes(speech).first else { throw SpeechError.message("Aucune clé de correction active") }
-        // Mise à jour : seules les dictées arrivées depuis l'analyse précédente sont relues.
-        let lots = batches(previous?.newSources(in: sources) ?? sources)
-        let requests = TextCleaner.RequestLog()
+        let unread = previous?.newSources(in: sources) ?? sources
+        let lots = batches(unread)
+        let ledger = UsageLedger(onUsage: onUsage)
         var found: [TopicAnalysis.Topic] = []
+        // Migration des anciens résultats : le curseur de date reste valable uniquement pour leurs dictées déjà lues.
+        let unreadIDs = Set(unread.map(\.id))
+        var processed = Set(previous?.processedDictationIDs ?? (previous == nil ? [] : sources.filter { !unreadIDs.contains($0.id) }.map(\.id)))
+        var successfulDates: [Date] = []
         var done = 0
         var failures = 0
-        try await withThrowingTaskGroup(of: [TopicAnalysis.Topic]?.self) { group in
+        try await withThrowingTaskGroup(of: BatchResult.self) { group in
             var next = 0
             func launch() {
-                guard next < lots.count else { return }
+                guard next < lots.count, !Task.isCancelled else { return }
                 let batch = lots[next]
                 next += 1
                 group.addTask {
                     try Task.checkCancellation()
-                    let reply = try? await TextCleaner.send(system: system, user: user(batch), route: route, maxTokens: 2_400,
-                                                            includeReasoning: true, requests: requests, requestTimeout: 120)
-                    return reply.flatMap { parse($0.content, batch: batch) }
+                    let reply = try? await send(system: system, user: user(batch), route: route, maxTokens: 2_400,
+                                                timeout: 120, transport: transport, ledger: ledger)
+                    try Task.checkCancellation()
+                    return BatchResult(batch: batch, topics: reply.flatMap { parse($0.content, batch: batch) })
                 }
             }
             for _ in 0..<min(3, lots.count) { launch() }
             while let result = try await group.next() {
-                if let result { found += result } else { failures += 1 }
+                if let topics = result.topics {
+                    found += topics
+                    processed.formUnion(result.batch.map(\.id))
+                    successfulDates += result.batch.map(\.date)
+                } else { failures += 1 }
                 done += 1
                 await progress(done, lots.count)
+                try Task.checkCancellation()
                 launch()
             }
         }
+        try Task.checkCancellation()
         if failures == lots.count, !lots.isEmpty { throw SpeechError.message("Le service n'a rendu aucun sujet lisible") }
         let topics = merge((previous?.topics ?? []) + found)
         var text: String?
         if portrait, !topics.isEmpty {
             let list = topics.prefix(25).map { "\($0.name) (\($0.category), \($0.dictations.count) dictées)" }.joined(separator: "\n")
-            let reply = try? await TextCleaner.send(
+            let reply = try? await send(
                 system: """
                 Écris en 3 phrases courtes, au tutoiement, un portrait bienveillant et concret de la personne d'après \
                 les sujets de ses dictées et ses chiffres : ce qui l'occupe le plus, comment se répartit son temps, un \
                 trait marquant. Pas de flatterie, pas de donnée personnelle, pas de titre ni de liste. Texte brut seulement.
                 """,
-                user: "Chiffres :\n\(stats)\n\nSujets :\n\(list)", route: route, maxTokens: 500, includeReasoning: true,
-                requests: requests, requestTimeout: 60)
+                user: "Chiffres :\n\(stats)\n\nSujets :\n\(list)", route: route, maxTokens: 500,
+                timeout: 60, transport: transport, ledger: ledger)
             text = reply?.content.trimmingCharacters(in: .whitespacesAndNewlines)
         }
-        let usage = requests.events
+        try Task.checkCancellation()
+        let usage = await ledger.events
         let costs = usage.map(\.costUSD)
         var cost: Double? = costs.contains(where: { $0 == nil }) ? nil : costs.compactMap { $0 }.reduce(0, +)
         if let previous { cost = cost.flatMap { now in previous.costUSD.map { $0 + now } } }
+        let newest = (successfulDates + [previous?.newestDictation].compactMap { $0 }).max()
         let analysis = TopicAnalysis(
-            topics: topics,
-            analyzedAt: Date(),
-            dictationCount: (previous?.dictationCount ?? 0) + lots.joined().count,
-            newestDictation: lots.last?.last?.date ?? previous?.newestDictation,
-            service: "\(route.provider) \(route.model)",
-            costUSD: cost,
-            portrait: text ?? (portrait ? previous?.portrait : nil)
+            topics: topics, analyzedAt: Date(), dictationCount: processed.count, newestDictation: newest,
+            service: "\(route.provider) \(route.model)", costUSD: cost,
+            portrait: text ?? (portrait ? previous?.portrait : nil), processedDictationIDs: processed.sorted()
         )
         return (analysis, usage)
     }
+
+    private struct BatchResult: Sendable {
+        var batch: [TopicSource]
+        var topics: [TopicAnalysis.Topic]?
+    }
+
+    private actor UsageLedger {
+        private(set) var events: [UsageEvent] = []
+        private let onUsage: @Sendable (UsageEvent) async -> Void
+
+        init(onUsage: @escaping @Sendable (UsageEvent) async -> Void) { self.onUsage = onUsage }
+
+        func record(_ values: [UsageEvent]) async {
+            for value in values {
+                events.append(value)
+                await onUsage(value)
+            }
+        }
+    }
+
+    /// Un journal par requête : il est vidé vers le suivi même lorsque send lève une erreur.
+    private static func send(
+        system: String, user: String, route: TextCleaner.Route, maxTokens: Int, timeout: TimeInterval,
+        transport: @escaping TextCleaner.HTTPTransport, ledger: UsageLedger
+    ) async throws -> TextCleaner.Reply {
+        let requests = TextCleaner.RequestLog()
+        do {
+            let reply = try await TextCleaner.send(system: system, user: user, route: route, maxTokens: maxTokens,
+                                                  includeReasoning: true, transport: transport, requests: requests,
+                                                  requestTimeout: timeout)
+            await ledger.record(requests.events)
+            return reply
+        } catch {
+            await ledger.record(requests.events)
+            throw error
+        }
+    }
+
 }
 
 extension WordGraph {

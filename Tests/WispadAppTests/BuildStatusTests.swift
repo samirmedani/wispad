@@ -9,6 +9,7 @@ struct BuildStatusTests {
     @MainActor final class Recorder {
         var available: [SemanticVersion] = []
         var requests = 0
+        var freshnessRequests = 0
     }
 
     private static func release(_ version: String) -> ReleaseInfo {
@@ -26,8 +27,7 @@ struct BuildStatusTests {
         let status = BuildStatus(info: ["CFBundleShortVersionString": "0.1.0"])
         #expect(status.commit == nil)
         #expect(status.versionLine == "Wispad 0.1.0")
-        // Sans commit, aucune requête : l'état reste inconnu.
-        status.start(delay: .zero)
+        // Sans commit, la version reste comparable à une release ; le diagnostic de commits reste inconnu.
         #expect(status.freshness == .unknown)
     }
 
@@ -131,20 +131,86 @@ struct BuildStatusTests {
         #expect(query?.first(where: { $0.name == "version" })?.value == "0123abc")
     }
 
-    /// Build compilé depuis les sources : « N commits de retard », jamais de release demandée ni proposée.
-    @Test func developmentBuildNeverAsksForReleases() async throws {
+    /// Une installation locale sans commit gravé doit aussi découvrir une release publique plus récente.
+    @Test func developmentBuildChecksForReleasesWithoutACommit() async throws {
         let status = BuildStatus(info: ["CFBundleShortVersionString": "0.1.1"])
         let recorder = Recorder()
-        let later = Self.release("9.9.9")
+        let later = Self.release("0.1.2")
         status.fetchLatest = {
             await MainActor.run { recorder.requests += 1 }
             return .release(later)
         }
         status.start(delay: .zero)
-        try await Task.sleep(for: .milliseconds(100))
-        #expect(recorder.requests == 0)
+        let deadline = Date().addingTimeInterval(15)
+        while status.available == nil, Date() < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(recorder.requests == 1)
+        #expect(status.display == .available(later))
+        #expect(status.available == later)
+    }
+
+    /// Un commit privé introuvable ne doit ni masquer la nouvelle version, ni déclencher sa comparaison inutile.
+    @Test func developmentManualCheckOffersTheReleaseBeforeCheckingItsPrivateCommit() async {
+        let status = BuildStatus(info: ["CFBundleShortVersionString": "0.6.5", BuildStatus.commitInfoKey: "0123abcdef"])
+        let newer = Self.release("0.6.6")
+        let recorder = Recorder()
+        status.fetchLatest = { .release(newer) }
+        status.fetchFreshness = { @MainActor _ in
+            recorder.freshnessRequests += 1
+            return .unknown
+        }
+        #expect(await status.checkNow() == newer)
+        #expect(status.manualPhase == .finished(.available))
+        #expect(status.display == .available(newer))
+        #expect(recorder.freshnessRequests == 0)
+        #expect(status.coolingDown)
+    }
+
+    /// La recherche de release a réussi : le seul commit inconnu ne justifie pas le voyant orange.
+    @Test func developmentPrivateCommitDoesNotTurnASuccessfulReleaseCheckIntoAFailure() async {
+        let status = BuildStatus(info: ["CFBundleShortVersionString": "0.6.6", BuildStatus.commitInfoKey: "0123abcdef"])
+        let recorder = Recorder()
+        let older = Self.release("0.6.5")
+        status.fetchLatest = { .release(older) }
+        status.fetchFreshness = { @MainActor _ in
+            recorder.freshnessRequests += 1
+            return .unknown
+        }
+        #expect(await status.checkNow() == nil)
+        #expect(status.manualPhase == .finished(.upToDate))
         #expect(status.display == .development(.unknown))
-        #expect(status.available == nil)
+        #expect(recorder.freshnessRequests == 1)
+    }
+
+    /// Le diagnostic de main reste disponible quand la release ne peut pas être lue.
+    @Test func developmentFallsBackToItsCommitWhenTheReleaseIsUnreachable() async {
+        let status = BuildStatus(info: ["CFBundleShortVersionString": "0.6.6", BuildStatus.commitInfoKey: "0123abcdef"])
+        status.fetchLatest = { .unreachable }
+        status.fetchFreshness = { _ in .behind(2) }
+        #expect(await status.checkNow() == nil)
+        #expect(status.manualPhase == .finished(.behind))
+        #expect(status.display == .development(.behind(2)))
+    }
+
+    /// Une limitation de l'API arrête aussi le diagnostic secondaire et la seconde demande à la main.
+    @Test func developmentRateLimitDoesNotTriggerACommitRequest() async {
+        let status = BuildStatus(info: ["CFBundleShortVersionString": "0.6.6", BuildStatus.commitInfoKey: "0123abcdef"])
+        let recorder = Recorder()
+        status.fetchLatest = { @MainActor in
+            recorder.requests += 1
+            return .rateLimited(retryAfter: 600)
+        }
+        status.fetchFreshness = { @MainActor _ in
+            recorder.freshnessRequests += 1
+            return .unknown
+        }
+        #expect(await status.checkNow() == nil)
+        #expect(status.manualPhase == .finished(.rateLimited))
+        #expect(status.coolingDown)
+        #expect(await status.checkNow() == nil)
+        #expect(recorder.requests == 1)
+        #expect(recorder.freshnessRequests == 0)
     }
 
     @Test func installProgressLabels() {

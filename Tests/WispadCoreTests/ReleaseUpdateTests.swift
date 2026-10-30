@@ -174,9 +174,11 @@ struct UpdateDisplayTests {
         #expect(UpdateDisplay.make(kind: .release, installed: "—", latest: newer, freshness: .unknown) == .unknown)
     }
 
-    /// Build compilé depuis les sources : « N commits de retard » sur main, jamais une release à installer.
-    @Test func developmentBuildKeepsTheCommitsBehindMain() {
-        #expect(UpdateDisplay.make(kind: .development, installed: "0.1.1", latest: newer, freshness: .behind(3)) == .development(.behind(3)))
+    /// Build local : la release publique plus récente prime, sinon le diagnostic de main reste affiché.
+    @Test func developmentBuildOffersNewerReleasesThenKeepsTheCommitsBehindMain() {
+        #expect(UpdateDisplay.make(kind: .development, installed: "0.1.1", latest: newer, freshness: .behind(3)) == .available(newer))
+        #expect(UpdateDisplay.make(kind: .development, installed: "0.1.2", latest: newer, freshness: .behind(3)) == .development(.behind(3)))
+        #expect(UpdateDisplay.make(kind: .development, installed: "—", latest: newer, freshness: .unknown) == .development(.unknown))
         #expect(UpdateDisplay.make(kind: .development, installed: "0.1.1", latest: nil, freshness: .upToDate) == .development(.upToDate))
         #expect(UpdateDisplay.make(kind: .development, installed: "0.1.1", latest: nil, freshness: .unknown) == .development(.unknown))
     }

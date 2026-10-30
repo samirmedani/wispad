@@ -214,7 +214,13 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   coût » refait tout. « Mettre à jour chaque semaine » (coupé par défaut, coût d'une semaine type affiché : les
   dictées des 4 dernières semaines divisées par 4) lance seul cette mise à jour quand l'analyse a 7 jours et que des
   dictées sont arrivées, vérifié chaque minute ; jamais une première analyse. Les dictées supprimées sont oubliées
-  des sujets. Avec un modèle local, le coût affiché est « gratuit ». Chaque appel compte dans Consommation. Couper l'interrupteur efface le résultat.
+  des sujets. Après une tentative ratée ou interrompue, la prochaine relance automatique attend au moins 6 heures,
+  puis 24 heures, puis 7 jours si les échecs se répètent. Cette échéance est enregistrée avant l'envoi et survit à
+  une relance de l'app ; une mise à jour manuelle reste possible. Une annulation garde le créneau occupé jusqu'à la
+  fin effective des requêtes : aucun chevauchement, aucun ancien résultat ne réapparaît après l'arrêt. Les lots
+  réussis sont retenus par identifiant ; les lots ratés restent à relire, même s'ils précèdent un lot réussi.
+  Avec un modèle local, le coût affiché est « gratuit ». Chaque appel compte dans Consommation dès son retour,
+  même si l'analyse globale échoue ou est annulée. Couper l'interrupteur efface le résultat.
   « Écrire mon portrait » (sous le premier, coupé par défaut, avec son coût en plus) ajoute trois phrases sur ce qui
   occupe la personne, d'après ses sujets et ses chiffres. Sans clé de correction active, le lancement est remplacé par
   « Aucune clé de correction active ». Le cerveau s'ouvre sur les sujets quand l'analyse est allumée et faite.
@@ -537,16 +543,27 @@ Le micro standard, réglage coupé, ne change pas.
   épelées, anglais, dates et heures, nombres mal entendus, mots coupés, termes anglais entendus comme des mots
   français, avec des phrases témoins qui doivent rester en français).
 - La correction ne répond jamais au contenu dicté et ne recopie jamais le contexte.
-- **Correction préparée pendant l'écoute** : à chaque pause de la parole (segment final du flux, puis 0,25 s sans
-  nouveau mot), le texte entendu part déjà à la correction. Si l'on arrête sans rien ajouter (même texte à la
-  ponctuation, la casse ou l'écriture des nombres près), cette correction sert telle quelle et le texte se colle sans
-  attendre un nouvel appel. Si la parole reprend, elle est comptée (coût réel)
-  et la suivante la remplace ; quatre au plus par dictée. Jamais si la correction est coupée, ni hors connexion.
-- **Correction lancée à l'arrêt** : dès l'arrêt, ce que le flux a déjà affiché part à la correction, sans attendre
-  son texte final (0,3 à 0,5 s sur les dictées courtes, mesuré le 13 octobre 2026). Si le texte final dit la même
-  chose, cette correction sert ; sinon elle est comptée et une correction du texte final la remplace. Rien de plus
-  n'est lancé si une correction préparée à une pause porte déjà sur ce texte, ni hors connexion : la fin de dictée
-  corrige alors si la connexion est revenue.
+- **Une seule préparation anticipée** : après un segment final du flux suivi de 0,25 seconde sans nouveau
+  texte, Wispad peut préparer la correction. Les notifications identiques ne repoussent pas cette attente. Un
+  nouveau mot avant la fin de l'attente annule seulement le timer : aucun texte périmé n'est envoyé.
+- **Préparation à l'arrêt si nécessaire** : une préparation du même texte est réutilisée. Si la parole a
+  repris après la pause et que le texte a changé, une préparation de ce texte démarre au relâchement, en parallèle
+  de la finalisation du flux et de la vérification par fichier ; aucun autre flux intermédiaire n'est corrigé.
+  Chacune des deux préparations garde son texte source : le fichier peut retrouver celle de la première pause
+  même si une autre préparation tourne déjà sur le texte de l'arrêt.
+- **Trois corrections au plus** : une anticipation à une pause, une préparation à l'arrêt seulement si le texte
+  a changé, puis une correction définitive uniquement si le fichier apporte encore un texte différent qui ne peut
+  pas réutiliser une préparation. Une dictée inchangée après la pause ne paie qu'une seule correction. Chaque
+  correction garde ses relais habituels en cas de panne. Le fichier, l'autre écoute, le contexte et les garde-fous
+  de fidélité restent utilisés comme avant ; une correction obsolète ne retarde jamais la correction définitive.
+  Une retouche locale sûre d'un ou deux mots peut encore réutiliser une correction prête. Tous les appels envoyés
+  restent comptés, même devenus inutiles ou annulés après l'envoi. Échap annule le timer et les préparations ; couper
+  la correction ou perdre la connexion empêche tout nouvel envoi. Si plusieurs longues pauses sont suivies d'une
+  reprise, aucune nouvelle anticipation ne part : le budget reste borné, avec parfois moins d'avance que l'ancienne
+  version qui payait une correction à chaque pause.
+- **Refus de paramètre** : une réponse HTTP 400 n'est réessayée que si le paramètre facultatif de raisonnement
+  effectivement envoyé peut être retiré. Les deux tentatives gardent leurs coûts propres et leur attribution au
+  relais ; elles forment une seule bascule, avec l'issue de la dernière tentative.
 - Expressions mal entendues malgré les mots-clés, réécrites avant et après la correction : « services functions »
   → « serverless functions », « day inference » → « AI inference ».
 
@@ -1164,16 +1181,19 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
   avant la version
   finale. Une app plus récente que la dernière release (release retirée) reste « À jour ».
 - **Build de développement** : la version et le commit court gravé à la compilation (« 0.1.0 · abc1234 »),
-  puis « À jour » ou « N commits de retard » (« 1 commit de retard ») sur la branche `main` du dépôt public, comme
-  avant les releases. Un clic sur le retard ouvre la page des commits. Aucune release proposée ni demandée.
-- **Vérification**, seul contact hors des fournisseurs : pour une release
-  `GET https://api.github.com/repos/samirmedani/wispad/releases/latest`, pour un build de développement
-  `GET https://api.github.com/repos/samirmedani/wispad/compare/<commit>...main` (le retard est le champ `ahead_by`).
+  puis la release publiée plus récente si elle existe, même si le commit local est inconnu de GitHub. Sinon,
+  « À jour » ou « N commits de retard » (« 1 commit de retard ») sur la branche `main` du dépôt public.
+  Un clic sur le retard ouvre la page des commits. Le build local reste identifié comme tel ; son bouton de mise
+  à jour ouvre la page GitHub, sans remplacer le build de développement automatiquement.
+- **Vérification**, seul contact hors des fournisseurs : tous les builds lisent
+  `GET https://api.github.com/repos/samirmedani/wispad/releases/latest`. Un build de développement consulte aussi
+  `GET https://api.github.com/repos/samirmedani/wispad/compare/<commit>...main` (le retard est le champ `ahead_by`)
+  si aucune release plus récente n'est proposée et que GitHub ne limite pas les recherches.
   API publique, sans clé ni cookie, avec l'en-tête User-Agent demandé par GitHub ; 5 s après le lancement, puis
-  toutes les 6 heures, 8 s au plus. Rien d'autre n'est envoyé (pour un build de développement, le commit de la
+  toutes les 6 heures, 8 s au plus par requête. Rien d'autre n'est envoyé (pour un build de développement, le commit de la
   version, dans l'adresse). Ni le démarrage ni la dictée n'attendent cette requête.
 - **Rechercher une mise à jour** : la flèche ↻ au bout de la pastille de version (barre latérale) et Réglages › Aide ›
-  Mises à jour lancent tout de suite la même requête ; la vérification automatique continue à son rythme. Une
+  Mises à jour lancent tout de suite la même recherche ; la vérification automatique continue à son rythme. Une
   recherche à la fois, au plus une par minute (boutons grisés pendant la pause) ; limite de l'API atteinte : pas avant
   l'heure annoncée par GitHub (un quart d'heure sans indication, six heures au plus). Pendant la recherche, une roue ;
   puis, 4 s : « Wispad est à jour », « Nouvelle version trouvée » (la fenêtre de mise à jour s'ouvre sur les notes,
@@ -1184,7 +1204,8 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
   30 minutes ; limite de l'API (403, 429) → nouvel essai à l'heure annoncée par GitHub (`Retry-After` ou
   `X-RateLimit-Reset`), entre 5 minutes et 6 heures, une heure sans indication ; aucune release (404), tag mal formé
   (autre chose que vX.Y.Z), brouillon, pré-version ou réponse illisible → rien de nouveau. Ce qui était affiché reste ;
-  sans aucune réponse lisible, seule la version s'affiche. Build de développement : dépôt privé (404), commit inconnu
+  sans aucune réponse lisible, seule la version s'affiche. Build de développement sans release plus récente à proposer :
+  dépôt privé (404), commit inconnu
   (compilation locale non publiée) ou commit non gravé (git absent à la compilation) → seule la version.
 - **Rappel discret** d'une nouvelle version, une seule fois par version, dans la bulle : « Wispad 0.1.2 est
   disponible », avec « Voir » (la fenêtre s'ouvre sur les notes de version) et « Ne plus me rappeler » ; ✕ au survol,

@@ -3,6 +3,23 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.6.6 — 30 octobre 2026
+
+Moins de corrections payantes, sans perdre l'avance d'une pause finale.
+
+**Corrigé**
+- Une pause finale peut de nouveau préparer le texte avant l'arrêt, pour que le collage retrouve son avance.
+  Une seule anticipation est permise par dictée ; reprendre la parole ne lance pas de série de corrections.
+  Le texte de l'arrêt peut être préparé s'il a changé, puis le fichier corrigé une dernière fois seulement s'il
+  apporte encore un autre texte : trois corrections au plus, avec les mêmes vérifications audio et garde-fous.
+
+- Une analyse du profil en échec ne se relance plus chaque minute. Les appels restent comptés même après un échec
+  ou une annulation, et les lots ratés restent à relire.
+- Un refus de paramètre ne répète plus une demande identique ; les nouvelles tentatives gardent leur attribution
+  au fournisseur de secours sans multiplier les bascules.
+- Un build local recherche aussi les versions publiées plus récentes. Un commit local inconnu de GitHub ne masque
+  plus une mise à jour disponible.
+
 ## 0.6.4 — 29 octobre 2026
 
 Un mot entendu ne se double plus.

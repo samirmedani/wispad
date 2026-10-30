@@ -379,7 +379,7 @@ public struct ManualUpdateCheck: Equatable, Sendable {
 }
 
 public enum UpdateDisplay: Equatable, Sendable {
-    /// Build de développement : retard sur la branche principale (« N commits de retard »), comme avant les releases.
+    /// Build de développement sans release plus récente : retard sur la branche principale (« N commits de retard »).
     case development(BuildFreshness)
     /// Release à jour (ou plus récente que la dernière publiée).
     case upToDate
@@ -389,9 +389,10 @@ public enum UpdateDisplay: Equatable, Sendable {
     case unknown
 
     public static func make(kind: BuildKind, installed: String, latest: ReleaseInfo?, freshness: BuildFreshness) -> UpdateDisplay {
+        if let latest, let current = SemanticVersion(installed), latest.version > current { return .available(latest) }
         guard kind == .release else { return .development(freshness) }
-        guard let latest, let current = SemanticVersion(installed) else { return .unknown }
-        return latest.version > current ? .available(latest) : .upToDate
+        guard latest != nil, SemanticVersion(installed) != nil else { return .unknown }
+        return .upToDate
     }
 }
 

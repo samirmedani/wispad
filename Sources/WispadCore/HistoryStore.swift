@@ -191,14 +191,15 @@ public final class HistoryStore: @unchecked Sendable {
                 fallback_from_api TEXT,
                 fallback_stage TEXT,
                 fallback_reason TEXT,
-                failure_cause TEXT
+                failure_cause TEXT,
+                retry_of TEXT
             );
             """
         )
         // Les colonnes restent NULL sur les anciennes lignes : une API de destination
         // ne suffit pas à distinguer un choix explicite d'une bascule automatique.
         let usageColumns = Set(try query("PRAGMA table_info(api_usage);") { column(1, $0) })
-        for name in ["fallback_from_api", "fallback_stage", "fallback_reason", "failure_cause"] where !usageColumns.contains(name) {
+        for name in ["fallback_from_api", "fallback_stage", "fallback_reason", "failure_cause", "retry_of"] where !usageColumns.contains(name) {
             try execute("ALTER TABLE api_usage ADD COLUMN \(name) TEXT;")
         }
         try execute("CREATE INDEX IF NOT EXISTS api_usage_created ON api_usage(created_at DESC);")
@@ -526,8 +527,8 @@ public final class HistoryStore: @unchecked Sendable {
             INSERT INTO api_usage (
                 id, created_at, api, model, audio_seconds, input_tokens, cached_tokens,
                 output_tokens, cost_usd, latency_ms, succeeded,
-                fallback_from_api, fallback_stage, fallback_reason, failure_cause
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                fallback_from_api, fallback_stage, fallback_reason, failure_cause, retry_of
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
             """
         ) { statement in
             bind(event.id, at: 1, statement)
@@ -549,6 +550,7 @@ public final class HistoryStore: @unchecked Sendable {
             bindOptional(event.fallback?.stage.rawValue, at: 13, statement)
             bindOptional(event.fallback?.reason.rawValue, at: 14, statement)
             bindOptional(event.failureCause?.rawValue, at: 15, statement)
+            bindOptional(event.retryOf, at: 16, statement)
         }
     }
 
@@ -557,7 +559,7 @@ public final class HistoryStore: @unchecked Sendable {
             """
             SELECT id, created_at, api, model, audio_seconds, input_tokens, cached_tokens,
                 output_tokens, cost_usd, latency_ms, succeeded,
-                fallback_from_api, fallback_stage, fallback_reason, failure_cause
+                fallback_from_api, fallback_stage, fallback_reason, failure_cause, retry_of
             FROM api_usage ORDER BY created_at DESC;
             """
         ) { statement in
@@ -585,7 +587,8 @@ public final class HistoryStore: @unchecked Sendable {
                 latencyMs: Int(sqlite3_column_int64(statement, 9)),
                 succeeded: sqlite3_column_int(statement, 10) != 0,
                 fallback: fallback,
-                failureCause: APIFailureCause(rawValue: column(14, statement))
+                failureCause: APIFailureCause(rawValue: column(14, statement)),
+                retryOf: optionalColumn(15, statement)
             )
         }
         return rows.compactMap { $0 }

@@ -33,12 +33,11 @@ final class Capture {
     var window: Task<String?, Never>?
     /// Dernier texte affiché par le flux en direct.
     var latestHeard = ""
-    /// Corrections lancées pendant l'écoute, à chaque pause : toutes sont comptées, une seule peut servir.
-    var earlyCorrections: [CorrectionLedger] = []
-    /// Texte (normalisé) de la correction en préparation ou prête.
-    var earlyText: String?
-    /// La correction préparée la plus récente, avec le texte exact qu'elle corrige.
-    var earlyReady: (text: String, ledger: CorrectionLedger)?
+    /// Attente d'une pause stable, annulée par un nouveau mot, l'arrêt ou Échap.
+    var earlyPauseTask: Task<Void, Never>?
+    /// Une préparation à une pause et, si nécessaire, une autre à l'arrêt. Jamais à chaque pause.
+    var earlyCorrections: [EarlyPreparation] = []
+    var earlyReady: EarlyPreparation? { earlyCorrections.last }
     /// La fin de dictée a choisi sa correction : plus rien ne se prépare.
     var correctionClaimed = false
     /// Surveillance du premier paquet audio (`MicrophoneStartWatch`).
@@ -95,6 +94,12 @@ struct FileAttempt: Sendable {
     var called: Bool
     /// Appel raté : la cause lue dans l'erreur.
     var failureCause: APIFailureCause? = nil
+}
+
+@MainActor
+struct EarlyPreparation {
+    var text: String
+    var ledger: CorrectionLedger
 }
 
 struct PreparedCorrection: Sendable {
