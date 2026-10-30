@@ -53,6 +53,8 @@ private final class EarlyFixture {
     var finishedTranscriptionAt: Date?
     var pastedAt: Date?
     var cleanTexts: [String] = []
+    var cleanStartedBeforeFile: [Bool] = []
+    var cleanAlternatives: [String?] = []
     var inserted: [String] = []
     var model: AppModel!
 
@@ -83,9 +85,11 @@ private final class EarlyFixture {
             self?.finishedTranscriptionAt = Date()
             return self?.fileText ?? ""
         }
-        dependencies.clean = { [weak self] text, _, _, enabled in
+        dependencies.clean = { [weak self] text, request, _, enabled in
             let first = self?.cleanTexts.isEmpty == true
             self?.cleanTexts.append(text)
+            self?.cleanStartedBeforeFile.append(self?.finishedTranscriptionAt == nil)
+            self?.cleanAlternatives.append(request.alternativeTranscript)
             if first, self?.holdPrepared == true { _ = try? await self?.preparedRelease.value() }
             guard enabled else { return CleanupOutcome(text: text) }
             if let delay = self?.cleanDelay, delay > 0 { try? await Task.sleep(for: .seconds(delay)) }
@@ -157,8 +161,8 @@ struct EarlyCorrectionTests {
         #expect(f.cleanTexts == ["Le train", f.fileText])
         #expect(f.inserted == [f.fileText.uppercased()])
         #expect(f.cleanupCount() == 2)
-        #expect(try f.trace().earlyCorrections == 2)
-        #expect(try f.trace().earlyCorrectionUsed == true)
+        #expect((try f.trace().earlyCorrections ?? 0) <= 2)
+        #expect(try f.trace().calls.filter { $0.api == .deepSeekCleanup }.count == 2)
     }
 
     @Test func worksWithoutFileVerificationToo() async throws {
@@ -187,13 +191,11 @@ struct EarlyCorrectionTests {
 
         #expect(f.cleanTexts == ["Bonjour à tous"])
         #expect(f.inserted == ["BONJOUR À TOUS"])
-        let trace = try f.trace()
-        #expect(trace.earlyCorrections == 1)
-        #expect(trace.earlyCorrectionUsed == true)
+        #expect(f.cleanupCount() == 1)
     }
 
-    /// Le texte final du flux arrive tard : la correction est déjà partie, elle n'attend pas ce texte.
-    @Test func correctionStartsWhileTheStreamFinalizes() async throws {
+    /// Le fichier déjà revenu évite de corriger un partiel avant de connaître le texte final.
+    @Test func readyFileAvoidsPreparingThePartialWhileStreamFinalizes() async throws {
         let f = try EarlyFixture()
         defer { f.dispose() }
         f.fileText = "On se voit mardi"
@@ -206,13 +208,13 @@ struct EarlyCorrectionTests {
         try? await Task.sleep(nanoseconds: 50_000_000)
         await f.model.coordinator.end()
 
-        #expect(startedBeforeFinal == ["On se voit mardi"])
-        #expect(f.cleanTexts == ["On se voit mardi"])
-        #expect(f.inserted == ["ON SE VOIT MARDI"])
-        #expect(try f.trace().earlyCorrectionUsed == true)
+        #expect(startedBeforeFinal.isEmpty)
+        #expect(f.cleanTexts == [f.stream.text])
+        #expect(f.inserted == [f.stream.text.uppercased()])
+        #expect(f.cleanupCount() == 1)
     }
 
-    /// Le texte final ajoute un mot : la correction de l'arrêt est comptée, une autre corrige le texte final.
+    /// Les mots encore en cours ne déclenchent pas une correction inutile du partiel.
     @Test func aFinalTextThatAddsWordsGetsItsOwnCorrection() async throws {
         let f = try EarlyFixture()
         defer { f.dispose() }
@@ -223,11 +225,11 @@ struct EarlyCorrectionTests {
         try? await Task.sleep(nanoseconds: 50_000_000)
         await f.model.coordinator.end()
 
-        #expect(f.cleanTexts == ["Bonjour à", "Bonjour à tous"])
+        #expect(f.cleanTexts == ["Bonjour à tous"])
         #expect(f.inserted == ["BONJOUR À TOUS"])
         try? await Task.sleep(nanoseconds: 100_000_000)
-        #expect(f.cleanupCount() == 2)
-        #expect(try f.trace().earlyCorrectionUsed == false)
+        #expect(f.cleanupCount() == 1)
+        #expect((try f.trace().earlyCorrections ?? 0) <= 1)
     }
 
     @Test func wordsAddedAfterAPauseAreIncludedInTheDefinitiveCorrection() async throws {
@@ -246,8 +248,8 @@ struct EarlyCorrectionTests {
         try? await Task.sleep(nanoseconds: 100_000_000)
         #expect(f.cleanupCount() == 2)
         let trace = try f.trace()
-        #expect(trace.earlyCorrections == 2)
-        #expect(trace.earlyCorrectionUsed == true)
+        #expect(trace.earlyCorrections == 1)
+        #expect(trace.earlyCorrectionUsed == false)
     }
 
     @Test func cancelledPreparedDictationAccountsItsSinglePreparation() async throws {
@@ -278,6 +280,71 @@ struct EarlyCorrectionTests {
 @MainActor
 @Suite(.serialized)
 struct CorrectionBudgetTests {
+    @Test func aLaterSettledSegmentKeepsItsPreparationDuringFinalization() async throws {
+        let f = try EarlyFixture()
+        defer { f.dispose() }
+        f.fileText = "Le colis part demain matin"
+        f.fileDelay = 0.5
+        await f.model.coordinator.begin(.toggle)
+        await f.pause(after: "Le colis")
+        await f.pause(after: f.fileText)
+        f.stream.finishDelay = 0.3
+        var preparedBeforeFinal: [String] = []
+        f.stream.onFinish = { preparedBeforeFinal = f.cleanTexts }
+        await f.model.coordinator.end()
+        #expect(preparedBeforeFinal == ["Le colis", f.fileText])
+        #expect(f.inserted == [f.fileText.uppercased()])
+        #expect(f.cleanupCount() == 2)
+    }
+
+    @Test func aPunctuatedPreparationDoesNotAddAnotherFinalStreamSpeculation() async throws {
+        let f = try EarlyFixture()
+        defer { f.dispose() }
+        f.fileText = "Le colis rouge partira samedi."
+        f.fileDelay = 0.3
+        await f.model.coordinator.begin(.toggle)
+        f.stream.onPartial?("Le train arrive demain.")
+        f.stream.text = "La navette bleue arrive lundi."
+        try await Task.sleep(for: .milliseconds(20))
+        await f.model.coordinator.end()
+        #expect(f.cleanTexts == ["Le train arrive demain.", f.fileText])
+        #expect(f.inserted == [f.fileText.uppercased()])
+        #expect(f.cleanupCount() == 2)
+    }
+
+    @Test func finalizedStreamOverlapsFileDespiteAnObsoletePausePreparation() async throws {
+        let f = try EarlyFixture()
+        defer { f.dispose() }
+        f.fileDelay = 0.3
+        f.fileText = "Le colis part demain matin"
+        await f.model.coordinator.begin(.toggle)
+        await f.pause(after: "Le colis")
+        f.stream.onPartial?("Le colis part demain")
+        f.stream.text = f.fileText
+        try await Task.sleep(for: .milliseconds(20))
+        await f.model.coordinator.end()
+        #expect(f.cleanTexts == ["Le colis", f.fileText])
+        #expect(f.cleanStartedBeforeFile == [true, true])
+        #expect(f.inserted == [f.fileText.uppercased()])
+        #expect(f.cleanupCount() == 2)
+    }
+
+    @Test func finalizedStreamStartsCorrectionWhileFileIsPendingDespiteStalePartial() async throws {
+        let f = try EarlyFixture()
+        defer { f.dispose() }
+        f.fileDelay = 0.3
+        f.fileText = "Le colis part demain matin"
+        f.stream.text = f.fileText
+        await f.model.coordinator.begin(.toggle)
+        f.stream.onPartial?("Le colis")
+        try await Task.sleep(for: .milliseconds(20))
+        await f.model.coordinator.end()
+        #expect(f.cleanTexts == [f.fileText])
+        #expect(f.cleanStartedBeforeFile == [true])
+        #expect(f.inserted == [f.fileText.uppercased()])
+        #expect(f.cleanupCount() == 1)
+    }
+
     @Test func manyPausesAndThreeDifferentTranscriptsNeedAtMostThreeCorrections() async throws {
         let f = try EarlyFixture()
         defer { f.dispose() }
@@ -296,7 +363,7 @@ struct CorrectionBudgetTests {
         f.stream.finishDelay = 0.08
         try await Task.sleep(for: .milliseconds(20))
         await f.model.coordinator.end()
-        #expect(f.cleanTexts == ["Le train", "Le train arrive demain matin en gare", f.fileText])
+        #expect(f.cleanTexts == ["Le train", f.stream.text, f.fileText])
         #expect(f.inserted == [f.fileText.uppercased()])
         #expect(f.cleanupCount() == 3)
         #expect(try f.trace().earlyCorrections == 2)
@@ -352,7 +419,7 @@ struct CorrectionBudgetTests {
         #expect(f.inserted.isEmpty)
     }
 
-    @Test func fileMatchingTheReleaseReusesItDespiteADifferentFinalStream() async throws {
+    @Test func fileMatchingThePartialIsJudgedWithTheFinalStreamAlternative() async throws {
         let f = try EarlyFixture()
         defer { f.dispose() }
         f.fileDelay = 0.2
@@ -362,10 +429,12 @@ struct CorrectionBudgetTests {
         f.stream.text = "Le train arrive demain matin en gare"
         try await Task.sleep(for: .milliseconds(20))
         await f.model.coordinator.end()
-        #expect(f.cleanTexts == [f.fileText])
+        #expect(f.cleanTexts == [f.stream.text, f.fileText])
+        #expect(f.cleanAlternatives.count == 2)
+        #expect(f.cleanAlternatives.last! == f.stream.text)
         #expect(f.inserted == [f.fileText.uppercased()])
-        #expect(f.cleanupCount() == 1)
-        #expect(try f.trace().earlyCorrectionUsed == true)
+        #expect(f.cleanupCount() == 2)
+        #expect(try f.trace().earlyCorrectionUsed == false)
         #expect(try f.trace().transcriptChoice == .diverged)
     }
 

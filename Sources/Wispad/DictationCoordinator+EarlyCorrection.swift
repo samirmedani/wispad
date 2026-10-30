@@ -18,6 +18,7 @@ extension DictationCoordinator {
             Task { @MainActor in
                 guard let self, let current else { return }
                 Self.updateHeard(text, for: current)
+                current.latestSettledHeard = text
                 self.scheduleEarlyCorrection(text, for: current)
             }
         }
@@ -74,7 +75,24 @@ extension DictationCoordinator {
     func prepareCorrectionAtRelease(_ current: Capture) {
         current.earlyPauseTask?.cancel()
         current.earlyPauseTask = nil
+        if model?.settings.verifyWithFile == true {
+            let heard = current.latestHeard.trimmingCharacters(in: .whitespacesAndNewlines)
+            let finalized = !current.latestSettledHeard.isEmpty
+                && TranscriptEquivalence.equivalent(heard, current.latestSettledHeard)
+            let punctuated = heard.last.map { ".!?".contains($0) } == true
+            // Simple indice de préparation, jamais une raison de contourner la vérification audio.
+            guard finalized || punctuated else { return }
+        }
+        let previous = current.earlyCorrections.count
         prepareCorrection(current, heard: current.latestHeard, atRelease: true)
+        current.preparedAtRelease = current.earlyCorrections.count > previous
+    }
+
+    /// Le flux a fini son écoute ; le fichier est encore en cours de vérification. Préparer ce texte complet
+    /// permet de chevaucher les deux appels, même si une pause avait préparé un ancien fragment.
+    func prepareFinalStreamCorrection(_ current: Capture, text: String) {
+        guard !current.preparedAtRelease else { return }
+        prepareCorrection(current, heard: text, atRelease: true)
     }
 
     /// La fin de dictée prend la préparation si son texte correspond au texte retenu, au sens de

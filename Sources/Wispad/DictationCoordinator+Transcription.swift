@@ -89,6 +89,7 @@ extension DictationCoordinator {
         // échouerait, et la fin de dictée décide avec la connexion du moment.
         if model.correctionReachable, !job.cancelled, model.commandSelection(for: streamText, context: context) == nil {
             let normalized = FranglaisNormalizer.normalize(streamText)
+            prepareFinalStreamCorrection(current, text: normalized)
             if let early = claimEarlyCorrection(for: normalized, current: current, model: model) {
                 // Correction déjà lancée pendant l'écoute, sur ce même texte : elle tient lieu de correction du flux.
                 decision.ledger = early
@@ -96,26 +97,6 @@ extension DictationCoordinator {
                 job.cancelSideWork = {
                     fileTask.cancel()
                     early.task.cancel()
-                }
-            } else if current.earlyReady == nil {
-                // Une préparation sur un texte incomplet existe déjà : ne pas payer une autre préparation
-                // sur le flux intermédiaire. La décision flux/fichier choisira la correction définitive.
-                let request = await makeCorrectionRequest(
-                    transcript: normalized, context: context, field: current.field, window: current.window, model: model
-                )
-                // Échap pendant la lecture du champ : la correction n'est pas lancée.
-                if !job.cancelled {
-                    let task = Task { @MainActor in
-                        let began = Date()
-                        let outcome = await model.dependencies.clean(normalized, request, speech, true)
-                        return PreparedCorrection(outcome: outcome, milliseconds: Self.milliseconds(since: began))
-                    }
-                    decision.ledger = CorrectionLedger(task: task)
-                    let fileTask = ledger.task
-                    job.cancelSideWork = {
-                        fileTask.cancel()
-                        task.cancel()
-                    }
                 }
             }
         }

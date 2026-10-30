@@ -546,12 +546,15 @@ Le micro standard, réglage coupé, ne change pas.
 - **Une seule préparation anticipée** : après un segment final du flux suivi de 0,25 seconde sans nouveau
   texte, Wispad peut préparer la correction. Les notifications identiques ne repoussent pas cette attente. Un
   nouveau mot avant la fin de l'attente annule seulement le timer : aucun texte périmé n'est envoyé.
-- **Préparation à l'arrêt si nécessaire** : une préparation du même texte est réutilisée. Si la parole a
-  repris après la pause et que le texte a changé, une préparation de ce texte démarre au relâchement, en parallèle
-  de la finalisation du flux et de la vérification par fichier ; aucun autre flux intermédiaire n'est corrigé.
-  Chacune des deux préparations garde son texte source : le fichier peut retrouver celle de la première pause
-  même si une autre préparation tourne déjà sur le texte de l'arrêt.
-- **Trois corrections au plus** : une anticipation à une pause, une préparation à l'arrêt seulement si le texte
+- **Préparation à l'arrêt si nécessaire** : une préparation du même texte est réutilisée. Avec la vérification
+  audio, un segment déjà annoncé final ou un texte terminé par « . », « ! » ou « ? » garde sa préparation immédiate.
+  Sinon, Wispad attend le texte final du flux avant de préparer la correction, en parallèle du fichier encore
+  attendu : le dernier partiel peut être tronqué. Si le fichier est déjà revenu, seul le texte retenu est corrigé.
+  Une préparation réservée au relâchement empêche une autre préparation spéculative sur le flux final.
+  Sans vérification audio, la préparation du dernier texte entendu au relâchement reste inchangée.
+  Chaque préparation garde son texte source ; le fichier peut retrouver celle de la première pause même si une
+  autre préparation tourne déjà sur le texte de fin. Ces indices ne contournent jamais le fichier ni les garde-fous.
+- **Trois corrections au plus** : une anticipation à une pause, une préparation du flux final seulement si le texte
   a changé, puis une correction définitive uniquement si le fichier apporte encore un texte différent qui ne peut
   pas réutiliser une préparation. Une dictée inchangée après la pause ne paie qu'une seule correction. Chaque
   correction garde ses relais habituels en cas de panne. Le fichier, l'autre écoute, le contexte et les garde-fous
