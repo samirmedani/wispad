@@ -3,8 +3,8 @@ import Observation
 import SwiftUI
 import WispadCore
 
-/// Version affichée dans la barre latérale, et ce qui la suit : pour une release, la dernière version publiée sur
-/// GitHub ; pour un build de développement, le retard sur la branche principale du dépôt public. Une requête GitHub
+/// Version affichée dans la barre latérale, comparée à la dernière release publiée sur GitHub. Un build de
+/// développement montre aussi son retard sur main quand aucune release plus récente n'est disponible. Requêtes
 /// sans clé ni cookie, en arrière-plan : au lancement, puis toutes les 6 heures.
 @MainActor
 @Observable
@@ -27,6 +27,8 @@ final class BuildStatus {
     @ObservationIgnored var onAvailable: (@MainActor (ReleaseInfo) -> Void)?
     /// Lecture de la dernière release ; remplacée dans les tests, qui n'ont jamais de réseau.
     @ObservationIgnored var fetchLatest: @Sendable () async -> ReleaseCheckResult = { await BuildStatus.fetchLatestRelease() }
+    /// Comparaison du commit public ; remplacée dans les tests, y compris pour un commit local inconnu de GitHub.
+    @ObservationIgnored var fetchFreshness: @Sendable (URL) async -> BuildFreshness = { await BuildStatus.fetchBuildFreshness($0) }
     /// Versions publiées depuis celle qui tourne, jusqu'à la plus récente, la plus récente d'abord : lues dès qu'une
     /// nouvelle version est trouvée, pour que la fenêtre de mise à jour les montre aussitôt, même si GitHub ne répond
     /// plus à son ouverture.
@@ -94,31 +96,19 @@ final class BuildStatus {
         return nil
     }
 
-    /// Lance la vérification périodique : la dernière release pour une release ; le retard sur `main` pour un build de
-    /// développement (sans commit gravé, rien n'est demandé).
+    /// La release publique est prioritaire, y compris pour une installation compilée localement. Le diagnostic du
+    /// commit reste un complément des builds de développement ; il ne masque jamais une mise à jour disponible.
     func start(delay: Duration = .seconds(5)) {
         guard task == nil else { return }
-        switch kind {
-        case .release:
-            let fetch = fetchLatest
-            task = Task(priority: .utility) { [weak self] in
-                // Après le démarrage : ni le lancement ni la première dictée n'attendent GitHub.
-                try? await Task.sleep(for: delay)
-                while !Task.isCancelled {
-                    let result = await fetch()
-                    self?.apply(result)
-                    try? await Task.sleep(for: .seconds(ReleaseCheck.delay(after: result)))
-                }
-            }
-        case .development:
-            guard let commit, let url = BuildFreshnessCheck.compareURL(commit: commit) else { return }
-            task = Task(priority: .utility) { [weak self] in
-                try? await Task.sleep(for: delay)
-                while !Task.isCancelled {
-                    let result = await Self.fetchFreshness(url)
-                    self?.freshness = result
-                    try? await Task.sleep(for: .seconds(BuildFreshnessCheck.interval))
-                }
+        let fetch = fetchLatest
+        task = Task(priority: .utility) { [weak self] in
+            // Après le démarrage : ni le lancement ni la première dictée n'attendent GitHub.
+            try? await Task.sleep(for: delay)
+            while !Task.isCancelled {
+                let result = await fetch()
+                self?.apply(result)
+                _ = await self?.refreshFreshness(after: result)
+                try? await Task.sleep(for: .seconds(ReleaseCheck.delay(after: result)))
             }
         }
     }
@@ -131,34 +121,42 @@ final class BuildStatus {
         manualPhase = .checking
         let outcome: ManualCheckOutcome
         var found: ReleaseInfo?
-        switch kind {
+        let result = await fetchLatest()
+        manualLimit.record(result, at: Date())
+        apply(result)
+        let checkedFreshness = await refreshFreshness(after: result)
+        switch result {
         case .release:
-            let result = await fetchLatest()
-            manualLimit.record(result, at: Date())
-            apply(result)
-            switch result {
-            case .release:
-                found = available
-                outcome = found == nil ? .upToDate : .available
-            case .rateLimited: outcome = .rateLimited
-            case .unusable, .unreachable: outcome = .failed
-            }
-        case .development:
-            manualLimit.record(nil, at: Date())
-            if let commit, let url = BuildFreshnessCheck.compareURL(commit: commit) {
-                let result = await Self.fetchFreshness(url)
-                if result != .unknown { freshness = result }
-                switch result {
-                case .upToDate: outcome = .upToDate
-                case .behind: outcome = .behind
-                case .unknown: outcome = .failed
-                }
+            found = available
+            // Un commit privé ne rend pas une recherche de release réussie « impossible ».
+            if found != nil {
+                outcome = .available
+            } else if case .behind = checkedFreshness {
+                outcome = .behind
             } else {
-                outcome = .failed
+                outcome = .upToDate
+            }
+        case .rateLimited: outcome = .rateLimited
+        case .unusable, .unreachable:
+            switch checkedFreshness {
+            case .upToDate: outcome = .upToDate
+            case .behind: outcome = .behind
+            case .unknown, nil: outcome = .failed
             }
         }
         show(outcome)
         return found
+    }
+
+    /// Le complément de diagnostic n'ajoute aucune requête quand GitHub limite l'API ou qu'une release est proposée.
+    /// Une comparaison inconnue (commit privé, réseau) conserve le dernier état connu.
+    private func refreshFreshness(after result: ReleaseCheckResult) async -> BuildFreshness? {
+        guard kind == .development, available == nil,
+              let commit, let url = BuildFreshnessCheck.compareURL(commit: commit) else { return nil }
+        if case .rateLimited = result { return nil }
+        let checked = await fetchFreshness(url)
+        if checked != .unknown { freshness = checked }
+        return checked
     }
 
     /// Résultat affiché quelques secondes, puis la pause grise les boutons jusqu'à la prochaine recherche permise.
@@ -230,7 +228,7 @@ final class BuildStatus {
         return data
     }
 
-    private nonisolated static func fetchFreshness(_ url: URL) async -> BuildFreshness {
+    private nonisolated static func fetchBuildFreshness(_ url: URL) async -> BuildFreshness {
         let session = URLSession(configuration: githubConfiguration(timeout: BuildFreshnessCheck.timeout))
         defer { session.finishTasksAndInvalidate() }
         guard let (data, response) = try? await session.data(for: githubRequest(url)) else { return .unknown }

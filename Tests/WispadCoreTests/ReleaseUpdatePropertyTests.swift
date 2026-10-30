@@ -120,8 +120,9 @@ struct SemanticVersionPropertyTests {
             let display = UpdateDisplay.make(kind: .release, installed: installedText, latest: release, freshness: .unknown)
             let expected: UpdateDisplay = unreadable ? .unknown : (candidate > installed ? .available(release) : .upToDate)
             if display != expected { return "affichage \(display) pour \(candidate) / \(installedText)" }
-            if UpdateDisplay.make(kind: .development, installed: installedText, latest: release, freshness: .behind(2)) != .development(.behind(2)) {
-                return "un build de développement propose une release"
+            let developmentExpected: UpdateDisplay = newer ? .available(release) : .development(.behind(2))
+            if UpdateDisplay.make(kind: .development, installed: installedText, latest: release, freshness: .behind(2)) != developmentExpected {
+                return "affichage de développement incorrect pour \(candidate) / \(installedText)"
             }
             return nil
         }

@@ -1181,16 +1181,19 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
   avant la version
   finale. Une app plus récente que la dernière release (release retirée) reste « À jour ».
 - **Build de développement** : la version et le commit court gravé à la compilation (« 0.1.0 · abc1234 »),
-  puis « À jour » ou « N commits de retard » (« 1 commit de retard ») sur la branche `main` du dépôt public, comme
-  avant les releases. Un clic sur le retard ouvre la page des commits. Aucune release proposée ni demandée.
-- **Vérification**, seul contact hors des fournisseurs : pour une release
-  `GET https://api.github.com/repos/samirmedani/wispad/releases/latest`, pour un build de développement
-  `GET https://api.github.com/repos/samirmedani/wispad/compare/<commit>...main` (le retard est le champ `ahead_by`).
+  puis la release publiée plus récente si elle existe, même si le commit local est inconnu de GitHub. Sinon,
+  « À jour » ou « N commits de retard » (« 1 commit de retard ») sur la branche `main` du dépôt public.
+  Un clic sur le retard ouvre la page des commits. Le build local reste identifié comme tel ; son bouton de mise
+  à jour ouvre la page GitHub, sans remplacer le build de développement automatiquement.
+- **Vérification**, seul contact hors des fournisseurs : tous les builds lisent
+  `GET https://api.github.com/repos/samirmedani/wispad/releases/latest`. Un build de développement consulte aussi
+  `GET https://api.github.com/repos/samirmedani/wispad/compare/<commit>...main` (le retard est le champ `ahead_by`)
+  si aucune release plus récente n'est proposée et que GitHub ne limite pas les recherches.
   API publique, sans clé ni cookie, avec l'en-tête User-Agent demandé par GitHub ; 5 s après le lancement, puis
-  toutes les 6 heures, 8 s au plus. Rien d'autre n'est envoyé (pour un build de développement, le commit de la
+  toutes les 6 heures, 8 s au plus par requête. Rien d'autre n'est envoyé (pour un build de développement, le commit de la
   version, dans l'adresse). Ni le démarrage ni la dictée n'attendent cette requête.
 - **Rechercher une mise à jour** : la flèche ↻ au bout de la pastille de version (barre latérale) et Réglages › Aide ›
-  Mises à jour lancent tout de suite la même requête ; la vérification automatique continue à son rythme. Une
+  Mises à jour lancent tout de suite la même recherche ; la vérification automatique continue à son rythme. Une
   recherche à la fois, au plus une par minute (boutons grisés pendant la pause) ; limite de l'API atteinte : pas avant
   l'heure annoncée par GitHub (un quart d'heure sans indication, six heures au plus). Pendant la recherche, une roue ;
   puis, 4 s : « Wispad est à jour », « Nouvelle version trouvée » (la fenêtre de mise à jour s'ouvre sur les notes,
@@ -1201,7 +1204,8 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
   30 minutes ; limite de l'API (403, 429) → nouvel essai à l'heure annoncée par GitHub (`Retry-After` ou
   `X-RateLimit-Reset`), entre 5 minutes et 6 heures, une heure sans indication ; aucune release (404), tag mal formé
   (autre chose que vX.Y.Z), brouillon, pré-version ou réponse illisible → rien de nouveau. Ce qui était affiché reste ;
-  sans aucune réponse lisible, seule la version s'affiche. Build de développement : dépôt privé (404), commit inconnu
+  sans aucune réponse lisible, seule la version s'affiche. Build de développement sans release plus récente à proposer :
+  dépôt privé (404), commit inconnu
   (compilation locale non publiée) ou commit non gravé (git absent à la compilation) → seule la version.
 - **Rappel discret** d'une nouvelle version, une seule fois par version, dans la bulle : « Wispad 0.1.2 est
   disponible », avec « Voir » (la fenêtre s'ouvre sur les notes de version) et « Ne plus me rappeler » ; ✕ au survol,
