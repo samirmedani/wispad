@@ -145,6 +145,7 @@ struct AppDependencies {
         NSPasteboard.general.setString(text, forType: .string)
     }
     /// Le dernier callback signale l'envoi de ⌘V, avant la confirmation d'accessibilité.
+    /// L'insertion peut actualiser l'identité de `DictationContext` si aucun champ ne fixait l'app au départ.
     var insert: (String, DictationContext, @escaping @MainActor () -> Bool, @escaping @MainActor () -> Void) async -> InsertionStatus = {
         await TextInserter.insert($0, context: $1, shouldProceed: $2, didSendPaste: $3)
     }
