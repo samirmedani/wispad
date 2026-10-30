@@ -753,6 +753,8 @@ Réglages › Mise en forme : **Montants et unités** (symboles, par défaut, ou
   les tons Naturel et Soigné : formes de « falloir » et « y avoir » au début d'une proposition avec complément.
   Elle ne touche ni les citations, ni le code, ni les adresses, ni les fragments incomplets, ni une interrogation
   telle que « Que faut préparer ? ». Même finition après le report du fichier dans une correction anticipée.
+  Un retour à la ligne, LF ou CRLF, clôt la recherche du complément : un fragment isolé avant la ligne suivante
+  ne devient pas une phrase complétée. La recherche s'arrête au premier mot utile, même dans une longue dictée.
   Le repli sans réponse du correcteur reste brut. Une reprise de quantité autour d'un nom répété n'est acceptée
   que si la valeur finale figure réellement dans le texte rendu ; valeurs, signes et pourcentages sont comparés.
 - **Consigne sur la sélection** (Réglages › Dictée › Correction › « Réécrire la sélection sur consigne », actif par défaut) : avec du texte

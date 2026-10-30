@@ -3,6 +3,15 @@ import Testing
 @testable import WispadCore
 
 struct WrittenGrammarTests {
+    @Test func windowsAndUnixLineBreaksKeepTheSameClauseBoundaries() {
+        for text in ["Faut\nla porte reste ouverte.", "Faut pas\nle bus arrive.", "Y a une\nla table est libre.",
+                     "Faut fermer.\nY a du vent."] {
+            let unix = WrittenGrammar.completeImpersonalSubjects(text)
+            let windows = WrittenGrammar.completeImpersonalSubjects(text.replacingOccurrences(of: "\n", with: "\r\n"))
+            #expect(windows.replacingOccurrences(of: "\r\n", with: "\n") == unix)
+        }
+    }
+
     @Test(arguments: [
         ("Faut déplacer la caisse.", "Il faut déplacer la caisse."),
         ("Fallait prévenir le gardien.", "Il fallait prévenir le gardien."),
@@ -45,6 +54,23 @@ struct WrittenGrammarTests {
         #expect(WrittenGrammar.completeImpersonalSubjects(text) == text)
     }
 
+    @Test func longUnpunctuatedDictationKeepsEveryCompletion() {
+        let text = "Faut ranger le local" + String(repeating: " et faut nettoyer la table", count: 180)
+        let expected = "Il faut ranger le local" + String(repeating: " et il faut nettoyer la table", count: 180)
+        #expect(WrittenGrammar.completeImpersonalSubjects(text) == expected)
+    }
+
+    @Test func complementSearchHasNoArbitraryLengthLimitAndStopsAtBoundaries() {
+        let padding = String(repeating: "pas ", count: 600)
+        let prefix = "Faut " + padding
+        #expect(WrittenGrammar.completeImpersonalSubjects(prefix + "marcher.") == "Il faut " + padding + "marcher.")
+        for suffix in ["; marcher.", "\nmarcher.", "mais le bus arrive."] {
+            #expect(WrittenGrammar.completeImpersonalSubjects(prefix + suffix) == prefix + suffix)
+        }
+        #expect(WrittenGrammar.completeImpersonalSubjects("Faut\u{00A0}déplacer la table.") == "Il faut\u{00A0}déplacer la table.")
+        #expect(WrittenGrammar.completeImpersonalSubjects("Y en a-t-il ?") == "Y en a-t-il ?")
+    }
+
     @Test(arguments: [
         ("Faut ralentir.", "Il faut ralentir."),
         ("Faut pas traverser.", "Il ne faut pas traverser."),
@@ -55,7 +81,7 @@ struct WrittenGrammarTests {
         ("Y en a.", "Il y en a."),
         ("T'as raison.", "Tu as raison."),
         ("T'es arrivé.", "Tu es arrivé."),
-        ("J'sais pas.", "Je ne sais pas."),
+        ("J'peux pas.", "Je ne peux pas."),
         ("Elle m'écoute pas.", "Elle ne m'écoute pas."),
         ("Faut ralentir. Fallait téléphoner. Faudrait essayer. Faut patienter. Faut rentrer.",
          "Il faut ralentir. Il fallait téléphoner. Il faudrait essayer. Il faut patienter. Il faut rentrer."),

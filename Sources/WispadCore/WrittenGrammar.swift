@@ -57,11 +57,14 @@ enum WrittenGrammar {
                 let prefix = source.substring(with: match.range(at: 1))
                 let verbRange = match.range(at: 2)
                 let verb = source.substring(with: verbRange)
-                let after = source.substring(from: NSMaxRange(verbRange))
+                let afterOffset = NSMaxRange(verbRange)
+                let firstAfter = afterOffset < source.length
+                    ? source.substring(with: source.rangeOfComposedCharacterSequence(at: afterOffset)).first : nil
                 // Ni inversion (« faut-il »), ni préfixe d'un identifiant.
-                if let first = after.first, !first.isWhitespace, !clauseEnds.contains(first) { continue }
+                if let first = firstAfter, !first.isWhitespace, !clauseEnds.contains(first) { continue }
                 let hasEn = verb.range(of: #"\by\s+en\s+"#, options: [.regularExpression, .caseInsensitive]) != nil
-                guard hasEn || hasImpersonalComplement(after) else { continue }
+                guard hasEn || (firstAfter?.isWhitespace == true
+                    && hasImpersonalComplement(in: fragment, source: source, from: afterOffset)) else { continue }
                 let sentenceStart = prefix.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                     || prefix.contains(where: { ".!?\n\r".contains($0) })
                 let allCaps = verb == verb.uppercased()
@@ -73,18 +76,33 @@ enum WrittenGrammar {
     }
 
     /// Exige un complément dans la même proposition ; « faut pas… » ou « y a une… » n'en sont pas.
-    private static func hasImpersonalComplement(_ suffix: String) -> Bool {
-        guard suffix.first?.isWhitespace == true else { return false }
-        let clause = String(suffix.prefix { !clauseEnds.contains($0) })
-        let ns = clause as NSString
-        let words = complementPattern.matches(in: clause, range: NSRange(location: 0, length: ns.length))
-            .map { ns.substring(with: $0.range).lowercased() }
-        let beforeNextClause = words.prefix { !nextClauseWords.contains($0) }
-        return beforeNextClause.contains { !incompleteComplementWords.contains($0) }
+    private static func hasImpersonalComplement(in text: String, source: NSString, from offset: Int) -> Bool {
+        var found = false
+        // Lire directement le fragment d'origine et s'arrêter au premier mot utile ou à la frontière : une longue
+        // dictée sans ponctuation ne doit pas recopier puis tokeniser tout son suffixe pour chaque proposition.
+        complementPattern.enumerateMatches(in: text, range: NSRange(location: offset, length: source.length - offset)) {
+            match, _, stop in
+            guard let match else { return }
+            if match.range(at: 1).location != NSNotFound {
+                // CRLF est une frontière comme LF. Une ponctuation suivie d'une marque combinante garde
+                // en revanche son caractère complet, au lieu de couper sur l'un de ses points de code.
+                let composed = source.substring(with: source.rangeOfComposedCharacterSequence(at: match.range.location))
+                if let character = composed.first, clauseEnds.contains(character) { stop.pointee = true }
+                return
+            }
+            let word = source.substring(with: match.range).lowercased()
+            if nextClauseWords.contains(word) {
+                stop.pointee = true
+            } else if !incompleteComplementWords.contains(word) {
+                found = true
+                stop.pointee = true
+            }
+        }
+        return found
     }
 
     private static let clauseEnds: Set<Character> = Set(".!?;:,\n\r…")
-    private static let complementPattern = try! NSRegularExpression(pattern: #"[\p{L}\p{N}]+"#)
+    private static let complementPattern = try! NSRegularExpression(pattern: #"([.!?;:,\n\r…])|[\p{L}\p{N}]+"#)
     private static let nextClauseWords: Set<String> = ["et", "mais", "car", "donc", "sinon"]
     private static let incompleteComplementWords: Set<String> = [
         "ne", "n", "pas", "plus", "moins", "encore", "toujours", "vraiment", "assez", "bien", "mieux",
