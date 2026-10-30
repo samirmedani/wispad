@@ -214,7 +214,13 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   coût » refait tout. « Mettre à jour chaque semaine » (coupé par défaut, coût d'une semaine type affiché : les
   dictées des 4 dernières semaines divisées par 4) lance seul cette mise à jour quand l'analyse a 7 jours et que des
   dictées sont arrivées, vérifié chaque minute ; jamais une première analyse. Les dictées supprimées sont oubliées
-  des sujets. Avec un modèle local, le coût affiché est « gratuit ». Chaque appel compte dans Consommation. Couper l'interrupteur efface le résultat.
+  des sujets. Après une tentative ratée ou interrompue, la prochaine relance automatique attend au moins 6 heures,
+  puis 24 heures, puis 7 jours si les échecs se répètent. Cette échéance est enregistrée avant l'envoi et survit à
+  une relance de l'app ; une mise à jour manuelle reste possible. Une annulation garde le créneau occupé jusqu'à la
+  fin effective des requêtes : aucun chevauchement, aucun ancien résultat ne réapparaît après l'arrêt. Les lots
+  réussis sont retenus par identifiant ; les lots ratés restent à relire, même s'ils précèdent un lot réussi.
+  Avec un modèle local, le coût affiché est « gratuit ». Chaque appel compte dans Consommation dès son retour,
+  même si l'analyse globale échoue ou est annulée. Couper l'interrupteur efface le résultat.
   « Écrire mon portrait » (sous le premier, coupé par défaut, avec son coût en plus) ajoute trois phrases sur ce qui
   occupe la personne, d'après ses sujets et ses chiffres. Sans clé de correction active, le lancement est remplacé par
   « Aucune clé de correction active ». Le cerveau s'ouvre sur les sujets quand l'analyse est allumée et faite.
@@ -537,16 +543,23 @@ Le micro standard, réglage coupé, ne change pas.
   épelées, anglais, dates et heures, nombres mal entendus, mots coupés, termes anglais entendus comme des mots
   français, avec des phrases témoins qui doivent rester en français).
 - La correction ne répond jamais au contenu dicté et ne recopie jamais le contexte.
-- **Correction préparée pendant l'écoute** : à chaque pause de la parole (segment final du flux, puis 0,25 s sans
-  nouveau mot), le texte entendu part déjà à la correction. Si l'on arrête sans rien ajouter (même texte à la
-  ponctuation, la casse ou l'écriture des nombres près), cette correction sert telle quelle et le texte se colle sans
-  attendre un nouvel appel. Si la parole reprend, elle est comptée (coût réel)
-  et la suivante la remplace ; quatre au plus par dictée. Jamais si la correction est coupée, ni hors connexion.
-- **Correction lancée à l'arrêt** : dès l'arrêt, ce que le flux a déjà affiché part à la correction, sans attendre
-  son texte final (0,3 à 0,5 s sur les dictées courtes, mesuré le 13 octobre 2026). Si le texte final dit la même
-  chose, cette correction sert ; sinon elle est comptée et une correction du texte final la remplace. Rien de plus
-  n'est lancé si une correction préparée à une pause porte déjà sur ce texte, ni hors connexion : la fin de dictée
-  corrige alors si la connexion est revenue.
+- **Pas de correction pendant les pauses** : le flux met seulement à jour ce qui a été entendu. Une longue
+  dictée, même avec de nombreuses pauses, n'envoie jamais de texte incomplet à corriger pendant l'écoute.
+- **Préparation unique à l'arrêt** : dès le relâchement, le texte déjà entendu peut partir à la correction en
+  parallèle de la finalisation du flux et de la vérification par fichier, sans temporisation ajoutée. S'il
+  correspond au texte finalement retenu (ponctuation, casse et écriture des nombres mises à part), cette
+  correction sert telle quelle, même si le flux final avait entre-temps annoncé autre chose.
+- **Deux corrections au plus** : si la préparation ne correspond pas au texte retenu, seule une correction
+  définitive de ce texte peut s'ajouter ; jamais une troisième correction sur un flux intermédiaire. Chaque
+  correction garde ses relais habituels en cas de panne. Le fichier, l'autre écoute, le contexte et les
+  garde-fous de fidélité restent utilisés comme avant ; une correction obsolète ne retarde jamais la correction
+  définitive. Une retouche locale sûre d'un ou deux mots peut encore réutiliser une correction prête. Tous les
+  appels envoyés restent comptés, y compris ceux devenus inutiles ou annulés après l'envoi. Rien ne part si la
+  correction est désactivée ou si le Mac est hors connexion. Une dictée annulée pendant l'écoute n'a donc payé
+  aucune correction.
+- **Refus de paramètre** : une réponse HTTP 400 n'est réessayée que si le paramètre facultatif de raisonnement
+  effectivement envoyé peut être retiré. Les deux tentatives gardent leurs coûts propres et leur attribution au
+  relais ; elles forment une seule bascule, avec l'issue de la dernière tentative.
 - Expressions mal entendues malgré les mots-clés, réécrites avant et après la correction : « services functions »
   → « serverless functions », « day inference » → « AI inference ».
 

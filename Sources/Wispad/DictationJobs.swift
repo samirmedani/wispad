@@ -33,10 +33,8 @@ final class Capture {
     var window: Task<String?, Never>?
     /// Dernier texte affiché par le flux en direct.
     var latestHeard = ""
-    /// Corrections lancées pendant l'écoute, à chaque pause : toutes sont comptées, une seule peut servir.
+    /// Préparation unique au relâchement, conservée pour son annulation et son comptage.
     var earlyCorrections: [CorrectionLedger] = []
-    /// Texte (normalisé) de la correction en préparation ou prête.
-    var earlyText: String?
     /// La correction préparée la plus récente, avec le texte exact qu'elle corrige.
     var earlyReady: (text: String, ledger: CorrectionLedger)?
     /// La fin de dictée a choisi sa correction : plus rien ne se prépare.

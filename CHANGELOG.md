@@ -3,6 +3,17 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## En développement — 0.6.5
+
+**Corrigé**
+- Les pauses pendant une dictée ne déclenchent plus de corrections payantes inutiles. Une préparation unique peut
+  démarrer à l'arrêt en parallèle des transcriptions ; seul un texte finalement différent peut demander une seconde
+  correction. La vérification audio et les garde-fous de fidélité sont conservés.
+- Une analyse du profil en échec ne se relance plus chaque minute. Les appels restent comptés même après un échec
+  ou une annulation, et les lots ratés restent à relire.
+- Un refus de paramètre ne répète plus une demande identique ; les nouvelles tentatives gardent leur attribution
+  au fournisseur de secours sans multiplier les bascules.
+
 ## 0.6.4 — 29 octobre 2026
 
 Un mot entendu ne se double plus.

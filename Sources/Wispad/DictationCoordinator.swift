@@ -555,8 +555,11 @@ final class DictationCoordinator {
         // même si Échap arrive pendant la relecture du champ.
         for job in jobs where !job.pasteSent {
             job.cancelled = true
+            job.capture.cancelled = true
+            job.capture.correctionClaimed = true
             job.task?.cancel()
             job.cancelSideWork()
+            if let model { accountEarlyCorrections(job.capture, model: model, cancel: true) }
         }
         retrying = false
         refreshPhase()

@@ -122,6 +122,8 @@ public struct UsageEvent: Identifiable, Equatable, Sendable {
     /// Appel raté : la cause lue dans l'erreur (connexion, délai, panne, clé…). nil s'il a réussi, ou pour un appel
     /// enregistré avant le suivi des causes.
     public var failureCause: APIFailureCause?
+    /// Nouvel essai de compatibilité du même appel logique ; chaque tentative garde son coût.
+    public var retryOf: String?
 
     public init(
         id: String = UUID().uuidString,
@@ -134,7 +136,8 @@ public struct UsageEvent: Identifiable, Equatable, Sendable {
         latencyMs: Int = 0,
         succeeded: Bool = true,
         fallback: APIFallback? = nil,
-        failureCause: APIFailureCause? = nil
+        failureCause: APIFailureCause? = nil,
+        retryOf: String? = nil
     ) {
         self.id = id
         self.createdAt = createdAt
@@ -147,6 +150,7 @@ public struct UsageEvent: Identifiable, Equatable, Sendable {
         self.succeeded = succeeded
         self.fallback = fallback
         self.failureCause = succeeded ? nil : failureCause
+        self.retryOf = retryOf
     }
 
     public static func transcription(

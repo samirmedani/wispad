@@ -311,9 +311,12 @@ struct CleanupFallbackTests {
         #expect(calls.map(\.succeeded) == [false, false, true])
         #expect(calls[0].fallback == nil)
         #expect(calls[1].fallback == APIFallback(fromAPI: .deepSeekCleanup, stage: .correction, reason: .requestFailed))
-        #expect(calls[2].fallback == nil)
+        #expect(calls[2].fallback == calls[1].fallback)
+        #expect(calls[2].retryOf == calls[1].id)
         #expect(Set(calls.map(\.id)).count == 3)
         #expect(FallbackSummary.make(events: calls, period: .all).total == 1)
+        #expect(FallbackSummary.make(events: calls, period: .all).successes == 1)
+        #expect(FallbackSummary.make(events: calls, period: .all).failures == 0)
         #expect(result.fallback == "OpenAI")
     }
 
@@ -329,7 +332,7 @@ struct CleanupFallbackTests {
 
     @Test func dictionaryCountsBothParameterRetryRequests() async {
         let stub = CleanupHTTPStub([.reply(status: 400, tokens: false), .reply()], content: #"{"garder":["OpenAI"]}"#)
-        let result = await Self.judge(stub)
+        let result = await Self.judge(stub, speech: Self.speech(deepSeek: false, openAI: false))
         #expect(result.usages.count == 2)
         #expect(result.usages.map(\.succeeded) == [false, true])
         #expect(result.usages.allSatisfy { $0.fallback == nil })

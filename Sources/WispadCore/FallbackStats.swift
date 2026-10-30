@@ -94,7 +94,10 @@ public struct FallbackSummary: Equatable, Sendable {
             }?.failureCause
         }
 
-        for event in events {
+        // Les nouveaux essais de compatibilité gardent chacun leur coût et leur relais,
+        // mais une seule bascule est présentée, avec l'issue de la dernière tentative.
+        for attempt in compatibilityOutcomes(events) {
+            let event = attempt.last
             guard start == nil || event.createdAt >= start!,
                   let fallback = event.fallback,
                   fallback.fromAPI.provider != event.api.provider,
@@ -118,7 +121,7 @@ public struct FallbackSummary: Equatable, Sendable {
             entries.append(FallbackEntry(
                 id: event.id, date: event.createdAt, stage: fallback.stage, fromProvider: source,
                 toProvider: destination, reason: fallback.reason, succeeded: event.succeeded,
-                cause: primaryCause(of: fallback, before: event.createdAt)
+                cause: primaryCause(of: fallback, before: attempt.first.createdAt)
             ))
             switch fallback.reason {
             case .requestFailed: afterFailure += 1
@@ -138,6 +141,34 @@ public struct FallbackSummary: Equatable, Sendable {
             routes: sorted,
             recent: Array(entries.sorted { $0.date == $1.date ? $0.id < $1.id : $0.date > $1.date }.prefix(recentLimit))
         )
+    }
+
+    private static func compatibilityOutcomes(_ events: [UsageEvent]) -> [(first: UsageEvent, last: UsageEvent)] {
+        var byID: [String: UsageEvent] = [:]
+        for event in events where byID[event.id] == nil { byID[event.id] = event }
+        var outcomes: [String: (first: UsageEvent, last: UsageEvent, depth: Int)] = [:]
+        for event in byID.values {
+            var first = event
+            var seen: Set<String> = [event.id]
+            var depth = 0
+            while let retryOf = first.retryOf, let previous = byID[retryOf],
+                  !previous.succeeded, previous.api == event.api, previous.model == event.model,
+                  previous.fallback == event.fallback, seen.insert(previous.id).inserted {
+                first = previous
+                depth += 1
+            }
+            // Métadonnée corrompue cyclique : ne pas faire disparaître de bascule.
+            if let retryOf = first.retryOf, seen.contains(retryOf) {
+                first = event
+                depth = 0
+            }
+            if let known = outcomes[first.id],
+               known.depth > depth || (known.depth == depth && (known.last.createdAt, known.last.id) > (event.createdAt, event.id)) {
+                continue
+            }
+            outcomes[first.id] = (first, event, depth)
+        }
+        return outcomes.values.map { ($0.first, $0.last) }
     }
 
     /// Écart maximal entre l'échec du service principal et l'appel de secours qui le remplace.

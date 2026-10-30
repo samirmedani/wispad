@@ -839,8 +839,9 @@ public enum TextCleaner {
 
         var events: [UsageEvent] { lock.withLock { recorded } }
 
-        func begin(route: Route, fallback: APIFallback?) -> String {
-            let usage = TextCleaner.event(route: route, started: Date(), tokens: nil, succeeded: false, fallback: fallback)
+        func begin(route: Route, fallback: APIFallback?, retryOf: String?) -> String {
+            var usage = TextCleaner.event(route: route, started: Date(), tokens: nil, succeeded: false, fallback: fallback)
+            usage.retryOf = retryOf
             lock.withLock { recorded.append(usage) }
             return usage.id
         }
@@ -852,6 +853,7 @@ public enum TextCleaner {
                 var usage = TextCleaner.event(route: route, started: previous.createdAt, tokens: tokens,
                                              succeeded: succeeded, fallback: previous.fallback)
                 usage.id = id
+                usage.retryOf = previous.retryOf
                 usage.failureCause = succeeded ? nil : cause
                 recorded[index] = usage
             }
@@ -1109,27 +1111,29 @@ public enum TextCleaner {
     }
 
     private enum ResponseError: Error {
-        case status(Int)
+        case status(Int, requestID: String)
     }
 
     static func send(system: String, user: String, route: Route, maxTokens: Int, includeReasoning: Bool, allowTruncated: Bool = false,
                      transport: @escaping HTTPTransport = httpTransport, requests: RequestLog = RequestLog(), fallback: APIFallback? = nil,
                      requestTimeout: TimeInterval = 8) async throws -> Reply {
+        let effort = includeReasoning ? TextModelCatalog.reasoningEffort(api: route.api, model: route.model) : nil
         do {
             return try await sendAttempt(system: system, user: user, route: route, maxTokens: maxTokens,
-                                         includeReasoning: includeReasoning, allowTruncated: allowTruncated,
+                                         reasoningEffort: effort, allowTruncated: allowTruncated,
                                          transport: transport, requests: requests, fallback: fallback, requestTimeout: requestTimeout)
-        } catch ResponseError.status(400) where includeReasoning {
-            // Deux requêtes distinctes ; la seconde reste chez le même fournisseur.
-            return try await send(system: system, user: user, route: route, maxTokens: maxTokens,
-                                  includeReasoning: false, allowTruncated: allowTruncated, transport: transport, requests: requests,
-                                  requestTimeout: requestTimeout)
+        } catch ResponseError.status(400, let requestID) where effort != nil {
+            // Compatibilité : un seul nouvel essai, uniquement si le paramètre envoyé peut être retiré.
+            // Les deux tentatives gardent la même attribution de relais et leur propre usage.
+            return try await sendAttempt(system: system, user: user, route: route, maxTokens: maxTokens,
+                                         reasoningEffort: nil, allowTruncated: allowTruncated, transport: transport,
+                                         requests: requests, fallback: fallback, requestTimeout: requestTimeout, retryOf: requestID)
         }
     }
 
-    private static func sendAttempt(system: String, user: String, route: Route, maxTokens: Int, includeReasoning: Bool, allowTruncated: Bool,
+    private static func sendAttempt(system: String, user: String, route: Route, maxTokens: Int, reasoningEffort: String?, allowTruncated: Bool,
                                     transport: @escaping HTTPTransport, requests: RequestLog, fallback: APIFallback?,
-                                    requestTimeout: TimeInterval) async throws -> Reply {
+                                    requestTimeout: TimeInterval, retryOf: String? = nil) async throws -> Reply {
         try Task.checkCancellation()
         var body: [String: Any] = [
             "model": route.model,
@@ -1149,12 +1153,12 @@ public enum TextCleaner {
         case .xaiCleanup:
             body["max_tokens"] = maxTokens
             body["temperature"] = 0
-            if includeReasoning, let effort = TextModelCatalog.reasoningEffort(api: route.api, model: route.model) {
+            if let effort = reasoningEffort {
                 body["reasoning_effort"] = effort
             }
         default:
             body["max_completion_tokens"] = maxTokens
-            if includeReasoning, let effort = TextModelCatalog.reasoningEffort(api: route.api, model: route.model) {
+            if let effort = reasoningEffort {
                 body["reasoning_effort"] = effort
             }
         }
@@ -1167,7 +1171,7 @@ public enum TextCleaner {
         http.httpBody = try JSONSerialization.data(withJSONObject: body)
         http.timeoutInterval = requestTimeout
         try Task.checkCancellation()
-        let id = requests.begin(route: route, fallback: fallback)
+        let id = requests.begin(route: route, fallback: fallback, retryOf: retryOf)
         var tokens: TokenUsage?
         do {
             let (data, response) = try await transport(http)
@@ -1175,7 +1179,7 @@ public enum TextCleaner {
             // L'usage est valide même quand le texte est tronqué, invalide ou refusé.
             tokens = TokenUsage.parse(object?["usage"] as? [String: Any])
             let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-            guard (200..<300).contains(status) else { throw ResponseError.status(status) }
+            guard (200..<300).contains(status) else { throw ResponseError.status(status, requestID: id) }
             guard let choices = object?["choices"] as? [[String: Any]],
                   let message = choices.first?["message"] as? [String: Any],
                   let content = message["content"] as? String else {
@@ -1189,7 +1193,7 @@ public enum TextCleaner {
             return Reply(content: content, tokens: tokens)
         } catch {
             let cause: APIFailureCause
-            if case ResponseError.status(let code) = error { cause = APIFailureCause.status(code) } else { cause = APIFailureCause.classify(error) }
+            if case ResponseError.status(let code, _) = error { cause = APIFailureCause.status(code) } else { cause = APIFailureCause.classify(error) }
             requests.finish(id: id, route: route, tokens: tokens, succeeded: false, cause: cause)
             throw error
         }
