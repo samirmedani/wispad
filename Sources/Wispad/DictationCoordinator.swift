@@ -508,7 +508,7 @@ final class DictationCoordinator {
         }
         let job = FinishJob(capture: current, url: url, duration: duration, previous: jobs.last?.pasted)
         jobs.append(job)
-        // La correction part sur ce qui a déjà été entendu, pendant que le flux finalise son texte.
+        // Un texte déjà final ou ponctué garde son avance ; un partiel tronqué attend le flux final.
         prepareCorrectionAtRelease(current)
         // L'écoute est finie : le son du Mac revient avant le son de fin, pour qu'on l'entende.
         refreshPhase()

@@ -3,6 +3,15 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.6.7 — 30 octobre 2026
+
+Moins d'attente quand le flux n'a pas encore terminé sa phrase.
+
+**Amélioré**
+- Avec la vérification audio, un partiel sans fin de phrase attend le texte final du flux : sa correction peut
+  alors démarrer pendant que le fichier est encore attendu. Un segment déjà final ou ponctué garde son avance
+  au relâchement, sans nouvelle série d'appels. La vérification audio et les garde-fous de fidélité sont conservés.
+
 ## 0.6.6 — 30 octobre 2026
 
 Moins de corrections payantes, sans perdre l'avance d'une pause finale.
