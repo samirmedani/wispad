@@ -15,11 +15,11 @@ struct CorrectionGuardTests {
         #expect(with < without * 4)
     }
 
-    @Test func oralElisionsAreWrittenOutButFamiliarFormsStay() {
+    @Test func oralElisionsAndRegisterHaveSeparateRules() {
         let system = CorrectionPrompt.system
         #expect(system.contains("« j'sais » → « je sais »"))
         #expect(system.contains("« d'faire » → « de faire »"))
-        #expect(system.contains("Garde les tournures familières qui s'écrivent ainsi (« t'as », « y a », « t'es »)"))
+        #expect(system.contains("Le registre demandé plus bas décide des contractions familières et des négations"))
     }
 
     @Test func visibleConversationIsSentAsContextOnly() {

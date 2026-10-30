@@ -1016,7 +1016,8 @@ public enum TextCleaner {
                     context: request.nearbyText,
                     dictionary: request.dictionary,
                     previousDictations: request.previousDictations + [request.windowText].compactMap { $0 },
-                    alternative: request.alternativeTranscript
+                    alternative: request.alternativeTranscript,
+                    language: CorrectionPrompt.language(for: request)
                 )
                 var failed = requests.events
                 let usage = failed.popLast()

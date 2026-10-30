@@ -2617,12 +2617,12 @@
         }
       }
     },
-    "Comme dicté" : {
+    "Naturel" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "As dictated"
+            "value" : "Natural"
           }
         }
       }

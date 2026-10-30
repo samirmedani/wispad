@@ -3,6 +3,20 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.7.0 — 30 octobre 2026
+
+Une dictée plus cohérente à l'écrit, fidèle à ta façon de parler.
+
+**Amélioré**
+- Le ton par défaut, désormais nommé « Naturel », demande un français écrit grammatical dans toute la dictée :
+  négations certaines complètes, sujets impersonnels omis rétablis, nuances et incertitudes conservées.
+- Le ton « Soigné » développe aussi les contractions familières ; le ton « Détendu » garde ses tournures orales.
+  Les citations, le code et les adresses conservent leur contenu.
+- Les phrases courtes correctement complétées ne sont plus rejetées comme des ajouts inventés. Cette autorisation
+  reste limitée aux constructions reconnues : elle ne permet ni un détail ajouté ni une fin de phrase supprimée.
+- Ces améliorations partagent la correction existante, sans nouvel appel IA, changement de modèle ni attente
+  volontaire supplémentaire avant le collage. Les protections des fins de voix et du collage sont conservées.
+
 ## 0.6.9 — 30 octobre 2026
 
 Préserve les mots dictés et les fins de voix.

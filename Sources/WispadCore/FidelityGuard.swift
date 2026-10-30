@@ -10,9 +10,11 @@ public enum FidelityGuard {
         context: String? = nil,
         dictionary: [String] = [],
         previousDictations: [String] = [],
-        alternative: String? = nil
+        alternative: String? = nil,
+        language: DictationLanguage = .french
     ) -> String {
         let heard = locatedWords(in: transcript).map(\.text)
+        let grammarReference = language == .english ? transcript : WrittenGrammar.reference(transcript)
         // Autre écoute du même audio : un mot repris de là a été entendu, ce n'est ni une invention ni une traduction.
         let alsoHeard = alternative.map { locatedWords(in: $0).map(\.text) } ?? []
         let written = locatedWords(in: corrected).map(\.text)
@@ -20,7 +22,12 @@ public enum FidelityGuard {
         // Une correction enlève des hésitations et ajoute de la ponctuation : elle n'allonge pas le texte.
         // Seuls les mots comptent : les guillemets d'une citation ou un deux-points isolé n'en sont pas.
         let spoken = heard.filter(isWord).count
-        if written.filter(isWord).count > spoken + max(4, spoken / 4) { return transcript }
+        if written.filter(isWord).count > spoken + max(4, spoken / 4) {
+            // Pas de crédit de mots libre : un dépassement doit correspondre aux seules expansions reconnues.
+            guard grammarReference != transcript,
+                  WrittenGrammar.matches(reference: grammarReference, corrected: corrected)
+            else { return transcript }
+        }
         if copiesContext(written: written, heard: heard, context: context, additional: previousDictations) { return transcript }
         if losesTheDictation(heard: heard, written: written, alsoHeard: alsoHeard) { return transcript }
         let repaired = restoreTranslatedWords(
@@ -35,7 +42,9 @@ public enum FidelityGuard {
         let restored = restoreUnspokenReferences(heard: heard, corrected: repaired, alsoHeard: alsoHeard)
         // Une année que personne n'a dite (« le trois novembre » → « 03/11/2026 ») est retirée de la date.
         let dated = DateTimeWriter.removingUnspokenYears(from: restored, heard: heard + alsoHeard)
-        if spoken <= shortDictationWords, changesShortDictation(heard: heard, corrected: dated, alsoHeard: alsoHeard) {
+        if spoken <= shortDictationWords,
+           changesShortDictation(heard: heard, corrected: dated, alsoHeard: alsoHeard),
+           (grammarReference == transcript || !WrittenGrammar.matches(reference: grammarReference, corrected: dated)) {
             return transcript
         }
         // Une transcription sans mot (« … ») dont la réponse n'était qu'une référence inventée : rien ne resterait à coller.

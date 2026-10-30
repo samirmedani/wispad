@@ -30,10 +30,14 @@ struct SelectionCommandTests {
 }
 
 struct DictationToneTests {
-    @Test func naturalToneKeepsThePromptUnchanged() {
-        let request = CorrectionRequest(transcript: "t'as vu ?")
-        #expect(CorrectionPrompt.system(for: request) == CorrectionPrompt.system + "\n" + CorrectionPrompt.system(for: request).components(separatedBy: CorrectionPrompt.system + "\n").last!)
-        #expect(!CorrectionPrompt.system(for: request).contains("Ton soigné"))
+    @Test func naturalAndCasualHaveDistinctWrittenContracts() {
+        var request = CorrectionRequest(transcript: "la porte ferme pas")
+        let natural = CorrectionPrompt.system(for: request)
+        #expect(natural.hasSuffix(DictationTone.natural.instructions(english: false)))
+        #expect(natural.contains("négation certaine"))
+        request.tone = .casual
+        #expect(!CorrectionPrompt.system(for: request).contains("Français écrit naturel"))
+        #expect(CorrectionPrompt.system(for: request).hasSuffix(DictationTone.casual.instructions(english: false)))
     }
 
     @Test func toneIsAddedInTheDictationLanguage() {
