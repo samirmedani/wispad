@@ -395,6 +395,28 @@ struct FileVerificationTests {
         #expect(try f.trace().correctionPatched == true)
     }
 
+    @Test(arguments: [DictationTone.natural, .casual])
+    func reportedFileWordsKeepTheChosenWrittenRegister(_ tone: DictationTone) async throws {
+        let stream = "Faut réserver mardi une place au premier rang."
+        let file = "Faut réserver mercredi une place au premier rang."
+        let f = try VerifyFixture()
+        defer { f.dispose() }
+        f.model.settings.language = .french
+        f.model.settings.tones[UsageKind.other.rawValue] = tone
+        f.stream.text = stream
+        f.fileTexts = [file]
+        f.holdFile = true
+        await f.model.coordinator.begin(.toggle)
+        let task = try #require(f.model.coordinator.endCapture())
+        try await f.cleanEntered.value()
+        f.fileRelease.resolve(.success(file))
+        try await finish(within: 3, task)
+        #expect(f.cleanTexts == [stream])
+        #expect(f.inserted == [tone == .casual ? file : "Il faut réserver mercredi une place au premier rang."])
+        #expect(try f.trace().correctionPatched == true)
+        #expect(f.model.usage.filter { $0.api == .deepSeekCleanup }.count == 1)
+    }
+
     @Test func slowStreamCorrectionIsNotAwaitedForAReport() async throws {
         let stream = "on se voit mardi à la réunion"
         let file = "on se voit mercredi à la réunion"

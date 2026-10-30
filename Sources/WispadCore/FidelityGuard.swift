@@ -10,9 +10,11 @@ public enum FidelityGuard {
         context: String? = nil,
         dictionary: [String] = [],
         previousDictations: [String] = [],
-        alternative: String? = nil
+        alternative: String? = nil,
+        language: DictationLanguage = .french
     ) -> String {
         let heard = locatedWords(in: transcript).map(\.text)
+        let grammarReference = language == .english ? transcript : WrittenGrammar.reference(transcript)
         // Autre écoute du même audio : un mot repris de là a été entendu, ce n'est ni une invention ni une traduction.
         let alsoHeard = alternative.map { locatedWords(in: $0).map(\.text) } ?? []
         let written = locatedWords(in: corrected).map(\.text)
@@ -20,7 +22,12 @@ public enum FidelityGuard {
         // Une correction enlève des hésitations et ajoute de la ponctuation : elle n'allonge pas le texte.
         // Seuls les mots comptent : les guillemets d'une citation ou un deux-points isolé n'en sont pas.
         let spoken = heard.filter(isWord).count
-        if written.filter(isWord).count > spoken + max(4, spoken / 4) { return transcript }
+        if written.filter(isWord).count > spoken + max(4, spoken / 4) {
+            // Pas de crédit de mots libre : un dépassement doit correspondre aux seules expansions reconnues.
+            guard grammarReference != transcript,
+                  WrittenGrammar.matches(reference: grammarReference, corrected: corrected)
+            else { return transcript }
+        }
         if copiesContext(written: written, heard: heard, context: context, additional: previousDictations) { return transcript }
         if losesTheDictation(heard: heard, written: written, alsoHeard: alsoHeard) { return transcript }
         let repaired = restoreTranslatedWords(
@@ -35,7 +42,9 @@ public enum FidelityGuard {
         let restored = restoreUnspokenReferences(heard: heard, corrected: repaired, alsoHeard: alsoHeard)
         // Une année que personne n'a dite (« le trois novembre » → « 03/11/2026 ») est retirée de la date.
         let dated = DateTimeWriter.removingUnspokenYears(from: restored, heard: heard + alsoHeard)
-        if spoken <= shortDictationWords, changesShortDictation(heard: heard, corrected: dated, alsoHeard: alsoHeard) {
+        if spoken <= shortDictationWords,
+           changesShortDictation(heard: heard, corrected: dated, alsoHeard: alsoHeard),
+           (grammarReference == transcript || !WrittenGrammar.matches(reference: grammarReference, corrected: dated)) {
             return transcript
         }
         // Une transcription sans mot (« … ») dont la réponse n'était qu'une référence inventée : rien ne resterait à coller.
@@ -150,7 +159,8 @@ public enum FidelityGuard {
     /// sans lui. Ne juger que les suppressions pures de 1 à 3 mots, entre deux mots retenus ; les remplacements
     /// (accords, dates, nombres…) continuent de suivre leurs contrôles habituels.
     static func dropsShortInternalWords(heard: [String], corrected: String) -> Bool {
-        let said = spokenWords(heard).map(\.key)
+        let saidWords = spokenWords(heard)
+        let said = saidWords.map(\.key)
         let located = locatedWords(in: corrected).filter { isWord($0.text) }
         let written = spokenWords(located.map(\.text)).map(\.key)
         guard said != written else { return false }
@@ -174,10 +184,36 @@ public enum FidelityGuard {
             // Une reprise retire la valeur remplacée ET sa marque ; « enfin » ou « plutôt » seuls restent une nuance.
             if removed.dropFirst().contains(where: correctionCues.contains) { continue }
             if correctionPhrases.contains(where: { removed.suffix($0.count).elementsEqual($0) }) { continue }
+            // Le diff peut accrocher la première occurrence d'un nom répété (« quatre vis, non, six vis »).
+            // La reprise après ce nom n'est retirée que si son contenu est réellement écrit juste avant le point
+            // de suppression. Les nombres en lettres/chiffres partagent la même comparaison sémantique.
+            if correctionCues.contains(removed[0]), removed.last == said[hunk.oldStart - 1], hunk.newStart > 0 {
+                let rawHeard = heard.filter(isWord)
+                let replacement = rawHeard[(hunk.oldStart + 1)..<hunk.oldEnd].joined(separator: " ")
+                if (1...min(4, hunk.newStart)).contains(where: { count in
+                    sameCorrectionContents(replacement,
+                        located[(hunk.newStart - count)..<hunk.newStart].map(\.text).joined(separator: " "))
+                }) { continue }
+            }
             if rendersFormatting(removed, at: hunk.newStart, written: located, corrected: corrected) { continue }
             return true
         }
         return false
+    }
+
+    private static let signedNumberPattern = try! NSRegularExpression(pattern: #"[+−-]\s*(?=[0-9])"#)
+
+    /// L'équivalence d'écoute ignore une partie de la ponctuation : les valeurs, pourcentages et signes ont
+    /// donc leur propre contrôle avant d'autoriser la disparition d'une reprise autour d'un nom répété.
+    private static func sameCorrectionContents(_ heard: String, _ written: String) -> Bool {
+        func signs(_ text: String) -> [String] {
+            let ns = text as NSString
+            return signedNumberPattern.matches(in: text, range: NSRange(location: 0, length: ns.length)).map {
+                ns.substring(with: $0.range).contains("+") ? "+" : "-"
+            }
+        }
+        return signs(heard) == signs(written) && spokenNumbers(heard) == spokenNumbers(written)
+            && TranscriptEquivalence.equivalent(heard, written)
     }
 
     /// Dislocation orale très bornée (« le voyant il est vert », « les deux premières rangées elles sont vides »).

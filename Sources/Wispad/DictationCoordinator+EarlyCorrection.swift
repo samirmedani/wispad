@@ -163,7 +163,9 @@ extension DictationCoordinator {
         // format des dates, des heures et des nombres, comme le reste du texte corrigé.
         let english = CorrectionPrompt.language(for: CorrectionRequest(transcript: file, language: model.settings.language)) == .english
         let dated = DateTimeWriter.apply(text, format: model.settings.dateFormat, english: english)
-        patched.outcome.text = NumberWriter.apply(dated, format: model.settings.numberFormat, english: english)
+        let numbered = NumberWriter.apply(dated, format: model.settings.numberFormat, english: english)
+        patched.outcome.text = TextCleaner.completeWrittenGrammar(numbered, language: model.settings.language,
+            tone: model.tone(bundleID: current.context.bundleID, appName: current.context.appName))
         return patched
     }
 }

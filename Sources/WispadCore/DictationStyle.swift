@@ -2,24 +2,26 @@ import Foundation
 
 // MARK: - Ton selon l'app
 
-/// Registre demandé à la correction pour une catégorie d'apps. `natural` garde le ton de la dictée (comportement
-/// d'origine) ; les deux autres ne changent que le registre, jamais le vocabulaire ni le sens.
+/// Registre demandé à la correction pour une catégorie d'apps. Le naturel produit un écrit fluide, sans changer
+/// le vocabulaire ni le sens ; le détendu conserve les tournures orales et le soigné développe les contractions.
 public enum DictationTone: String, Codable, CaseIterable, Sendable {
     case natural
     case polished
     case casual
 
-    /// Consigne ajoutée à la correction, dans la langue de la dictée. Vide pour `natural`.
+    /// Consigne ajoutée à la correction, dans la langue de la dictée.
     public func instructions(english: Bool) -> String {
         switch (self, english) {
-        case (.natural, _):
+        case (.natural, true):
             return ""
+        case (.natural, false):
+            return "Français écrit naturel : garde le vocabulaire et la personnalité de la dictée, avec des phrases grammaticales. Rétablis systématiquement le « ne » ou « n' » d'une négation certaine, aussi dans les subordonnées et avec les pronoms compléments (« elle le trouve pas » → « elle ne le trouve pas »). Complète les sujets impersonnels omis (« faut patienter » → « il faut patienter », « y a personne » → « il n'y a personne »). Ces petits mots grammaticaux sont autorisés : ils ne sont pas des informations nouvelles. N'invente aucune négation : « plus », « jamais » et « personne » peuvent avoir un sens positif ou interrogatif ; conserve l'ambiguïté quand le sens n'est pas certain. Garde les mots cités, le code et les adresses tels quels."
         case (.polished, false):
-            return "Ton soigné : phrases complètes et ponctuation soignée ; écris les tournures familières sous leur forme standard (« t'as » → « tu as », « y a » → « il y a », « j'sais pas » → « je ne sais pas ») et rétablis le « ne » de la négation. Ne change ni le vocabulaire ni le sens ; n'ajoute ni formule de politesse ni mot."
+            return DictationTone.natural.instructions(english: false) + "\nTon soigné : développe aussi les contractions familières (« t'as » → « tu as », « t'es » → « tu es »). Ne change ni le vocabulaire ni le sens ; n'ajoute ni formule de politesse ni information."
         case (.casual, false):
             return "Ton détendu : garde les tournures familières et la négation sans « ne » telles qu'elles ont été dites ; pas de point final pour un message court d'une seule phrase. Ne change ni le vocabulaire ni le sens."
         case (.polished, true):
-            return "Polished tone: complete sentences and careful punctuation; write casual forms in standard form (\"gonna\" → \"going to\", \"wanna\" → \"want to\", \"kinda\" → \"kind of\"). Do not change the vocabulary or the meaning; add no greeting and no word."
+            return "Polished tone: complete sentences and careful punctuation; write casual forms in standard form (\"gonna\" → \"going to\", \"wanna\" → \"want to\", \"kinda\" → \"kind of\"). These grammatical expansions are allowed. Do not change the vocabulary or the meaning; add no greeting or information."
         case (.casual, true):
             return "Casual tone: keep casual forms as they were spoken; no final period for a short single-sentence message. Do not change the vocabulary or the meaning."
         }

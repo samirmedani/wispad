@@ -495,8 +495,16 @@ Le micro standard, réglage coupé, ne change pas.
 - Consigne en français ou en anglais selon la langue de dictée (en automatique, devinée sur la transcription).
 - Hésitations, bégaiements, faux départs et **autocorrections orales** retirés : « mardi, ah non, mercredi »
   devient « mercredi ». Un « non » qui fait partie du message reste.
-- Nombres écrits en chiffres quand ils comptent vraiment quelque chose ; élisions orales écrites en entier
-  (« j'sais » → « je sais ») ; tournures familières gardées (« t'as », « y a »).
+- Nombres écrits en chiffres quand ils comptent vraiment quelque chose ; élisions purement orales écrites en entier
+  (« j'sais » → « je sais »).
+- **Français écrit naturel** : par défaut, la correction rétablit les négations certaines, y compris dans les
+  subordonnées et avec les pronoms compléments, et complète les sujets impersonnels omis. Le vocabulaire, le sens,
+  les nuances et les incertitudes restent ceux de la dictée. Un mot ambigu comme « plus » ne justifie jamais à lui
+  seul l'ajout d'une négation. Les mots cités, le code et les adresses restent tels quels. Le ton « Soigné » développe
+  aussi les contractions familières ; « Détendu » conserve les tournures orales et la négation sans « ne ».
+  Ces règles partagent l'appel de correction existant : aucun appel ni délai d'attente supplémentaire.
+  Le garde-fou admet les petits mots grammaticaux nécessaires dans les constructions reconnues ; il ne donne pas
+  au modèle l'autorisation d'inventer un sujet, un nom ou une information.
 - **Dates et heures** : une date sans ambiguïté (jour et mois, date complète) ou l'heure d'un rendez-vous s'écrit au
   format de Réglages › Mise en forme ; la consigne en reçoit des exemples rendus dans ce format. « le vingt-quatre
   octobre deux mille vingt-six » → « 24/10/2026 », « le 3 du 11 » → « 03/11 », « à quatorze heures trente » →
@@ -734,10 +742,21 @@ Réglages › Mise en forme : **Montants et unités** (symboles, par défaut, ou
 
 ## Ton et consignes
 
-- **Ton selon l'app** (Réglages › Mise en forme › Ton selon l'app) : par catégorie (e-mails, messageries, documents, notes, code et
-  terminal, navigateur, autres apps), « Comme dicté » (par défaut, comportement d'origine), « Soigné » (tournures familières écrites
-  en forme standard, « ne » rétabli) ou « Détendu » (tournures gardées, pas de point final pour un message court).
-  Le ton ne change que le registre, jamais les mots ni le sens ; le garde-fou de fidélité s'applique toujours.
+- **Ton selon l'app** (Réglages › Mise en forme › Ton selon l'app) : par catégorie (e-mails, messageries, documents,
+  notes, code et terminal, navigateur, autres apps), « Naturel » (par défaut : français écrit fluide, négations certaines
+  rétablies et sujets impersonnels complétés), « Soigné » (développe aussi les contractions familières) ou « Détendu »
+  (tournures orales et négation sans « ne » gardées, pas de point final pour un message court).
+  L'ancien choix « Comme dicté » porte désormais le libellé « Naturel », sans changer les catégories réglées.
+  Le ton ne change que le registre, jamais le vocabulaire ni le sens ; le garde-fou de fidélité s'applique toujours.
+  Il utilise le même appel de correction, sans nouvelle passe ni attente supplémentaire.
+  Après une correction réussie, une finition locale complète les sujets impersonnels certains restés omis, dans
+  les tons Naturel et Soigné : formes de « falloir » et « y avoir » au début d'une proposition avec complément.
+  Elle ne touche ni les citations, ni le code, ni les adresses, ni les fragments incomplets, ni une interrogation
+  telle que « Que faut préparer ? ». Même finition après le report du fichier dans une correction anticipée.
+  Un retour à la ligne, LF ou CRLF, clôt la recherche du complément : un fragment isolé avant la ligne suivante
+  ne devient pas une phrase complétée. La recherche s'arrête au premier mot utile, même dans une longue dictée.
+  Le repli sans réponse du correcteur reste brut. Une reprise de quantité autour d'un nom répété n'est acceptée
+  que si la valeur finale figure réellement dans le texte rendu ; valeurs, signes et pourcentages sont comparés.
 - **Consigne sur la sélection** (Réglages › Dictée › Correction › « Réécrire la sélection sur consigne », actif par défaut) : avec du texte
   sélectionné, une dictée qui commence par une consigne d'écriture (« reformule », « traduis », « résume », « corrige »,
   « raccourcis », « rends-le… », « mets ça en… », « rewrite », « translate », « make it… ») réécrit la sélection

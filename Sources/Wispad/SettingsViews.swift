@@ -594,7 +594,7 @@ struct ToneSection: View {
 
     static func label(_ tone: DictationTone) -> String {
         switch tone {
-        case .natural: return String(localized: "Comme dicté")
+        case .natural: return String(localized: "Naturel")
         case .polished: return String(localized: "Soigné")
         case .casual: return String(localized: "Détendu")
         }
