@@ -51,6 +51,9 @@ private final class EarlyFixture {
     var holdPrepared = false
     let preparedRelease = AsyncResult<Void>()
     var finishedTranscriptionAt: Date?
+    /// Synchronisation des scénarios où la correction doit commencer avant la réponse du fichier.
+    var fileWaitsForCleanText: String?
+    let fileRelease = AsyncResult<Void>()
     var pastedAt: Date?
     var cleanTexts: [String] = []
     var cleanStartedBeforeFile: [Bool] = []
@@ -81,7 +84,9 @@ private final class EarlyFixture {
         dependencies.makeCapture = { [audio] in audio }
         dependencies.makeSession = { [stream] _ in stream }
         dependencies.transcribe = { [weak self] _, _ in
-            if let delay = self?.fileDelay, delay > 0 { try await Task.sleep(for: .seconds(delay)) }
+            if let self, self.fileWaitsForCleanText != nil {
+                try await self.fileRelease.value()
+            } else if let delay = self?.fileDelay, delay > 0 { try await Task.sleep(for: .seconds(delay)) }
             self?.finishedTranscriptionAt = Date()
             return self?.fileText ?? ""
         }
@@ -90,6 +95,7 @@ private final class EarlyFixture {
             self?.cleanTexts.append(text)
             self?.cleanStartedBeforeFile.append(self?.finishedTranscriptionAt == nil)
             self?.cleanAlternatives.append(request.alternativeTranscript)
+            if self?.fileWaitsForCleanText == text { self?.fileRelease.resolve(.success(())) }
             if first, self?.holdPrepared == true { _ = try? await self?.preparedRelease.value() }
             guard enabled else { return CleanupOutcome(text: text) }
             if let delay = self?.cleanDelay, delay > 0 { try? await Task.sleep(for: .seconds(delay)) }
@@ -135,6 +141,7 @@ private final class EarlyFixture {
     }
 
     func dispose() {
+        fileRelease.resolve(.success(()))
         preparedRelease.resolve(.success(()))
         contextRelease.resolve(.success(nil))
         model.coordinator.cancel()
@@ -317,6 +324,7 @@ struct CorrectionBudgetTests {
         defer { f.dispose() }
         f.fileDelay = 0.3
         f.fileText = "Le colis part demain matin"
+        f.fileWaitsForCleanText = f.fileText
         await f.model.coordinator.begin(.toggle)
         await f.pause(after: "Le colis")
         f.stream.onPartial?("Le colis part demain")
@@ -334,6 +342,7 @@ struct CorrectionBudgetTests {
         defer { f.dispose() }
         f.fileDelay = 0.3
         f.fileText = "Le colis part demain matin"
+        f.fileWaitsForCleanText = f.fileText
         f.stream.text = f.fileText
         await f.model.coordinator.begin(.toggle)
         f.stream.onPartial?("Le colis")
@@ -360,6 +369,7 @@ struct CorrectionBudgetTests {
         }
         f.stream.onPartial?("Le train arrive demain matin en gare")
         f.stream.text = "Le train arrive demain matin en gare puis repart"
+        f.fileWaitsForCleanText = f.stream.text
         f.stream.finishDelay = 0.08
         try await Task.sleep(for: .milliseconds(20))
         await f.model.coordinator.end()
@@ -427,11 +437,12 @@ struct CorrectionBudgetTests {
         await f.model.coordinator.begin(.toggle)
         f.stream.onPartial?(f.fileText)
         f.stream.text = "Le train arrive demain matin en gare"
+        f.fileWaitsForCleanText = f.stream.text
         try await Task.sleep(for: .milliseconds(20))
         await f.model.coordinator.end()
         #expect(f.cleanTexts == [f.stream.text, f.fileText])
         #expect(f.cleanAlternatives.count == 2)
-        #expect(f.cleanAlternatives.last! == f.stream.text)
+        #expect(f.cleanAlternatives.last.flatMap { $0 } == f.stream.text)
         #expect(f.inserted == [f.fileText.uppercased()])
         #expect(f.cleanupCount() == 2)
         #expect(try f.trace().earlyCorrectionUsed == false)
