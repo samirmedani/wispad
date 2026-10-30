@@ -132,6 +132,12 @@ private final class EarlyFixture {
         try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
     }
 
+    /// Une pause simulée ne prouve pas que sa préparation a pu démarrer sous la charge des autres suites.
+    /// Attendre l'événement avant de reprendre la parole ; la limite du test annule cette attente en cas de défaut.
+    func waitForPreparation(of text: String) async throws {
+        while !cleanTexts.contains(text) { try await Task.sleep(for: .milliseconds(10)) }
+    }
+
     func trace() throws -> DictationTrace {
         try #require(try model.store.recentTraces(limit: 1).first)
     }
@@ -287,13 +293,14 @@ struct EarlyCorrectionTests {
 @MainActor
 @Suite(.serialized)
 struct CorrectionBudgetTests {
-    @Test func aLaterSettledSegmentKeepsItsPreparationDuringFinalization() async throws {
+    @Test(.timeLimit(.minutes(1))) func aLaterSettledSegmentKeepsItsPreparationDuringFinalization() async throws {
         let f = try EarlyFixture()
         defer { f.dispose() }
         f.fileText = "Le colis part demain matin"
         f.fileDelay = 0.5
         await f.model.coordinator.begin(.toggle)
         await f.pause(after: "Le colis")
+        try await f.waitForPreparation(of: "Le colis")
         await f.pause(after: f.fileText)
         f.stream.finishDelay = 0.3
         var preparedBeforeFinal: [String] = []
@@ -319,7 +326,7 @@ struct CorrectionBudgetTests {
         #expect(f.cleanupCount() == 2)
     }
 
-    @Test func finalizedStreamOverlapsFileDespiteAnObsoletePausePreparation() async throws {
+    @Test(.timeLimit(.minutes(1))) func finalizedStreamOverlapsFileDespiteAnObsoletePausePreparation() async throws {
         let f = try EarlyFixture()
         defer { f.dispose() }
         f.fileDelay = 0.3
@@ -327,6 +334,7 @@ struct CorrectionBudgetTests {
         f.fileWaitsForCleanText = f.fileText
         await f.model.coordinator.begin(.toggle)
         await f.pause(after: "Le colis")
+        try await f.waitForPreparation(of: "Le colis")
         f.stream.onPartial?("Le colis part demain")
         f.stream.text = f.fileText
         try await Task.sleep(for: .milliseconds(20))
