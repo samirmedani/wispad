@@ -75,7 +75,11 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   ouvert jusqu'à 3,2 s après l'appui. Chargée une fois, la liste reste dans Wispad jusqu'à ce qu'il quitte.
 - Démarrage du micro surveillé, première dictée après un lancement comprise : si macOS reconfigure l'entrée
   (micro Bluetooth qui change de profil, autre fréquence, micro débranché), le moteur repart aussitôt, dans le même
-  enregistrement ; au repos, il est remplacé par un neuf à la dictée suivante. Aucun audio 1,5 s après le
+  enregistrement ; au repos, il est remplacé par un neuf à la dictée suivante. Une autre app qui active le traitement
+  de la voix sur le micro intégré (page web, appel, vidéo) le fait passer en plusieurs voies discrètes, que le mélange
+  en mono rendait en zéros parfaits jusqu'à la fin de l'écoute : spectre figé, fin de dictée perdue. Quand ce mélange
+  reste muet alors qu'une voie capte, Wispad garde la voie la plus forte ; la voix continue, plus faible, jusqu'à ce
+  que l'autre app libère le micro et que le moteur reparte en voie unique. Aucun audio 1,5 s après le
   démarrage : le micro redémarre une fois sur un moteur neuf. Dictée arrêtée ou annulée pendant ce redémarrage
   (touche relâchée, Échap, ■) : elle s'arrête tout de suite, sans attendre le moteur ; rien n'avait été entendu, rien
   n'est envoyé, et le moteur se referme dès qu'il rend la main. Toujours rien 1,5 s plus tard, ou démarrage (comme
