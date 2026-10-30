@@ -34,8 +34,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.yatofix.wispad
         PRODUCT_NAME: Wispad
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        MARKETING_VERSION: "0.7.0"
-        CURRENT_PROJECT_VERSION: "43"
+        MARKETING_VERSION: "0.7.1"
+        CURRENT_PROJECT_VERSION: "44"
         SWIFT_VERSION: "6.0"
         MACOSX_DEPLOYMENT_TARGET: "14.0"
         CODE_SIGN_STYLE: Automatic

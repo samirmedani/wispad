@@ -27,6 +27,9 @@ final class AudioCapture: @unchecked Sendable {
     private let state = OSAllocatedUnfairLock(initialState: CaptureState())
     private let processingLock = NSLock()
     private var converter: AVAudioConverter?
+    /// Plus aucune voie à choisir pour ce convertisseur (sous `processingLock`) : une seule voie, voie déjà retenue,
+    /// ou mélange en mono vérifié non muet.
+    private var channelSettled = true
     private var wav: WAVStream?
     private var analyzer = SpectrumAnalyzer()
     private let inputChoice = OSAllocatedUnfairLock<String?>(initialState: nil)
@@ -247,6 +250,7 @@ final class AudioCapture: @unchecked Sendable {
         if isolate, hardware.channelCount > 1 { next?.channelMap = [0] }
         processingLock.lock()
         converter = next
+        channelSettled = isolate || hardware.channelCount < 2
         processingLock.unlock()
         input.removeTap(onBus: 0)
         input.installTap(onBus: 0, bufferSize: 512, format: hardware) { [weak self] buffer, _ in
@@ -428,11 +432,42 @@ final class AudioCapture: @unchecked Sendable {
     private func consume(_ buffer: AVAudioPCMBuffer) {
         processingLock.lock()
         defer { processingLock.unlock() }
-        guard let converter else { return }
+        guard let converter, var output = Self.convert(buffer, with: converter) else { return }
+        if !channelSettled {
+            // Une autre app active le traitement de la voix sur le micro intégré : macOS reconfigure l'entrée et livre
+            // ses capsules en voies discrètes, que le mélange en mono rend en zéros parfaits (spectre figé, voix perdue
+            // jusqu'à la fin de l'écoute ; reproduit le 30 octobre 2026). La voie qui capte le plus est alors gardée.
+            if output.contains(where: { $0 != 0 }) {
+                channelSettled = true
+            } else if let loudest = Self.loudestChannel(of: buffer),
+                      let remapped = AVAudioConverter(from: buffer.format, to: converter.outputFormat) {
+                remapped.channelMap = [NSNumber(value: loudest)]
+                self.converter = remapped
+                channelSettled = true
+                Self.log.notice("mélange des voies muet : voie \(loudest, privacy: .public) sur \(buffer.format.channelCount, privacy: .public) retenue")
+                guard let rescued = Self.convert(buffer, with: remapped) else { return }
+                output = rescued
+            }
+        }
+        guard !output.isEmpty else { return }
+        let data = output.withUnsafeBufferPointer { Data(buffer: $0) }
+        wav?.append(data)
+        let frames = analyzer.frames(pcm16: data, hop: 256)
+        let arrival = CACurrentMediaTime()
+        let rms = VoiceTail.rms(pcm16: data)
+        state.withLock {
+            $0.timeline.push(frames, arrival: arrival, hopSeconds: 256.0 / 16_000)
+            $0.voiceTail.note(rms: rms, at: arrival)
+        }
+        onPCM?(data)
+    }
+
+    /// Un paquet du micro, en mono 16 kHz.
+    private static func convert(_ buffer: AVAudioPCMBuffer, with converter: AVAudioConverter) -> [Int16]? {
         let ratio = 16_000 / buffer.format.sampleRate
         let capacity = AVAudioFrameCount(Double(buffer.frameLength) * ratio + 64)
         guard capacity > 0,
-              let output = AVAudioPCMBuffer(pcmFormat: converter.outputFormat, frameCapacity: capacity) else { return }
+              let output = AVAudioPCMBuffer(pcmFormat: converter.outputFormat, frameCapacity: capacity) else { return nil }
         var consumed = false
         var error: NSError?
         converter.convert(to: output, error: &error) { _, status in
@@ -444,19 +479,25 @@ final class AudioCapture: @unchecked Sendable {
             status.pointee = .haveData
             return buffer
         }
-        guard error == nil, let channel = output.int16ChannelData else { return }
-        let count = Int(output.frameLength)
-        guard count > 0 else { return }
-        let data = Data(bytes: channel[0], count: count * MemoryLayout<Int16>.size)
-        wav?.append(data)
-        let frames = analyzer.frames(pcm16: data, hop: 256)
-        let arrival = CACurrentMediaTime()
-        let rms = VoiceTail.rms(pcm16: data)
-        state.withLock {
-            $0.timeline.push(frames, arrival: arrival, hopSeconds: 256.0 / 16_000)
-            $0.voiceTail.note(rms: rms, at: arrival)
+        guard error == nil, let channel = output.int16ChannelData else { return nil }
+        return Array(UnsafeBufferPointer(start: channel[0], count: Int(output.frameLength)))
+    }
+
+    /// Voie la plus forte d'un paquet à plusieurs voies ; nil si aucune ne capte (silence réel) ou format non lu.
+    private static func loudestChannel(of buffer: AVAudioPCMBuffer) -> Int? {
+        guard let samples = buffer.floatChannelData else { return nil }
+        let channels = Int(buffer.format.channelCount)
+        let frames = Int(buffer.frameLength)
+        let interleaved = buffer.format.isInterleaved
+        var best: (index: Int, peak: Float)?
+        for index in 0..<channels {
+            var peak: Float = 0
+            for frame in 0..<frames {
+                peak = max(peak, abs(interleaved ? samples[0][frame * channels + index] : samples[index][frame]))
+            }
+            if peak > (best?.peak ?? 0) { best = (index, peak) }
         }
-        onPCM?(data)
+        return best?.index
     }
 }
 
