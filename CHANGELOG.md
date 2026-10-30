@@ -3,6 +3,16 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.6.8 — 30 octobre 2026
+
+Commence à parler, puis choisis où écrire.
+
+**Corrigé**
+- Une dictée commencée hors d'un champ peut maintenant rejoindre le champ choisi ensuite dans une autre app,
+  pendant l'écoute ou la finition. Elle ne reste plus bloquée sur l'app du démarrage avec « Texte prêt à copier ».
+  Les protections des champs sécurisés et des sélections sont conservées, sans correction ni attente supplémentaire.
+- L'historique et l'apprentissage suivent l'app réellement choisie pour le collage.
+
 ## 0.6.7 — 30 octobre 2026
 
 Moins d'attente quand le flux n'a pas encore terminé sa phrase.

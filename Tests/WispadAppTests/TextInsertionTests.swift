@@ -22,6 +22,7 @@ private final class InsertionFixture {
         s.trusted = { true }
         s.frontmostPID = { self.pid }
         s.bundleID = { _ in "com.google.Chrome" }
+        s.appName = { _ in "Navigateur fictif" }
         s.secureInput = { false }
         s.modifiersStillHeld = { self.modifiers ? 0 : ModifierMask.shift }
         s.read = { _ in self.reads += 1; return self.field }
@@ -55,6 +56,84 @@ struct TextInsertionTests {
         #expect(await f.insert() == .inserted)
         #expect(f.field.value == "Avant Bonjour.")
         #expect(f.keys == 1 && f.sent == 1)
+        #expect(f.board.string(forType: .string) == "Copie conservée")
+    }
+
+    /// Dictée démarrée sur le bureau, puis curseur placé dans une autre app : c'est là qu'elle doit arriver.
+    @Test func startingWithoutAFieldFollowsTheNewDestination() async {
+        let f = InsertionFixture(); defer { f.dispose() }
+        f.context.appName = "Bureau fictif"
+        f.context.bundleID = "com.example.fictif.bureau"
+        f.pid = 42_425
+        var readPIDs: [pid_t] = []
+        var system = f.system
+        system.read = { pid in readPIDs.append(pid); return f.field }
+        #expect(await f.insert(system: system) == .inserted)
+        #expect(f.keys == 1 && f.sent == 1)
+        #expect(readPIDs == [42_425, 42_425])
+        #expect(f.context.pid == 42_425)
+        #expect(f.context.bundleID == "com.google.Chrome")
+        #expect(f.context.appName == "Navigateur fictif")
+        #expect(f.board.string(forType: .string) == "Copie conservée")
+    }
+
+    @Test func startingOnAPageThenChoosingAFieldInTheSameAppPastes() async {
+        let f = InsertionFixture(); defer { f.dispose() }
+        f.context.apply(FieldSnapshot(element: AXUIElementCreateApplication(51_515)))
+        #expect(await f.insert() == .inserted)
+        #expect(f.keys == 1 && f.reads == 2)
+        #expect(!f.context.leftTextField)
+    }
+
+    @Test func anUnreadableEditorCanAlsoBeChosenAfterTheStart() async {
+        let f = InsertionFixture(); defer { f.dispose() }
+        f.pid = 42_425
+        f.field = InsertionField(); f.deliver = false
+        #expect(await f.insert() == .pasteSent)
+        #expect(f.keys == 1 && f.sent == 1)
+        #expect(f.context.pid == 42_425)
+    }
+
+    @Test func cancellingWhileReadingTheNewDestinationNeverPastes() async {
+        let f = InsertionFixture(); defer { f.dispose() }
+        f.pid = 42_425
+        var allowed = true
+        var system = f.system
+        system.read = { _ in allowed = false; return f.field }
+        #expect(await TextInserter.insert("Bonjour.", context: f.context, shouldProceed: { allowed }, system: system) == .cancelled)
+        #expect(f.keys == 0)
+        #expect(f.board.string(forType: .string) == "Copie conservée")
+    }
+
+    /// La nouvelle destination subit les mêmes contrôles ; aucune touche vers un mot de passe ou une liste.
+    @Test(arguments: [true, false])
+    func aNewDestinationStillRequiresASafeField(secure: Bool) async {
+        let f = InsertionFixture(); defer { f.dispose() }
+        f.pid = 42_425
+        f.field = secure
+            ? InsertionField(element: AXUIElementCreateApplication(61_616), isSecure: true)
+            : InsertionField(element: AXUIElementCreateApplication(61_616), role: "AXList")
+        #expect(await f.insert() == (secure ? .refusedSecure : .noTarget))
+        #expect(f.keys == 0 && f.sent == 0)
+        #expect(f.board.string(forType: .string) == "Copie conservée")
+    }
+
+    @Test func aSelectionKeepsItsOriginalAppEvenWithoutAReadableTextRole() async {
+        let f = InsertionFixture(); defer { f.dispose() }
+        f.context.selectedText = "Une phrase fictive à reformuler."
+        f.pid = 42_425
+        #expect(await f.insert() == .noTarget)
+        #expect(f.keys == 0 && f.reads == 0)
+    }
+
+    /// Choisir la destination ne permet pas de la suivre indéfiniment pendant une lecture AX lente.
+    @Test func changingAppsDuringTheDestinationReadNeverPastes() async {
+        let f = InsertionFixture(); defer { f.dispose() }
+        f.pid = 42_425
+        var system = f.system
+        system.read = { _ in f.reads += 1; f.pid = 42_426; return f.field }
+        #expect(await f.insert(system: system) == .noTarget)
+        #expect(f.reads == 1 && f.keys == 0)
         #expect(f.board.string(forType: .string) == "Copie conservée")
     }
 
@@ -190,6 +269,7 @@ struct TextInsertionTests {
 
     @Test func changingAppsOrEnteringASecureFieldNeverWrites() async {
         let f = InsertionFixture(); defer { f.dispose() }
+        f.context.startedInTextField = true
         f.pid = 42_425
         #expect(await f.insert() == .noTarget)
         f.pid = 42_424; f.field.isSecure = true
