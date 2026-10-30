@@ -1,10 +1,11 @@
 import Foundation
+import Observation
 import Testing
 @testable import WispadApp
 @testable import WispadCore
 
 @MainActor
-@Suite struct ProfileTopicsControllerTests {
+@Suite(.timeLimit(.minutes(1))) struct ProfileTopicsControllerTests {
     private func fixture() throws -> (AppModel, UserDefaults, URL, String) {
         let suite = "wispad-topic-controller-" + UUID().uuidString
         let defaults = UserDefaults(suiteName: suite)!
@@ -33,8 +34,8 @@ import Testing
     }
 
     private func settled(_ controller: ProfileTopicsController) async throws {
-        let deadline = Date().addingTimeInterval(3)
-        while controller.isRunning, Date() < deadline { try await Task.sleep(nanoseconds: 1_000_000) }
+        await ProfileTopicsCompletionWaiter(controller: controller).wait()
+        try Task.checkCancellation()
         #expect(!controller.isRunning)
     }
 
@@ -129,9 +130,69 @@ import Testing
         #expect(model.usage.map(\.id) == ["paid-fiction"])
         #expect(try model.store.usageEvents().count == 1)
     }
+
+    @Test func cancellingTheWaitDoesNotLeaveItsContinuationSuspended() async throws {
+        let (model, defaults, directory, suite) = try fixture()
+        defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: directory) }
+        let started = AsyncResult<Void>()
+        let release = AsyncResult<Void>()
+        let controller = ProfileTopicsController(defaults: defaults, analyze: { _, _, _, _, _, _, _ in
+            started.resolve(.success(()))
+            try await release.value()
+            return TopicAnalysis(topics: [], analyzedAt: Date(), dictationCount: 0, newestDictation: nil,
+                                 service: "fixture", costUSD: 0)
+        })
+        controller.start(model: model, portrait: false, stats: "", full: true)
+        try await started.value()
+        let waiting = Task { try await settled(controller) }
+        await Task.yield()
+        waiting.cancel()
+        var cancelled = false
+        do { try await waiting.value } catch is CancellationError { cancelled = true }
+        #expect(cancelled)
+        #expect(controller.isRunning)
+        release.resolve(.success(()))
+        try await settled(controller)
+    }
 }
 
 private actor ProfileAnalysisCalls {
     private(set) var count = 0
     func called() { count += 1 }
+}
+
+/// Attend la libération effective du créneau du contrôleur, même si le MainActor est chargé.
+@MainActor
+private final class ProfileTopicsCompletionWaiter {
+    private let controller: ProfileTopicsController
+    private var continuation: CheckedContinuation<Void, Never>?
+
+    init(controller: ProfileTopicsController) { self.controller = controller }
+
+    func wait() async {
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                self.continuation = continuation
+                if Task.isCancelled { finish() } else { observe() }
+            }
+        } onCancel: {
+            Task { @MainActor in self.finish() }
+        }
+    }
+
+    private func observe() {
+        guard continuation != nil else { return }
+        let running = withObservationTracking {
+            controller.isRunning
+        } onChange: { [weak self] in
+            Task { @MainActor in self?.observe() }
+        }
+        if !running { finish() }
+    }
+
+    private func finish() {
+        let pending = continuation
+        continuation = nil
+        pending?.resume()
+    }
 }
