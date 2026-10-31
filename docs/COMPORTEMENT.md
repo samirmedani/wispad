@@ -432,6 +432,16 @@ de parole qui couvre tout l'audio envoyé, à 0,1 s près. Wispad n'attend plus 
 environ 0,1 s plus tard (vérifié le 17 octobre 2026). Si le segment est plus court que l'audio ou s'il manque la fin de
 parole, Wispad attend `transcript.done`, comme avant.
 
+Jonctions du flux xAI : xAI renvoie la parole par segments finaux et ponctue chacun comme une phrase entière. Une
+pause au milieu d'une phrase y laissait un point et une majuscule (« Il faudrait un dossier. Ou quand une facture
+arrive. »). À la jonction de deux segments, Wispad remplace ce point par une virgule et remet en minuscule le mot qui
+suit s'il est courant (« Il faudrait un dossier, ou quand une facture arrive. ») ; la correction ponctue ensuite selon
+le sens. Restent tels quels : « ? », « ! », « … », une abréviation (« etc. »), une initiale, un nom propre, un sigle
+(« OK ») et les points à l'intérieur d'un segment. La bulle, la correction anticipée et l'historique reçoivent ce même
+texte ; le choix entre flux et fichier, qui ignore la ponctuation, ne change pas. Mesuré sur des dictées réelles en
+octobre 2026 : à ces jonctions, la transcription de l'enregistrement complet continue la phrase environ sept fois sur
+dix, et la durée de la pause ne distingue pas les deux cas.
+
 Ordinaux : avec la mise en forme française, le fichier xAI écrit « 1ᵉʳ », « 1ʳᵉ », « 2ᵈᵉ » ou « 3ᵉ ». Wispad remet le
 mot dit dès la réception, avant de le comparer au flux : « 60 images par 2ᵈᵉ » → « 60 images par seconde », « dans un
 1ᵉʳ temps » → « dans un premier temps », « la 2ᵉ semaine » → « la deuxième semaine ». Au-delà de dix, l'abréviation
