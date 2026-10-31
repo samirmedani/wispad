@@ -433,14 +433,16 @@ environ 0,1 s plus tard (vérifié le 17 octobre 2026). Si le segment est plus c
 parole, Wispad attend `transcript.done`, comme avant.
 
 Jonctions du flux xAI : xAI renvoie la parole par segments finaux et ponctue chacun comme une phrase entière. Une
-pause au milieu d'une phrase y laissait un point et une majuscule (« Il faudrait un dossier. Ou quand une facture
-arrive. »). À la jonction de deux segments, Wispad remplace ce point par une virgule et remet en minuscule le mot qui
-suit s'il est courant (« Il faudrait un dossier, ou quand une facture arrive. ») ; la correction ponctue ensuite selon
-le sens. Restent tels quels : « ? », « ! », « … », une abréviation (« etc. »), une initiale, un nom propre, un sigle
-(« OK ») et les points à l'intérieur d'un segment. La bulle, la correction anticipée et l'historique reçoivent ce même
-texte ; le choix entre flux et fichier, qui ignore la ponctuation, ne change pas. Mesuré sur des dictées réelles en
-octobre 2026 : à ces jonctions, la transcription de l'enregistrement complet continue la phrase environ sept fois sur
-dix, et la durée de la pause ne distingue pas les deux cas.
+pause au milieu d'une phrase y laisse un point et une majuscule devant un petit morceau qui ne tient pas seul (« Je
+cherche un dossier. Ou pas. »). Quand le segment suivant compte cinq mots au plus et commence par un mot de liaison
+(« ou », « et », « sans », « pour », « que », « avec »…), Wispad remplace ce point par une virgule et remet le mot en
+minuscule (« Je cherche un dossier, ou pas. ») ; la correction ponctue ensuite selon le sens. Une jonction entre deux
+propositions plus longues garde son point, que la correction ponctue selon le sens : sur des dictées réelles, changer
+toutes les jonctions en virgules collait autant de vraies phrases qu'il évitait de morceaux. Restent aussi tels
+quels : « ? », « ! », « … », une abréviation (« etc. »), une initiale, les points à l'intérieur d'un segment et une
+question ouverte par « que », « qui », « quand » ou « où ». Le morceau en cours d'écoute reste tel qu'entendu ; sa
+jonction est tranchée quand il devient final. La correction anticipée, l'historique et le collage sans correction
+reçoivent ce même texte ; le choix entre flux et fichier, qui ignore la ponctuation, ne change pas.
 
 Ordinaux : avec la mise en forme française, le fichier xAI écrit « 1ᵉʳ », « 1ʳᵉ », « 2ᵈᵉ » ou « 3ᵉ ». Wispad remet le
 mot dit dès la réception, avant de le comparer au flux : « 60 images par 2ᵈᵉ » → « 60 images par seconde », « dans un
