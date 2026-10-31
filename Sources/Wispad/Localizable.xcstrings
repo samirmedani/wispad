@@ -11,6 +11,36 @@
         }
       }
     },
+    " · passages départagés : %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : " · passages settled: %lld"
+          }
+        }
+      }
+    },
+    "Texte retenu : %@ (%@)%@%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text kept: %1$@ (%2$@)%3$@%4$@"
+          }
+        }
+      }
+    },
+    "la seconde écoute a donné raison au flux" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "the second hearing sided with the stream"
+          }
+        }
+      }
+    },
     "·" : {
       "localizations" : {
         "en" : {

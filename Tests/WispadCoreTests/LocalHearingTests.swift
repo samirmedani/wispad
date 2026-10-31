@@ -4,21 +4,21 @@ import Testing
 /// Exemples inventés : seconde écoute sur le Mac, passages retenus pour la correction.
 struct LocalHearingTests {
     private let known: (String) -> Bool = { word in
-        !["juriqueidique", "computarius", "computeruse", "tournerner"].contains(word.lowercased())
+        !["juridicale", "serveurlesse", "serveurless", "tournerner"].contains(word.lowercased())
     }
 
     @Test func aDifferentEverydayPhraseIsKept() {
-        let found = LocalHearing.divergences(transcript: "Faut voter développeur, c'est un problème, tu codes.",
-                                             hearing: "Si t'es développeur, si t'as un problème, tu codes.",
+        let found = LocalHearing.divergences(transcript: "Il fait voir le matin, c'est un souci, tu vois.",
+                                             hearing: "Il fait noir le matin, si t'as un souci, tu vois.",
                                              knownWord: known)
-        #expect(found.map(\.heard) == ["Faut voter développeur,", "développeur, c'est un"])
-        #expect(found.map(\.local) == ["Si t'es développeur,", "développeur, si t'as un"])
+        #expect(found.map(\.heard) == ["fait voir le", "matin, c'est un"])
+        #expect(found.map(\.local) == ["fait noir le", "matin, si t'as un"])
     }
 
     @Test(arguments: [
         // Nom propre, marque ou terme technique de la transcription : jamais remplacés.
-        ("On écrit à Lulu demain.", "On écrit à le lieu demain."),
-        ("Passe par DeepSeek pour ça.", "Passe par dick pour ça."),
+        ("On écrit à Bastien demain.", "On écrit à bas tiens demain."),
+        ("Passe par Vercel pour ça.", "Passe par verseau pour ça."),
         ("Ouvre le repo GitHub ce soir.", "Ouvre le ro GitHub ce soir."),
         ("Garde la RTX 5080 au frais.", "Garde la rt 50 80 au frais."),
         // Nombres, unités et symboles : affaire de mise en forme.
@@ -26,25 +26,25 @@ struct LocalHearingTests {
         ("Il reste cinq minutes.", "Il reste 5 min."),
         // Même mot à l'accord près, ou mot inventé par la seconde écoute.
         ("Les tests fonctionnent bien.", "Les tests fonctionne bien."),
-        ("Change de forme juridique demain.", "Change de forme juriqueidique demain."),
+        ("Change de forme juridique demain.", "Change de forme juridicale demain."),
         // Seuls des petits mots diffèrent.
         ("Je le vois demain.", "Je la vois demain."),
     ])
     func noiseIsDropped(transcript: String, hearing: String) {
         #expect(LocalHearing.divergences(transcript: transcript, hearing: hearing, knownWord: known,
                                          isTerm: { ["repo", "boots", "unlock"].contains($0.lowercased()) },
-                                         protectedTerms: ["xhigh"]).isEmpty)
+                                         protectedTerms: ["fastmode"]).isEmpty)
     }
 
     @Test func aProtectedTermStaysEvenInLowercase() {
-        #expect(LocalHearing.divergences(transcript: "Tu vas retirer xhigh et Mimo.", hearing: "Tu vas retirer XI et Mimo.",
-                                         knownWord: known, protectedTerms: ["xhigh"] + TechVocabulary.correction).isEmpty)
+        #expect(LocalHearing.divergences(transcript: "Tu vas retirer fastmode et Nova.", hearing: "Tu vas retirer fast mode et Nova.",
+                                         knownWord: known, protectedTerms: ["fastmode"] + TechVocabulary.correction).isEmpty)
     }
 
     @Test func twoUnknownWordsLetTheModelDecide() {
-        let found = LocalHearing.divergences(transcript: "Fais du computarius sur le site.",
-                                             hearing: "Fais du computeruse sur le site.", knownWord: known)
-        #expect(found == [LocalDivergence(heard: "du computarius sur", local: "du computeruse sur")])
+        let found = LocalHearing.divergences(transcript: "Fais du serveurlesse sur le site.",
+                                             hearing: "Fais du serveurless sur le site.", knownWord: known)
+        #expect(found == [LocalDivergence(heard: "du serveurlesse sur", local: "du serveurless sur")])
     }
 
     @Test func aHearingThatLostTrackGivesNothing() {
@@ -54,18 +54,18 @@ struct LocalHearingTests {
     }
 
     @Test func thePromptListsThePassagesAfterTheirRule() {
-        var request = CorrectionRequest(transcript: "Faut voter développeur.")
-        request.localDivergences = [LocalDivergence(heard: "Faut voter développeur.", local: "Si t'es développeur.")]
+        var request = CorrectionRequest(transcript: "Il fait voir le matin.")
+        request.localDivergences = [LocalDivergence(heard: "Il fait voir le matin.", local: "Il fait noir le matin.")]
         let text = CorrectionPrompt.userText(request)
         #expect(text.contains("seconde écoute du même audio"))
-        #expect(text.contains("- « Faut voter développeur. » / « Si t'es développeur. »"))
+        #expect(text.contains("- « Il fait voir le matin. » / « Il fait noir le matin. »"))
         #expect(!CorrectionPrompt.userText(CorrectionRequest(transcript: "Bonjour.")).contains("seconde écoute"))
     }
 
     @Test func aWordTakenFromTheSecondHearingIsNotAnInvention() {
-        let corrected = FidelityGuard.check(transcript: "Faut voter développeur, c'est un problème, tu codes.",
-                                            corrected: "Si tu es développeur, si tu as un problème, tu codes.",
-                                            otherHearings: ["Si t'es développeur, si t'as un"])
-        #expect(corrected == "Si tu es développeur, si tu as un problème, tu codes.")
+        let corrected = FidelityGuard.check(transcript: "Il fait voir le matin, c'est un souci, tu vois.",
+                                            corrected: "Il fait noir le matin, si tu as un souci, tu vois.",
+                                            otherHearings: ["fait noir le", "matin, si t'as un"])
+        #expect(corrected == "Il fait noir le matin, si tu as un souci, tu vois.")
     }
 }

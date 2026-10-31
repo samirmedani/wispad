@@ -3,6 +3,18 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.8.3 — 1er novembre 2026
+
+Wispad 0.8.3 entend mieux certains mots, et colle plus vite quand ses deux transcriptions se contredisent.
+
+**Corrigé**
+- **« v. » au lieu de « vers »** : la transcription de l’enregistrement complet abrégeait « vers » en « v. » (« aller v. la gare »), et l’abréviation arrivait parfois jusque dans le texte collé. Wispad écrit « vers ».
+
+**Amélioré**
+- **Vote des écoutes** : quand la transcription de l’enregistrement complet contredit celle en direct sur un mot, et que la seconde écoute sur ton Mac l’a entendu comme le direct, Wispad garde ce mot (« des vices dans la boîte » → « des vis dans la boîte »). Les noms, marques, termes techniques et nombres ne sont jamais touchés.
+- **Plus rapide dans ces cas-là** : la correction préparée pendant que tu parlais sert telle quelle.
+- **Qualité vérifiée** : le banc de dictées mesure aussi les mots mal entendus, sur une référence de ce qui a vraiment été dit.
+
 ## 0.8.2 — 31 octobre 2026
 
 Wispad 0.8.2 ne coupe plus tes phrases à chaque pause, dès la transcription.
@@ -69,7 +81,7 @@ Wispad 0.7.5 corrige le démarrage qui suit une mise à jour.
 
 Wispad 0.7.4 ajoute une seconde écoute sur ton Mac pour rattraper les mots courants mal entendus.
 
-- Pendant que tu parles, le moteur de dictée d'Apple écoute aussi, entièrement sur le Mac : rien ne part ailleurs et il n'y a rien à installer. Quand la transcription donne une phrase sans sens et que cette seconde écoute a entendu autre chose, la correction peut reprendre la bonne version (par exemple « Si t'es développeur » au lieu de « Faut voter développeur »).
+- Pendant que tu parles, le moteur de dictée d'Apple écoute aussi, entièrement sur le Mac : rien ne part ailleurs et il n'y a rien à installer. Quand la transcription donne une phrase sans sens et que cette seconde écoute a entendu autre chose, la correction peut reprendre la bonne version (par exemple « il fait noir » au lieu de « il fait voir »).
 - Les noms, marques, termes techniques et nombres restent ceux de la transcription.
 - Même rapidité de correction. Sans macOS 26 ou sans le modèle d'Apple déjà installé, Wispad fonctionne comme avant.
 - Comprend la correction de la 0.7.3 : ton presse-papiers revient juste après le collage.

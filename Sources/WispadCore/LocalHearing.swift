@@ -14,10 +14,12 @@ public struct LocalDivergence: Equatable, Sendable {
 }
 
 /// Seconde écoute sur le Mac (moteur de dictée d'Apple) : juste sur les mots courants et les tournures orales,
-/// fragile sur les noms, termes techniques et nombres. Mesuré le 31 octobre 2026 sur 100 vraies dictées : elle
-/// entend « Si t'es développeur » là où le fournisseur écrit « Faut voter développeur », mais écrit « dick » pour
-/// « DeepSeek ». Seuls les passages où elle propose d'autres mots courants vont à la correction ; ceux qui touchent
-/// un nom, un terme technique ou un nombre, ou qu'elle écrit avec un mot inconnu de l'orthographe, sont écartés.
+/// fragile sur les noms, termes techniques et nombres. Mesuré le 31 octobre 2026 sur 100 vraies dictées : elle entend
+/// juste des mots courants que le fournisseur a mal entendus (« il fait noir » là où il écrit « il fait voir »), mais
+/// écorche les marques (« verseau » pour « Vercel »). Seuls les passages où elle propose d'autres mots courants vont à
+/// la correction ; ceux qui touchent un nom, un terme technique ou un nombre, ou qu'elle écrit avec un mot inconnu de
+/// l'orthographe, sont écartés. Quand le fichier contredit le flux, elle départage aussi les passages courts
+/// (`ListeningVote`).
 public enum LocalHearing {
     /// Au-delà, la seconde écoute a décroché (autre langue, bruit) : rien n'est retenu.
     public static let maximumDivergences = 8
@@ -45,7 +47,7 @@ public enum LocalHearing {
             // Même mot à l'accord près (« fonctionnent » / « fonctionne ») : rien d'autre n'a été entendu.
             if mine.map({ stem($0.key) }) == theirs.map({ stem($0.key) }) { continue }
             // Mot inconnu de l'orthographe dans la seconde écoute : seulement si la transcription en a un aussi
-            // (« computarius » / « computeruse »), sinon c'est la seconde écoute qui a décroché (« juriqueidique »).
+            // (« serveurlesse » / « serveurless »), sinon c'est la seconde écoute qui a décroché (« juridicale »).
             if let knownWord, theirs.contains(where: { !knownWord($0.word) }), mine.allSatisfy({ knownWord($0.word) }) {
                 continue
             }
@@ -103,7 +105,7 @@ public enum LocalHearing {
         return key
     }
 
-    private static let lightWords: Set<String> = [
+    static let lightWords: Set<String> = [
         "le", "la", "les", "l", "un", "une", "des", "du", "de", "d", "au", "aux", "ce", "cet", "cette", "ces",
         "et", "ou", "mais", "que", "qu", "qui", "a", "en", "dans", "sur", "pour", "par", "avec", "je", "j", "tu",
         "t", "il", "elle", "on", "nous", "vous", "ils", "elles", "me", "m", "te", "se", "s", "y", "ca", "c", "est",
@@ -111,7 +113,7 @@ public enum LocalHearing {
     ]
 
     /// Nombres en lettres, unités et symboles écrits différemment : la mise en forme les gère, pas l'écoute.
-    private static let numberWords: Set<String> = [
+    static let numberWords: Set<String> = [
         "zero", "deux", "trois", "quatre", "cinq", "six", "sept", "huit", "neuf", "dix", "onze", "douze", "treize",
         "quatorze", "quinze", "seize", "vingt", "vingts", "trente", "quarante", "cinquante", "soixante", "cent",
         "cents", "mille", "million", "millions", "euro", "euros", "dollar", "dollars", "pourcent", "etc", "cetera",
