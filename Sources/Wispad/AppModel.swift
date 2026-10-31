@@ -498,6 +498,17 @@ final class AppModel {
     static let keyRefreshSeconds = 10.0
     /// Raccourcie par les tests.
     @ObservationIgnored var keyRefreshLimit = AppModel.keyRefreshSeconds
+    /// Attente des clés par une dictée lancée pendant leur toute première lecture (lancement, relance après une
+    /// mise à jour) : le micro écoute déjà, la dictée part dès qu'elles arrivent. Couvre tous les essais du coffre.
+    static let firstKeysSeconds = 40.0
+    /// Raccourcie par les tests.
+    @ObservationIgnored var firstKeysLimit = AppModel.firstKeysSeconds
+
+    /// Les clés du coffre n'ont encore jamais été lues et leur lecture est en cours : la clé n'est pas absente,
+    /// elle arrive. La dictée ouvre le micro sans l'attendre.
+    var keysArriving: Bool {
+        dependencies.keyStore == .vault && keysLoadedAt == nil && keyRefresh != nil && (apiKey() ?? "").isEmpty
+    }
 
     /// Relit les clés (fichier de l'app, ou coffre de secrets s'il est configuré).
     func refreshKeys() async {
@@ -1076,7 +1087,8 @@ final class AppModel {
     }
 
     /// Ce qui empêche une dictée de partir : clé absente ou coffre injoignable.
-    func voiceProblem() async -> (outcome: DictationOutcome, message: String)? {
+    /// `limit` : attente de la relecture, `keyRefreshLimit` par défaut.
+    func voiceProblem(within limit: TimeInterval? = nil) async -> (outcome: DictationOutcome, message: String)? {
         // Clé coupée dans Fournisseurs : elle est là, inutile de relire le coffre.
         if !isKeyEnabled(settings.provider.rawValue), storedKey(settings.provider.rawValue) != nil {
             return (.keyUnavailable, String(localized: "Ta clé \(settings.provider.displayName) est coupée dans Fournisseurs."))
@@ -1086,7 +1098,7 @@ final class AppModel {
         var reachable = keysReachable
         if (apiKey() ?? "").isEmpty {
             let refresh = keyRefresh?.task ?? startKeyRefresh()
-            let answered = await DictationCoordinator.value(of: refresh, within: keyRefreshLimit) != nil
+            let answered = await DictationCoordinator.value(of: refresh, within: limit ?? keyRefreshLimit) != nil
             reachable = answered && keysReachable
         }
         guard let key = apiKey(), !key.isEmpty else {

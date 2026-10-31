@@ -41,6 +41,17 @@ struct ExternalDataAppTests {
         #expect(value == "enregistré\n")
     }
 
+    /// Lecture du coffre restée sans réponse (connexion SSH bloquée) : arrêtée au bout du délai, pour réessayer.
+    @Test(.timeLimit(.minutes(1))) func vaultReadThatHangsIsStopped() async throws {
+        let (tool, folder) = try vaultTool("exec /bin/sleep 30")
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let began = Date()
+        let (status, value) = await APIKeys.Vault.run(["get", "WISPAD_TEST_COFFRE"], tool: tool, timeout: 0.2)
+        #expect(status != 0 && status != 1)
+        #expect(value.isEmpty)
+        #expect(Date().timeIntervalSince(began) < 5)
+    }
+
     // MARK: Texte autour du curseur
 
     /// La plage de sélection vient de l'app au premier plan : une valeur d'un autre type n'était pas vérifiée

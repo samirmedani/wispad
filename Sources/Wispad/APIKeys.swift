@@ -94,6 +94,7 @@ enum APIKeys {
 
     /// Relit toutes les clés. Faux si le coffre ne répond pas ou si le fichier est illisible.
     static func refresh() async -> Bool {
+        let began = Date()
         let results: [(String, String?, Bool)]
         switch kind {
         case .vault: results = await Vault.readAll(accounts)
@@ -105,7 +106,12 @@ enum APIKeys {
             }
         }
         let reachable = results.allSatisfy(\.2)
-        if !reachable { log.error("lecture des clés incomplète") }
+        let milliseconds = Int(Date().timeIntervalSince(began) * 1_000)
+        if reachable {
+            log.notice("clés lues en \(milliseconds, privacy: .public) ms")
+        } else {
+            log.error("lecture des clés incomplète après \(milliseconds, privacy: .public) ms")
+        }
         return reachable
     }
 
@@ -178,7 +184,13 @@ enum APIKeys {
 
         /// Pauses avant de redemander une clé au coffre : au lancement, plusieurs connexions partent ensemble
         /// et l'une peut échouer (9 octobre : clés lues sauf une). 1 = absente, autre code = coffre injoignable.
-        static let retryDelays: [Double] = [0.5, 1.5]
+        /// Juste après une mise à jour, macOS réenregistre la nouvelle app pour le réseau local : un coffre lu par
+        /// SSH sur le réseau de la maison reste muet une vingtaine de secondes (31 octobre, 0.7.4). Des essais
+        /// courts et rapprochés le retrouvent dès qu'il répond, au lieu d'attendre la fin de chaque connexion.
+        static let retryDelays: [Double] = [0.5, 1, 1.5, 2, 3]
+
+        /// Durée maximale d'une lecture : au-delà, la commande est arrêtée et la lecture recommence.
+        static let readTimeout: TimeInterval = 5
 
         private static func read(_ account: String, command: String? = nil) async -> (String, String?, Bool) {
             // Commande à essayer : celle donnée (test d'une source pas encore choisie), le coffre s'il existe, sinon la
@@ -191,7 +203,7 @@ enum APIKeys {
                     if let remote {
                         answer = await runRemote(remote, name: name)
                     } else {
-                        answer = await run(["get", name])
+                        answer = await run(["get", name], timeout: readTimeout)
                     }
                     let status = answer.0
                     let output = answer.1
@@ -265,7 +277,9 @@ enum APIKeys {
             }
         }
 
-        static func run(_ arguments: [String], input: String? = nil, tool: URL? = Vault.tool) async -> (Int32, String) {
+        /// `timeout` : commande arrêtée au-delà (code -2, comme une source injoignable).
+        static func run(_ arguments: [String], input: String? = nil, tool: URL? = Vault.tool,
+                        timeout: TimeInterval? = nil) async -> (Int32, String) {
             guard let tool else { return (-1, "") }
             return await withCheckedContinuation { continuation in
                 DispatchQueue.global(qos: .userInitiated).async {
@@ -287,9 +301,15 @@ enum APIKeys {
                         // La clé passe par l'entrée standard, jamais en argument de commande.
                         send(input, to: stdin.fileHandleForWriting)
                     }
+                    let deadline = DispatchWorkItem { if process.isRunning { process.terminate() } }
+                    if let timeout {
+                        DispatchQueue.global().asyncAfter(deadline: .now() + timeout, execute: deadline)
+                    }
                     let data = output.fileHandleForReading.readDataToEndOfFile()
                     process.waitUntilExit()
-                    continuation.resume(returning: (process.terminationStatus, String(decoding: data, as: UTF8.self)))
+                    deadline.cancel()
+                    let status = process.terminationReason == .uncaughtSignal ? -2 : process.terminationStatus
+                    continuation.resume(returning: (status, String(decoding: data, as: UTF8.self)))
                 }
             }
         }

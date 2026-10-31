@@ -25,6 +25,9 @@ final class Capture {
     var audioURL: URL?
     var speech: SpeechRequest?
     var session: (any SpeechStreaming)?
+    /// Clés encore en route à l'appui (première lecture du coffre) : leur arrivée, ou ce qui empêche la dictée.
+    /// Le micro écoute pendant ce temps ; la transcription part seulement après.
+    var keyWait: Task<(outcome: DictationOutcome, message: String)?, Never>?
     /// Seconde écoute sur le Mac, pour la seule correction (`LocalHearingSession`) ; nil si indisponible.
     var localHearing: (any LocalHearingSession)?
     var startTask: Task<Bool, Never>?
