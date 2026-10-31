@@ -531,7 +531,7 @@ public struct TranscriptAssembler: Equatable, Sendable {
     public private(set) var displayText = ""
     /// Segments finaux tels que reçus, mis bout à bout.
     private var committed = ""
-    /// Positions (UTF-16) des espaces posées entre deux segments finaux de `committed`, adoucies par `PauseJoin`.
+    /// Positions (UTF-16) des espaces posées entre deux segments finaux de `committed`, examinées par `PauseJoin`.
     private var joins: [Int] = []
     private var live = ""
     private var doneText: String?
@@ -632,15 +632,18 @@ public struct TranscriptAssembler: Equatable, Sendable {
         }
     }
 
+    /// L'intermédiaire en cours n'est jamais adouci : sa longueur change encore, et la bulle ne doit pas hésiter entre
+    /// un point et une virgule. Sa jonction est tranchée quand il devient final.
     private mutating func refresh() {
+        let settled = PauseJoin.soften(committed, joins: joins)
         if committed.isEmpty {
             displayText = live
         } else if live.isEmpty {
-            displayText = PauseJoin.soften(committed, joins: joins)
+            displayText = settled
         } else if live.hasPrefix(committed) {
-            displayText = PauseJoin.soften(live, joins: joins + Self.boundary(after: committed, in: live))
+            displayText = settled + String(live.dropFirst(committed.count))
         } else {
-            displayText = PauseJoin.soften(committed + " " + live, joins: joins + [committed.utf16.count])
+            displayText = settled + " " + live
         }
     }
 
