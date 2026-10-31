@@ -75,6 +75,33 @@ enum WrittenGrammar {
         }
     }
 
+    /// Alternative isolée par une pause de la transcription (« … à qui tu as répondu. Ou non. ») : rattachée à la
+    /// phrase qui la précède (« … à qui tu as répondu ou non. »). Seulement « ou non » et « ou pas » seuls dans leur
+    /// phrase (suivis d'une ponctuation finale ou de la fin du texte), sur la même ligne, après une phrase finie par un
+    /// point ou un point d'interrogation ; une question garde son point d'interrogation et son espacement.
+    static func joinAlternativeFragments(_ text: String) -> String {
+        transformingUnprotected(text) { fragment in
+            let source = fragment as NSString
+            let result = NSMutableString(string: fragment)
+            let matches = alternativePattern.matches(in: fragment, range: NSRange(location: 0, length: source.length))
+            for match in matches.reversed() {
+                let leading = source.substring(with: match.range(at: 1))
+                let previous = source.substring(with: match.range(at: 2))
+                let word = source.substring(with: match.range(at: 3))
+                let trailing = match.range(at: 4).location == NSNotFound ? "" : source.substring(with: match.range(at: 4))
+                let end = match.range(at: 5).location == NSNotFound ? "" : source.substring(with: match.range(at: 5))
+                let question = previous == "?" || end == "?"
+                let spacing = previous == "?" ? leading : trailing
+                let closing = question ? spacing + "?" : end == "!" ? spacing + "!" : "."
+                result.replaceCharacters(in: match.range, with: " ou " + word.lowercased() + closing)
+            }
+            return result as String
+        }
+    }
+
+    private static let alternativePattern = try! NSRegularExpression(
+        pattern: #"(?<=[\p{L}\p{N})»”])(?<!\betc)([ \u00A0\u202F]?)([.?])[ \t\u00A0]+[Oo]u[ \u00A0]+(non|pas|Non|Pas)(?:([ \u00A0\u202F]?)([.?!])(?=[ \t\u00A0]|\n|$)|$)"#)
+
     /// Exige un complément dans la même proposition ; « faut pas… » ou « y a une… » n'en sont pas.
     private static func hasImpersonalComplement(in text: String, source: NSString, from offset: Int) -> Bool {
         var found = false

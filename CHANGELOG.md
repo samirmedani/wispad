@@ -3,6 +3,15 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.8.1 — 31 octobre 2026
+
+Wispad 0.8.1 écrit tes phrases d’un seul tenant, même quand tu marques une pause en parlant.
+
+**Corrigé**
+- **Phrases coupées par une pause** : un morceau comme « Ou non. » ou « Où quand… » est rattaché à sa phrase au lieu de rester isolé : « … les gens à qui tu as répondu ou non. »
+- **« ou » et « où »** : « une appli où tu peux tout ranger » prend l’accent quand il désigne un lieu ou un moment.
+- Comprend toutes les nouveautés de la 0.8.0.
+
 ## 0.8.0 — 31 octobre 2026
 
 Wispad 0.8.0 est plus simple, plus clair et plus fluide.
