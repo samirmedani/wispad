@@ -1,16 +1,38 @@
 import Testing
 @testable import WispadCore
 
-/// Exemples inventés : une correction fluide ne doit pas escamoter une nuance ou un complément court.
+/// Exemples inventés : une correction fluide ne doit pas escamoter une nuance ou un complément court. Le mot
+/// retiré reprend sa place dans la correction, qui garde ses autres retouches.
 struct ShortDeletionGuardTests {
     @Test(arguments: [
-        ("Le plan reste vraiment utile demain.", "Le plan reste utile demain."),
-        ("La méthode reste, assez franchement, stable depuis hier.", "La méthode reste stable depuis hier."),
-        ("Le plan reste dans ce cas utile demain.", "Le plan reste utile demain."),
-        ("The plan is genuinely useful for tomorrow.", "The plan is useful for tomorrow."),
+        ("Le plan reste vraiment utile demain.", "Le plan reste utile demain.", "Le plan reste vraiment utile demain."),
+        ("La méthode reste, assez franchement, stable depuis hier.", "La méthode reste stable depuis hier.",
+         "La méthode reste assez franchement stable depuis hier."),
+        ("Le plan reste dans ce cas utile demain.", "Le plan reste utile demain.", "Le plan reste dans ce cas utile demain."),
+        ("The plan is genuinely useful for tomorrow.", "The plan is useful for tomorrow.",
+         "The plan is genuinely useful for tomorrow."),
+        ("Le plan reste clair et sera prêt lundi.", "Le plan reste clair sera prêt lundi.",
+         "Le plan reste clair et sera prêt lundi."),
     ])
-    func anInternalMeaningfulDeletionKeepsTheTranscript(transcript: String, corrected: String) {
-        #expect(FidelityGuard.check(transcript: transcript, corrected: corrected) == transcript)
+    func anInternalMeaningfulDeletionIsRestored(transcript: String, corrected: String, expected: String) {
+        #expect(FidelityGuard.check(transcript: transcript, corrected: corrected) == expected)
+    }
+
+    /// Ce qu'une réécriture fidèle retire d'une dictée orale : la correction est gardée telle quelle.
+    @Test(arguments: [
+        ("Je pense pas qu'on a besoin d'aide.", "Je pense qu'on n'a pas besoin d'aide."),
+        ("Regarde si y a des, si t'as des fichiers à trier.", "Regarde si tu as des fichiers à trier."),
+        ("On garde les les mmh les trois dossiers.", "On garde les trois dossiers."),
+        ("Le taux atteint 12 pour 100 cette année.", "Le taux atteint 12 % cette année."),
+        ("Il a déjà une petite, un un manteau pour sortir.", "Il a déjà un manteau pour sortir."),
+        ("Le fichier est prêt et je pars demain matin.", "Le fichier est prêt. Je pars demain matin."),
+        ("Le tri est fini. Et je, est-ce que tu peux vérifier ?", "Le tri est fini. Est-ce que tu peux vérifier ?"),
+        ("Ça redirige vers le site v de Paul.", "Ça redirige vers le site de Paul."),
+        ("Le dossier est en gros prêt genre demain.", "Le dossier est prêt demain."),
+        ("Tu vois le button là du bouton bleu ?", "Tu vois le bouton bleu ?"),
+    ])
+    func oralRewritesKeepTheCorrection(transcript: String, corrected: String) {
+        #expect(FidelityGuard.check(transcript: transcript, corrected: corrected) == corrected)
     }
 
     @Test(arguments: [
@@ -33,7 +55,8 @@ struct ShortDeletionGuardTests {
     @Test func aFormattingCommandDoesNotExcuseAnUnrelatedDeletion() {
         let transcript = "Bonjour. Nouveau paragraphe. La méthode reste assez franchement stable depuis hier."
         let corrected = "Bonjour.\n\nLa méthode reste stable depuis hier."
-        #expect(FidelityGuard.check(transcript: transcript, corrected: corrected) == transcript)
+        #expect(FidelityGuard.check(transcript: transcript, corrected: corrected)
+                == "Bonjour.\n\nLa méthode reste assez franchement stable depuis hier.")
     }
 
     @Test func aMeaningfulCorrectionCueAloneStays() {
@@ -56,15 +79,18 @@ struct ShortDeletionGuardTests {
                 == "Pour demain prends :\n- Pommes\n- Poires\n- Prunes.")
         let transcript = "Pour demain prends pommes et poires. Le plan reste assez franchement stable depuis hier."
         #expect(FidelityGuard.check(transcript: transcript,
-                                    corrected: "Pour demain prends :\n- Pommes\n- Poires.\nLe plan reste stable depuis hier.") == transcript)
+                                    corrected: "Pour demain prends :\n- Pommes\n- Poires.\nLe plan reste stable depuis hier.")
+                == "Pour demain prends :\n- Pommes\n- Poires.\nLe plan reste assez franchement stable depuis hier.")
         let prose = "Pour demain prends pommes et poires. Le plan reste clair et sera prêt lundi."
         #expect(FidelityGuard.check(transcript: prose,
-                                    corrected: "Pour demain prends :\n- Pommes\n- Poires.\nLe plan reste clair sera prêt lundi.") == prose)
+                                    corrected: "Pour demain prends :\n- Pommes\n- Poires.\nLe plan reste clair sera prêt lundi.")
+                == "Pour demain prends :\n- Pommes\n- Poires.\nLe plan reste clair et sera prêt lundi.")
     }
 
     @Test func anAddedNegationDoesNotCompensateForLostContent() {
         let transcript = "On sait pas si le plan est vraiment utile demain."
-        #expect(FidelityGuard.check(transcript: transcript, corrected: "On ne sait pas si le plan est utile demain.") == transcript)
+        #expect(FidelityGuard.check(transcript: transcript, corrected: "On ne sait pas si le plan est utile demain.")
+                == "On ne sait pas si le plan est vraiment utile demain.")
     }
 
     @Test func anImmediatelyRepeatedNominalSubjectCanBeRemoved() {
@@ -75,7 +101,8 @@ struct ShortDeletionGuardTests {
 
     @Test func subjectCleanupDoesNotExcuseLostMeaning() {
         let transcript = "Le voyant il est assez franchement stable depuis hier."
-        #expect(FidelityGuard.check(transcript: transcript, corrected: "Le voyant est stable depuis hier.") == transcript)
+        #expect(FidelityGuard.check(transcript: transcript, corrected: "Le voyant est stable depuis hier.")
+                == "Le voyant est assez franchement stable depuis hier.")
         let separateSubject = "Le plan avance et il est utile demain."
         #expect(FidelityGuard.check(transcript: separateSubject, corrected: "Le plan avance et est utile demain.") == separateSubject)
         let clitic = "Je le vois il est prêt pour demain."

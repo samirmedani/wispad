@@ -40,7 +40,7 @@ public enum TranscriptEquivalence {
     }
 
     static let fillers: Set<String> = [
-        "euh", "heu", "bah", "ben", "hum",
+        "euh", "heu", "bah", "ben", "hum", "mmh", "mh", "hm",
         "um", "umm", "uh", "uhm", "erm", "er", "hmm", "mm",
     ]
 

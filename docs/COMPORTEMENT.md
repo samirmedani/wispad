@@ -608,10 +608,18 @@ Après la correction, `FidelityGuard` rejette ou répare :
   mot. La transcription est collée. Une correction courte faite de mots dits (« … non, oublie tout, écris juste
   merci » → « Merci. ») et des nombres mis en forme (« vingt-quatre octobre » → « 24/10 ») restent ;
 - un mot traduit (« outils » → « tools ») : le mot entendu est remis ;
-- un groupe de un à trois mots ordinaires supprimé à l'intérieur de la phrase : la transcription est conservée,
-  même si un ajout ailleurs compense le nombre de mots. Les hésitations explicites, répétitions et reprises
-  orales restent permises. Une commande de ponctuation ou une liaison de liste ne s'efface que si sa mise en
-  forme est réellement présente à cet endroit ; les nombres et pourcentages gardent leurs conversions ;
+- un groupe de un à trois mots porteurs de sens supprimé à l'intérieur de la phrase (négation, nuance,
+  complément : « vraiment », « assez franchement », « dans ce cas », « pas ») : ces mots reprennent leur place dans
+  la correction, juste après le mot qui les précédait, et le reste de la correction est gardé. Une réécriture
+  normale reste telle quelle : hésitations (« euh », « mmh »), répétitions et faux départs (« les les mmh les », « des
+  z, des zéros », « une petite, un un manteau »), marqueurs oraux (« en gros », « du coup », « genre »), mots
+  grammaticaux, contractions développées (« t'as » → « tu as »), négation déplacée (« je pense pas qu'on a » → « je
+  pense qu'on n'a pas »), conjonction remplacée par un point ou une virgule, proposition abandonnée (« Et je,
+  est-ce que… »), mot corrigé à l'oreille juste à côté (« button » → « bouton ») et nombres mis en forme (« 12 pour
+  100 » → « 12 % »). Une rectification perdue (« quatre vis, non, six vis » → « 4 vis ») ou un nombre retiré
+  gardent la transcription. Une commande de ponctuation ou une liaison de liste ne s'efface que si sa mise en
+  forme est réellement présente à cet endroit. Jusqu'en 0.7.1, tout mot de ce genre faisait coller la transcription
+  brute, hésitations comprises : 27 corrections fidèles sur 31 dictées réelles du 30 et 31 octobre 2026 ;
 - là où les deux écoutes diffèrent d'un seul petit mot (pronom, article, déterminant : « envoie-le » dans le fichier,
   « envoie-lui » en direct), un troisième que personne n'a entendu (« envoie-la », pour accorder la phrase) : le mot
   de l'autre écoute le remplace ; la fusion des deux (« envoie-la-lui ») garde le seul mot entendu. Seulement à une

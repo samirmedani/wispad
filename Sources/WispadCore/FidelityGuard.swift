@@ -50,9 +50,12 @@ public enum FidelityGuard {
         // Une transcription sans mot (« … ») dont la réponse n'était qu'une référence inventée : rien ne resterait à coller.
         if dated.allSatisfy(\.isWhitespace) { return transcript }
         let percents = restoreDroppedPercents(heard: transcript, corrected: dated)
-        if dropsShortInternalWords(heard: heard, corrected: percents) { return transcript }
-        guard let alternative, !alternative.isEmpty else { return percents }
-        return CorrectionPatch.keepHeardWord(corrected: percents, transcript: transcript, alternative: alternative)
+        // Un petit mot utile retiré (« pas », « vraiment », « si ») reprend sa place dans la correction. Jeter toute
+        // la correction pour lui recollait la transcription brute, « euh » compris : 27 dictées réelles sur 31 du
+        // 30 au 31 octobre 2026.
+        guard let kept = restoringShortInternalWords(heard: heard, corrected: percents) else { return transcript }
+        guard let alternative, !alternative.isEmpty else { return kept }
+        return CorrectionPatch.keepHeardWord(corrected: kept, transcript: transcript, alternative: alternative)
     }
 
     /// Un pourcentage dit (« cent pour cent », « 15 % », « fifteen percent ») dont la correction a gardé le nombre
@@ -159,16 +162,64 @@ public enum FidelityGuard {
     /// sans lui. Ne juger que les suppressions pures de 1 à 3 mots, entre deux mots retenus ; les remplacements
     /// (accords, dates, nombres…) continuent de suivre leurs contrôles habituels.
     static func dropsShortInternalWords(heard: [String], corrected: String) -> Bool {
+        !shortInternalDeletions(heard: heard, corrected: corrected).isEmpty
+    }
+
+    /// Remet les mots utiles retirés juste après le mot écrit qui les précédait, avant sa ponctuation : le reste de
+    /// la correction (hésitations retirées, négation, ponctuation) est gardé. nil si un trou ne se situe pas.
+    static func restoringShortInternalWords(heard: [String], corrected: String) -> String? {
+        let deletions = shortInternalDeletions(heard: heard, corrected: corrected)
+        guard !deletions.isEmpty else { return corrected }
+        // Une rectification orale perdue (« quatre vis, non, six vis » → « 4 vis ») ou un nombre retiré ne se
+        // recolle pas en morceaux : la transcription reste, comme avant.
+        for deletion in deletions {
+            let keys = deletion.words.map { CorrectionLearner.key($0) }
+            // « enfin » seul reste une nuance qu'on remet ; « non, six vis » perdu laisse la transcription.
+            if (keys.count > 1 && keys.contains(where: correctionCues.contains))
+                || !spokenNumbers(deletion.words.joined(separator: " ")).isEmpty {
+                return nil
+            }
+        }
+        let located = locatedWords(in: corrected).filter { isWord($0.text) }
+        let text = corrected as NSString
+        let result = NSMutableString(string: corrected)
+        for deletion in deletions.sorted(by: { $0.gap > $1.gap }) {
+            guard deletion.gap > 0, deletion.gap <= located.count else { return nil }
+            let previous = located[deletion.gap - 1]
+            let token = text.substring(with: previous.range)
+            let closing = token.reversed().prefix { closingMarks.contains($0) }
+            let location = NSMaxRange(previous.range) - String(closing).utf16.count
+            result.insert(" " + deletion.words.joined(separator: " "), at: location)
+        }
+        return result as String
+    }
+
+    private static let closingMarks: Set<Character> = Set(".,;:!?…»”\")]")
+
+    /// Groupe de mots utiles retiré : position du premier mot écrit après le trou, et mots dits, tels qu'écrits.
+    struct ShortDeletion: Equatable {
+        var gap: Int
+        var words: [String]
+    }
+
+    static func shortInternalDeletions(heard: [String], corrected: String) -> [ShortDeletion] {
         let saidWords = spokenWords(heard)
         let said = saidWords.map(\.key)
         let located = locatedWords(in: corrected).filter { isWord($0.text) }
         let written = spokenWords(located.map(\.text)).map(\.key)
-        guard said != written else { return false }
+        guard said != written else { return [] }
+        let sentenceStarts = sentenceStartFlags(heard)
+        var deletions: [ShortDeletion] = []
         for hunk in CorrectionLearner.replacements(said, written, oneSided: true)
         where hunk.newWords.isEmpty && (1...3).contains(hunk.oldWords.count)
             && hunk.oldStart > 0 && hunk.oldEnd < said.count {
             let removed = hunk.oldWords
             if removed.allSatisfy(TranscriptEquivalence.fillers.contains) { continue }
+            if restartsAroundFillers(removed, start: hunk.oldStart, end: hunk.oldEnd, said: said) { continue }
+            // Mot déplacé plutôt que perdu : il reste écrit aussi souvent qu'il a été dit.
+            if removed.allSatisfy({ word in written.filter { $0 == word }.count >= said.filter { $0 == word }.count }) {
+                continue
+            }
             if repeatsNominalSubject(removed, at: hunk.oldStart, heard: said) { continue }
             if let repeated = removed.first, removed.allSatisfy({ $0 == repeated }),
                said[hunk.oldStart - 1] == repeated || said[hunk.oldEnd] == repeated { continue }
@@ -196,7 +247,62 @@ public enum FidelityGuard {
                 }) { continue }
             }
             if rendersFormatting(removed, at: hunk.newStart, written: located, corrected: corrected) { continue }
-            return true
+            if losesNoMeaning(removed, gap: hunk.newStart, written: written, corrected: corrected) { continue }
+            // Phrase orale coupée en deux par la correction : « …quand même et malheureusement… » → « …quand même.
+            // Malheureusement… ». La conjonction disparaît avec la ponctuation qui la remplace.
+            if removed.allSatisfy({ coordinators.contains($0) || lightWords.contains($0) || TranscriptEquivalence.fillers.contains($0) }),
+               hunk.newStart > 0, hunk.newStart <= located.count,
+               punctuated(after: located[hunk.newStart - 1].range,
+                          before: hunk.newStart < located.count ? located[hunk.newStart].range.location : nil, in: corrected) {
+                continue
+            }
+            // Proposition abandonnée en bord de phrase : « …bloquait tout. Et je, est-ce que tu peux… ».
+            if hunk.oldEnd < sentenceStarts.count, sentenceStarts[hunk.oldEnd] || sentenceStarts[hunk.oldStart], removed.allSatisfy({
+                lightWords.contains($0) || subjectPronouns.contains($0) || coordinators.contains($0)
+                    || TranscriptEquivalence.fillers.contains($0)
+            }) { continue }
+            let words = (hunk.oldStart..<hunk.oldEnd).filter { !TranscriptEquivalence.fillers.contains(said[$0]) }.map { index -> String in
+                let word = saidWords[index].text
+                // Majuscule de début de phrase dans la dictée, plus en début de phrase une fois remis.
+                guard index < sentenceStarts.count, sentenceStarts[index], word.count > 1,
+                      word.dropFirst() == word.dropFirst().lowercased() else { return word }
+                return word.prefix(1).lowercased() + word.dropFirst()
+            }
+            deletions.append(ShortDeletion(gap: hunk.newStart, words: words))
+        }
+        return deletions
+    }
+
+    /// Pour chaque mot dit (même filtre que `spokenWords`), s'il ouvrait une phrase de la dictée.
+    private static func sentenceStartFlags(_ heard: [String]) -> [Bool] {
+        var flags: [Bool] = []
+        var opens = true
+        for token in heard {
+            if !CorrectionLearner.key(strip(token)).isEmpty { flags.append(opens) }
+            if let last = token.last { opens = ".!?…".contains(last) }
+        }
+        return flags
+    }
+
+    /// Faux départ repris aussitôt, hésitations comprises : « c'est euh c'est », « les mmh les », « des z, des
+    /// zéros », « il peut euh il peut ». Sans les hésitations, le groupe retiré répète ses voisins ou lui-même, ou
+    /// commence par l'amorce du mot qui le suit : une consonne seule, ou 3 lettres au plus reprises avec les mots qui
+    /// les précédaient. « il a aussi » garde son « a » : un vrai petit mot n'est pas une amorce.
+    private static func restartsAroundFillers(_ removed: [String], start: Int, end: Int, said: [String]) -> Bool {
+        let content = removed.filter { !TranscriptEquivalence.fillers.contains($0) }
+        guard !content.isEmpty else { return true }
+        let count = content.count
+        if count % 2 == 0, content.prefix(count / 2).elementsEqual(content.suffix(count / 2)) { return true }
+        if end + count <= said.count, said[end..<(end + count)].elementsEqual(content) { return true }
+        if start >= count, said[(start - count)..<start].elementsEqual(content) { return true }
+        // Faux départ aussitôt suivi d'un bégaiement : « une petite, un un cahouet ».
+        if end + 1 < said.count, said[end] == said[end + 1] { return true }
+        // Amorce : « z » avant « zéros », puis les mots qui la précédaient déjà (« des »).
+        if let fragment = content.first, fragment.count <= 3, end < said.count,
+           said[end].count > fragment.count, said[end].hasPrefix(fragment) {
+            let rest = content.dropFirst()
+            if rest.isEmpty { return fragment.count == 1 && !"aeiouy".contains(fragment) }
+            return start >= rest.count && said[(start - rest.count)..<start].elementsEqual(rest)
         }
         return false
     }
@@ -216,11 +322,13 @@ public enum FidelityGuard {
             && TranscriptEquivalence.equivalent(heard, written)
     }
 
-    /// Dislocation orale très bornée (« le voyant il est vert », « les deux premières rangées elles sont vides »).
-    /// Le pronom doit reprendre un groupe déterminant + nombre/ordinal facultatifs + nom, juste avant est/sont.
+    /// Dislocation orale très bornée (« le voyant il est vert », « le son il a tendance à couper »). Le pronom doit
+    /// reprendre un groupe déterminant + nombre/ordinal facultatifs + nom, et un verbe doit le suivre.
     private static func repeatsNominalSubject(_ removed: [String], at offset: Int, heard: [String]) -> Bool {
         guard removed.count == 1, let pronoun = removed.first, let forms = repeatedSubjects[pronoun],
-              offset + 1 < heard.count, heard[offset + 1] == forms.verb, offset >= 2 else { return false }
+              offset + 1 < heard.count, offset >= 2,
+              heard[offset + 1] == forms.verb || !CorrectionPatch.functionWords.union(subjectClitics).contains(heard[offset + 1])
+                || ["a", "ont", "va", "vont", "fait", "font"].contains(heard[offset + 1]) else { return false }
         let noun = heard[offset - 1]
         guard noun.contains(where: \.isLetter), !subjectStops.contains(noun) else { return false }
         for length in 2...min(4, offset) {
@@ -262,6 +370,87 @@ public enum FidelityGuard {
     ].map { $0.split(separator: " ").map(String.init) }
     private static let repeatedTics = ["genre", "en fait", "tu vois", "like", "you know"]
         .map { $0.split(separator: " ").map(String.init) }
+
+    /// Ce qu'une réécriture fidèle retire sans perdre de sens : mots grammaticaux (articles, prépositions, pronoms,
+    /// auxiliaires), marqueurs oraux (« en gros », « du coup », « genre »), nombres remis en forme, et mot porteur
+    /// repris juste à côté sous une forme proche (« button » → « bouton », « t'as » → « tu as »). Restent jugés : les
+    /// négations, les nuances et les compléments (« vraiment », « assez franchement », « dans ce cas »). Mesuré le
+    /// 31 octobre 2026 sur 31 vraies dictées : la règle stricte jetait 27 corrections fidèles pour de tels mots.
+    private static func losesNoMeaning(_ removed: [String], gap: Int, written: [String], corrected: String) -> Bool {
+        var words = removed
+        for marker in oralMarkers where marker.count > 1 {
+            var index = 0
+            while index + marker.count <= words.count {
+                if words[index..<(index + marker.count)].elementsEqual(marker) {
+                    words.removeSubrange(index..<(index + marker.count))
+                } else {
+                    index += 1
+                }
+            }
+        }
+        let meaningful = words.filter { word in
+            !lightWords.contains(word) && !TranscriptEquivalence.fillers.contains(word)
+                && !oralMarkers.contains([word]) && !word.contains(where: \.isNumber)
+                // Une consonne seule est une amorce (« le Twitter v… de Capucine »), pas un mot.
+                && !(word.count == 1 && !"aeiouy".contains(word))
+        }
+        guard !meaningful.isEmpty else { return true }
+        // Autour du trou, d'une longueur de plus que le groupe : une reprise peut fusionner ses deux versions.
+        let window = written[max(0, gap - removed.count - 3)..<min(written.count, gap + removed.count + 2)]
+        return meaningful.allSatisfy { word in
+            if let symbol = renderedSymbols[word], corrected.contains(symbol) { return true }
+            return window.contains { other in
+                // Même mot, ou mot corrigé à l'oreille (« button » → « bouton ») : même initiale, deux lettres
+                // d'écart au plus sur six. « presque » n'est pas « reste ».
+                other == word || (word.count >= 3 && other.first == word.first && soundsAlike(other, word) >= 0.65)
+            }
+        }
+    }
+
+    /// Mots grammaticaux (clés sans accent ni apostrophe), français puis anglais. « ne » rétabli ou retiré ne change
+    /// pas le sens ; les négations (« pas », « jamais », « rien »…), « si », « et », « ou », « mais » et les pronoms
+    /// sujets restent jugés : « Je le vois il est prêt » garde son « il », « clair et sera prêt » son « et ».
+    private static let lightWords: Set<String> = [
+        "le", "la", "les", "l", "un", "une", "des", "du", "de", "d", "au", "aux", "ce", "cet", "cette", "ces",
+        "mon", "ma", "mes", "ton", "ta", "tes", "son", "sa", "ses", "notre", "nos", "votre", "vos", "leur", "leurs",
+        "a", "en", "dans", "sur", "sous", "avec", "pour", "par", "chez", "vers", "que", "qu",
+        "qui", "dont", "quand", "comme", "j", "t",
+        "me", "m", "te", "se", "s", "lui", "y", "ca", "cela", "c", "cest", "ne", "n", "est", "sont", "suis", "es",
+        "ai", "as", "ont", "avait", "etait", "lequel", "laquelle", "lesquels", "lesquelles",
+        // Pronom et verbe contractés à l'oral : « t'as », « j'sais », « qu'on », « y a ».
+        "jai", "tas", "tes", "tavais", "tetais", "jetais", "quil", "quils", "quelle", "quelles", "quon", "jsuis",
+        "jsais", "jpeux", "jveux", "jvais", "ya", "cetait", "sil", "sils", "nest", "na",
+        "the", "an", "of", "to", "in", "on", "at", "for", "with", "that", "this", "it", "is",
+        "are", "was", "me", "him", "her", "us", "them", "my", "your", "its",
+    ]
+
+    private static let coordinators: Set<String> = ["et", "ou", "mais", "and", "or", "but"]
+
+    /// Ponctuation écrite entre un mot et le suivant (ou la fin du texte), celle du mot compris.
+    private static func punctuated(after previous: NSRange, before next: Int?, in text: String) -> Bool {
+        let ns = text as NSString
+        let start = previous.location
+        let end = next ?? ns.length
+        guard end >= start else { return false }
+        return ns.substring(with: NSRange(location: start, length: end - start)).contains { ",;:.!?…".contains($0) }
+    }
+
+    /// Pronoms sujets : jugés comme des mots porteurs, sauf dans une proposition abandonnée.
+    private static let subjectPronouns: Set<String> = [
+        "je", "tu", "il", "elle", "on", "nous", "vous", "ils", "elles", "i", "you", "he", "she", "we", "they",
+    ]
+
+    /// Marqueurs oraux qu'un texte écrit laisse tomber, d'un ou de plusieurs mots.
+    private static let oralMarkers: [[String]] = [
+        "en gros", "en fait", "du coup", "tu vois", "tu sais", "genre", "voila", "bon", "donc", "alors", "quoi",
+        "hein", "frerot", "et cetera", "ah", "oh", "eh", "ha", "bam", "nanana", "nanani", "blabla", "bla",
+        "you know", "like", "well", "so",
+    ].map { $0.split(separator: " ").map(String.init) }
+
+    /// Mots que la correction écrit en symbole : « cetera » → « etc. », « euros » → « € ».
+    private static let renderedSymbols: [String: String] = [
+        "cetera": "etc", "euros": "€", "euro": "€", "dollars": "$", "dollar": "$", "pourcent": "%", "cent": "%",
+    ]
 
     /// Le marqueur oral a bien reçu sa représentation écrite : pas d'exception globale pour une dictée en liste.
     private static func rendersFormatting(_ removed: [String], at gap: Int, written: [LocatedWord], corrected: String) -> Bool {
