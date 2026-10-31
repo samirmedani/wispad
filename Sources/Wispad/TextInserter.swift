@@ -134,9 +134,11 @@ enum TextInserter {
     static let fieldReadLimit = 0.3
     /// Relecture du champ après ⌘V. Elle suit l'envoi : le spectre de traitement a déjà disparu.
     static let confirmationLimit = 1.0
-    /// Sans confirmation, le texte reste au presse-papiers au moins ce temps après ⌘V : une app occupée
-    /// (page web chargée, Electron) peut lire le presse-papiers tard ; le restaurer avant ferait coller l'ancien contenu.
+    /// Sans lecture du presse-papiers par l'app, le texte y reste au plus ce temps après ⌘V : une app occupée
+    /// (page web chargée, Electron) peut le lire tard ; le restaurer avant ferait coller l'ancien contenu.
     static let clipboardHold = 1.5
+    /// Après la lecture du collage, le temps de ses lectures groupées (texte, puis autres formats demandés).
+    static let readGrace = 0.15
 
     static func insert(
         _ text: String, context: DictationContext,
@@ -213,13 +215,23 @@ enum TextInserter {
             log.notice("collage impossible : presse-papiers non modifiable")
             return .failed
         }
+        transaction.expectPaste()
         guard shouldProceed(), !Task.isCancelled, system.frontmostPID() == pid, await system.postPaste(pid) else {
             transaction.restoreIfUnchanged()
             if !shouldProceed() || Task.isCancelled { return .cancelled }
             return system.frontmostPID() == pid ? .failed : .noTarget
         }
-        let sentAt = Date()
         didSendPaste()
+        // Le presse-papiers revient dès que l'app a lu la dictée, sans attendre la confirmation : un ⌘V fait juste
+        // après colle à nouveau ce que l'utilisateur avait copié. Faute de lecture, au bout du délai de lecture.
+        let hold = system.clipboardHold
+        let restoring = Task { @MainActor in
+            if await transaction.waitForPasteRead(within: hold) {
+                try? await Task.sleep(nanoseconds: UInt64(Self.readGrace * 1_000_000_000))
+            }
+            transaction.restoreIfUnchanged()
+        }
+        let sentAt = Date()
         // Où écrit l'utilisateur : lu après l'envoi, sans retarder le texte ni l'apparition de la bulle.
         let locate = system.locate
         Task { @MainActor in InputZoneTracker.note(await locate(pid), pid: pid) }
@@ -253,12 +265,10 @@ enum TextInserter {
         if confirmed {
             transaction.restoreIfUnchanged()
         } else {
-            // Le statut part tout de suite ; le presse-papiers, lui, n'est rendu qu'après le délai de lecture.
+            // Le statut part tout de suite ; le tour suivant attend la restauration du presse-papiers.
             releasesLater = true
-            let wait = max(0, system.clipboardHold - Date().timeIntervalSince(sentAt))
             Task { @MainActor in
-                if wait > 0 { try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000)) }
-                transaction.restoreIfUnchanged()
+                await restoring.value
                 finishTurn(done)
             }
         }

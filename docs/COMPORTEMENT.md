@@ -1006,8 +1006,12 @@ Wispad relit ces autorisations sans jamais les redemander : une demande de macOS
   Les lectures initiales réutilisent la valeur et la sélection déjà obtenues, sans les redemander plusieurs fois. Un collage non confirmé laisse sa cause dans le journal `insertion`, sans texte.
 - Le spectre de traitement disparaît dès l'envoi de ⌘V. La confirmation continue sans bloquer l'affichage ; seul un
   échec avéré fait paraître la carte **Copier / Coller**. Collage confirmé : le presse-papiers précédent revient
-  aussitôt. Sinon, la dictée y reste au moins 1,5 s après ⌘V, car une app occupée (page web lourde, Electron) peut
-  le lire tard ; le statut, lui, n'attend pas. Le presse-papiers reste réservé jusqu'à sa restauration : les dictées
+  aussitôt. Sinon, il revient 0,15 s après que l'app a lu la dictée (fournie à la demande : Wispad voit cette
+  lecture), sans attendre la confirmation ; un ⌘V fait juste après recolle bien ce que l'utilisateur avait copié.
+  Une lecture faite avant ⌘V (service système) ne compte pas. Sans lecture, la dictée y reste au plus 1,5 s, car
+  une app occupée (page web lourde, Electron) peut le lire tard ; le statut, lui, n'attend pas. La dictée posée au
+  presse-papiers porte la marque org.nspasteboard.TransientType : les gestionnaires de presse-papiers ne la
+  gardent pas dans leur historique. Le presse-papiers reste réservé jusqu'à sa restauration : les dictées
   rapprochées ne se remplacent pas. Une nouvelle écoute garde sa propre bulle. Échap après l'envoi ne transforme
   pas le texte déjà collé en dictée annulée.
 - Les traces distinguent l'envoi de ⌘V après relâchement (`pasteSentAfterReleaseMs`) et la confirmation
