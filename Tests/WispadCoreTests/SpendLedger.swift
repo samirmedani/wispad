@@ -2,6 +2,7 @@ import Foundation
 
 // Plafond cumulé des tests qui appellent les vraies API (LiveAPITests). Outil de test seulement : il ne fait plus
 // partie de l'app, mais garde le même fichier pour que le cumul déjà dépensé ne reparte pas de zéro.
+// 6 $ depuis le 31 octobre 2026 : le mainteneur a ajouté 1 $ aux 5 $ d'origine, atteints ce jour-là.
 
 public enum SpendLedgerError: Error, CustomStringConvertible {
     case cap(spent: Double, attempted: Double, cap: Double)
@@ -14,7 +15,7 @@ public enum SpendLedgerError: Error, CustomStringConvertible {
 }
 
 public struct SpendLedger: Sendable {
-    public static let defaultCapUSD = 5.0
+    public static let defaultCapUSD = 6.0
     public var url: URL
     public var capUSD: Double
 
