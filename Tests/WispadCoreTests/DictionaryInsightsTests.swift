@@ -15,6 +15,30 @@ struct DictionaryInsightsTests {
         DictionaryInsights.fixes(raw: raw, final: final).map(\.written)
     }
 
+    // MARK: Noms écrits de plusieurs façons, appris après une dictée
+
+    /// La dictée qui vient de finir écrit « TestFlight », que les dictées récentes écrivent aussi « Testflight » : la
+    /// graphie marquée est à soumettre au juge, avec l'autre écriture comme « entendu ».
+    @Test func aNameWrittenSeveralWaysInTheCurrentDictationIsLearnable() {
+        let recent = [
+            dictation("a", raw: "On pousse sur TestFlight ce soir."), dictation("b", raw: "La build part sur Testflight."),
+            dictation("c", raw: "TestFlight est prêt pour les testeurs."), dictation("d", raw: "Mets-la sur Testflight demain."),
+            dictation("e", raw: "Rien à voir avec ce nom."),
+        ]
+        let final = "Je relance la build sur TestFlight."
+        #expect(DictionaryInsights.learnableSpellings(final: final, recent: recent, dictionary: [], refused: [])
+                == [DictionaryInsights.Fix(heard: "Testflight", written: "TestFlight")])
+        // Déjà au dictionnaire, refusé, ou absent de cette dictée : rien.
+        let entry = DictionaryEntry(term: "TestFlight")
+        #expect(DictionaryInsights.learnableSpellings(final: final, recent: recent, dictionary: [entry], refused: []).isEmpty)
+        #expect(DictionaryInsights.learnableSpellings(final: final, recent: recent, dictionary: [], refused: ["testflight"]).isEmpty)
+        #expect(DictionaryInsights.learnableSpellings(final: "Je relance la build ce soir.", recent: recent,
+                                                      dictionary: [], refused: []).isEmpty)
+        // Une seule écriture vue deux fois ne suffit pas : il faut plusieurs façons d'écrire le nom.
+        let consistent = [dictation("a", raw: "On pousse sur TestFlight."), dictation("b", raw: "TestFlight est prêt.")]
+        #expect(DictionaryInsights.learnableSpellings(final: final, recent: consistent, dictionary: [], refused: []).isEmpty)
+    }
+
     // MARK: Réparations d'une dictée
 
     @Test func misheardNamesRepairedByTheCorrectionAreFound() {

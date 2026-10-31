@@ -335,6 +335,50 @@ final class AppModel {
     /// Mots appris seuls depuis le lancement, du plus récent au plus ancien : le menu propose de les retirer.
     private(set) var recentlyLearned: [String] = []
 
+    /// Noms de la dictée qui vient de finir écrits de plusieurs façons dans les dictées récentes (« Testflight » puis
+    /// « TestFlight ») : la graphie marquée passe par le même juge, puis est apprise, comme un nom réparé. L'analyse,
+    /// limitée aux dictées qui contiennent ces noms, tourne hors du fil principal.
+    func considerSpellings(final: String, dictationID: String, speech: SpeechRequest, traceID: String? = nil) {
+        guard settings.learnCorrections, !final.isEmpty else { return }
+        let previous = learning
+        learning = Task {
+            await previous?.value
+            guard !Task.isCancelled, settings.learnCorrections,
+                  let refused = try? store.refusedTerms() else { return }
+            var recent = DictionaryInsights.recent(history.map(DictionaryInsights.Dictation.init))
+            if !recent.contains(where: { $0.id == dictationID }) {
+                recent.append(DictionaryInsights.Dictation(id: dictationID, date: Date(), raw: final, final: final))
+            }
+            let entries = dictionary
+            let found = await Task.detached(priority: .utility) {
+                DictionaryInsights.learnableSpellings(final: final, recent: recent, dictionary: entries, refused: refused)
+            }.value
+            let ready = found.filter { !judgedOut.contains(DictionaryInsights.key($0.written)) }
+            guard !Task.isCancelled, settings.learnCorrections, !ready.isEmpty else { return }
+            let candidates = ready.map { CorrectionLearner.Candidate(heard: $0.heard, corrected: $0.written) }
+            let judgement = await dependencies.judgeTerms(candidates, final, speech)
+            for usage in judgement.usages { recordUsage(usage) }
+            if let traceID, !judgement.usages.isEmpty {
+                if (try? store.appendTraceCalls(id: traceID, calls: judgement.usages.map(DictationAPICall.init))) != nil {
+                    traceRevision += 1
+                }
+            }
+            guard !Task.isCancelled, settings.learnCorrections else { return }
+            let kept = judgement.kept.filter { kept in candidates.contains { $0.corrected == kept.term } }
+            if judgement.usages.contains(where: \.succeeded) {
+                for candidate in candidates where !kept.contains(where: { $0.term == candidate.corrected }) {
+                    judgedOut.insert(DictionaryInsights.key(candidate.corrected))
+                }
+            }
+            learn(kept, source: .spelling, candidates: candidates)
+        }
+    }
+
+    /// « Tout ajouter » : chaque suggestion est acceptée, comme un clic sur son bouton.
+    func acceptAllSuggestions() {
+        for suggestion in dictionaryInsights.suggestions { acceptSuggestion(suggestion) }
+    }
+
     /// Mots retenus après une dictée, ajoutés au dictionnaire avec le juge qui les a retenus, ce qui avait été
     /// entendu (`candidates`) et d'où ils viennent.
     func learn(_ terms: [LearnedTerm], source: DictionarySource = .fieldCorrection, candidates: [CorrectionLearner.Candidate] = []) {

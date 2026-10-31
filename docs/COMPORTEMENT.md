@@ -837,6 +837,12 @@ Réglages › Mise en forme : **Montants et unités** (symboles, par défaut, ou
   plus resoumis avant le prochain lancement (un juge muet n'écarte rien). Jamais avec « Apprendre de mes
   corrections » coupé, après une sélection réécrite sur consigne, ni pour l'essai du premier lancement. L'analyse
   de l'historique tourne hors du fil principal ; chaque dictée n'est analysée qu'une fois par lancement.
+- Les noms écrits de plusieurs façons sont appris aussi : à la fin de chaque dictée, un nom écrit avec une
+  majuscule (graphie marquée ou nom propre hors début de phrase) que les dictées des 90 derniers jours écrivent de
+  plusieurs façons, chacune dans au moins deux dictées, dont une graphie marquée (« TestFlight » / « Testflight »),
+  passe par le même juge avec sa graphie marquée la plus fréquente et l'autre écriture comme « entendu », puis la
+  même bulle. Absent du dictionnaire, jamais refusé, trois au plus par dictée ; seules les dictées qui contiennent
+  ces noms sont relues, hors du fil principal. Origine : « Écrit de plusieurs façons dans tes dictées ».
 - Seuls la phrase dictée et le mot corrigé sont envoyés (à Jev et au modèle de correction) ; le journal ne contient ni mot ni texte.
 
 ### Origine des mots
@@ -856,21 +862,19 @@ Chaque mot garde, sur ce Mac, qui l'a ajouté :
 - **Avant le suivi** : mot ajouté par une version précédente. L'historique ne relie aucun appel de jugement à un
   mot ni ne garde le verdict de chaque mot : l'origine n'est pas devinée.
 
-Le dictionnaire affiche par défaut les entrées les plus récentes en haut, dans tous les filtres et dans les deux
-sections. Les en-têtes **Mot / Expression**, **Origine**, **Ajouté le** et **Dictées** trient la liste ; un second
+Le dictionnaire affiche par défaut les entrées les plus récentes en haut, dans tous les filtres. Les en-têtes
+**Terme**, **Origine**, **Ajouté le** et **Dictées** trient la liste ; un second
 clic inverse le sens, indiqué par une flèche. **Dictées** trie d'abord les plus dictées. Le choix reste mémorisé après relance. Le tri par origine groupe Par toi,
 Automatique puis Avant le suivi (ou l'inverse), avec les plus récents en tête de chaque groupe. Il ne change ni
 les données conservées ni l'ordre des termes transmis aux fournisseurs.
 
-Écran Dictionnaire : deux sections mémorisées, Mots et Expressions et phrases. La classification suit le texte :
-un seul élément sans espace reste un mot, plusieurs éléments (espaces ou retours à la ligne) forment une
-expression. Les termes existants sont répartis sans être modifiés. Les noms composés peuvent donc être dans
-Expressions et phrases ; ce n'est pas une décision du modèle. Aucune limite de longueur n'est ajoutée.
-
-Les mots utilisent une table compacte Mot / Origine / Ajouté le / Dictées. Les expressions ont toute la largeur,
-avec retour à la ligne et métadonnées dessous. Leur saisie accepte plusieurs lignes. Ajouter un terme ouvre sa section
-et remet les filtres à Tous / Toute période pour qu'il reste visible. La recherche est temporaire ; origine et
-période sont mémorisées. Les filtres se croisent, avec un compteur de résultats et un bouton de réinitialisation.
+Écran Dictionnaire : une seule liste pour les mots, les noms et les expressions, dans une table Terme / Origine /
+Ajouté le / Dictées ; une expression longue passe à la ligne dans sa colonne. Un seul champ d'ajout, qui grandit
+avec le texte jusqu'à cinq lignes (Option-Retour pour une nouvelle ligne, Retour pour ajouter). Aucune limite de
+longueur n'est ajoutée. Ajouter un terme remet les filtres à Tous / Toute période pour qu'il reste visible. La
+recherche est temporaire ; origine et période sont mémorisées. Les filtres se croisent, avec un compteur de
+résultats et un bouton de réinitialisation. (Les anciennes sections Mots et Expressions et phrases sont réunies ;
+leur réglage `dictionaryKind` reste enregistré pour une version précédente.)
 
 Badges : bleu « Par toi », violet « Automatique », gris « Avant le suivi ». Pour un terme appris, le juge
 (« Jev », « DeepSeek », « OpenAI », « xAI »…) reste visible ; l'info-bulle précise le fournisseur, le modèle et
@@ -889,6 +893,9 @@ est refusé avec un message.
 
 En tête de l'écran Dictionnaire, une carte **Suggestions** propose, d'après les dictées des 90 derniers jours,
 calculé sur ce Mac sans rien envoyer et hors du fil principal :
+
+Avec au moins deux suggestions, **Tout ajouter** (en tête de la carte) les accepte toutes d'un coup, comme un clic sur
+chacune.
 
 - **Mal entendu dans N dictées** (ou **Mal écrit** pour un changement de casse) : un nom réparé par la correction
   dans au moins deux dictées et pas encore appris, avec ce qui avait été entendu. **Ajouter** l'ajoute comme

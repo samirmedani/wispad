@@ -199,7 +199,6 @@ enum DesignPreview {
             model.health.record(ServiceHealth.deepSeek, succeeded: false)
         }
         if arguments.contains("--dictionary-phrases") {
-            model.settings.dictionaryKind = .phrase
             for value in ["Visual Studio Code", "Observatoire des aurores boréales", "Merci pour ton retour. Nous préparerons ensemble la prochaine étape, en prenant le temps de vérifier chaque détail.", String(repeating: "Une expression longue reste entièrement lisible. ", count: 8)] {
                 try? model.store.addTerm(value, origin: .user)
             }

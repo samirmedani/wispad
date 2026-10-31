@@ -12,26 +12,18 @@ struct DictionaryView: View {
 
     private var origin: DictionaryFilter { model.settings.dictionaryOriginFilter }
     private var period: DictionaryPeriod { model.settings.dictionaryPeriod }
-    private var kind: DictionaryKind { model.settings.dictionaryKind }
     private var sort: DictionarySort { model.settings.dictionarySort }
-    private var sectionEntries: [DictionaryEntry] { model.dictionary.filter(kind.includes) }
+    /// Mots, noms et expressions dans une seule liste : une expression se lit sur toute la largeur de sa colonne.
+    private var sectionEntries: [DictionaryEntry] { model.dictionary }
 
     var body: some View {
         ScreenScroll {
-            ScreenHeader(title: String(localized: "Dictionnaire"), subtitle: String(localized: "Les noms, marques et acronymes que Wispad doit reconnaître."))
+            ScreenHeader(title: String(localized: "Dictionnaire"), subtitle: String(localized: "Les noms, marques et expressions que Wispad doit reconnaître. Il en apprend aussi tout seul."))
             VStack(alignment: .leading, spacing: 16) {
                 if !model.dictionaryInsights.suggestions.isEmpty {
                     DictionarySuggestionsCard(suggestions: model.dictionaryInsights.suggestions)
                         .transition(.opacity)
                 }
-                Picker("Type d'entrée", selection: Binding(
-                    get: { kind }, set: { model.setDisplayChoice(\.dictionaryKind, $0) }
-                )) {
-                    Text("Mots (\(model.dictionary.filter(DictionaryKind.word.includes).count))").tag(DictionaryKind.word)
-                    Text("Expressions et phrases (\(model.dictionary.filter(DictionaryKind.phrase.includes).count))").tag(DictionaryKind.phrase)
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
                 addField
                 dictionaryTable
             }
@@ -47,41 +39,25 @@ struct DictionaryView: View {
     }
 
     private var addField: some View {
-        HStack(alignment: kind == .phrase ? .top : .center, spacing: 10) {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
             Image(systemName: "plus")
                 .foregroundStyle(.secondary)
-                .padding(.top, kind == .phrase ? 14 : 0)
-            if kind == .phrase {
-                ZStack(alignment: .topLeading) {
-                    if term.isEmpty {
-                        Text("Ajouter une expression ou une phrase…")
-                            .foregroundStyle(.secondary)
-                            .padding(.top, 5)
-                            .padding(.leading, 5)
-                            .allowsHitTesting(false)
-                    }
-                    TextEditor(text: $term)
-                        .scrollContentBackground(.hidden)
-                        .focused($focused)
-                        .accessibilityLabel("Expression ou phrase à ajouter")
-                }
-                .padding(.vertical, 8)
-            } else {
-                TextField("Ajouter un mot, un nom, un acronyme…", text: $term)
-                    .textFieldStyle(.plain)
-                    .focused($focused)
-                    .onSubmit(add)
-            }
+            // Un mot ou une expression : le champ grandit avec le texte (Option-Retour pour une nouvelle ligne).
+            TextField("Ajouter un mot, un nom ou une expression…", text: $term, axis: .vertical)
+                .textFieldStyle(.plain)
+                .lineLimit(1...5)
+                .focused($focused)
+                .onSubmit(add)
             Button("Ajouter", action: add)
                 .buttonStyle(.borderedProminent)
                 .controlSize(.regular)
-                .padding(.top, kind == .phrase ? 10 : 0)
                 .disabled(term.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
         .font(.system(size: 13))
         .padding(.leading, 14)
         .padding(.trailing, 8)
-        .frame(height: kind == .phrase ? 100 : 46)
+        .padding(.vertical, 8)
+        .frame(minHeight: 46)
         .card(radius: 12)
         .overlay(RoundedRectangle(cornerRadius: 12)
             .strokeBorder(Theme.brand.opacity(focused ? 0.55 : 0), lineWidth: 1.5))
@@ -98,8 +74,8 @@ struct DictionaryView: View {
                 .padding(14)
             tableHeader
             if sectionEntries.isEmpty {
-                EmptyState(symbol: "character.book.closed", title: kind == .word ? String(localized: "Aucun mot pour l’instant") : String(localized: "Aucune expression pour l’instant"),
-                           message: String(localized: "Ajoute les termes que tu veux mieux faire reconnaître."))
+                EmptyState(symbol: "character.book.closed", title: String(localized: "Ton dictionnaire est vide"),
+                           message: String(localized: "Ajoute les noms ou expressions à mieux reconnaître. Wispad en apprendra aussi en t'écoutant."))
             } else if entries.isEmpty {
                 VStack(spacing: 10) {
                     Text("Aucune entrée ne correspond à ces filtres.")
@@ -113,11 +89,7 @@ struct DictionaryView: View {
             } else {
                 LazyVStack(spacing: 0) {
                     ForEach(entries) { entry in
-                        if kind == .word {
-                            DictionaryRow(entry: entry, usage: usage[entry.id] ?? 0) { model.deleteTerm(entry) }
-                        } else {
-                            DictionaryPhraseRow(entry: entry, usage: usage[entry.id] ?? 0) { model.deleteTerm(entry) }
-                        }
+                        DictionaryRow(entry: entry, usage: usage[entry.id] ?? 0) { model.deleteTerm(entry) }
                         Divider().padding(.horizontal, 16)
                     }
                 }
@@ -181,7 +153,7 @@ struct DictionaryView: View {
         HStack(spacing: 12) {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField(kind == .word ? String(localized: "Rechercher un mot…") : String(localized: "Rechercher une expression…"), text: $search)
+                TextField(String(localized: "Rechercher…"), text: $search)
                     .textFieldStyle(.plain)
                 if !search.isEmpty {
                     Button { search = "" } label: { Image(systemName: "xmark.circle.fill") }
@@ -211,7 +183,7 @@ struct DictionaryView: View {
 
     private var tableHeader: some View {
         HStack(spacing: 12) {
-            sortHeader(kind == .word ? String(localized: "Mot") : String(localized: "Expression"), column: .term)
+            sortHeader(String(localized: "Terme"), column: .term)
                 .frame(maxWidth: .infinity, alignment: .leading)
             sortHeader(String(localized: "Origine"), column: .origin)
                 .frame(width: DictionaryColumns.origin, alignment: .leading)
@@ -259,7 +231,6 @@ struct DictionaryView: View {
         guard !value.isEmpty else { return }
         model.addTerm(value)
         term = ""
-        model.setDisplayChoice(\.dictionaryKind, DictionaryKind.classify(value))
         // L'ajout doit rester visible, même si l'on consultait les mots appris ou une recherche.
         resetFilters()
     }
@@ -368,64 +339,6 @@ private struct DictionaryRow: View {
         .frame(minHeight: 58)
         .background(hovering ? Theme.subtleFill : .clear)
         .onHover { hovering = $0 }
-        .accessibilityElement(children: .contain)
-    }
-}
-
-/// Les expressions ont toute la largeur ; leur contenu reste lisible, même sur plusieurs lignes.
-private struct DictionaryPhraseRow: View {
-    var entry: DictionaryEntry
-    var usage: Int
-    var onDelete: () -> Void
-    @State private var editing = false
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(entry.term)
-                    .font(.system(size: 13, weight: .medium))
-                    .lineSpacing(3)
-                    .textSelection(.enabled)
-                    .fixedSize(horizontal: false, vertical: true)
-                if let heard = entry.heard {
-                    Text("entendu « \(heard) »")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            HStack(spacing: 8) {
-                OriginBadge(origin: entry.origin)
-                    .help(DictionaryOriginText.detail(entry))
-                if let judge = entry.origin.judge {
-                    Text(DictionaryOriginText.judgeName(judge))
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                }
-                Spacer(minLength: 4)
-                UsageCount(count: usage, spelledOut: true)
-                Text(entry.createdAt.formatted(.dateTime.day().month(.abbreviated).year().locale(appLocale)))
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                Button { editing = true } label: {
-                    Image(systemName: "pencil").frame(width: 26, height: 26)
-                }
-                .buttonStyle(HoverButtonStyle(treatment: .icon))
-                .help("Modifier cette expression")
-                .accessibilityLabel("Modifier cette expression")
-                .popover(isPresented: $editing, arrowEdge: .bottom) {
-                    RenameTermPopover(entry: entry, isPresented: $editing)
-                }
-                Button(action: onDelete) {
-                    Image(systemName: "trash").frame(width: 26, height: 26)
-                }
-                .buttonStyle(HoverButtonStyle(treatment: .icon))
-                .help("Supprimer cette expression")
-                .accessibilityLabel("Supprimer cette expression")
-            }
-        }
-        .padding(16)
         .accessibilityElement(children: .contain)
     }
 }
@@ -586,6 +499,7 @@ enum DictionaryOriginText {
         case .fieldCorrection: return String(localized: "Corrigé par toi juste après une dictée")
         case .repeatedFix: return String(localized: "Réparé par la correction dans plusieurs dictées")
         case .suggestion: return String(localized: "Ajouté depuis les suggestions")
+        case .spelling: return String(localized: "Écrit de plusieurs façons dans tes dictées")
         }
     }
 

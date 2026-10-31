@@ -239,6 +239,12 @@ struct HistoryRow: View {
 
     private static let collapsedLines = 4
 
+    /// Largeur des boutons du survol (copier, retranscrire et écouter, supprimer), réservée même sans survol.
+    static func actionsWidth(text: Bool, audio: Bool) -> CGFloat {
+        let count = (text ? 1 : 0) + (audio ? 2 : 0) + 1
+        return CGFloat(count) * 26 + CGFloat(count - 1) * 2
+    }
+
     private var hovered: Bool { isEnabled && (hovering || previewHover) }
 
     var body: some View {
@@ -330,26 +336,32 @@ struct HistoryRow: View {
                         .accessibilityLabel("Détails de la dictée")
                         .accessibilityIdentifier("dictation-details-\(record.id)")
                 }
-                HStack(spacing: 2) {
-                    if !item.text.isEmpty {
-                        HoverIconButton(symbol: "doc.on.doc", help: String(localized: "Copier")) { model.copy(record.finalText) }
-                    }
-                    if item.hasAudio {
-                        HoverIconButton(symbol: "arrow.clockwise", help: String(localized: "Retranscrire")) {
-                            Task { await model.coordinator.retranscribe(record) }
+                // Boutons du survol construits pour la seule ligne survolée ou en lecture : une longue liste ne garde pas
+                // quatre boutons invisibles (et leur suivi du pointeur) par ligne. La place reste réservée.
+                Group {
+                    if hovered || selected {
+                        HStack(spacing: 2) {
+                            if !item.text.isEmpty {
+                                HoverIconButton(symbol: "doc.on.doc", help: String(localized: "Copier")) { model.copy(record.finalText) }
+                            }
+                            if item.hasAudio {
+                                HoverIconButton(symbol: "arrow.clockwise", help: String(localized: "Retranscrire")) {
+                                    Task { await model.coordinator.retranscribe(record) }
+                                }
+                                HoverIconButton(
+                                    symbol: selected && model.historyPlayer.isPlaying ? "pause.fill" : "play.fill",
+                                    help: selected && model.historyPlayer.isPlaying ? String(localized: "Mettre en pause") : String(localized: "Écouter"),
+                                    tint: selected ? Theme.brand : .secondary
+                                ) { model.play(record) }
+                                .accessibilityLabel(selected && model.historyPlayer.isPlaying ? String(localized: "Mettre en pause") : String(localized: "Écouter l'audio"))
+                            }
+                            HoverIconButton(symbol: "trash", help: String(localized: "Supprimer"), tint: .red) {
+                                withAnimation(reduceMotion ? nil : Theme.spring) { model.deleteHistory(record) }
+                            }
                         }
-                        HoverIconButton(
-                            symbol: selected && model.historyPlayer.isPlaying ? "pause.fill" : "play.fill",
-                            help: selected && model.historyPlayer.isPlaying ? String(localized: "Mettre en pause") : String(localized: "Écouter"),
-                            tint: selected ? Theme.brand : .secondary
-                        ) { model.play(record) }
-                        .accessibilityLabel(selected && model.historyPlayer.isPlaying ? String(localized: "Mettre en pause") : String(localized: "Écouter l'audio"))
-                    }
-                    HoverIconButton(symbol: "trash", help: String(localized: "Supprimer"), tint: .red) {
-                        withAnimation(reduceMotion ? nil : Theme.spring) { model.deleteHistory(record) }
                     }
                 }
-                .opacity(hovered || selected ? 1 : 0)
+                .frame(width: Self.actionsWidth(text: !item.text.isEmpty, audio: item.hasAudio), alignment: .trailing)
             }
         }
         .padding(.horizontal, 16)

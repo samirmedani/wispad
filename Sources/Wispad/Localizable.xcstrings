@@ -1416,6 +1416,16 @@
         }
       }
     },
+    "Accepter les %lld suggestions" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accept the %lld suggestions"
+          }
+        }
+      }
+    },
     "Accès au micro retiré : dictée arrêtée" : {
       "localizations" : {
         "en" : {
@@ -1747,7 +1757,18 @@
         }
       }
     },
+    "Ajoute les noms ou expressions à mieux reconnaître. Wispad en apprendra aussi en t'écoutant." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add the names or phrases to recognize better. Wispad will also learn some by listening to you."
+          }
+        }
+      }
+    },
     "Ajoute les termes que tu veux mieux faire reconnaître." : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1859,7 +1880,18 @@
         }
       }
     },
+    "Ajouter un mot, un nom ou une expression…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a word, a name or a phrase…"
+          }
+        }
+      }
+    },
     "Ajouter un mot, un nom, un acronyme…" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1880,6 +1912,7 @@
       }
     },
     "Ajouter une expression ou une phrase…" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2454,6 +2487,7 @@
       }
     },
     "Aucun mot pour l’instant" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2730,6 +2764,7 @@
       }
     },
     "Aucune expression pour l’instant" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5300,6 +5335,16 @@
         }
       }
     },
+    "Écrit de plusieurs façons dans tes dictées" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Written several ways in your dictations"
+          }
+        }
+      }
+    },
     "Écriture" : {
       "localizations" : {
         "en" : {
@@ -5934,6 +5979,7 @@
       }
     },
     "Expression" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5944,6 +5990,7 @@
       }
     },
     "Expression ou phrase à ajouter" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5954,6 +6001,7 @@
       }
     },
     "Expressions et phrases (%lld)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7727,11 +7775,22 @@
       }
     },
     "Les noms, marques et acronymes que Wispad doit reconnaître." : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "The names, brands and acronyms Wispad should recognize."
+          }
+        }
+      }
+    },
+    "Les noms, marques et expressions que Wispad doit reconnaître. Il en apprend aussi tout seul." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The names, brands and phrases Wispad should recognize. It also learns some on its own."
           }
         }
       }
@@ -8337,6 +8396,7 @@
       }
     },
     "Modifier cette expression" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -8417,6 +8477,7 @@
       }
     },
     "Mot" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -8447,6 +8508,7 @@
       }
     },
     "Mots (%lld)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -9880,6 +9942,7 @@
       }
     },
     "Rechercher un mot…" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -9890,6 +9953,7 @@
       }
     },
     "Rechercher une expression…" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -9905,6 +9969,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Check for updates"
+          }
+        }
+      }
+    },
+    "Rechercher…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search…"
           }
         }
       }
@@ -11014,6 +11088,7 @@
       }
     },
     "Supprimer cette expression" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -11379,6 +11454,16 @@
         }
       }
     },
+    "Terme" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Term"
+          }
+        }
+      }
+    },
     "Termine la dictée avant d'écouter un audio." : {
       "localizations" : {
         "en" : {
@@ -11595,6 +11680,16 @@
         }
       }
     },
+    "Ton dictionnaire est vide" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your dictionary is empty"
+          }
+        }
+      }
+    },
     "Ton fournisseur de transcription" : {
       "localizations" : {
         "en" : {
@@ -11761,6 +11856,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "All"
+          }
+        }
+      }
+    },
+    "Tout ajouter" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add all"
           }
         }
       }
@@ -12127,6 +12232,7 @@
       }
     },
     "Type d'entrée" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
