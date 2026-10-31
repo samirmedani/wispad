@@ -10,9 +10,9 @@ struct PauseFragmentTests {
     }
 
     @Test func anIsolatedAlternativeJoinsItsSentence() {
-        // Dictée réelle du 31 octobre (0.7.7), telle que la correction l'avait laissée.
-        #expect(finish("Il faudrait filtrer les gens à qui tu as répondu. Ou non. Parce que je trouve que ça marche mal.")
-                == "Il faudrait filtrer les gens à qui tu as répondu ou non. Parce que je trouve que ça marche mal.")
+        // Erreur vue dans une vraie dictée, reproduite dans une phrase inventée.
+        #expect(finish("Il faudrait savoir si la facture est payée. Ou non. Parce que je trouve que c'est flou.")
+                == "Il faudrait savoir si la facture est payée ou non. Parce que je trouve que c'est flou.")
         #expect(finish("On garde la version courte. Ou pas.") == "On garde la version courte ou pas.")
         #expect(finish("Tu viens demain ? Ou pas ?") == "Tu viens demain ou pas ?")
         #expect(finish("Tu viens demain\u{202F}? Ou non.") == "Tu viens demain ou non\u{202F}?")

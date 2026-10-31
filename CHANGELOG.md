@@ -8,7 +8,7 @@ est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 Wispad 0.8.1 écrit tes phrases d’un seul tenant, même quand tu marques une pause en parlant.
 
 **Corrigé**
-- **Phrases coupées par une pause** : un morceau comme « Ou non. » ou « Où quand… » est rattaché à sa phrase au lieu de rester isolé : « … les gens à qui tu as répondu ou non. »
+- **Phrases coupées par une pause** : un morceau comme « Ou non. » ou « Où quand… » est rattaché à sa phrase au lieu de rester isolé : « … si la facture est payée ou non. »
 - **« ou » et « où »** : « une appli où tu peux tout ranger » prend l’accent quand il désigne un lieu ou un moment.
 - Comprend toutes les nouveautés de la 0.8.0.
 
