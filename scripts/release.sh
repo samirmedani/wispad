@@ -13,6 +13,10 @@
 #   5. notarisation par notarytool (clé API App Store Connect), puis agrafage du ticket sur le dmg ;
 #   6. gh release create vX.Y.Z avec le dmg et les notes.
 #
+# Avant tout cela, une version qui touche au texte final (chemins de scripts/text-paths.txt, changés depuis la
+# dernière release) ne part qu'avec un banc du texte vert sur ce commit exact : scripts/text-bench.sh
+# (docs/BANC-TEXTE.md). Aucun contournement.
+#
 # Aucun secret ni identifiant d'équipe dans ce fichier : tout vient de l'environnement.
 #   WISPAD_SIGNING_IDENTITY  certificat « Developer ID Application » du trousseau (nom complet ou empreinte SHA-1)
 #   WISPAD_TEAM_ID           identifiant de l'équipe Apple (10 caractères), vérifié dans la signature obtenue
@@ -50,7 +54,7 @@ tag="v$version"
 
 step "Vérifications avant $tag"
 [[ -z "$(git status --porcelain)" ]] || fail "dépôt modifié : la release doit partir d'un commit publié, sans changement local."
-git fetch --quiet origin main
+git fetch --quiet --tags origin main
 git merge-base --is-ancestor HEAD origin/main || fail "HEAD n'est pas sur origin/main : pousse et fusionne d'abord."
 commit=$(git rev-parse HEAD)
 if gh release view "$tag" >/dev/null 2>&1; then
@@ -60,6 +64,32 @@ latest=$(gh release view --json tagName --jq .tagName 2>/dev/null || true)
 autoload -Uz is-at-least
 if [[ -n "$latest" ]] && is-at-least "$version" "${latest#v}"; then
   fail "$tag n'est pas plus récente que la dernière release ($latest) : relève MARKETING_VERSION dans project.yml."
+fi
+
+step "Banc du texte"
+# Même base que scripts/text-bench.sh : la dernière release atteignable depuis ce commit (la précédente s'il porte
+# déjà son tag). Le verdict doit être vert, pour ce commit, contre cette release.
+bench_message="Cette version touche au texte : lance scripts/text-bench.sh (banc obligatoire) avant de publier."
+previous=$(git describe --tags --abbrev=0 --match 'v[0-9]*' "$commit" 2>/dev/null || true)
+if [[ -n "$previous" && "$(git rev-list -n 1 "$previous")" == "$commit" ]]; then
+  previous=$(git describe --tags --abbrev=0 --match 'v[0-9]*' "$commit^" 2>/dev/null || true)
+fi
+text_paths=(${(f)"$(grep -vE '^[[:space:]]*(#|$)' scripts/text-paths.txt)"})
+if [[ -z "$previous" ]]; then
+  print "Aucune release avant celle-ci : pas de base pour le banc du texte."
+elif [[ -n "$(git diff --name-only "$previous" "$commit" -- "${text_paths[@]}")" ]]; then
+  verdict_file="$HOME/Library/Application Support/Wispad/benchmarks/texte/$commit/verdict.json"
+  [[ -f "$verdict_file" ]] || fail "$bench_message"
+  bench_pass=$(plutil -extract pass raw -o - "$verdict_file" 2>/dev/null || true)
+  bench_sha=$(plutil -extract sha raw -o - "$verdict_file" 2>/dev/null || true)
+  bench_base=$(plutil -extract base raw -o - "$verdict_file" 2>/dev/null || true)
+  if [[ "$bench_pass" != true || "$bench_sha" != "$commit" || "$bench_base" != "$previous" ]]; then
+    print -u2 "Banc du texte : verdict ${bench_pass:-illisible} pour ${bench_sha:-?} contre ${bench_base:-?} ; il faut un vert pour ce commit contre $previous (rapport.md à côté du verdict)."
+    fail "$bench_message"
+  fi
+  print "Banc du texte vert contre $previous."
+else
+  print "Texte inchangé depuis $previous : banc non requis."
 fi
 
 out=build/release

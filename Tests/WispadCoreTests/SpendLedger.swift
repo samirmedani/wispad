@@ -47,4 +47,13 @@ public struct SpendLedger: Sendable {
         let data = try JSONSerialization.data(withJSONObject: payload)
         try data.write(to: url, options: .atomic)
     }
+
+    /// Après un passage qui a réservé une estimation prudente (banc du texte) : remplace cette réservation par le coût
+    /// mesuré. Le cumul garde ce qui a vraiment été dépensé ; un coût mesuré plus élevé est compté en entier.
+    public func settle(reserved: Double, actual: Double) throws {
+        let adjusted = max(0, spent() - reserved + actual)
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let data = try JSONSerialization.data(withJSONObject: ["usd": (adjusted * 1_000_000).rounded() / 1_000_000])
+        try data.write(to: url, options: .atomic)
+    }
 }
