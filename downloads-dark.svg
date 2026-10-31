@@ -1,16 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="640" viewBox="0 0 960 640" role="img" aria-labelledby="titre desc" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" style="font-variant-numeric: tabular-nums">
-<title id="titre">Téléchargements de Wispad</title><desc id="desc">109 téléchargements de Wispad, 52 versions, 5 étoiles.</desc>
+<title id="titre">Téléchargements de Wispad</title><desc id="desc">111 téléchargements de Wispad, 52 versions, 5 étoiles.</desc>
 <defs><linearGradient id="aire" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff4d48" stop-opacity="0.30"/><stop offset="1" stop-color="#ff4d48" stop-opacity="0"/></linearGradient></defs>
 <rect x="0.5" y="0.5" width="959" height="639" rx="16" fill="#0d1117" stroke="#3d444d"/>
 <text x="32.0" y="58.0" font-size="15" font-weight="600" fill="#9198a1" text-anchor="start">Téléchargements</text>
-<text x="30.0" y="114.0" font-size="54" font-weight="700" fill="#f0f6fc" text-anchor="start">109</text>
+<text x="30.0" y="114.0" font-size="54" font-weight="700" fill="#f0f6fc" text-anchor="start">111</text>
 <text x="32.0" y="142.0" font-size="13" font-weight="400" fill="#9198a1" text-anchor="start">Wispad.dmg, toutes versions confondues</text>
 <rect x="458" y="36" width="150" height="70" rx="12" fill="#151b23" stroke="#3d444d"/>
 <text x="474.0" y="62.0" font-size="12" font-weight="500" fill="#9198a1" text-anchor="start">Version v0.8.2</text>
-<text x="474.0" y="91.0" font-size="23" font-weight="700" fill="#f0f6fc" text-anchor="start">0</text>
+<text x="474.0" y="91.0" font-size="23" font-weight="700" fill="#f0f6fc" text-anchor="start">2</text>
 <rect x="618" y="36" width="150" height="70" rx="12" fill="#151b23" stroke="#3d444d"/>
 <text x="634.0" y="62.0" font-size="12" font-weight="500" fill="#9198a1" text-anchor="start">Depuis le 28 oct.</text>
-<text x="634.0" y="91.0" font-size="23" font-weight="700" fill="#f0f6fc" text-anchor="start">+77</text>
+<text x="634.0" y="91.0" font-size="23" font-weight="700" fill="#f0f6fc" text-anchor="start">+79</text>
 <rect x="778" y="36" width="150" height="70" rx="12" fill="#151b23" stroke="#3d444d"/>
 <text x="794.0" y="62.0" font-size="12" font-weight="500" fill="#9198a1" text-anchor="start">Étoiles GitHub</text>
 <text x="794.0" y="91.0" font-size="23" font-weight="700" fill="#f0f6fc" text-anchor="start">★ 5</text>
@@ -23,10 +23,10 @@
 <text x="60.0" y="272.0" font-size="12" font-weight="400" fill="#9198a1" text-anchor="end">100</text>
 <line x1="72" y1="216.0" x2="928" y2="216.0" stroke="#3d444d" stroke-dasharray="3 5"/>
 <text x="60.0" y="220.0" font-size="12" font-weight="400" fill="#9198a1" text-anchor="end">150</text>
-<path d="M72.0,338.7 L105.0,337.7 L118.2,337.7 L177.4,336.6 L182.9,336.6 L188.5,335.6 L220.1,297.1 L301.6,296.1 L373.9,296.1 L576.7,296.1 L612.0,293.0 L618.5,289.8 L628.4,286.7 L659.7,283.6 L671.7,280.5 L685.7,280.5 L714.3,277.4 L799.2,277.4 L804.8,274.2 L811.9,272.2 L822.7,270.1 L830.7,267.0 L835.8,265.9 L851.3,262.8 L856.8,262.8 L860.6,260.7 L865.1,260.7 L903.7,258.6 L928.0,258.6 L928.0,372 L72.0,372 Z" fill="url(#aire)"/>
-<path d="M72.0,338.7 L105.0,337.7 L118.2,337.7 L177.4,336.6 L182.9,336.6 L188.5,335.6 L220.1,297.1 L301.6,296.1 L373.9,296.1 L576.7,296.1 L612.0,293.0 L618.5,289.8 L628.4,286.7 L659.7,283.6 L671.7,280.5 L685.7,280.5 L714.3,277.4 L799.2,277.4 L804.8,274.2 L811.9,272.2 L822.7,270.1 L830.7,267.0 L835.8,265.9 L851.3,262.8 L856.8,262.8 L860.6,260.7 L865.1,260.7 L903.7,258.6 L928.0,258.6" fill="none" stroke="#ff4d48" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-<circle cx="928.0" cy="258.6" r="5" fill="#ff4d48" stroke="#0d1117" stroke-width="2.5"/>
-<text x="918.0" y="246.6" font-size="13" font-weight="700" fill="#f0f6fc" text-anchor="end" stroke="#0d1117" stroke-width="8" stroke-linejoin="round" paint-order="stroke">109</text>
+<path d="M72.0,338.7 L104.3,337.7 L117.3,337.7 L175.2,336.6 L180.6,336.6 L186.1,335.6 L217.1,297.1 L296.9,296.1 L367.7,296.1 L566.3,296.1 L600.9,293.0 L607.3,289.8 L616.9,286.7 L647.6,283.6 L659.4,280.5 L673.1,280.5 L701.1,277.4 L784.2,277.4 L789.7,274.2 L796.6,272.2 L807.2,270.1 L815.1,267.0 L820.1,265.9 L835.2,262.8 L840.7,262.8 L844.4,260.7 L848.8,260.7 L886.6,258.6 L910.4,258.6 L928.0,256.6 L928.0,372 L72.0,372 Z" fill="url(#aire)"/>
+<path d="M72.0,338.7 L104.3,337.7 L117.3,337.7 L175.2,336.6 L180.6,336.6 L186.1,335.6 L217.1,297.1 L296.9,296.1 L367.7,296.1 L566.3,296.1 L600.9,293.0 L607.3,289.8 L616.9,286.7 L647.6,283.6 L659.4,280.5 L673.1,280.5 L701.1,277.4 L784.2,277.4 L789.7,274.2 L796.6,272.2 L807.2,270.1 L815.1,267.0 L820.1,265.9 L835.2,262.8 L840.7,262.8 L844.4,260.7 L848.8,260.7 L886.6,258.6 L910.4,258.6 L928.0,256.6" fill="none" stroke="#ff4d48" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="928.0" cy="256.6" r="5" fill="#ff4d48" stroke="#0d1117" stroke-width="2.5"/>
+<text x="918.0" y="244.6" font-size="13" font-weight="700" fill="#f0f6fc" text-anchor="end" stroke="#0d1117" stroke-width="8" stroke-linejoin="round" paint-order="stroke">111</text>
 <text x="72.0" y="394.0" font-size="12" font-weight="400" fill="#9198a1" text-anchor="start">28 oct.</text>
 <text x="357.3" y="394.0" font-size="12" font-weight="400" fill="#9198a1" text-anchor="middle">29 oct.</text>
 <text x="642.7" y="394.0" font-size="12" font-weight="400" fill="#9198a1" text-anchor="middle">30 oct.</text>
@@ -91,8 +91,8 @@
 <rect x="851.0" y="504.0" width="25.7" height="68.0" rx="4.0" fill="#ff4d48" fill-opacity="0.5"/>
 <text x="863.8" y="497.0" font-size="12" font-weight="600" fill="#f0f6fc" text-anchor="middle">2</text>
 <text x="863.8" y="592.0" font-size="11.5" font-weight="400" fill="#9198a1" text-anchor="middle">0.8.1</text>
-<rect x="893.8" y="570.0" width="25.7" height="2" fill="#9198a1" fill-opacity="0.5"/>
-<text x="906.6" y="563.0" font-size="12" font-weight="500" fill="#9198a1" text-anchor="middle">0</text>
+<rect x="893.8" y="504.0" width="25.7" height="68.0" rx="4.0" fill="#ff4d48" fill-opacity="1"/>
+<text x="906.6" y="497.0" font-size="12" font-weight="600" fill="#f0f6fc" text-anchor="middle">2</text>
 <text x="906.6" y="592.0" font-size="11.5" font-weight="600" fill="#f0f6fc" text-anchor="middle">0.8.2</text>
-<text x="32.0" y="620.0" font-size="12" font-weight="400" fill="#9198a1" text-anchor="start">Relevé toutes les heures depuis l'API GitHub · données du 31 oct. 2026 à 21 h 55 (heure de Paris)</text>
+<text x="32.0" y="620.0" font-size="12" font-weight="400" fill="#9198a1" text-anchor="start">Relevé toutes les heures depuis l'API GitHub · données du 31 oct. 2026 à 23 h 36 (heure de Paris)</text>
 </svg>
