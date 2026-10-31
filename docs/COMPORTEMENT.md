@@ -1192,12 +1192,19 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
 - Coffre de secrets, au choix : une commande qui répond à `get NOM` (valeur sur la sortie, code 1 si absente) et
   `put NOM` (valeur sur l'entrée), indiquée par `WISPAD_SECRET_COMMAND` ou
   `defaults write com.yatofix.wispad wispad.secretCommand /chemin/vers/commande`. Clés lues au lancement, gardées
-  en mémoire, rien d'écrit sur le Mac. Une clé que le coffre ne rend pas (connexion ratée) est redemandée deux fois
-  (0,5 s puis 1,5 s) ; une clé absente ne l'est pas. Noms : `WISPAD_XAI_API_KEY`, `WISPAD_OPENAI_API_KEY`,
+  en mémoire, rien d'écrit sur le Mac. Chaque lecture dure 5 s au plus ; une clé que le coffre ne rend pas (connexion
+  ratée ou restée sans réponse) est redemandée cinq fois (après 0,5, 1, 1,5, 2 puis 3 s) ; une clé absente ne l'est
+  pas. Noms : `WISPAD_XAI_API_KEY`, `WISPAD_OPENAI_API_KEY`,
   `WISPAD_DEEPSEEK_API_KEY`, `WISPAD_XAI_MANAGEMENT_KEY`, `TYPESAFE_API_KEY`.
 - Une dictée sans clé en mémoire relit les clés, ou rejoint la relecture déjà en cours (lancement, appui précédent),
   10 s au plus : un coffre qui ne répond plus est dit injoignable, sans ouvrir le micro, et le raccourci reste libre.
   La relecture continue seule ; l'appui suivant la rejoint au lieu d'en lancer une autre.
+- Exception, la toute première lecture du coffre (lancement, relance après une mise à jour) : la clé n'est pas
+  absente, elle arrive. Le micro s'ouvre aussitôt et écoute ; la transcription part dès l'arrivée des clés, en direct
+  si l'écoute continue, sinon sur le fichier. Sans clés au bout de 40 s, la dictée s'arrête, dit pourquoi, et rien
+  n'est envoyé. Le 31 octobre, juste après une mise à jour, macOS réenregistrait la nouvelle app pour le réseau
+  local : le coffre lu par SSH sur le réseau de la maison est resté muet une vingtaine de secondes, le premier appui
+  disait « coffre injoignable » et les suivants ouvraient le micro 13 à 18 s plus tard.
 - Chaque clé de voix ou de correction (xAI, OpenAI, DeepSeek) est vérifiée chez le fournisseur avant d'être
   enregistrée, comme la clé TypeSafe (liste des modèles de Jev, gratuite) et la clé de gestion xAI
   (`management-api.x.ai/auth/management-keys/validation`). Une réponse 400, 401 ou 403 est un refus (« Clé refusée ») ;

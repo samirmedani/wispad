@@ -1970,6 +1970,85 @@ struct AppRegressionTests {
         #expect(f.model.statusBanner?.contains("injoignable") == true)
     }
 
+    /// 31 octobre (0.7.4) : juste après une mise à jour, le coffre lu par SSH sur le réseau local est resté muet
+    /// une vingtaine de secondes. Le premier appui disait « coffre injoignable », les suivants ouvraient le micro
+    /// 13 à 18 s plus tard. Pendant la toute première lecture, le micro écoute sans attendre les clés.
+    @Test func keysStillArrivingAtLaunchDoNotHoldTheMicrophone() async throws {
+        let gate = AsyncResult<Bool>()
+        var vault: [String: String] = [:]
+        let f = try Fixture {
+            $0.keyStore = .vault
+            $0.loadKey = { vault[$0] }
+            $0.refreshKeys = { let answered = (try? await gate.value()) ?? false; vault["xai"] = "fixture-from-vault"; return answered }
+        }
+        defer {
+            gate.resolve(.success(true))
+            f.dispose()
+        }
+        let launch = Task { await f.model.refreshKeys() }
+        #expect(await waitFor { f.model.keysArriving })
+        let coordinator = f.model.coordinator
+        coordinator.enqueue { await coordinator.begin(.pushToTalk) }
+        #expect(await waitFor { coordinator.isListening && f.audio.starts == 1 })
+        #expect(f.model.statusBanner == nil)
+        gate.resolve(.success(true))
+        await launch.value
+        await coordinator.end()
+        #expect(await waitFor { f.inserted == 1 })
+        #expect(f.model.statusBanner == nil)
+    }
+
+    /// Écoute finie avant l'arrivée des clés : le fichier est transcrit dès qu'elles arrivent.
+    @Test func dictationReleasedBeforeTheKeysIsTranscribedWhenTheyArrive() async throws {
+        let gate = AsyncResult<Bool>()
+        var vault: [String: String] = [:]
+        let f = try Fixture {
+            $0.keyStore = .vault
+            $0.loadKey = { vault[$0] }
+            $0.refreshKeys = { let answered = (try? await gate.value()) ?? false; vault["xai"] = "fixture-from-vault"; return answered }
+        }
+        defer {
+            gate.resolve(.success(true))
+            f.dispose()
+        }
+        let launch = Task { await f.model.refreshKeys() }
+        #expect(await waitFor { f.model.keysArriving })
+        let coordinator = f.model.coordinator
+        coordinator.enqueue { await coordinator.begin(.pushToTalk) }
+        #expect(await waitFor { coordinator.isListening })
+        coordinator.enqueue { await coordinator.end() }
+        #expect(await waitFor { !coordinator.isListening })
+        #expect(f.inserted == 0 && f.transcriptions == 0)
+        gate.resolve(.success(true))
+        await launch.value
+        #expect(await waitFor { f.inserted == 1 })
+        #expect(f.transcriptions == 1)
+    }
+
+    /// Clés jamais arrivées : la dictée s'arrête, le dit, et rien n'est envoyé ni collé.
+    @Test func keysThatNeverArriveStopTheDictation() async throws {
+        let gate = AsyncResult<Bool>()
+        let f = try Fixture {
+            $0.keyStore = .vault
+            $0.loadKey = { _ in nil }
+            $0.refreshKeys = { (try? await gate.value()) ?? false }
+        }
+        defer {
+            gate.resolve(.success(false))
+            f.dispose()
+        }
+        let launch = Task { await f.model.refreshKeys() }
+        #expect(await waitFor { f.model.keysArriving })
+        let coordinator = f.model.coordinator
+        coordinator.enqueue { await coordinator.begin(.pushToTalk) }
+        #expect(await waitFor { coordinator.isListening })
+        gate.resolve(.success(false))
+        await launch.value
+        #expect(await waitFor { f.model.statusBanner?.contains("injoignable") == true })
+        #expect(await waitFor { !coordinator.isListening && !f.audio.isRunning })
+        #expect(f.inserted == 0 && f.transcriptions == 0)
+    }
+
     @Test func vaultThatNeverAnswersDoesNotHoldTheShortcut() async throws {
         let never = AsyncResult<Bool>()
         var refreshes = 0
@@ -1983,6 +2062,8 @@ struct AppRegressionTests {
             f.dispose()
         }
         f.model.keyRefreshLimit = 0.05
+        // Clés déjà lues une fois depuis le lancement : le coffre a cessé de répondre depuis.
+        f.model.keysLoadedAt = Date()
         let coordinator = f.model.coordinator
         coordinator.enqueue { await coordinator.begin(.pushToTalk) }
         // Le coffre ne répond pas : la dictée le dit au lieu de l'attendre sans fin, sans ouvrir le micro.

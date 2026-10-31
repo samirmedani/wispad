@@ -187,7 +187,10 @@ final class DictationCoordinator {
         }
         let latencyMarks = LatencyMarks(pressed: pressedAt)
         let run = DictationTraceRecorder(origin: mode == .toggle ? .toggle : .hold, pressedAt: pressedAt, marks: latencyMarks)
-        let problem = await model.voiceProblem()
+        // Première lecture des clés encore en cours (lancement, relance après une mise à jour) : le micro s'ouvre
+        // sans elle et la transcription part dès son arrivée. Sinon, rien ne s'ouvre sans clé.
+        let keysArriving = model.keysArriving
+        let problem = keysArriving ? nil : await model.voiceProblem()
         // Écoute du clavier retirée pendant la lecture de la clé : elle a oublié ce geste (`keyboardLost`).
         guard capture == nil, !retrying, keyboardLosses == losses else { return }
         if let problem {
@@ -201,6 +204,10 @@ final class DictationCoordinator {
         // dans les apps Electron) est lu en parallèle et ne retarde plus l'enregistrement.
         let (context, field) = model.dependencies.captureContext()
         let current = Capture(mode: mode, context: context, field: field, marks: latencyMarks, run: run)
+        if keysArriving {
+            let limit = model.firstKeysLimit
+            current.keyWait = Task { @MainActor [weak model] in await model?.voiceProblem(within: limit) }
+        }
         capture = current
         // La conversation visible (Claude, Codex, Chrome…) est lue pendant qu'on parle : ni le micro
         // ni la bulle ne l'attendent, et seule la correction s'en sert.
@@ -317,6 +324,27 @@ final class DictationCoordinator {
             context.apply(snapshot)
         }
         guard capture === current, !current.cancelled else { return }
+        if let keyWait = current.keyWait {
+            // Attendue à part : le relâchement et Échap restent libres pendant ce temps.
+            Task { @MainActor [weak self, weak model] in
+                let problem = await keyWait.value
+                // Écoute déjà terminée : sa fin attend la même lecture (`finish`) et transcrit le fichier.
+                guard let self, let model, self.capture === current, !current.cancelled else { return }
+                if let problem {
+                    self.discard(current, outcome: problem.outcome)
+                    model.statusBanner = problem.message
+                    model.open(.providers)
+                    return
+                }
+                self.connect(current, context: context, model: model)
+            }
+            return
+        }
+        connect(current, context: context, model: model)
+    }
+
+    /// Branche la transcription en direct de cette écoute ; l'audio déjà gardé part en premier.
+    private func connect(_ current: Capture, context: DictationContext, model: AppModel) {
         let requestedSpeech = model.speechRequest(context: context, includeRecentDictations: true)
         let (speech, relayName) = routed(requestedSpeech, model: model)
         relay = relayName
@@ -698,6 +726,17 @@ final class DictationCoordinator {
             accountEarlyCorrections(current, model: model, cancel: job.cancelled)
             current.run.complete(job.cancelled ? .cancelled : current.run.trace.outcome, model: model)
             settle(job)
+        }
+        // Écoute finie avant l'arrivée des clés : la transcription les attend ; sans elles, rien ne part.
+        if current.session == nil, let keyWait = current.keyWait, let problem = await keyWait.value {
+            current.run.trace.outcome = problem.outcome
+            delete(job.url)
+            guard !job.cancelled else { return }
+            model.statusBanner = problem.message
+            // La phase de la bulle est relue par `settle`.
+            shownFailure = ShownFailure(message: problem.message, text: nil, offersHistory: false)
+            model.open(.providers)
+            return
         }
         let transcriptionBegan = KeyboardTap.now()
         let context = current.context
