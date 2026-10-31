@@ -296,6 +296,35 @@ struct ReleaseDigestTests {
         #expect(ReleaseNotes.digest("> seulement une citation\nSHA-256 : abc").isEmpty)
     }
 
+    /// Retour en arrière : les dernières versions publiées avant celle qui tourne, avec leur disque, sans doublon.
+    @Test func previousVersionsAreTheLastOnesBeforeTheInstalledOne() {
+        let disk = DiskImageAsset(url: ReleaseCheck.releasesURL.appendingPathComponent("download/Wispad.dmg"))
+        func release(_ text: String, disk withDisk: Bool = true) -> ReleaseInfo {
+            ReleaseInfo(version: SemanticVersion(text)!, tag: "v" + text, notes: "", pageURL: ReleaseCheck.releasesURL,
+                        diskImage: withDisk ? disk : nil)
+        }
+        let list = [release("0.7.3"), release("0.7.6"), release("0.7.4"), release("0.7.5"), release("0.7.4"),
+                    release("0.7.2", disk: false), release("0.7.1"), release("0.7.0"), release("0.6.9"), release("0.6.8"),
+                    release("0.7.5-beta.1")]
+        let previous = ReleaseCheck.previous(list, before: SemanticVersion("0.7.5"))
+        #expect(previous.map(\.tag) == ["v0.7.4", "v0.7.3", "v0.7.1", "v0.7.0", "v0.6.9"])
+        #expect(ReleaseCheck.previous(list, before: nil).isEmpty)
+        #expect(ReleaseCheck.previous(list, before: SemanticVersion("0.6.8")).isEmpty)
+    }
+
+    /// Le retour en arrière n'installe que la version demandée, plus ancienne que celle qui tourne.
+    @Test func onlyTheRequestedOlderVersionIsAcceptedForARevert() {
+        let target = SemanticVersion("0.7.4")!
+        #expect(UpdateInstallRules.isRequestedPrevious("0.7.4", target: target, installed: "0.7.5"))
+        #expect(!UpdateInstallRules.isRequestedPrevious("0.7.3", target: target, installed: "0.7.5"))
+        #expect(!UpdateInstallRules.isRequestedPrevious("0.7.6", target: target, installed: "0.7.5"))
+        #expect(!UpdateInstallRules.isRequestedPrevious("0.7.4", target: target, installed: "0.7.4"))
+        #expect(!UpdateInstallRules.isRequestedPrevious(nil, target: target, installed: "0.7.5"))
+        #expect(!UpdateInstallRules.isRequestedPrevious("0.7.4", target: target, installed: "illisible"))
+        // Une mise à jour ordinaire refuse toujours une version plus ancienne.
+        #expect(!UpdateInstallRules.isNewer("0.7.4", than: "0.7.5"))
+    }
+
     /// Versions sautées : celles d'après la version installée jusqu'à la plus récente, la plus récente en premier.
     @Test func missedVersionsAreTheOnesAfterTheInstalledOne() {
         func release(_ text: String) -> ReleaseInfo {

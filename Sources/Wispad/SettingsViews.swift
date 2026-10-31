@@ -692,6 +692,10 @@ struct UpdatesSection: View {
                     .hoverFeedback()
                 }
             }
+            // Version publiée ; ou versions déjà fournies (aperçu hors écran).
+            if status.kind == .release || model.previousReleases != nil {
+                PreviousVersionRow()
+            }
         }
     }
 
@@ -705,6 +709,82 @@ struct UpdatesSection: View {
             return freshness.label ?? String(localized: "Wispad vérifie seul au lancement, puis toutes les 6 heures.")
         case .unknown: return String(localized: "Wispad vérifie seul au lancement, puis toutes les 6 heures.")
         }
+    }
+}
+
+/// Réglages › Aide › Mises à jour : revenir à une version précédente si une mise à jour pose problème. Les dernières
+/// versions publiées, lues sur GitHub ; le choix se confirme, puis s'installe comme une mise à jour.
+struct PreviousVersionRow: View {
+    @Environment(AppModel.self) private var model
+    @State private var chosen: ReleaseInfo?
+    @State private var loading = false
+    @State private var unavailable = false
+
+    var body: some View {
+        let updater = model.updater
+        let reverting = updater.target != nil
+        SettingRow(text: SettingText(title: String(localized: "Revenir à une version précédente"),
+                                     summary: summary(updater, reverting: reverting))) {
+            if reverting, updater.isBusy {
+                if updater.canCancel {
+                    Button("Annuler") { updater.cancel() }
+                        .hoverFeedback()
+                } else {
+                    ProgressView().controlSize(.small)
+                }
+            } else if reverting, case .failed = updater.phase {
+                Button("Fermer") { updater.dismissFailure() }
+                    .hoverFeedback()
+            } else if let releases = model.previousReleases, !releases.isEmpty {
+                Menu("Choisir une version") {
+                    ForEach(releases) { release in
+                        Button { chosen = release } label: { Text(verbatim: label(release)) }
+                    }
+                }
+                .fixedSize()
+                .disabled(updater.isBusy)
+            } else if unavailable {
+                Button("Réessayer") { Task { await load() } }
+                    .disabled(loading)
+                    .hoverFeedback()
+            } else if loading {
+                ProgressView().controlSize(.small)
+            }
+        }
+        .task {
+            if model.previousReleases == nil { await load() }
+        }
+        .alert(Text(verbatim: chosen.map { String(localized: "Revenir à la \($0.version.description) ?") } ?? ""),
+               isPresented: Binding(get: { chosen != nil }, set: { if !$0 { chosen = nil } }),
+               presenting: chosen) { release in
+            Button(String(localized: "Revenir à la \(release.version.description)")) { model.revert(to: release) }
+            Button("Annuler", role: .cancel) {}
+        } message: { release in
+            Text(confirmation(release))
+        }
+    }
+
+    private func load() async {
+        loading = true
+        unavailable = !(await model.loadPreviousReleases())
+        loading = false
+    }
+
+    private func label(_ release: ReleaseInfo) -> String {
+        guard let date = release.publishedAt else { return release.version.description }
+        return release.version.description + " · " + date.formatted(.dateTime.day().month(.wide))
+    }
+
+    private func confirmation(_ release: ReleaseInfo) -> String {
+        let current = BuildStatus.shared.version ?? "—"
+        return String(localized: "Wispad installe la \(release.version.description), vérifiée comme une mise à jour, puis redémarre. Tes réglages, tes clés et ton historique restent. La \(current) reste proposée dans Mises à jour pour revenir quand tu veux.")
+    }
+
+    private func summary(_ updater: UpdateInstaller, reverting: Bool) -> String {
+        if reverting, updater.phase != .idle { return updater.phase.detailText }
+        if unavailable { return String(localized: "Versions précédentes indisponibles pour l'instant : vérifie ta connexion.") }
+        if model.previousReleases?.isEmpty == true { return String(localized: "Aucune version précédente à proposer.") }
+        return String(localized: "Si une mise à jour pose problème : la version choisie remplace celle-ci, vérifiée comme une mise à jour.")
     }
 }
 

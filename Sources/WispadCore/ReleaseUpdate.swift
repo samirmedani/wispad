@@ -234,6 +234,23 @@ public enum ReleaseCheck {
         return Array(([latest] + older).prefix(maximumMissed))
     }
 
+    /// Versions proposées pour revenir en arrière.
+    public static let maximumPrevious = 5
+
+    /// Versions publiées avant celle qui tourne, de la plus récente à la plus ancienne, `maximumPrevious` au plus :
+    /// seulement celles qui ont leur disque d'installation. Aucune sans version installée lisible.
+    public static func previous(_ releases: [ReleaseInfo], before current: SemanticVersion?) -> [ReleaseInfo] {
+        guard let current else { return [] }
+        var seen: Set<SemanticVersion> = []
+        var kept: [ReleaseInfo] = []
+        for release in releases.sorted(by: { $0.version > $1.version })
+        where release.version < current && release.version.prerelease.isEmpty && release.diskImage != nil {
+            guard seen.insert(release.version).inserted else { continue }
+            kept.append(release)
+        }
+        return Array(kept.prefix(maximumPrevious))
+    }
+
     private static func info(_ latest: GitHubRelease) -> ReleaseInfo? {
         guard latest.draft != true, latest.prerelease != true,
               let version = SemanticVersion(latest.tagName) else { return nil }

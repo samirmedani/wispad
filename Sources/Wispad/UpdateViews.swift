@@ -469,6 +469,8 @@ extension UpdateFailure {
             return String(localized: "Wispad est introuvable dans le disque de la mise à jour : rien n'a été installé.")
         case .notNewer:
             return String(localized: "Cette version n'est pas plus récente que la tienne : rien n'a été installé.")
+        case .notRequested:
+            return String(localized: "Le disque ne contient pas la version demandée : rien n'a été installé.")
         case .signature:
             return String(localized: "La signature de cette version n'est pas celle de Wispad : rien n'a été installé.")
         case .copy:

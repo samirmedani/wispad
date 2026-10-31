@@ -19,6 +19,8 @@ enum UpdateFailure: Error, Equatable {
     case missingApp
     /// Version du disque pas plus récente que celle qui tourne.
     case notNewer
+    /// Retour en arrière : le disque ne contient pas la version demandée.
+    case notRequested
     /// Signature invalide, absente, ou d'une autre équipe que l'app qui tourne.
     case signature
     /// Copie à côté de l'app impossible.
@@ -96,6 +98,8 @@ final class UpdateInstaller {
     #endif
     /// Release en cours d'installation, ou dont l'installation a échoué.
     private(set) var release: ReleaseInfo?
+    /// Version précédente demandée dans Réglages (retour en arrière) ; nil pour une mise à jour.
+    private(set) var target: SemanticVersion?
     @ObservationIgnored var system = UpdateSystem()
     @ObservationIgnored private var work: Task<Void, Never>?
     /// Chaque installation a son numéro : une installation annulée ne touche plus à l'état de la suivante.
@@ -132,6 +136,7 @@ final class UpdateInstaller {
     /// fermeture par macOS) juste avant la relance. Vrai si l'installation démarre.
     @discardableResult
     func install(_ release: ReleaseInfo, kind: BuildKind, installed: String,
+                 target: SemanticVersion? = nil,
                  isIdle: @escaping @MainActor () -> Bool,
                  relaunchArguments: @escaping @MainActor () -> [String],
                  beforeQuit: @escaping @MainActor () -> Void = {}) -> Bool {
@@ -146,13 +151,15 @@ final class UpdateInstaller {
         let current = attempt
         let app = system.appURL()
         self.release = release
+        self.target = target
         phase = .downloading(nil)
         // Une installation annulée finit de ranger (disque démonté, copie effacée) avant que la suivante commence.
         let previous = work
         work = Task { [weak self] in
             await previous?.value
             await self?.run(attempt: current, asset: asset, teamID: team, app: app, installed: installed,
-                            isIdle: isIdle, relaunchArguments: relaunchArguments, beforeQuit: beforeQuit)
+                            target: target, isIdle: isIdle, relaunchArguments: relaunchArguments,
+                            beforeQuit: beforeQuit)
         }
         return true
     }
@@ -184,7 +191,8 @@ final class UpdateInstaller {
     }
 
     private func run(attempt current: Int, asset: DiskImageAsset, teamID: String, app: URL, installed: String,
-                     isIdle: @MainActor () -> Bool, relaunchArguments: @MainActor () -> [String],
+                     target: SemanticVersion?, isIdle: @MainActor () -> Bool,
+                     relaunchArguments: @MainActor () -> [String],
                      beforeQuit: @MainActor () -> Void) async {
         let system = self.system
         guard !Task.isCancelled else { return finish(current, .idle) }
@@ -213,7 +221,7 @@ final class UpdateInstaller {
         let staged = UpdateInstallRules.stagingURL(for: app)
         var problem: UpdateFailure?
         if !Task.isCancelled {
-            problem = await prepare(from: volume, to: staged, teamID: teamID, installed: installed)
+            problem = await prepare(from: volume, to: staged, teamID: teamID, installed: installed, target: target)
         }
         await system.detach(volume)
         if let problem {
@@ -240,7 +248,11 @@ final class UpdateInstaller {
         system.remove(staged)
         system.remove(workspace)
         set(.relaunching, attempt: current)
-        Self.log.notice("nouvelle version installée : relance")
+        if target == nil {
+            Self.log.notice("nouvelle version installée : relance")
+        } else {
+            Self.log.notice("version précédente installée : relance")
+        }
         guard system.relaunch(app, relaunchArguments()) else { return finish(current, .failed(.relaunch)) }
         beforeQuit()
         await system.terminate()
@@ -252,12 +264,20 @@ final class UpdateInstaller {
     }
 
     /// Vérifie la nouvelle version dans le disque, la copie à côté de l'app, puis revérifie la copie (c'est elle qui
-    /// sera installée). Nil si tout est bon.
-    private func prepare(from volume: URL, to staged: URL, teamID: String, installed: String) async -> UpdateFailure? {
+    /// sera installée). Nil si tout est bon. Retour en arrière (`target`) : exactement la version demandée, plus
+    /// ancienne, avec les mêmes vérifications de signature.
+    private func prepare(from volume: URL, to staged: URL, teamID: String, installed: String,
+                         target: SemanticVersion?) async -> UpdateFailure? {
         let system = self.system
         let candidate = volume.appendingPathComponent(AppIdentity.displayName + ".app", isDirectory: true)
         guard let version = system.bundleVersion(candidate) else { return .missingApp }
-        guard UpdateInstallRules.isNewer(version, than: installed) else { return .notNewer }
+        if let target {
+            guard UpdateInstallRules.isRequestedPrevious(version, target: target, installed: installed) else {
+                return .notRequested
+            }
+        } else {
+            guard UpdateInstallRules.isNewer(version, than: installed) else { return .notNewer }
+        }
         guard await system.verify(candidate, teamID) else { return .signature }
         system.remove(staged)
         do {

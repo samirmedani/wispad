@@ -1322,6 +1322,16 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
   version installée, lue sur GitHub, avec l'étiquette « Installée » et sa date, sans installation (« Voir sur
   GitHub » et « Fermer »). Hors ligne ou pour une version non publiée : « Nouveautés indisponibles pour l'instant :
   vérifie ta connexion. »
+- **Revenir à une version précédente** (Réglages › Aide › Mises à jour, version publiée seulement), si une mise à jour
+  pose problème : « Choisir une version » liste les 5 dernières versions publiées avant celle qui tourne, avec leur
+  date (lues sur GitHub à l'ouverture ; sans réponse, « Réessayer »). Le choix se confirme (« Revenir à la 0.7.4 ? »,
+  avec ce qui reste : réglages, clés, historique), puis s'installe comme une mise à jour en un clic, avec les mêmes
+  vérifications : disque de la release, taille et empreinte, signature Developer ID de la même équipe, jamais pendant
+  une dictée. Le disque doit contenir exactement la version demandée, sinon « Le disque ne contient pas la version
+  demandée : rien n'a été installé. » L'avancement s'affiche dans la ligne, avec « Annuler » tant que rien n'est
+  remplacé. La version quittée n'est plus rappelée dans la bulle ; la barre latérale de la version précédente la
+  propose toujours (« Mettre à jour »), pour revenir quand on veut. Les réglages qu'elle ne connaît pas sont gardés
+  tels quels et retrouvés en revenant.
 - Notes publiées (`scripts/release.sh`) : celles du CHANGELOG, telles quelles ; l'empreinte du disque n'y est plus
   ajoutée (GitHub l'affiche à côté du fichier, et l'app vérifie celle que l'API annonce).
 - **Installation en un clic** (« Mettre à jour » de la fenêtre de mise à jour, qui reste ouverte pour suivre

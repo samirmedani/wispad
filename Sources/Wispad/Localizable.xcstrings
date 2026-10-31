@@ -12880,6 +12880,96 @@
           }
         }
       }
+    },
+    "Aucune version précédente à proposer." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No previous version to offer."
+          }
+        }
+      }
+    },
+    "Choisir une version" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a version"
+          }
+        }
+      }
+    },
+    "Le disque ne contient pas la version demandée : rien n'a été installé." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The disk image doesn't contain the requested version: nothing was installed."
+          }
+        }
+      }
+    },
+    "Revenir à la %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Go back to %@"
+          }
+        }
+      }
+    },
+    "Revenir à la %@ ?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Go back to %@?"
+          }
+        }
+      }
+    },
+    "Revenir à une version précédente" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Go back to a previous version"
+          }
+        }
+      }
+    },
+    "Si une mise à jour pose problème : la version choisie remplace celle-ci, vérifiée comme une mise à jour." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "If an update causes problems: the chosen version replaces this one, verified like an update."
+          }
+        }
+      }
+    },
+    "Versions précédentes indisponibles pour l'instant : vérifie ta connexion." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Previous versions are unavailable right now: check your connection."
+          }
+        }
+      }
+    },
+    "Wispad installe la %@, vérifiée comme une mise à jour, puis redémarre. Tes réglages, tes clés et ton historique restent. La %@ reste proposée dans Mises à jour pour revenir quand tu veux." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wispad installs %1$@, verified like an update, then restarts. Your settings, keys and history stay. %2$@ stays available in Updates so you can come back whenever you want."
+          }
+        }
+      }
     }
   },
   "version" : "1.0"
