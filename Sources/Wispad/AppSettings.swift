@@ -141,6 +141,9 @@ struct AppSettings: Codable, Equatable {
     var profilePortraitEnabled = false
     /// Analyse par sujets remise à jour seule chaque semaine, sur les seules dictées nouvelles.
     var profileTopicsWeekly = false
+    /// Cartes du Profil affichées (Profil › Personnaliser) : le cerveau coupé par défaut, même pour une installation
+    /// existante ; les autres affichées.
+    var profileCards = ProfileCards()
     /// Adresse d'un serveur de modèles sur ce Mac, compatible OpenAI (Ollama, LM Studio…) ; vide : aucun.
     var localModelURL = ""
     /// Taxe ajoutée aux prix comparés dans Consommation › Tout, en pourcentage (20 % par défaut, la TVA française).
@@ -233,6 +236,7 @@ struct AppSettings: Codable, Equatable {
         profileTopicsEnabled = value(.profileTopicsEnabled, defaults.profileTopicsEnabled)
         profilePortraitEnabled = value(.profilePortraitEnabled, defaults.profilePortraitEnabled)
         profileTopicsWeekly = value(.profileTopicsWeekly, defaults.profileTopicsWeekly)
+        profileCards = value(.profileCards, defaults.profileCards)
         localModelURL = value(.localModelURL, defaults.localModelURL)
         usageTaxRate = number(.usageTaxRate, defaults.usageTaxRate, in: SalesTax.range)
         lastSection = value(.lastSection, defaults.lastSection)

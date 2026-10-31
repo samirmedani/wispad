@@ -54,6 +54,24 @@ public struct DictationProfile: Equatable, Sendable {
 }
 
 public enum ProfileBuilder {
+    /// Cartes calculées : une carte masquée ne coûte rien. Les chiffres clés (mots, dictées, durée, plus longue
+    /// dictée, séries, jours actifs) sont toujours calculés.
+    public struct Parts: OptionSet, Hashable, Sendable {
+        public let rawValue: Int
+        public init(rawValue: Int) { self.rawValue = rawValue }
+
+        /// Dictées par heure et par jour de la semaine.
+        public static let rhythm = Parts(rawValue: 1 << 0)
+        /// Mots dictés par jour, sur les dernières semaines.
+        public static let days = Parts(rawValue: 1 << 1)
+        public static let words = Parts(rawValue: 1 << 2)
+        public static let tics = Parts(rawValue: 1 << 3)
+        public static let fixes = Parts(rawValue: 1 << 4)
+        public static let languages = Parts(rawValue: 1 << 5)
+        public static let apps = Parts(rawValue: 1 << 6)
+        public static let all: Parts = [.rhythm, .days, .words, .tics, .fixes, .languages, .apps]
+    }
+
     /// Mots qui ne disent rien du sujet : articles, pronoms, liaisons, verbes très courants (français et anglais).
     public static let stopWords: Set<String> = Set("""
     a à ai aie aient aies ait alors as au aucun aussi autre aux avec avoir avons avez bah ben bien bon c ça car ce ceci \
@@ -80,13 +98,33 @@ public enum ProfileBuilder {
 
     /// Mot montrable dans le profil : des lettres, pas d'adresse, de lien, de numéro ni de mot démesuré.
     public static func isShowable(_ word: String) -> Bool {
+        // Mot ASCII, le cas courant : un octet par caractère, mêmes règles sans parcourir les caractères Unicode.
+        if word.utf8.allSatisfy({ $0 < 0x80 }) {
+            guard (3...24).contains(word.utf8.count) else { return false }
+            var letter = false
+            for byte in word.utf8 {
+                switch byte {
+                case 0x41...0x5A, 0x61...0x7A: letter = true
+                // Chiffres, et « @ / \ : _ = # . ».
+                case 0x30...0x39, 0x40, 0x2F, 0x5C, 0x3A, 0x5F, 0x3D, 0x23, 0x2E: return false
+                default: break
+                }
+            }
+            return letter
+        }
         guard (3...24).contains(word.count), word.contains(where: \.isLetter) else { return false }
         return !word.contains(where: { $0.isNumber || "@/\\:_=#.".contains($0) })
     }
 
     /// Mots d'un texte, en minuscules, apostrophes et ponctuation retirées (« l'appli » → « appli »).
     public static func tokens(_ text: String) -> [String] {
-        text.lowercased()
+        let lower = text.lowercased()
+        return lower.unicodeScalars.allSatisfy(\.formsCharacterAlone) ? scalarTokens(lower) : characterTokens(lower)
+    }
+
+    /// Découpage caractère par caractère : la règle de référence, pour tout texte.
+    static func characterTokens(_ lower: String) -> [String] {
+        lower
             .split(whereSeparator: { !($0.isLetter || $0.isNumber || $0 == "-" || $0 == "'" || $0 == "’" || $0 == "@" || $0 == "/" || $0 == ".") })
             .map { token -> String in
                 var word = String(token).trimmingCharacters(in: CharacterSet(charactersIn: "-'’."))
@@ -98,17 +136,100 @@ public enum ProfileBuilder {
             .filter { !$0.isEmpty }
     }
 
+    private static func isTokenScalar(_ scalar: Unicode.Scalar) -> Bool {
+        switch scalar.value {
+        case 0x61...0x7A, 0x41...0x5A, 0x30...0x39, 0x2D, 0x27, 0x40, 0x2F, 0x2E, 0x2019: return true
+        case 0..<0x80: return false
+        default: return scalar.properties.isAlphabetic || scalar.properties.numericType != nil
+        }
+    }
+
+    private static func isEdgeScalar(_ scalar: Unicode.Scalar) -> Bool {
+        scalar == "-" || scalar == "'" || scalar == "\u{2019}" || scalar == "."
+    }
+
+    /// Même règle que `characterTokens`, pour un texte dont chaque caractère est un seul scalaire
+    /// (`formsCharacterAlone`).
+    static func scalarTokens(_ lower: String) -> [String] {
+        let scalars = lower.unicodeScalars
+        var result: [String] = []
+        func append(_ range: Range<String.UnicodeScalarView.Index>) {
+            var start = range.lowerBound, end = range.upperBound
+            while start < end, isEdgeScalar(scalars[start]) { start = scalars.index(after: start) }
+            while end > start, isEdgeScalar(scalars[scalars.index(before: end)]) { end = scalars.index(before: end) }
+            guard start < end else { return }
+            if let apostrophe = scalars[start..<end].firstIndex(where: { $0 == "'" || $0 == "\u{2019}" }) {
+                start = scalars.index(after: apostrophe)
+            }
+            if start < end { result.append(String(scalars[start..<end])) }
+        }
+        var tokenStart: String.UnicodeScalarView.Index?
+        var index = scalars.startIndex
+        while index < scalars.endIndex {
+            if isTokenScalar(scalars[index]) {
+                if tokenStart == nil { tokenStart = index }
+            } else if let start = tokenStart {
+                append(start..<index)
+                tokenStart = nil
+            }
+            index = scalars.index(after: index)
+        }
+        if let start = tokenStart { append(start..<scalars.endIndex) }
+        return result
+    }
+
     /// Mots qui comptent d'une dictée : montrables, hors mots vides et mots masqués.
     public static func meaningful(_ text: String, hidden: Set<String> = []) -> [String] {
-        tokens(text).filter { !stopWords.contains($0) && isShowable($0) && !hidden.contains($0) }
+        meaningful(tokens: tokens(text), hidden: hidden)
     }
+
+    static func meaningful(tokens: [String], hidden: Set<String>) -> [String] {
+        tokens.filter { !stopWords.contains($0) && isShowable($0) && !hidden.contains($0) }
+    }
+
+    /// Tics comptés dans les mots d'une transcription brute. Chaque tic est cherché seul, de gauche à droite et sans
+    /// chevauchement : deux occurrences collées (« euh euh ») comptent une fois, comme la recherche du tic entouré
+    /// d'espaces dans le texte, que ce parcours mot à mot remplace.
+    static func tics(in words: [String]) -> [String: Int] {
+        var counts: [String: Int] = [:]
+        // Premier mot où chaque tic peut de nouveau commencer.
+        var next = Array(repeating: 0, count: ticWords.count)
+        for index in words.indices {
+            guard let candidates = ticStarts[words[index]] else { continue }
+            for tic in candidates where index >= next[tic] {
+                let phrase = ticWords[tic]
+                guard index + phrase.count <= words.count,
+                      phrase.indices.allSatisfy({ words[index + $0] == phrase[$0] }) else { continue }
+                counts[ticPhrases[tic], default: 0] += 1
+                next[tic] = index + phrase.count + 1
+            }
+        }
+        return counts
+    }
+
+    private static let ticWords: [[String]] = ticPhrases.map { $0.split(separator: " ").map(String.init) }
+    private static let ticStarts: [String: [Int]] = Dictionary(grouping: ticWords.indices, by: { ticWords[$0][0] })
 
     public static func build(
         records: [DictationRecord],
         hidden: Set<String> = [],
+        parts: Parts = .all,
         now: Date = Date(),
         calendar: Calendar = .current
     ) -> DictationProfile {
+        analyze(records: records, hidden: hidden, parts: parts, graph: false, now: now, calendar: calendar).profile
+    }
+
+    /// Profil et, si demandé, cerveau (`WordGraph.build`) en un seul passage : chaque dictée n'est découpée en mots
+    /// qu'une fois, et seules les cartes demandées sont calculées.
+    public static func analyze(
+        records: [DictationRecord],
+        hidden: Set<String> = [],
+        parts: Parts = .all,
+        graph: Bool,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> (profile: DictationProfile, graph: WordGraph?) {
         let words = records.reduce(0) { $0 + $1.wordCount }
         let audio = records.reduce(0) { $0 + max(0, $1.durationSeconds) }
         let longest = records.max { $0.wordCount < $1.wordCount }.map { DictationProfile.Longest(words: $0.wordCount, date: $0.createdAt) }
@@ -121,40 +242,50 @@ public enum ProfileBuilder {
         var fixCounts: [String: DictationProfile.Fix] = [:]
         var appCounts: [String: Int] = [:]
         var english = 0, french = 0
+        var documents: [(id: String, words: Set<String>)] = []
 
-        for record in records {
-            byHour[calendar.component(.hour, from: record.createdAt)] += 1
-            // Lundi d'abord : dimanche (1) devient 6.
-            byWeekday[(calendar.component(.weekday, from: record.createdAt) + 5) % 7] += 1
-            days[calendar.startOfDay(for: record.createdAt), default: 0] += record.wordCount
-            for word in meaningful(record.finalText, hidden: hidden) { wordCounts[word, default: 0] += 1 }
-            let raw = " " + tokens(record.rawText).joined(separator: " ") + " "
-            for tic in ticPhrases {
-                let count = raw.components(separatedBy: " \(tic) ").count - 1
-                if count > 0 { ticCounts[tic, default: 0] += count }
+        for (position, record) in records.enumerated() {
+            if parts.contains(.rhythm) {
+                byHour[calendar.component(.hour, from: record.createdAt)] += 1
+                // Lundi d'abord : dimanche (1) devient 6.
+                byWeekday[(calendar.component(.weekday, from: record.createdAt) + 5) % 7] += 1
             }
-            if let app = record.targetApp, !app.isEmpty { appCounts[app, default: 0] += 1 }
-            if TranscriptLanguage.guess(record.finalText) == .english { english += 1 } else { french += 1 }
-        }
-        // Corrections d'écoute, sur les 1 500 dernières dictées : un mot dit, remplacé par un mot écrit.
-        for record in records.prefix(1_500) where record.rawText != record.finalText {
-            let heard = tokens(record.rawText), written = tokens(record.finalText)
-            for hunk in CorrectionLearner.replacements(heard, written) where hunk.oldWords.count == 1 && hunk.newWords.count == 1 {
-                let old = hunk.oldWords[0], new = hunk.newWords[0]
-                guard CorrectionLearner.key(old) != CorrectionLearner.key(new), isShowable(old), isShowable(new),
-                      !hidden.contains(old), !hidden.contains(new) else { continue }
-                fixCounts[old + "→" + new, default: DictationProfile.Fix(heard: old, written: new, count: 0)].count += 1
+            days[calendar.startOfDay(for: record.createdAt), default: 0] += record.wordCount
+            // Corrections d'écoute, sur les 1 500 dernières dictées : un mot dit, remplacé par un mot écrit.
+            let readsFix = parts.contains(.fixes) && position < 1_500 && record.rawText != record.finalText
+            let inGraph = graph && position < WordGraph.maxDictations
+            let written = parts.contains(.words) || inGraph || readsFix ? tokens(record.finalText) : []
+            let heard = parts.contains(.tics) || readsFix ? tokens(record.rawText) : []
+            if parts.contains(.words) || inGraph {
+                let kept = meaningful(tokens: written, hidden: hidden)
+                if parts.contains(.words) { for word in kept { wordCounts[word, default: 0] += 1 } }
+                if inGraph { documents.append((record.id, Set(kept))) }
+            }
+            if parts.contains(.tics) {
+                for (tic, count) in tics(in: heard) { ticCounts[tic, default: 0] += count }
+            }
+            if readsFix {
+                for hunk in CorrectionLearner.replacements(heard, written) where hunk.oldWords.count == 1 && hunk.newWords.count == 1 {
+                    let old = hunk.oldWords[0], new = hunk.newWords[0]
+                    guard CorrectionLearner.key(old) != CorrectionLearner.key(new), isShowable(old), isShowable(new),
+                          !hidden.contains(old), !hidden.contains(new) else { continue }
+                    fixCounts[old + "→" + new, default: DictationProfile.Fix(heard: old, written: new, count: 0)].count += 1
+                }
+            }
+            if parts.contains(.apps), let app = record.targetApp, !app.isEmpty { appCounts[app, default: 0] += 1 }
+            if parts.contains(.languages) {
+                if TranscriptLanguage.guess(record.finalText) == .english { english += 1 } else { french += 1 }
             }
         }
 
         let today = calendar.startOfDay(for: now)
-        let daily = (0..<DictationProfile.heatmapDays).reversed().map { offset -> Int in
+        let daily = !parts.contains(.days) ? [] : (0..<DictationProfile.heatmapDays).reversed().map { offset -> Int in
             guard let day = calendar.date(byAdding: .day, value: -offset, to: today) else { return 0 }
             return days[day] ?? 0
         }
         let streak = streaks(Set(days.keys), today: today, calendar: calendar)
 
-        return DictationProfile(
+        let profile = DictationProfile(
             words: words,
             dictations: records.count,
             audioSeconds: audio,
@@ -175,6 +306,7 @@ public enum ProfileBuilder {
             englishDictations: english,
             frenchDictations: french
         )
+        return (profile, graph ? WordGraph.build(documents: documents) : nil)
     }
 
     static func top(_ counts: [String: Int], limit: Int) -> [DictationProfile.Count] {
@@ -199,6 +331,21 @@ public enum ProfileBuilder {
             cursor = calendar.date(byAdding: .day, value: -1, to: day)
         }
         return (current, best)
+    }
+}
+
+extension Unicode.Scalar {
+    /// Scalaire qui forme toujours un caractère à lui seul, sans se combiner avec ses voisins : latin, ponctuation
+    /// générale, symboles monétaires. Un texte qui n'a que de tels scalaires se découpe scalaire par scalaire, plusieurs
+    /// fois plus vite qu'en caractères, avec le même résultat : un caractère d'un seul scalaire est une lettre ou un
+    /// chiffre selon ce scalaire.
+    var formsCharacterAlone: Bool {
+        switch value {
+        case 0..<0x300, 0x1E00...0x1EFF, 0x20A0...0x20CF: return true
+        // Ponctuation générale, sauf les liants qui joignent deux caractères (ZWNJ, ZWJ).
+        case 0x2000...0x206F: return value != 0x200C && value != 0x200D
+        default: return false
+        }
     }
 }
 
@@ -231,6 +378,9 @@ public struct WordGraph: Equatable, Sendable {
 
     public static let empty = WordGraph(nodes: [], edges: [])
 
+    /// Dictées lues pour le cerveau : les plus récentes.
+    static let maxDictations = 3_000
+
     /// Voisins d'un mot, du lien le plus fort au plus faible.
     public func neighbors(of id: Int) -> [(node: Node, weight: Int)] {
         edges.compactMap { edge -> (node: Node, weight: Int)? in
@@ -242,8 +392,13 @@ public struct WordGraph: Equatable, Sendable {
     }
 
     public static func build(records: [DictationRecord], hidden: Set<String> = [], size: Int = 48) -> WordGraph {
-        let read = Array(records.prefix(3_000))
-        let documents = read.map { Set(ProfileBuilder.meaningful($0.finalText, hidden: hidden)) }
+        build(documents: records.prefix(maxDictations).map { ($0.id, Set(ProfileBuilder.meaningful($0.finalText, hidden: hidden))) },
+              size: size)
+    }
+
+    /// Cerveau des mots qui comptent de chaque dictée (identifiant et mots, de la plus récente à la plus ancienne).
+    static func build(documents read: [(id: String, words: Set<String>)], size: Int = 48) -> WordGraph {
+        let documents = read.map(\.words)
         var frequency: [String: Int] = [:]
         for words in documents { for word in words { frequency[word, default: 0] += 1 } }
         let chosen = ProfileBuilder.top(frequency.filter { $0.value >= 2 }, limit: size).map(\.label)
@@ -266,8 +421,8 @@ public struct WordGraph: Equatable, Sendable {
         let families = clusters(count: n, edges: edges)
         let positions = layout(count: n, edges: edges, clusters: families)
         var dictations = Array(repeating: [String](), count: n)
-        for (record, words) in zip(read, documents) {
-            for word in words { if let id = index[word] { dictations[id].append(record.id) } }
+        for document in read {
+            for word in document.words { if let id = index[word] { dictations[id].append(document.id) } }
         }
         let nodes = chosen.enumerated().map { offset, word in
             Node(id: offset, word: word, count: frequency[word] ?? 0, cluster: families[offset],

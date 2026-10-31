@@ -16,8 +16,11 @@ final class AppModel {
         didSet {
             HistoryRowCache.shared.follow(history, previous: oldValue)
             insightsInputsRevision &+= 1
+            historyRevision &+= 1
         }
     }
+    /// Change à chaque relecture de l'historique : le Profil se recalcule alors en arrière-plan (`ProfileLoader`).
+    private(set) var historyRevision = 0
     var dictionary: [DictionaryEntry] = [] {
         didSet { insightsInputsRevision &+= 1 }
     }

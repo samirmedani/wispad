@@ -15,6 +15,7 @@ import Testing
         dependencies.loadKey = { _ in "fixture-only" }
         dependencies.isOnline = { true }
         var settings = AppSettings()
+        settings.profileCards.brain = true
         settings.profileTopicsEnabled = true
         settings.profileTopicsWeekly = true
         let model = try AppModel(supportDirectory: directory, settings: settings, dependencies: dependencies)
@@ -153,6 +154,41 @@ import Testing
         #expect(controller.isRunning)
         release.resolve(.success(()))
         try await settled(controller)
+    }
+
+    /// Cerveau masqué dans Personnaliser : la mise à jour de chaque semaine ne relit rien, même due ; affiché, elle part.
+    @Test func hiddenBrainSkipsTheWeeklyUpdate() async throws {
+        let (model, defaults, directory, suite) = try fixture()
+        defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: directory) }
+        let now = Date()
+        try seed(defaults, now: now)
+        model.history = [newRecord(now: now)]
+        model.settings.profileCards.brain = false
+        let calls = ProfileAnalysisCalls()
+        let controller = ProfileTopicsController(defaults: defaults, analyze: { _, _, _, _, _, _, _ in
+            await calls.called()
+            throw SpeechError.message("Échec fictif")
+        })
+        controller.runIfDue(model: model, now: now)
+        #expect(!controller.isRunning)
+        model.settings.profileCards.brain = true
+        controller.runIfDue(model: model, now: now)
+        try await settled(controller)
+        #expect(await calls.count == 1)
+    }
+
+    /// « Sujets · IA » coupé : portrait et mise à jour de chaque semaine coupés, résultat effacé de ce Mac.
+    @Test func turningTopicsOffErasesTheResult() throws {
+        let (model, defaults, directory, suite) = try fixture()
+        defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: directory) }
+        try seed(defaults, now: Date())
+        let controller = ProfileTopicsController(defaults: defaults)
+        #expect(controller.analysis != nil)
+        model.settings.profilePortraitEnabled = true
+        controller.setEnabled(false, model: model)
+        #expect(!model.settings.profileTopicsEnabled && !model.settings.profilePortraitEnabled && !model.settings.profileTopicsWeekly)
+        #expect(controller.analysis == nil)
+        #expect(defaults.data(forKey: "profileTopicAnalysis.v1") == nil)
     }
 }
 

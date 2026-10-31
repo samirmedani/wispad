@@ -882,6 +882,7 @@
       }
     },
     "%lld nouvelles dictées depuis" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1931,7 +1932,18 @@
         }
       }
     },
+    "Analysé le %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Analyzed on %@"
+          }
+        }
+      }
+    },
     "Analysé le %@ · %lld dictées · %@ · %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1942,6 +1954,7 @@
       }
     },
     "Analyser mes sujets avec l'IA" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2649,7 +2662,18 @@
         }
       }
     },
+    "Aucune clé de correction active" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No active correction key"
+          }
+        }
+      }
+    },
     "Aucune clé de correction active : ajoute-en une dans Fournisseurs." : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3120,6 +3144,16 @@
         }
       }
     },
+    "Cartes du profil" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Profile cards"
+          }
+        }
+      }
+    },
     "Catégorie" : {
       "localizations" : {
         "en" : {
@@ -3361,12 +3395,32 @@
         }
       }
     },
+    "Chaque semaine" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Every week"
+          }
+        }
+      }
+    },
     "Chargement…" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Loading…"
+          }
+        }
+      }
+    },
+    "Choisir les cartes du profil" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose the profile cards"
           }
         }
       }
@@ -4443,6 +4497,16 @@
         }
       }
     },
+    "Couper efface les sujets trouvés" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turning off erases the topics found"
+          }
+        }
+      }
+    },
     "Couper le son du Mac pendant la dictée" : {
       "localizations" : {
         "en" : {
@@ -4815,6 +4879,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "off"
+          }
+        }
+      }
+    },
+    "Désactivé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Off"
           }
         }
       }
@@ -5271,6 +5345,7 @@
       }
     },
     "Écrire mon portrait" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6955,6 +7030,16 @@
         }
       }
     },
+    "L'IA lit ton historique et trouve tes grands thèmes." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI reads your history and finds your main themes."
+          }
+        }
+      }
+    },
     "L'origine de ces anciens mots n'a pas été enregistrée." : {
       "localizations" : {
         "en" : {
@@ -7177,11 +7262,22 @@
       }
     },
     "Lance l'analyse pour voir tes sujets." : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Run the analysis to see your topics."
+          }
+        }
+      }
+    },
+    "Lancer l'analyse" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Run analysis"
           }
         }
       }
@@ -8127,6 +8223,7 @@
       }
     },
     "Mettre à jour chaque semaine" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -8748,6 +8845,16 @@
         }
       }
     },
+    "Nuage animé, plus gourmand" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Animated cloud, uses more power"
+          }
+        }
+      }
+    },
     "Ollama" : {
       "localizations" : {
         "en" : {
@@ -9139,6 +9246,16 @@
         }
       }
     },
+    "Pas encore assez de sujets pour dessiner ton cerveau." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not enough topics yet to draw your brain."
+          }
+        }
+      }
+    },
     "Pas encore de clé ? Crée-la dans la console du fournisseur avec le lien ci-dessus." : {
       "localizations" : {
         "en" : {
@@ -9215,6 +9332,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Period"
+          }
+        }
+      }
+    },
+    "Personnaliser" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Customize"
           }
         }
       }
@@ -9335,6 +9462,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Punctuation, misheard words, formatting."
+          }
+        }
+      }
+    },
+    "Portrait" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Portrait"
           }
         }
       }
@@ -11419,6 +11556,26 @@
         }
       }
     },
+    "Tes dictées, rangées par sujets" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your dictations, sorted by topic"
+          }
+        }
+      }
+    },
+    "Tes grands sujets, trouvés par l'IA dans tes dictées." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your main topics, found by AI in your dictations."
+          }
+        }
+      }
+    },
     "Tes jours" : {
       "localizations" : {
         "en" : {
@@ -11440,6 +11597,7 @@
       }
     },
     "Tes mots les plus fréquents, reliés quand tu les dis dans les mêmes dictées. Chaque couleur est une famille de sujets." : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -11449,7 +11607,18 @@
         }
       }
     },
+    "Tes mots les plus fréquents, reliés quand tu les dis ensemble. Une couleur par famille." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your most frequent words, linked when you say them together. One color per family."
+          }
+        }
+      }
+    },
     "Tes sujets, lus par une IA dans tout ton historique et rangés en grandes catégories. Un sujet est relié à sa catégorie, et à un autre quand tu en parles dans les mêmes dictées." : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -12056,6 +12225,7 @@
       }
     },
     "Trois phrases sur ce qui t'occupe, d'après tes sujets et tes chiffres : %@ de plus à chaque analyse." : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -12072,6 +12242,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Three sentences about what keeps you busy, from your topics and numbers: %@ more."
+          }
+        }
+      }
+    },
+    "Trois phrases sur ce qui t'occupe, d'après tes sujets et tes chiffres, à chaque analyse." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Three sentences about what keeps you busy, from your topics and numbers, with each analysis."
           }
         }
       }
@@ -12256,6 +12436,16 @@
         }
       }
     },
+    "Une carte masquée n'est pas calculée." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A hidden card isn't computed."
+          }
+        }
+      }
+    },
     "Une clé coupée reste dans le coffre, mais Wispad ne s'en sert plus. Pour en supprimer une, passe par l'outil de ton coffre." : {
       "localizations" : {
         "en" : {
@@ -12346,7 +12536,18 @@
         }
       }
     },
+    "Une fois par semaine, seules les nouvelles dictées sont relues, sans rien te demander." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Once a week, only new dictations are read, without asking you."
+          }
+        }
+      }
+    },
     "Une fois par semaine, seules les nouvelles dictées sont relues, sans rien te demander. À ton rythme actuel : %@ par semaine." : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -12356,7 +12557,18 @@
         }
       }
     },
+    "Une IA range tes dictées" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI sorts your dictations"
+          }
+        }
+      }
+    },
     "Une IA relit tout ton historique (%lld dictées) pour en tirer tes sujets et tes catégories. Elle utilise ta clé de correction : %@." : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {

@@ -263,6 +263,28 @@ et une dictée relue à l'identique (l'historique est relu après chaque dictée
 ni seconde copie de l'historique n'y restent. `HistoryRenderingObserver` permet aux tests et à la sonde de compter
 les lignes évaluées.
 
+## Écran Profil
+
+`ProfileView` (`ProfileViews.swift`) affiche le dernier calcul de `ProfileLoader.shared` (`ProfileLoader.swift`) et le
+redemande quand ses entrées changent (`ProfileRequest` : période, jour, `AppModel.historyRevision`, mots masqués, cartes,
+vitesse de frappe). Le calcul (`ProfileSnapshot.compute`, puis `ProfileBuilder.analyze` de WispadCore) tourne hors du fil
+principal ; l'écran garde l'ancien résultat jusqu'au nouveau, et un résultat qui couvre la demande (mêmes entrées, au
+moins ses cartes) ne relance rien. La fenêtre le prépare dès son ouverture (`ProfileLoader.prepare`). Rien n'est écrit
+sur le disque.
+
+- **Cartes** : `ProfileCards` (réglage `profileCards`, lu champ par champ) dit lesquelles sont affichées ; `ProfileCard`
+  donne leur titre, leur icône, leur place (`rows` : les étroites par deux) et leur partie du calcul
+  (`ProfileBuilder.Parts`). Une carte masquée n'est pas calculée. Panneau « Personnaliser » : `ProfileCardsPanel`.
+- **Calcul** : `ProfileBuilder.analyze` découpe chaque dictée en mots une seule fois pour les mots, le cerveau
+  (`WordGraph.build(documents:)`), les tics (`tics(in:)`, mot à mot) et les corrections. `ProfileBuilder.tokens` et
+  `TranscriptLanguage.words` découpent un texte latin scalaire par scalaire (`Unicode.Scalar.formsCharacterAlone`),
+  plus vite, et laissent tout autre texte à la règle caractère par caractère (`characterTokens`) ; des tests de
+  propriétés vérifient que les deux chemins rendent les mêmes mots.
+- **Sujets** : `BrainSection` (`ProfileTopics.swift`) demande à `ProfileLoader.loadTopics` le cerveau des sujets et les
+  coûts estimés (`TopicsRequest`, `TopicsSnapshot`), calculés hors du fil principal ; `ProfileTopicsController` lance,
+  arrête et garde l'analyse, et ne relit rien seul quand le cerveau est masqué. L'image de présentation est
+  `ProfileTopicsIllustration` (catalogue d'images de l'app).
+
 ## Ajouter…
 
 **Un fournisseur de correction** : une route dans `TextCleaner.routes`, un cas `UsageAPI`, son tarif dans
@@ -364,6 +386,11 @@ ne réécrit jamais un fichier abîmé (les clés de sa partie intacte servent).
   --performance-probe [--scroll-steps 240]` avec le build Debug. Lignes `PERFORMANCE` : deux ouvertures de l'écran
   (temps, vues natives, lignes rendues), puis un défilement simulé vers le bas et vers le haut (temps par étape :
   moyenne, p95, max, étapes de plus de 16 ms ; évaluations de lignes et lignes distinctes).
+- Ouverture du Profil, hors écran : `Wispad --design-preview --offscreen --profile-count 3300 --profile-probe
+  [--profile-brain]` avec le build Debug. Lignes `PERFORMANCE` : le calcul seul (`compute_ms`), puis trois ouvertures
+  du Profil séparées par l'Accueil (temps jusqu'au contenu, écran d'attente vu ou non). Aperçus du Profil :
+  `--profile-preview`, `--profile-brain`, `--profile-hide tics,fixes`, `--profile-topics-intro` (avec `--keys-preview`
+  pour une clé de correction fictive), `--profile-topics-preview`, `--profile-cards-preview` (panneau « Personnaliser »).
 - Tests réseau à la demande, clés de test seulement : `scripts/live-test.sh SelfCorrectionLiveTests`.
 - Sonde de délais (clés de test) : `WISPAD_LATENCY_PROBE=1 scripts/live-test.sh LatencyProbeLiveTests` mesure, sur
   des phrases synthétiques, le délai entre l'arrêt et le texte final du flux xAI. Elle mesure aussi le fichier

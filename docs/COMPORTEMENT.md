@@ -189,6 +189,15 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 - Section Profil de la barre latérale, sous Historique : ce que les dictées conservées disent de la façon de parler.
   Tout est calculé sur ce Mac, à partir de l'historique, sans appel à un fournisseur. Période en haut à droite
   (Aujourd'hui, 7 jours, 30 jours, Tout ; Tout par défaut), retrouvée au lancement suivant.
+- « Personnaliser », sous la période, ouvre la liste des cartes dans l'ordre de l'écran, chacune avec son icône et son
+  interrupteur : Ton rythme, Tes jours, Ton cerveau (et, dessous, Sujets · IA), Tes mots, Tes tics de langage, Ce que
+  Wispad corrige le plus, Langues, Applications. Une carte masquée n'est ni calculée ni dessinée. Le cerveau, animé et
+  plus gourmand, est masqué par défaut, même après une mise à jour ; les autres cartes sont affichées. Les choix sont
+  retrouvés au lancement suivant. Les cartes étroites vont par deux ; restée seule, une carte prend toute la ligne.
+- Ouverture sans attente : le Profil se calcule hors du fil principal dès l'ouverture de la fenêtre, et le dernier
+  calcul reste en mémoire. Une nouvelle dictée, une autre période, un mot masqué ou une carte rallumée le refont en
+  arrière-plan ; l'écran garde l'ancien jusque-là, et une carte rallumée apparaît quand son calcul est prêt. L'écran
+  d'attente ne se voit qu'au tout premier calcul, si le Profil est ouvert avant sa fin.
 - Chiffres clés : mots dictés, équivalent (« 15 pages » à 250 mots la page, « 2,3 romans » à 80 000 mots dès un
   demi-roman), temps économisé, mots par minute, série en cours (jours d'affilée jusqu'à aujourd'hui ou hier),
   meilleure série, jours actifs, plus longue dictée.
@@ -199,35 +208,39 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 - Ton cerveau : les 48 mots les plus fréquents (vus dans au moins deux dictées), en nuage 3D. Deux mots sont reliés
   quand ils reviennent dans les mêmes dictées (les 4 liens les plus forts de chaque mot, deux dictées communes au
   moins), et colorés par famille (propagation d'étiquettes sur les liens). Le placement est calculé (forces), le même
-  à chaque calcul. Le nuage tourne lentement seul, sauf avec « Réduire les animations » ; glisser le tourne et arrête
-  la rotation, pincer ou « + / − » zoome, la flèche recentre. Une étiquette qui en chevaucherait une autre n'est pas
-  écrite. Cliquer un mot montre ses dictées et ses voisins (« Souvent avec »), cliquables, et éclaire ses liens.
-- Cerveau par sujets (« Mots | Sujets · IA » en haut de la carte) : coupé par défaut. « Analyser mes sujets avec
-  l'IA » l'allume ; la ligne dit avant tout appel combien de dictées seront relues, les jetons et le coût estimés
-  avec le premier service de correction (« environ 9 k jetons, ≈ 0,002 $ avec DeepSeek deepseek-flash », « prix
-  inconnu » sans tarif ; estimation prudente, 3,6 caractères par jeton). Rien n'est envoyé tant que « Lancer
-  l'analyse · coût » n'est pas cliqué. L'IA relit tout l'historique (700 caractères au plus par dictée), par lots de
-  36 000 caractères, trois lots à la fois, et rend des sujets concrets (projet, activité, thème), leur catégorie
-  (Code, Travail, Voyages…), 3 à 5 mots-clés et les dictées qui en parlent ; mots vides, verbes, tics et données
-  personnelles sont exclus par la consigne. Les sujets de même nom sont réunis. Le cerveau montre les 8 plus grandes
-  catégories (gros nœuds cerclés, nom toujours écrit) et leurs 6 sujets principaux, reliés à leur catégorie et entre
-  eux quand ils partagent deux dictées ; cliquer un sujet montre ses mots-clés. Progression « Lot 3 sur 12 » et
-  « Arrêter » pendant l'analyse. Le résultat est gardé sur ce Mac (sujets et numéros de dictées, pas de texte) avec
-  sa date, le nombre de dictées relues, le service, le coût réel et les dictées nouvelles depuis ; « Mettre à jour · N
-  nouvelles dictées · coût » ne relit que les dictées arrivées depuis (sujets fusionnés, coût cumulé) ; « Tout relire ·
-  coût » refait tout. « Mettre à jour chaque semaine » (coupé par défaut, coût d'une semaine type affiché : les
-  dictées des 4 dernières semaines divisées par 4) lance seul cette mise à jour quand l'analyse a 7 jours et que des
-  dictées sont arrivées, vérifié chaque minute ; jamais une première analyse. Les dictées supprimées sont oubliées
-  des sujets. Après une tentative ratée ou interrompue, la prochaine relance automatique attend au moins 6 heures,
-  puis 24 heures, puis 7 jours si les échecs se répètent. Cette échéance est enregistrée avant l'envoi et survit à
-  une relance de l'app ; une mise à jour manuelle reste possible. Une annulation garde le créneau occupé jusqu'à la
-  fin effective des requêtes : aucun chevauchement, aucun ancien résultat ne réapparaît après l'arrêt. Les lots
-  réussis sont retenus par identifiant ; les lots ratés restent à relire, même s'ils précèdent un lot réussi.
-  Avec un modèle local, le coût affiché est « gratuit ». Chaque appel compte dans Consommation dès son retour,
-  même si l'analyse globale échoue ou est annulée. Couper l'interrupteur efface le résultat.
-  « Écrire mon portrait » (sous le premier, coupé par défaut, avec son coût en plus) ajoute trois phrases sur ce qui
-  occupe la personne, d'après ses sujets et ses chiffres. Sans clé de correction active, le lancement est remplacé par
-  « Aucune clé de correction active ». Le cerveau s'ouvre sur les sujets quand l'analyse est allumée et faite.
+  à chaque calcul. Le nuage tourne lentement seul (30 images par seconde), sauf avec « Réduire les animations » ;
+  glisser le tourne et arrête la rotation, pincer ou « + / − » zoome, la flèche recentre. Une étiquette qui en
+  chevaucherait une autre n'est pas écrite. Cliquer un mot montre ses dictées et ses voisins (« Souvent avec »),
+  cliquables, et éclaire ses liens.
+- Sujets · IA (dans Personnaliser, sous le cerveau ; coupé par défaut) : ajoute « Mots | Sujets · IA » en haut du
+  cerveau, et l'allumer ouvre cet onglet. Avant la première analyse, l'onglet montre une image (des dictées, l'IA,
+  des sujets) et une phrase, puis le nombre de dictées qui seront relues, le service de correction en pastille de
+  couleur et « Lancer l'analyse · coût » : coût estimé avec le premier service de correction (« ≈ 0,05 $ »,
+  « < 0,001 $ » sous un millième, « gratuit » avec un modèle local, les jetons seuls sans tarif ; jetons et service en
+  bulle d'aide ; estimation prudente, 3,6 caractères par jeton). Rien n'est envoyé avant ce clic. L'IA relit tout
+  l'historique (700 caractères au plus par dictée), par lots de 36 000 caractères, trois lots à la fois, et rend des
+  sujets concrets (projet, activité, thème), leur catégorie (Code, Travail, Voyages…), 3 à 5 mots-clés et les dictées
+  qui en parlent ; mots vides, verbes, tics et données personnelles sont exclus par la consigne. Les sujets de même
+  nom sont réunis. Le cerveau montre les 8 plus grandes catégories (gros nœuds cerclés, nom toujours écrit) et leurs
+  6 sujets principaux, reliés à leur catégorie et entre eux quand ils partagent deux dictées ; cliquer un sujet montre
+  ses mots-clés. Progression « Lot 3 sur 12 » et « Arrêter » pendant l'analyse. Le résultat est gardé sur ce Mac
+  (sujets et numéros de dictées, pas de texte). Sous le cerveau des sujets : le portrait s'il est demandé, puis en
+  pastilles la date de l'analyse, le nombre de dictées relues et le coût réel (service en bulle d'aide), puis « Mettre
+  à jour · N nouvelles dictées · coût » (« À jour » sans nouvelle dictée), qui ne relit que les dictées arrivées depuis
+  (sujets fusionnés, coût cumulé), et « Tout relire · coût », qui refait tout. Deux pastilles avec leur coût se
+  cochent d'un clic, coupées par défaut : « Portrait » ajoute trois phrases sur ce qui occupe la personne, d'après ses
+  sujets et ses chiffres ; « Chaque semaine » (coût d'une semaine type : les dictées des 4 dernières semaines divisées
+  par 4) lance seul la mise à jour quand l'analyse a 7 jours et que des dictées sont arrivées, vérifié chaque minute ;
+  jamais une première analyse, ni quand le cerveau est masqué. Les dictées supprimées sont oubliées des sujets. Après
+  une tentative ratée ou interrompue, la prochaine relance automatique attend au moins 6 heures, puis 24 heures, puis
+  7 jours si les échecs se répètent. Cette échéance est enregistrée avant l'envoi et survit à une relance de l'app ;
+  une mise à jour manuelle reste possible. Une annulation garde le créneau occupé jusqu'à la fin effective des
+  requêtes : aucun chevauchement, aucun ancien résultat ne réapparaît après l'arrêt. Les lots réussis sont retenus par
+  identifiant ; les lots ratés restent à relire, même s'ils précèdent un lot réussi. Chaque appel compte dans
+  Consommation dès son retour, même si l'analyse globale échoue ou est annulée. Couper « Sujets · IA » coupe aussi le
+  portrait et la mise à jour de chaque semaine et efface le résultat, ce que le panneau rappelle ; masquer le cerveau
+  le garde. Sans clé de correction active, le lancement est remplacé par « Aucune clé de correction active » et un
+  lien vers Fournisseurs. Le cerveau s'ouvre sur les sujets quand l'analyse est allumée et faite.
 - Historique d'un nœud : un mot, un sujet ou une catégorie choisi dans le cerveau propose « Voir ses N dictées ».
   L'Historique s'ouvre filtré sur elles, avec « Dictées de « … » · N dictées » et « Toutes les dictées » pour enlever
   le filtre ; la recherche s'applique dans le filtre. Quitter l'Historique enlève le filtre.
