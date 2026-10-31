@@ -27,6 +27,7 @@ import SwiftUI
 /// avec un état fictif (réussi, problème, en cours), sans aucune demande d'autorisation.
 /// `--shortcut-preview custom|long|disabled|recording` : Réglages › Raccourci avec des raccourcis fictifs.
 /// `--settings-tab general|dictation|formatting|bubble|privacy|permissions|help` : onglet de Réglages.
+/// `--previous-versions-preview` : Réglages › Aide avec des versions précédentes fictives, rien n'est demandé à GitHub.
 /// `--period today|days7|days30|all` : période de l'Accueil et de Consommation (« all » : durée d'utilisation, coût par
 /// mois face aux abonnements).
 @MainActor
@@ -163,6 +164,13 @@ enum DesignPreview {
         if let index = arguments.firstIndex(of: "--settings-tab"), arguments.indices.contains(index + 1),
            let tab = SettingsTab(rawValue: arguments[index + 1]) {
             model.settings.settingsTab = tab
+        }
+        if arguments.contains("--previous-versions-preview") {
+            let disk = DiskImageAsset(url: ReleaseCheck.releasesURL.appendingPathComponent("download/Wispad.dmg"))
+            model.previousReleases = ["0.7.4", "0.7.3", "0.7.2"].enumerated().map { offset, text in
+                ReleaseInfo(version: SemanticVersion(text)!, tag: "v" + text, notes: "", pageURL: ReleaseCheck.releasesURL,
+                            diskImage: disk, publishedAt: Date(timeIntervalSince1970: 1_793_400_000 - Double(offset) * 86_400))
+            }
         }
         if let index = arguments.firstIndex(of: "--period"), arguments.indices.contains(index + 1),
            let period = StatsPeriod(rawValue: arguments[index + 1]) {

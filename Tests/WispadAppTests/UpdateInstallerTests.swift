@@ -97,6 +97,36 @@ struct UpdateInstallerTests {
         }
     }
 
+    /// Retour en arrière demandé dans Réglages : la version plus ancienne demandée s'installe avec les mêmes
+    /// vérifications ; une autre version du disque est refusée sans rien remplacer.
+    @Test func aRequestedPreviousVersionIsVerifiedThenInstalled() async throws {
+        let journal = Journal()
+        journal.diskVersion = "0.1.0"
+        let installer = makeInstaller(journal)
+        let older = ReleaseInfo(
+            version: SemanticVersion(major: 0, minor: 1, patch: 0), tag: "v0.1.0", notes: "",
+            pageURL: ReleaseCheck.releasesURL.appendingPathComponent("tag/v0.1.0"),
+            diskImage: DiskImageAsset(url: ReleaseCheck.releasesURL.appendingPathComponent("download/v0.1.0/Wispad.dmg"))
+        )
+        func revert() -> Bool {
+            installer.install(older, kind: .release, installed: "0.1.1", target: older.version, isIdle: { journal.idle },
+                              relaunchArguments: { ["--updated"] }, beforeQuit: { journal.quitSteps.append("fenêtres") })
+        }
+        journal.diskVersion = "0.0.9"
+        #expect(revert())
+        try await waitUntil { !installer.isBusy }
+        #expect(installer.phase == .failed(.notRequested))
+        #expect(!journal.steps.contains { $0.hasPrefix("copy") || $0.hasPrefix("swap") })
+        journal.steps = []
+        journal.diskVersion = "0.1.0"
+        #expect(revert())
+        try await waitUntil { journal.terminated }
+        #expect(installer.target == older.version)
+        #expect(journal.steps == ["download", "mount", "verify Wispad.app", "copy .Wispad.nouveau.app",
+                                  "verify .Wispad.nouveau.app", "detach", "swap .Wispad.nouveau.app Wispad.app"])
+        #expect(journal.relaunched == ["--updated"])
+    }
+
     @Test func verifiesCopiesNextToTheAppThenSwapsAndRelaunches() async throws {
         let journal = Journal()
         let installer = makeInstaller(journal)

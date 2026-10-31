@@ -844,6 +844,36 @@ final class AppModel {
         isWindowVisible() ? ["--updated", "--section", selectedSection.rawValue] : ["--updated"]
     }
 
+    /// Versions publiées avant celle qui tourne, proposées dans Réglages › Aide › Mises à jour ; nil tant que GitHub
+    /// ne les a pas rendues.
+    var previousReleases: [ReleaseInfo]?
+
+    /// Lit sur GitHub les versions précédentes. Faux sans réponse (hors ligne, GitHub limité).
+    @discardableResult
+    func loadPreviousReleases() async -> Bool {
+        let status = BuildStatus.shared
+        guard let all = await status.fetchHistory() else { return false }
+        previousReleases = ReleaseCheck.previous(all, before: status.version.flatMap(SemanticVersion.init))
+        return true
+    }
+
+    /// « Revenir à une version précédente » (Réglages › Aide), après confirmation : la même installation en un clic
+    /// qu'une mise à jour, mêmes vérifications, pour exactement cette version plus ancienne. La version quittée n'est
+    /// plus rappelée dans la bulle ; la barre latérale la propose toujours, pour revenir quand on veut.
+    func revert(to release: ReleaseInfo) {
+        let status = BuildStatus.shared
+        guard let version = status.version, let current = SemanticVersion(version), release.version < current else { return }
+        let started = updater.install(
+            release, kind: status.kind, installed: version, target: release.version,
+            isIdle: { [weak self] in self?.coordinator.phase == .idle },
+            relaunchArguments: { [weak self] in self?.relaunchArguments() ?? ["--updated"] },
+            beforeQuit: { [weak self] in self?.updateSheet = nil }
+        )
+        if started, UpdateReminder.shouldRemind(current, lastReminded: settings.updateRemindedVersion) {
+            noteUpdateReminded(current)
+        }
+    }
+
     /// Premier lancement après une mise à jour en un clic : la bulle le confirme, sans prendre le focus.
     func announceUpdated() {
         coordinator.announce(String(localized: "Wispad \(BuildStatus.shared.version ?? "—") est installé"), relay: false)

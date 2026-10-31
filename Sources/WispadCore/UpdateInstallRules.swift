@@ -54,11 +54,19 @@ public enum UpdateInstallRules {
         sibling(of: app, suffix: "ancien")
     }
 
-    /// Seule la nouvelle version remplace l'app : jamais un retour en arrière, ni une version illisible.
+    /// Seule la nouvelle version remplace l'app : jamais un retour en arrière non demandé, ni une version illisible.
     public static func isNewer(_ downloaded: String?, than installed: String) -> Bool {
         guard let downloaded = downloaded.flatMap({ SemanticVersion($0) }),
               let current = SemanticVersion(installed) else { return false }
         return downloaded > current
+    }
+
+    /// Retour à une version précédente, choisi dans Réglages : le disque contient exactement la version demandée,
+    /// et elle est plus ancienne que celle qui tourne. Toute autre version, ou une version illisible, est refusée.
+    public static func isRequestedPrevious(_ downloaded: String?, target: SemanticVersion, installed: String) -> Bool {
+        guard let downloaded = downloaded.flatMap({ SemanticVersion($0) }),
+              let current = SemanticVersion(installed) else { return false }
+        return downloaded == target && target < current
     }
 
     /// Points de montage lus dans la sortie de `hdiutil attach -plist` (texte éventuel avant le plist ignoré).
