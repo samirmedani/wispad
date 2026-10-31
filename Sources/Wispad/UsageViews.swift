@@ -5,6 +5,9 @@ import WispadCore
 
 // MARK: - Consommation
 
+/// Consommation, sur la période choisie : en tête, la dépense et ce qui s'est passé en une phrase ; puis le coût par
+/// mois face aux abonnements, la dépense dans le temps et par service, les relais de secours, les soldes et le détail
+/// des appels. Tout vient des appels enregistrés de la période.
 struct UsageView: View {
     @Environment(AppModel.self) private var model
     @State private var refreshing = false
@@ -18,7 +21,8 @@ struct UsageView: View {
         let incomplete = summary.hasUnpricedCalls || model.usageLoadFailed
         let span = model.usage.last.map { UsageSpan.make(firstUse: $0.createdAt, now: now) }
         ScreenScroll {
-            ScreenHeader(title: String(localized: "Consommation"), subtitle: String(localized: "Coûts des API et recours aux relais.")) {
+            ScreenHeader(title: String(localized: "Consommation"),
+                         subtitle: String(localized: "Le coût de tes dictées, service par service.")) {
                 VStack(alignment: .trailing, spacing: 6) {
                     PillPicker(selection: Binding(
                         get: { model.settings.usagePeriod },
@@ -42,51 +46,23 @@ struct UsageView: View {
                 .padding(16)
                 .card()
             }
-            MetricGrid {
-                MetricTile(symbol: "dollarsign", tint: Theme.brand,
-                           title: incomplete ? String(localized: "Total (minimum)") : String(localized: "Total estimé"),
-                           value: UsagePresentation.amount(summary.totalUSD, incomplete: incomplete))
-                MetricTile(symbol: "waveform", tint: ProviderTint.color("xAI"), title: "xAI",
-                           value: UsagePresentation.providerAmount(summary, providers: ["xAI"], storageIncomplete: model.usageLoadFailed))
-                MetricTile(symbol: "text.badge.checkmark", tint: ProviderTint.color("DeepSeek"), title: "DeepSeek",
-                           value: UsagePresentation.providerAmount(summary, providers: ["DeepSeek"], storageIncomplete: model.usageLoadFailed))
-                MetricTile(symbol: "arrow.triangle.branch", tint: ProviderTint.color("OpenAI"), title: String(localized: "OpenAI et Jev"),
-                           value: UsagePresentation.providerAmount(summary, providers: ["OpenAI", "TypeSafe"], storageIncomplete: model.usageLoadFailed))
-            }
-            if summary.hasUnpricedCalls {
-                Text("Les montants précédés de ≥ sont des minimums : le coût de certains appels est inconnu.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
+            UsageOverviewCard(events: events, summary: summary, fallbacks: model.fallbackSummary(for: period, now: now),
+                              period: period, incomplete: incomplete, storageIncomplete: model.usageLoadFailed)
             if let span, !events.isEmpty {
                 MonthlyComparisonCard(totalUSD: summary.totalUSD, incomplete: incomplete, period: period,
                                       days: MonthlyCost.days(for: period, usedDays: span.days))
             }
-            FallbackStatsCard(period: period)
-            if summary.rows.isEmpty {
-                EmptyState(symbol: "chart.bar", title: String(localized: "Aucun appel API"), message: String(localized: "Aucun appel enregistré sur cette période."))
-                    .card()
-            } else {
+            if !events.isEmpty {
                 SpendChart(events: events, period: period, storageIncomplete: model.usageLoadFailed)
-                VStack(alignment: .leading, spacing: 4) {
-                    CardTitle(String(localized: "Par API"))
-                        .padding(.horizontal, 16)
-                        .padding(.top, 14)
-                        .padding(.bottom, 4)
-                    ForEach(summary.rows) { row in
-                        UsageRowView(row: row)
-                        if row.id != summary.rows.last?.id { Divider().padding(.leading, 56) }
-                    }
-                }
-                .padding(.bottom, 6)
-                .card()
+                UsageServicesCard(summary: summary, storageIncomplete: model.usageLoadFailed)
+                FallbackStatsCard(period: period, now: now)
             }
             balances
             if !events.isEmpty {
-                UsageCallsTable(events: events, now: now)
+                UsageCallsTable(events: events, now: now, period: period, incomplete: incomplete)
                     .id(period)
             }
-            Text("Coûts estimés d'après les tarifs publiés de chaque modèle (au survol d'une ligne « Par API »). La facture du fournisseur fait foi.")
+            Text("Coûts estimés d'après les tarifs publiés de chaque modèle (au survol d'une ligne « Par service »). La facture du fournisseur fait foi.")
                 .font(.footnote)
                 .foregroundStyle(.tertiary)
         }
@@ -153,60 +129,201 @@ struct UsageView: View {
     }
 }
 
-/// Bascules vers un fournisseur de secours, lues dans les appels enregistrés, jamais déduites du nom du fournisseur final.
+// MARK: - En bref
+
+/// En tête de Consommation : la dépense de la période en grand, la part de chaque fournisseur, et ce qui s'est passé en
+/// une phrase (appels réussis, échecs, relais). « ≥ » marque un minimum, expliqué juste sous le montant.
+struct UsageOverviewCard: View {
+    var events: [UsageEvent]
+    var summary: UsageSummary
+    var fallbacks: FallbackSummary
+    var period: StatsPeriod
+    var incomplete: Bool
+    var storageIncomplete: Bool
+
+    var body: some View {
+        let shares = UsagePresentation.providerShares(summary, storageIncomplete: storageIncomplete)
+        VStack(alignment: .leading, spacing: 16) {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: 0) {
+                    total
+                    Spacer(minLength: 32)
+                    if !shares.isEmpty {
+                        ProviderSplitView(shares: shares)
+                            .frame(width: 380)
+                    }
+                }
+                VStack(alignment: .leading, spacing: 16) {
+                    total
+                    if !shares.isEmpty { ProviderSplitView(shares: shares) }
+                }
+            }
+            if !events.isEmpty {
+                Divider()
+                HealthLine(health: UsagePresentation.health(events: events, fallbacks: fallbacks))
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .card()
+    }
+
+    private var total: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(UsagePresentation.spentTitle(period))
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(.secondary)
+            Text(UsagePresentation.amount(summary.totalUSD, incomplete: incomplete))
+                .font(.system(size: 34, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .contentTransition(.numericText())
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+            Text(UsagePresentation.callsCaption(events.count, period: period))
+                .font(.system(size: 12.5))
+                .foregroundStyle(.secondary)
+            if let note = UsagePresentation.minimumNote(unknownCosts: events.filter { $0.costUSD == nil }.count,
+                                                        storageIncomplete: storageIncomplete) {
+                Text(note)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: 340, alignment: .leading)
+    }
+}
+
+/// Part de chaque fournisseur dans la dépense : une barre en couleurs, puis, pour chacun, ce qu'il a fait, son montant
+/// et sa part.
+struct ProviderSplitView: View {
+    var shares: [UsagePresentation.ProviderShare]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            SplitBar(parts: shares.map { SplitBar.Part(fraction: $0.fraction, color: ProviderTint.color($0.provider)) })
+                .frame(height: 10)
+                .padding(.top, 4)
+                .padding(.bottom, 2)
+            ForEach(shares) { share in
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(ProviderTint.color(share.provider))
+                        .frame(width: 8, height: 8)
+                    Text(share.name)
+                        .font(.system(size: 12.5, weight: .semibold))
+                    Text(share.tasks)
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                    Spacer(minLength: 8)
+                    Text(share.amount)
+                        .font(.system(size: 12.5, weight: .semibold, design: .rounded))
+                        .monospacedDigit()
+                    Text(share.percent)
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                        .frame(width: 40, alignment: .trailing)
+                }
+            }
+        }
+    }
+}
+
+/// Barre découpée en parts (fractions de 0 à 1) sur un fond discret ; une part non nulle reste visible.
+struct SplitBar: View {
+    struct Part {
+        var fraction: Double
+        var color: Color
+    }
+
+    var parts: [Part]
+
+    var body: some View {
+        GeometryReader { proxy in
+            let visible = parts.filter { $0.fraction > 0 }
+            let gap: CGFloat = 2
+            let width = max(0, proxy.size.width - gap * CGFloat(max(0, visible.count - 1)))
+            HStack(spacing: gap) {
+                ForEach(Array(visible.enumerated()), id: \.offset) { _, part in
+                    Rectangle()
+                        .fill(part.color)
+                        .frame(width: max(3, width * min(1, part.fraction)))
+                }
+            }
+            .frame(width: proxy.size.width, alignment: .leading)
+        }
+        .background(Theme.subtleFill)
+        .clipShape(Capsule())
+        .accessibilityHidden(true)
+    }
+}
+
+/// Une phrase sur la période : tout a abouti, ou combien d'appels ont échoué et ce que le relais a rattrapé.
+struct HealthLine: View {
+    var health: UsagePresentation.Health
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Image(systemName: health.symbol)
+                .foregroundStyle(health.tint)
+            Text(health.message)
+                .font(.system(size: 12.5, weight: .medium))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
+// MARK: - Relais de secours
+
+/// Relais de secours, sur la période : quand un service ne répond pas, Wispad envoie la même demande à un autre. La carte
+/// répond à quatre questions, à partir des seuls appels enregistrés : combien de demandes le relais a sauvées, vers quel
+/// service, pourquoi le service principal a lâché, et quand.
 struct FallbackStatsCard: View {
     @Environment(AppModel.self) private var model
     var period: StatsPeriod
+    var now = Date()
 
     var body: some View {
-        let now = Date()
         let summary = model.fallbackSummary(for: period, now: now)
         let failures = model.failureBreakdown(for: period, now: now)
-        let status = FallbackPresentation.status(summary, failedWithoutRelay: summary.total == 0 && failures.failures > 0)
-        VStack(alignment: .leading, spacing: 12) {
-            CardTitle(title: String(localized: "Bascules vers un fournisseur de secours")) {
-                if summary.total > 0 {
-                    Text(FallbackPresentation.count(summary.total))
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.secondary)
-                }
-            }
-            Text("Quand ton fournisseur principal échoue, ne répond pas à temps ou a été mis de côté après des échecs, Wispad envoie la même demande à un autre fournisseur pour que ta dictée aboutisse.")
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            HStack(alignment: .top, spacing: 8) {
-                Image(systemName: status.symbol)
-                    .foregroundStyle(status.tint)
-                Text(status.message)
-                    .font(.system(size: 12.5, weight: .medium))
+        let status = FallbackPresentation.status(summary, failures: failures)
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 4) {
+                CardTitle(String(localized: "Relais de secours"))
+                Text("Quand un service ne répond pas, Wispad envoie la même demande à un autre pour que ta dictée aboutisse.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            if !failures.providers.isEmpty {
-                Divider()
-                FailureOriginsView(breakdown: failures)
-                if let start = FallbackPresentation.trackingNoteDate(trackingStartedAt: model.store.failureCauseTrackingStartedAt, period: period, now: now) {
-                    Text("Causes des échecs notées depuis le \(start.formatted(.dateTime.day().month(.abbreviated).year().locale(appLocale))).")
-                        .font(.footnote)
-                        .foregroundStyle(.tertiary)
-                }
-            }
-            if summary.total > 0 {
-                Divider()
-                ForEach(FallbackStage.allCases.filter { summary.count(for: $0) > 0 }, id: \.rawValue) { stage in
-                    stageLine(stage, summary: summary)
-                }
-                Divider()
-                Text("Dernières bascules")
-                    .font(.system(size: 12, weight: .semibold))
-                VStack(spacing: 0) {
-                    ForEach(summary.recent) { entry in
-                        entryLine(entry, now: now)
+            RelayHeadline(summary: summary, status: status)
+            if !summary.routes.isEmpty {
+                RelaySection(title: String(localized: "Qui a pris le relais"), symbol: "arrow.triangle.branch") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(summary.routes) { RelayRouteRow(route: $0) }
                     }
                 }
             }
-            if let start = FallbackPresentation.trackingNoteDate(trackingStartedAt: model.store.fallbackTrackingStartedAt, period: period, now: now) {
-                Text("Bascules enregistrées depuis le \(start.formatted(.dateTime.day().month(.abbreviated).year().locale(appLocale))).")
+            if FailurePresentation.hasDetails(failures) {
+                RelaySection(title: String(localized: "Pourquoi"), symbol: "questionmark.circle") {
+                    RelayCausesView(breakdown: failures)
+                }
+            }
+            if !summary.recent.isEmpty {
+                RelaySection(title: String(localized: "Quand"), symbol: "clock",
+                             trailing: FallbackPresentation.recentCaption(shown: summary.recent.count, total: summary.total)) {
+                    VStack(spacing: 0) {
+                        ForEach(summary.recent) { RelayEntryRow(entry: $0, now: now) }
+                    }
+                }
+            }
+            ForEach(FallbackPresentation.trackingNotes(
+                relays: FallbackPresentation.trackingNoteDate(trackingStartedAt: model.store.fallbackTrackingStartedAt, period: period, now: now),
+                causes: failures.providers.isEmpty ? nil
+                    : FallbackPresentation.trackingNoteDate(trackingStartedAt: model.store.failureCauseTrackingStartedAt, period: period, now: now)
+            ), id: \.self) { note in
+                Text(note)
                     .font(.footnote)
                     .foregroundStyle(.tertiary)
             }
@@ -215,26 +332,161 @@ struct FallbackStatsCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .card()
     }
+}
 
-    private func stageLine(_ stage: FallbackStage, summary: FallbackSummary) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 6) {
-                Text(stage.label).font(.system(size: 12.5, weight: .semibold))
-                Text(FallbackPresentation.times(summary.count(for: stage)))
-                    .font(.system(size: 12.5))
-                    .monospacedDigit()
-                Text(FallbackPresentation.routes(summary, stage: stage))
-                    .font(.system(size: 12.5))
-                    .foregroundStyle(.secondary)
-            }
-            Text(FallbackPresentation.meaning(stage))
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
+/// Petit titre d'une partie de la carte, avec son icône ; à droite, une précision facultative.
+private struct RelaySection<Content: View>: View {
+    var title: String
+    var symbol: String
+    var trailing: String?
+    @ViewBuilder var content: Content
+
+    init(title: String, symbol: String, trailing: String? = nil, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.symbol = symbol
+        self.trailing = trailing
+        self.content = content()
     }
 
-    private func entryLine(_ entry: FallbackEntry, now: Date) -> some View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            HStack(spacing: 6) {
+                Image(systemName: symbol)
+                    .font(.system(size: 11, weight: .semibold))
+                Text(title)
+                    .font(.system(size: 12, weight: .semibold))
+                Spacer(minLength: 8)
+                if let trailing {
+                    Text(trailing)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .foregroundStyle(.secondary)
+            content
+        }
+    }
+}
+
+/// Ce qui s'est passé en grand : une jauge (relais réussis en vert, en échec en orange) et deux phrases.
+private struct RelayHeadline: View {
+    var summary: FallbackSummary
+    var status: FallbackPresentation.Status
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 14) {
+            RelayGauge(successes: summary.successes, failures: summary.failures, status: status)
+                .frame(width: 44, height: 44)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(status.title)
+                    .font(.system(size: 14, weight: .semibold))
+                Text(status.message)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(RoundedRectangle(cornerRadius: 11, style: .continuous).fill(status.tint.opacity(0.08)))
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private struct RelayGauge: View {
+    var successes: Int
+    var failures: Int
+    var status: FallbackPresentation.Status
+
+    var body: some View {
+        let total = successes + failures
+        ZStack {
+            if total == 0 {
+                Circle().fill(status.tint.opacity(0.16))
+                Image(systemName: status.level == .clear ? "checkmark" : "exclamationmark")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(status.tint)
+            } else {
+                let done = CGFloat(successes) / CGFloat(total)
+                Circle().stroke(Theme.subtleFill, lineWidth: 5)
+                if failures > 0 {
+                    Circle()
+                        .trim(from: done, to: 1)
+                        .stroke(Color.orange, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                }
+                if successes > 0 {
+                    Circle()
+                        .trim(from: 0, to: done)
+                        .stroke(Color.green, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                }
+                Text(UsageText.count(successes))
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .minimumScaleFactor(0.6)
+                    .padding(6)
+            }
+        }
+        .accessibilityHidden(true)
+    }
+}
+
+/// Étape relayée et son icône : Voix, Correction, Dictionnaire.
+struct StageLabel: View {
+    var stage: FallbackStage
+
+    var body: some View {
+        Label(FallbackPresentation.stageName(stage), systemImage: FallbackPresentation.stageSymbol(stage))
+            .font(.system(size: 12.5, weight: .medium))
+            .lineLimit(1)
+    }
+}
+
+/// « xAI → OpenAI » en pastilles : le service qui a lâché, estompé, puis celui qui a pris le relais.
+struct RouteBadges: View {
+    var from: String
+    var to: String
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ProviderBadge(provider: from)
+                .opacity(0.75)
+            Image(systemName: "arrow.right")
+                .font(.system(size: 9.5, weight: .bold))
+                .foregroundStyle(.tertiary)
+            ProviderBadge(provider: to)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(FallbackPresentation.route(from: from, to: to))
+    }
+}
+
+private struct RelayRouteRow: View {
+    var route: FallbackRouteSummary
+
+    var body: some View {
+        HStack(spacing: 10) {
+            StageLabel(stage: route.stage)
+                .frame(width: 118, alignment: .leading)
+            RouteBadges(from: route.fromProvider, to: route.toProvider)
+            Spacer(minLength: 8)
+            Text(FallbackPresentation.outcome(route))
+                .font(.system(size: 12))
+                .foregroundStyle(route.failures > 0 ? Color.orange : Color.secondary)
+                .monospacedDigit()
+                .lineLimit(1)
+        }
+        .help(FallbackPresentation.meaning(route.stage))
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private struct RelayEntryRow: View {
+    var entry: FallbackEntry
+    var now: Date
+
+    var body: some View {
         HStack(spacing: 10) {
             Group {
                 if UsagePresentation.showsDate(entry.date, now: now) {
@@ -246,69 +498,89 @@ struct FallbackStatsCard: View {
             .foregroundStyle(.secondary)
             .monospacedDigit()
             .frame(width: 96, alignment: .leading)
-            Text(entry.stage.label)
-                .frame(width: 92, alignment: .leading)
-            Text(FallbackPresentation.route(from: entry.fromProvider, to: entry.toProvider))
-                .lineLimit(1)
+            StageLabel(stage: entry.stage)
+                .frame(width: 118, alignment: .leading)
+            RouteBadges(from: entry.fromProvider, to: entry.toProvider)
             Spacer(minLength: 8)
             Text(entry.cause.map(FailurePresentation.label) ?? FallbackPresentation.reason(entry.reason))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
-            Text(entry.succeeded ? String(localized: "secours réussi") : String(localized: "secours en échec"))
+            Image(systemName: entry.succeeded ? "checkmark.circle.fill" : "xmark.circle.fill")
                 .foregroundStyle(entry.succeeded ? Color.green : Color.orange)
-                .frame(minWidth: 100, alignment: .trailing)
+                .help(entry.succeeded ? String(localized: "Relais réussi") : String(localized: "Relais en échec"))
         }
         .font(.system(size: 12))
         .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
     }
 }
 
-/// D'où venaient les échecs : trois côtés (connexion du Mac, fournisseurs, clés), puis chaque fournisseur avec ses
-/// causes. Tout fournisseur enregistré apparaît, quel qu'il soit.
-struct FailureOriginsView: View {
+/// Pourquoi le service principal a lâché : une barre par côté (ta connexion, le fournisseur, une clé refusée,
+/// incertain) avec sa légende, la cause la plus fréquente en une phrase, les services mis de côté, puis le détail par
+/// service à la demande. Tout fournisseur enregistré apparaît, quel qu'il soit.
+private struct RelayCausesView: View {
     var breakdown: FailureBreakdown
+    @State private var expanded = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("D'où venaient les échecs")
-                .font(.system(size: 12, weight: .semibold))
-            HStack(spacing: 8) {
-                ForEach(FailurePresentation.shownSides(breakdown), id: \.self) { side in
-                    sideTile(side, count: breakdown.count(side))
+        let total = breakdown.failures
+        VStack(alignment: .leading, spacing: 10) {
+            if total > 0 {
+                SplitBar(parts: APIFailureCause.Side.allCases.map {
+                    SplitBar.Part(fraction: Double(breakdown.count($0)) / Double(total), color: FailurePresentation.tint($0))
+                })
+                .frame(height: 8)
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(FailurePresentation.shownSides(breakdown), id: \.self) { side in
+                        sideLine(side, count: breakdown.count(side))
+                    }
                 }
             }
-            VStack(alignment: .leading, spacing: 10) {
-                ForEach(breakdown.providers) { provider in
-                    providerLine(provider)
-                }
+            if let top = FailurePresentation.topCause(breakdown) {
+                Text(top)
+                    .font(.system(size: 12.5, weight: .medium))
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            Text("Wispad lit le type d'erreur reçu. Sans internet, c'est ta connexion. Pas de réponse alors qu'un autre service répondait, panne ou limite atteinte : c'est le fournisseur. Une clé refusée se vérifie dans Fournisseurs.")
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+            ForEach(FailurePresentation.pausedLines(breakdown), id: \.self) { line in
+                Text(line)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            DisclosureGroup(isExpanded: $expanded) {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(breakdown.providers) { provider in
+                        providerLine(provider)
+                    }
+                }
+                .padding(.top, 6)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } label: {
+                Text("Détail par service")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 
-    private func sideTile(_ side: APIFailureCause.Side, count: Int) -> some View {
-        let tint = FailurePresentation.tint(side)
-        return VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 5) {
-                Image(systemName: FailurePresentation.symbol(side))
-                    .font(.system(size: 10.5, weight: .semibold))
-                    .foregroundStyle(count > 0 ? tint : Color.secondary)
-                Text(FailurePresentation.title(side))
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-            Text(UsageText.count(count))
-                .font(.system(size: 17, weight: .semibold).monospacedDigit())
+    private func sideLine(_ side: APIFailureCause.Side, count: Int) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Circle()
+                .fill(count > 0 ? FailurePresentation.tint(side) : Color.secondary.opacity(0.35))
+                .frame(width: 8, height: 8)
+            Text(FailurePresentation.title(side))
+                .font(.system(size: 12.5, weight: .semibold))
                 .foregroundStyle(count > 0 ? Color.primary : Color.secondary)
+            Text(UsageText.count(count))
+                .font(.system(size: 12.5, weight: .semibold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(count > 0 ? Color.primary : Color.secondary)
+            Text(FailurePresentation.explanation(side))
+                .font(.system(size: 11.5))
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(count > 0 ? tint.opacity(0.1) : Theme.subtleFill))
+        .accessibilityElement(children: .combine)
     }
 
     private func providerLine(_ provider: FailureBreakdown.Provider) -> some View {
@@ -353,18 +625,19 @@ enum FailurePresentation {
     static func title(_ side: APIFailureCause.Side) -> String {
         switch side {
         case .connection: return String(localized: "Ta connexion")
-        case .provider: return String(localized: "Fournisseurs")
-        case .account: return String(localized: "Clés refusées")
+        case .provider: return String(localized: "Le fournisseur")
+        case .account: return String(localized: "Clé refusée")
         case .undetermined: return String(localized: "Incertain")
         }
     }
 
-    static func symbol(_ side: APIFailureCause.Side) -> String {
+    /// Ce que veut dire chaque côté, en quelques mots.
+    static func explanation(_ side: APIFailureCause.Side) -> String {
         switch side {
-        case .connection: return "wifi.exclamationmark"
-        case .provider: return "server.rack"
-        case .account: return "key.horizontal"
-        case .undetermined: return "questionmark.circle"
+        case .connection: return String(localized: "ce Mac n'avait pas internet")
+        case .provider: return String(localized: "panne, lenteur ou limite chez lui")
+        case .account: return String(localized: "à vérifier dans Fournisseurs")
+        case .undetermined: return String(localized: "pas de réponse, sans autre appel réussi autour : peut-être ta connexion")
         }
     }
 
@@ -377,13 +650,46 @@ enum FailurePresentation {
         }
     }
 
-    /// Ta connexion et les fournisseurs toujours, pour répondre à « nous ou eux » ; clés et incertain s'il y en a.
+    /// Ta connexion et le fournisseur toujours, pour répondre à « nous ou eux » ; clé refusée et incertain s'il y en a.
     static func shownSides(_ breakdown: FailureBreakdown) -> [APIFailureCause.Side] {
         APIFailureCause.Side.allCases.filter { $0 == .connection || $0 == .provider || breakdown.count($0) > 0 }
     }
 
+    /// Des échecs avec une cause connue, ou un service mis de côté : la partie « Pourquoi » a quelque chose à dire.
+    static func hasDetails(_ breakdown: FailureBreakdown) -> Bool {
+        breakdown.failures > 0 || breakdown.providers.contains { $0.paused > 0 }
+    }
+
     static func failures(_ count: Int) -> String {
         count == 1 ? String(localized: "1 échec") : String(localized: "\(count) échecs")
+    }
+
+    /// La cause la plus fréquente, avec son service : « Le plus souvent : DeepSeek, pas de réponse à temps (3 fois). »
+    /// À égalité, le service listé en premier (le plus touché), puis l'ordre des causes. nil sans échec.
+    static func topCause(_ breakdown: FailureBreakdown) -> String? {
+        var best: (provider: String, cause: APIFailureCause, count: Int)?
+        for provider in breakdown.providers {
+            for cause in APIFailureCause.allCases {
+                let count = provider.causes[cause] ?? 0
+                if count > (best?.count ?? 0) { best = (provider.name, cause, count) }
+            }
+        }
+        guard let best else { return nil }
+        let name = FallbackPresentation.providerName(best.provider)
+        if breakdown.failures == 1 {
+            return String(localized: "\(name) : \(label(best.cause)).")
+        }
+        return String(localized: "Le plus souvent : \(name), \(label(best.cause)) (\(FallbackPresentation.times(best.count))).")
+    }
+
+    /// Services mis de côté après des échecs répétés : le relais a répondu directement.
+    static func pausedLines(_ breakdown: FailureBreakdown) -> [String] {
+        breakdown.providers.filter { $0.paused > 0 }.map { provider in
+            let name = FallbackPresentation.providerName(provider.name)
+            return provider.paused == 1
+                ? String(localized: "\(name) a été mis de côté 1 fois après des échecs répétés : le relais a répondu directement.")
+                : String(localized: "\(name) a été mis de côté \(provider.paused) fois après des échecs répétés : le relais a répondu directement.")
+        }
     }
 
     /// « pas de réponse à temps (6) · panne du service (2) », du plus fréquent au plus rare ; puis, s'il y a lieu, les
@@ -433,6 +739,8 @@ struct BalanceLine<Value: View>: View {
     }
 }
 
+// MARK: - Dépense dans le temps
+
 struct SpendChart: View {
     var events: [UsageEvent]
     var period: StatsPeriod
@@ -458,21 +766,24 @@ struct SpendChart: View {
         let points = totals.values.sorted { ($0.date, $0.provider) < ($1.date, $1.provider) }
         let providers = ["xAI", "DeepSeek", "OpenAI", "TypeSafe"].filter { name in points.contains { $0.provider == name } }
         return VStack(alignment: .leading, spacing: 12) {
-            CardTitle(title: unknownCosts > 0 || storageIncomplete ? String(localized: "Dépense connue (minimum)") : String(localized: "Dépense estimée")) {
-                HStack(spacing: 12) {
-                    ForEach(providers, id: \.self) { name in
-                        HStack(spacing: 5) {
-                            Circle().fill(ProviderTint.color(name)).frame(width: 7, height: 7)
-                            Text(name).font(.system(size: 11.5)).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 3) {
+                CardTitle(title: UsagePresentation.chartTitle(axis.unit)) {
+                    HStack(spacing: 12) {
+                        ForEach(providers, id: \.self) { name in
+                            HStack(spacing: 5) {
+                                Circle().fill(ProviderTint.color(name)).frame(width: 8, height: 8)
+                                Text(FallbackPresentation.providerName(name))
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
                 }
-            }
-            if unknownCosts > 0 {
-                Text(unknownCosts == 1 ? String(localized: "1 appel au coût inconnu non inclus dans le graphique.")
-                     : String(localized: "\(unknownCosts) appels au coût inconnu non inclus dans le graphique."))
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                if let note = UsagePresentation.chartNote(unknownCosts: unknownCosts, storageIncomplete: storageIncomplete) {
+                    Text(note)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
             }
             Chart {
                 ForEach(points) { point in
@@ -509,40 +820,70 @@ struct SpendChart: View {
     }
 }
 
-struct UsageRowView: View {
-    var row: UsageRow
+// MARK: - Par service
+
+/// Par service : chaque API utilisée sur la période, ce qu'elle a fait, son coût et sa part de la dépense.
+struct UsageServicesCard: View {
+    var summary: UsageSummary
+    var storageIncomplete = false
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            CardTitle(String(localized: "Par service"))
+                .padding(.horizontal, 16)
+                .padding(.top, 14)
+                .padding(.bottom, 4)
+            ForEach(summary.rows) { row in
+                UsageRowView(row: row, share: summary.totalUSD > 0 ? row.costUSD / summary.totalUSD : nil,
+                             storageIncomplete: storageIncomplete)
+                if row.id != summary.rows.last?.id { Divider().padding(.leading, 56) }
+            }
+        }
+        .padding(.bottom, 6)
+        .card()
+    }
+}
+
+struct UsageRowView: View {
+    var row: UsageRow
+    /// Part de la dépense de la période, de 0 à 1 ; nil quand rien n'a coûté.
+    var share: Double?
+    var storageIncomplete = false
+
+    var body: some View {
+        let tint = ProviderTint.color(row.api.provider)
         HStack(alignment: .center, spacing: 12) {
-            IconBadge(symbol: row.api.isAudio ? "waveform" : "text.badge.checkmark", tint: ProviderTint.color(row.api.provider), size: 28)
-            VStack(alignment: .leading, spacing: 3) {
+            IconBadge(symbol: row.api.isAudio ? "waveform" : "text.badge.checkmark", tint: tint, size: 28)
+            VStack(alignment: .leading, spacing: 4) {
                 Text(row.api.label).font(.system(size: 13, weight: .semibold))
-                Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                Text(UsagePresentation.rowDetail(row)).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                if let share {
+                    SplitBar(parts: [SplitBar.Part(fraction: share, color: tint.opacity(0.75))])
+                        .frame(maxWidth: 220)
+                        .frame(height: 4)
+                }
             }
             Spacer()
-            Text(UsagePresentation.amount(row.costUSD, incomplete: row.hasUnpricedCalls))
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                .monospacedDigit()
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(UsagePresentation.amount(row.costUSD, incomplete: storageIncomplete || row.hasUnpricedCalls))
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                if let share {
+                    Text(UsagePresentation.percent(share))
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .contentShape(Rectangle())
         .help(row.models.compactMap { PriceText.describe(model: $0) }.joined(separator: "\n"))
     }
-
-    private var detail: String {
-        var parts = [row.requests == 1 ? String(localized: "1 appel") : String(localized: "\(row.requests) appels")]
-        if row.api.isAudio {
-            parts.append(UsageText.audio(row.audioSeconds))
-        } else {
-            parts.append(String(localized: "\(UsageText.count(row.tokens.totalInput)) jetons en entrée"))
-            parts.append(String(localized: "\(UsageText.count(row.tokens.output)) en sortie"))
-        }
-        if row.failures > 0 { parts.append(row.failures == 1 ? String(localized: "1 échec") : String(localized: "\(row.failures) échecs")) }
-        parts.append(row.models.joined(separator: ", "))
-        return parts.joined(separator: " · ")
-    }
 }
+
+// MARK: - Textes
 
 /// Les chiffres et la liste partagent la même période ; les coûts absents ne deviennent jamais des zéros certains.
 enum UsagePresentation {
@@ -569,59 +910,272 @@ enum UsagePresentation {
     static func showsDate(_ date: Date, now: Date, calendar: Calendar = .current) -> Bool {
         !calendar.isDate(date, inSameDayAs: now)
     }
+
+    /// « aujourd'hui », « ces 7 derniers jours », « ces 30 derniers jours », « depuis le début ».
+    static func periodPhrase(_ period: StatsPeriod) -> String {
+        switch period {
+        case .today: return String(localized: "aujourd'hui")
+        case .days7: return String(localized: "ces 7 derniers jours")
+        case .days30: return String(localized: "ces 30 derniers jours")
+        case .all: return String(localized: "depuis le début")
+        }
+    }
+
+    /// Titre du montant de l'en-tête.
+    static func spentTitle(_ period: StatsPeriod) -> String {
+        switch period {
+        case .today: return String(localized: "Dépensé aujourd'hui")
+        case .days7: return String(localized: "Dépensé ces 7 derniers jours")
+        case .days30: return String(localized: "Dépensé ces 30 derniers jours")
+        case .all: return String(localized: "Dépensé depuis le début")
+        }
+    }
+
+    /// « 1 appel », « 1 234 appels ».
+    static func calls(_ count: Int) -> String {
+        count == 1 ? String(localized: "1 appel") : String(localized: "\(UsageText.count(count)) appels")
+    }
+
+    /// Sous le montant : le nombre d'appels, ou qu'il n'y en a eu aucun.
+    static func callsCaption(_ count: Int, period: StatsPeriod) -> String {
+        guard count > 0 else { return String(localized: "Aucun appel \(periodPhrase(period)) : rien à payer.") }
+        return String(localized: "\(calls(count)) aux services de dictée")
+    }
+
+    /// Pourquoi un montant est un minimum (« ≥ »), en une phrase ; nil s'il est complet.
+    static func minimumNote(unknownCosts: Int, storageIncomplete: Bool) -> String? {
+        if storageIncomplete {
+            return String(localized: "≥ veut dire « au moins » : une partie de la consommation n'a pas pu être relue.")
+        }
+        guard unknownCosts > 0 else { return nil }
+        return unknownCosts == 1
+            ? String(localized: "≥ veut dire « au moins » : le coût d'un appel est inconnu.")
+            : String(localized: "≥ veut dire « au moins » : le coût de \(UsageText.count(unknownCosts)) appels est inconnu.")
+    }
+
+    /// Part d'un fournisseur dans la dépense de la période.
+    struct ProviderShare: Identifiable, Equatable {
+        /// Nom enregistré (« xAI », « TypeSafe »…).
+        var provider: String
+        /// Nom affiché (Jev pour TypeSafe).
+        var name: String
+        /// Ce qu'il a fait : « voix », « correction », « dictionnaire ».
+        var tasks: String
+        var cost: Double
+        /// « 0,0282 $ », « ≥ 0,00032 $ ».
+        var amount: String
+        /// Part de la dépense connue, de 0 à 1 (0 quand rien n'a coûté).
+        var fraction: Double
+        /// « 77 % », « < 1 % » ; vide quand rien n'a coûté.
+        var percent: String
+        var id: String { provider }
+    }
+
+    /// Un fournisseur par ligne, du plus cher au moins cher ; à coût égal, dans l'ordre des API.
+    static func providerShares(_ summary: UsageSummary, storageIncomplete: Bool = false) -> [ProviderShare] {
+        var order: [String] = []
+        for row in summary.rows where !order.contains(row.api.provider) { order.append(row.api.provider) }
+        let shares = order.map { provider -> ProviderShare in
+            let rows = summary.rows.filter { $0.api.provider == provider }
+            let cost = rows.reduce(0) { $0 + $1.costUSD }
+            var tasks: [String] = []
+            for api in UsageAPI.allCases where rows.contains(where: { $0.api == api }) {
+                let task = taskName(api)
+                if !tasks.contains(task) { tasks.append(task) }
+            }
+            let fraction = summary.totalUSD > 0 ? cost / summary.totalUSD : 0
+            return ProviderShare(
+                provider: provider,
+                name: FallbackPresentation.providerName(provider),
+                tasks: tasks.joined(separator: ", "),
+                cost: cost,
+                amount: providerAmount(summary, providers: [provider], storageIncomplete: storageIncomplete),
+                fraction: fraction,
+                percent: summary.totalUSD > 0 ? percent(fraction) : ""
+            )
+        }
+        return shares.enumerated()
+            .sorted { $0.element.cost == $1.element.cost ? $0.offset < $1.offset : $0.element.cost > $1.element.cost }
+            .map(\.element)
+    }
+
+    /// Ce que fait une API, en un mot.
+    static func taskName(_ api: UsageAPI) -> String {
+        if api.isAudio { return String(localized: "voix") }
+        return api == .typesafeJudge ? String(localized: "dictionnaire") : String(localized: "correction")
+    }
+
+    /// « 77 % » ; une part non nulle sous 1 % s'écrit « < 1 % ».
+    static func percent(_ fraction: Double) -> String {
+        if fraction > 0, fraction < 0.005 { return "< " + 0.01.formatted(.percent.precision(.fractionLength(0)).locale(appLocale)) }
+        return fraction.formatted(.percent.precision(.fractionLength(0)).locale(appLocale))
+    }
+
+    /// « 46 appels · 8,5 min d'audio · grok-voice-transcribe-2.0 », « 46 appels · 54 274 jetons envoyés, 2 341 reçus ·
+    /// 1 échec · deepseek-flash ».
+    static func rowDetail(_ row: UsageRow) -> String {
+        var parts = [calls(row.requests)]
+        if row.api.isAudio {
+            parts.append(UsageText.audio(row.audioSeconds))
+        } else if row.tokens != TokenUsage() {
+            parts.append(String(localized: "\(UsageText.count(row.tokens.totalInput)) jetons envoyés, \(UsageText.count(row.tokens.output)) reçus"))
+        }
+        if row.failures > 0 { parts.append(FailurePresentation.failures(row.failures)) }
+        parts.append(row.models.joined(separator: ", "))
+        return parts.joined(separator: " · ")
+    }
+
+    /// Titre du graphique, d'après la durée de chaque barre.
+    static func chartTitle(_ unit: Calendar.Component) -> String {
+        switch unit {
+        case .hour: return String(localized: "Dépense par heure")
+        case .weekOfYear: return String(localized: "Dépense par semaine")
+        case .month: return String(localized: "Dépense par mois")
+        default: return String(localized: "Dépense par jour")
+        }
+    }
+
+    /// Ce que le graphique ne montre pas : les appels au coût inconnu, ou une consommation qui n'a pas pu être relue.
+    static func chartNote(unknownCosts: Int, storageIncomplete: Bool) -> String? {
+        if storageIncomplete { return String(localized: "Une partie de la consommation n'a pas pu être relue.") }
+        guard unknownCosts > 0 else { return nil }
+        return unknownCosts == 1
+            ? String(localized: "Sans l'appel au coût inconnu.")
+            : String(localized: "Sans les \(UsageText.count(unknownCosts)) appels au coût inconnu.")
+    }
+
+    /// En une phrase : tout a abouti, ou combien d'appels ont échoué et ce que le relais a rattrapé.
+    struct Health: Equatable {
+        var level: FallbackPresentation.Level
+        var message: String
+
+        var symbol: String { FallbackPresentation.symbol(level) }
+        var tint: Color { FallbackPresentation.tint(level) }
+    }
+
+    /// Une dictée annulée ou trop courte n'est pas un échec.
+    static func health(events: [UsageEvent], fallbacks: FallbackSummary) -> Health {
+        let failed = events.filter { !$0.succeeded && $0.failureCause != .cancelled }.count
+        if failed == 0 {
+            if fallbacks.total > 0 {
+                return Health(level: .normal, message: fallbacks.total == 1
+                    ? String(localized: "Tous les appels ont abouti, dont 1 grâce au relais.")
+                    : String(localized: "Tous les appels ont abouti, dont \(fallbacks.total) grâce au relais."))
+            }
+            return Health(level: .clear, message: events.count == 1
+                ? String(localized: "L'appel a abouti.")
+                : String(localized: "Tous les appels ont abouti."))
+        }
+        let failures = failed == 1
+            ? String(localized: "1 appel n'a pas abouti.")
+            : String(localized: "\(UsageText.count(failed)) appels n'ont pas abouti.")
+        let relays: String
+        let level: FallbackPresentation.Level
+        if fallbacks.total == 0 {
+            relays = String(localized: "Aucun relais n'a pris la suite.")
+            level = .watch
+        } else if fallbacks.failures == 0 {
+            relays = fallbacks.total == 1
+                ? String(localized: "Le relais a pris la suite, avec succès.")
+                : String(localized: "Le relais a pris la suite \(fallbacks.total) fois, toujours avec succès.")
+            level = .normal
+        } else {
+            relays = String(localized: "Le relais a réussi \(fallbacks.successes) fois sur \(fallbacks.total).")
+            level = .watch
+        }
+        return Health(level: level, message: failures + " " + relays)
+    }
 }
 
-/// Textes de la carte des bascules, tirés des seules données enregistrées.
+/// Textes de la carte des relais, tirés des seules données enregistrées.
 enum FallbackPresentation {
     enum Level: Equatable { case clear, normal, watch }
 
     struct Status: Equatable {
         var level: Level
+        var title: String
         var message: String
 
-        var symbol: String {
-            switch level {
-            case .clear: return "checkmark.circle.fill"
-            case .normal: return "arrow.triangle.branch"
-            case .watch: return "exclamationmark.triangle.fill"
-            }
-        }
+        var symbol: String { FallbackPresentation.symbol(level) }
+        var tint: Color { FallbackPresentation.tint(level) }
+    }
 
-        var tint: Color {
-            switch level {
-            case .clear: return .green
-            case .normal: return .secondary
-            case .watch: return .orange
-            }
+    static func symbol(_ level: Level) -> String {
+        switch level {
+        case .clear: return "checkmark.circle.fill"
+        case .normal: return "arrow.triangle.branch"
+        case .watch: return "exclamationmark.triangle.fill"
         }
     }
 
-    /// Le plus important d'abord : un secours en échec, puis un fournisseur mis de côté, sinon tout va bien.
-    /// `failedWithoutRelay` : des appels ont échoué sans qu'aucun secours ne soit tenté (pas de clé de relais).
-    static func status(_ summary: FallbackSummary, failedWithoutRelay: Bool = false) -> Status {
+    static func tint(_ level: Level) -> Color {
+        switch level {
+        case .clear: return .green
+        case .normal: return .blue
+        case .watch: return .orange
+        }
+    }
+
+    /// Le plus important d'abord : un relais en échec, puis un service mis de côté ; sans relais, des échecs restés
+    /// sans secours, sinon tout va bien. `failures` : les échecs de la période, pour le cas sans relais.
+    static func status(_ summary: FallbackSummary, failures: FailureBreakdown? = nil) -> Status {
         if summary.total == 0 {
-            if failedWithoutRelay {
-                return Status(level: .watch, message: String(localized: "Aucune bascule, mais des appels ont échoué sans fournisseur de secours pour prendre le relais. Le détail est ci-dessous."))
+            let failed = failures?.failures ?? 0
+            guard failed > 0 else {
+                return Status(level: .clear, title: String(localized: "Aucun relais nécessaire"),
+                              message: String(localized: "Tes services principaux ont toujours répondu."))
             }
-            return Status(level: .clear, message: String(localized: "Aucune bascule : tes fournisseurs principaux ont toujours répondu."))
+            let offline = failures?.count(.connection) == failed
+            return Status(
+                level: .watch,
+                title: failed == 1 ? String(localized: "1 appel en échec, sans relais")
+                    : String(localized: "\(UsageText.count(failed)) appels en échec, sans relais"),
+                message: offline
+                    ? String(localized: "Ce Mac n'avait pas internet : aucun autre service ne pouvait prendre la suite.")
+                    : String(localized: "Aucun autre service n'a pris la suite. Un relais se choisit dans Fournisseurs ; les causes sont ci-dessous.")
+            )
         }
+        let saved = summary.successes
         if summary.failures > 0 {
-            return Status(level: .watch, message: summary.failures == 1
-                ? String(localized: "Le fournisseur de secours a lui aussi échoué 1 fois. Vérifie ta connexion et tes clés dans Fournisseurs.")
-                : String(localized: "Le fournisseur de secours a lui aussi échoué \(summary.failures) fois. Vérifie ta connexion et tes clés dans Fournisseurs."))
+            return Status(
+                level: .watch,
+                title: saved == 0 ? String(localized: "Aucune demande sauvée sur \(summary.total)")
+                    : saved == 1 ? String(localized: "1 demande sauvée sur \(summary.total)")
+                    : String(localized: "\(UsageText.count(saved)) demandes sauvées sur \(UsageText.count(summary.total))"),
+                message: summary.failures == 1
+                    ? String(localized: "1 fois, le relais a échoué lui aussi : vérifie ta connexion et tes clés dans Fournisseurs.")
+                    : String(localized: "\(summary.failures) fois, le relais a échoué lui aussi : vérifie ta connexion et tes clés dans Fournisseurs.")
+            )
         }
+        let title = saved == 1 ? String(localized: "1 demande sauvée par le relais")
+            : String(localized: "\(UsageText.count(saved)) demandes sauvées par le relais")
         if summary.servicePausedCount > 0 {
-            return Status(level: .watch, message: String(localized: "Le secours a toujours pris le relais, mais un fournisseur principal a échoué plusieurs fois de suite et a été mis de côté un moment. Si cela revient souvent, vérifie sa clé ou son état."))
+            return Status(level: .watch, title: title,
+                          message: String(localized: "Un service a échoué plusieurs fois de suite : Wispad l'a mis de côté un moment. Si ça revient souvent, vérifie sa clé ou son état."))
         }
-        return Status(level: .normal, message: String(localized: "Le secours a pris le relais à chaque fois. Une bascule de temps en temps est normale ; des bascules fréquentes sur une même étape signalent un fournisseur en difficulté."))
-    }
-
-    static func count(_ total: Int) -> String {
-        total == 1 ? String(localized: "1 bascule") : String(localized: "\(total) bascules")
+        return Status(level: .normal, title: title,
+                      message: String(localized: "Un relais de temps en temps, c'est normal. S'il revient souvent pour le même service, ce service a du mal."))
     }
 
     static func times(_ count: Int) -> String {
         count == 1 ? String(localized: "1 fois") : String(localized: "\(count) fois")
+    }
+
+    /// Étape relayée, en un mot.
+    static func stageName(_ stage: FallbackStage) -> String {
+        switch stage {
+        case .transcription: return String(localized: "Voix")
+        case .correction: return String(localized: "Correction")
+        case .dictionary: return String(localized: "Dictionnaire")
+        }
+    }
+
+    static func stageSymbol(_ stage: FallbackStage) -> String {
+        switch stage {
+        case .transcription: return "waveform"
+        case .correction: return "text.badge.checkmark"
+        case .dictionary: return "character.book.closed"
+        }
     }
 
     static func meaning(_ stage: FallbackStage) -> String {
@@ -632,11 +1186,19 @@ enum FallbackPresentation {
         }
     }
 
-    /// « xAI → OpenAI », ou chaque sens avec son nombre quand l'étape en a plusieurs.
-    static func routes(_ summary: FallbackSummary, stage: FallbackStage) -> String {
-        let routes = summary.routes.filter { $0.stage == stage }
-        if routes.count == 1, let only = routes.first { return route(from: only.fromProvider, to: only.toProvider) }
-        return routes.map { "\(route(from: $0.fromProvider, to: $0.toProvider)) (\($0.total))" }.joined(separator: ", ")
+    /// « 3 fois · tous réussis », « 5 fois · 1 en échec ».
+    static func outcome(_ route: FallbackRouteSummary) -> String {
+        if route.failures == 0 {
+            return route.total == 1 ? String(localized: "1 fois · réussi")
+                : String(localized: "\(UsageText.count(route.total)) fois · tous réussis")
+        }
+        return String(localized: "\(times(route.total)) · \(UsageText.count(route.failures)) en échec")
+    }
+
+    /// Au-dessus des dernières : « les 5 plus récents sur 10 » quand tous ne sont pas montrés.
+    static func recentCaption(shown: Int, total: Int) -> String? {
+        guard total > shown else { return nil }
+        return String(localized: "les \(shown) plus récents sur \(UsageText.count(total))")
     }
 
     static func route(from: String, to: String) -> String {
@@ -644,7 +1206,11 @@ enum FallbackPresentation {
     }
 
     static func providerName(_ provider: String) -> String {
-        provider == "TypeSafe" ? "Jev" : provider
+        switch provider {
+        case "TypeSafe": return "Jev"
+        case "Local": return String(localized: "Modèle local")
+        default: return provider
+        }
     }
 
     /// Seules deux raisons sont enregistrées : l'appel principal n'a pas abouti (erreur, délai ou coupure,
@@ -660,6 +1226,18 @@ enum FallbackPresentation {
     static func trackingNoteDate(trackingStartedAt: Date, period: StatsPeriod, now: Date, calendar: Calendar = .current) -> Date? {
         guard let start = period.startDate(now: now, calendar: calendar) else { return trackingStartedAt }
         return start < trackingStartedAt ? trackingStartedAt : nil
+    }
+
+    /// Débuts du suivi rappelés en petit : un seul texte quand relais et causes ont commencé le même jour.
+    static func trackingNotes(relays: Date?, causes: Date?, calendar: Calendar = .current) -> [String] {
+        func day(_ date: Date) -> String { date.formatted(.dateTime.day().month(.abbreviated).year().locale(appLocale)) }
+        if let relays, let causes, calendar.isDate(relays, inSameDayAs: causes) {
+            return [String(localized: "Relais et causes des échecs notés depuis le \(day(relays)).")]
+        }
+        var notes: [String] = []
+        if let relays { notes.append(String(localized: "Relais notés depuis le \(day(relays)).")) }
+        if let causes { notes.append(String(localized: "Causes des échecs notées depuis le \(day(causes)).")) }
+        return notes
     }
 }
 

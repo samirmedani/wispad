@@ -71,9 +71,9 @@ struct SettingsView: View {
             case .privacy: privacy
             case .permissions: permissions
             case .help:
+                HelpSection()
                 UpdatesSection()
                 DiagnosticsSection()
-                HelpSection()
             }
         }
         // Autorisations relues hors du fil principal, qui anime l'écran qui s'ouvre ; un clic sur une rangée les relit,
@@ -785,25 +785,6 @@ struct PreviousVersionRow: View {
         if unavailable { return String(localized: "Versions précédentes indisponibles pour l'instant : vérifie ta connexion.") }
         if model.previousReleases?.isEmpty == true { return String(localized: "Aucune version précédente à proposer.") }
         return String(localized: "Si une mise à jour pose problème : la version choisie remplace celle-ci, vérifiée comme une mise à jour.")
-    }
-}
-
-/// Aide et retours : trois liens vers GitHub, ouverts dans le navigateur, sous une seule ligne d'explication.
-struct HelpSection: View {
-    var body: some View {
-        Section {
-            ForEach(HelpPage.allCases, id: \.self) { page in
-                Button {
-                    page.open()
-                } label: {
-                    Label(page.title, systemImage: page.symbol)
-                }
-                .buttonStyle(.link)
-                .hoverFeedback()
-            }
-        } header: {
-            SectionTitle(title: SettingsPresentation.helpTitle, summary: SettingsPresentation.helpSummary)
-        }
     }
 }
 

@@ -193,4 +193,77 @@ enum AppDiagnostics {
             try encodedData(report).write(to: url, options: .atomic)
         }
     }
+
+    // MARK: Copier le diagnostic (Réglages › Aide)
+
+    /// Taille maximale du rapport copié, en octets : un ticket GitHub accepte 65 536 caractères, il reste de la place
+    /// pour la description, les étapes et les journaux.
+    static let clipboardLimit = 40_000
+
+    /// Même rapport que l'export, lu sur la même file : la base n'est jamais lue sur le fil principal.
+    static func report(snapshot: DiagnosticSnapshot, store: HistoryStore) async -> DiagnosticReport {
+        await exports.run {
+            let traces = try? store.recentTraces(limit: traceLimit)
+            return report(snapshot: snapshot, traces: traces ?? [], traceReadSucceeded: traces != nil)
+        }
+    }
+
+    /// Le rapport tient en `limit` octets : les tentatives les plus anciennes sont retirées d'abord (elles arrivent
+    /// de la plus récente à la plus ancienne). Rend aussi le nombre de tentatives retirées.
+    static func fitted(_ report: DiagnosticReport, limit: Int = clipboardLimit) -> (json: String, omitted: Int) {
+        func json(keeping count: Int) -> String {
+            var kept = report
+            kept.attempts = Array(report.attempts.prefix(count))
+            return (try? encodedData(kept)).map { String(decoding: $0, as: UTF8.self) } ?? "{}"
+        }
+        let full = json(keeping: report.attempts.count)
+        guard full.utf8.count > limit else { return (full, 0) }
+        // Plus grand nombre de tentatives qui tient : recherche par dichotomie, quelques encodages au plus.
+        var low = 0, high = report.attempts.count - 1
+        while low < high {
+            let middle = (low + high + 1) / 2
+            if json(keeping: middle).utf8.count <= limit { low = middle } else { high = middle - 1 }
+        }
+        return (json(keeping: low), report.attempts.count - low)
+    }
+
+    /// Prêt à coller dans un ticket GitHub ou dans un agent : les versions en titre, puis le rapport JSON dans un bloc
+    /// repliable. Rien d'autre que le rapport de l'export, éventuellement allégé de ses tentatives les plus anciennes.
+    static func clipboardText(_ report: DiagnosticReport, limit: Int = clipboardLimit) -> String {
+        let (json, omitted) = fitted(report, limit: limit)
+        let snapshot = report.snapshot
+        let title = String(localized: "Diagnostic Wispad \(snapshot.appVersion) (\(snapshot.appBuild)) · macOS \(snapshot.macOSVersion)")
+        var note = String(localized: "Aucun texte dicté, audio, contexte d'app ni clé : autorisations, raccourci, bulle et dernières tentatives de dictée.")
+        if omitted > 0 {
+            note += " " + (omitted == 1
+                ? String(localized: "La tentative la plus ancienne est retirée pour tenir dans un ticket.")
+                : String(localized: "Les \(omitted) tentatives les plus anciennes sont retirées pour tenir dans un ticket."))
+        }
+        let fence = "```"
+        return """
+        <details>
+        <summary>\(title)</summary>
+
+        \(note)
+
+        \(fence)json
+        \(json)
+        \(fence)
+
+        </details>
+        """
+    }
+
+    /// « Apple Silicon » ou « Intel », comme le formulaire de bug. Une app Intel traduite par Rosetta tourne sur Apple
+    /// Silicon.
+    static var macKind: String {
+        #if arch(arm64)
+        return "Apple Silicon"
+        #else
+        var translated: Int32 = 0
+        var size = MemoryLayout<Int32>.size
+        if sysctlbyname("sysctl.proc_translated", &translated, &size, nil, 0) == 0, translated == 1 { return "Apple Silicon" }
+        return "Intel"
+        #endif
+    }
 }

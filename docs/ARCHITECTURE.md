@@ -41,7 +41,8 @@ testée (`ReleaseScriptTests`), couverte par la signature de l'app, et indépend
 - **Publier** : `scripts/release.sh` (en-tête : variables d'environnement, étapes). Rien de propre au mainteneur
   (équipe, certificat, clé de notarisation) n'est dans le dépôt.
 
-« Aide et retours » : `HelpPage` (`HelpPages.swift`) donne les trois liens de Réglages (`HelpSection`), dont les
+« Aide et retours » : `HelpPage` (`HelpPages.swift`) donne les trois liens de Réglages (`HelpSection`, dans
+`HelpViews.swift` avec « Copier le diagnostic », `AppDiagnostics.clipboardText`, et le prompt `AgentHelpPrompt`), dont les
 deux premiers servent aussi au menu de la barre (`StatusMenu`) et au menu Aide (`MainMenu.helpMenu`, actions du
 délégué de l'app) ; chaque page s'ouvre avec `NSWorkspace.shared.open`. L'adresse du ticket de bug prérempli est
 la fonction pure `FeedbackLinks.bugReportURL` (WispadCore, testée) : version et commit de `BuildStatus`, version de
@@ -145,7 +146,8 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
    détail et le diagnostic.
    L'écran Consommation compte tous les appels enregistrés, filtrés par la seule période
    (`UsagePresentation.events`) ; les bascules vers un fournisseur de secours sont lues dans ces appels
-   (`FallbackSummary`, textes de la carte dans `FallbackPresentation`).
+   (`FallbackSummary`, textes de la carte dans `FallbackPresentation`). Copie et export des appels, sans rien de
+   dicté : `UsageExport` (texte lisible, CSV).
    Une clé devenue inutile dans `app_metadata` est supprimée à l'ouverture de `HistoryStore`, jamais les appels.
 
 ## Origine des mots du dictionnaire

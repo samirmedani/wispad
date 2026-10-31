@@ -269,8 +269,8 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 
 Sept onglets en haut de la page, un thème par page : plus besoin de tout faire défiler. **Général** (Raccourci,
 Général, Apparence), **Dictée** (Audio, Transcription, Correction, Apprentissage), **Mise en forme** (Mise en forme,
-Ton selon l'app), **Bulle** (Bulle et messages), **Confidentialité**, **Autorisations**, **Aide** (Mises à jour,
-Diagnostic, Aide et retours). Chaque onglet s'ouvre en haut de sa page ; le dernier ouvert est retrouvé au lancement suivant. Un micro
+Ton selon l'app), **Bulle** (Bulle et messages), **Confidentialité**, **Autorisations**, **Aide** (Aide et retours,
+Mises à jour, Diagnostic). Chaque onglet s'ouvre en haut de sa page ; le dernier ouvert est retrouvé au lancement suivant. Un micro
 refusé au moment de dicter ouvre Autorisations, et un point orange y signale une autorisation manquante. Fenêtre
 étroite : les icônes seules, leur nom en bulle d'aide. Aucun bloc de texte sous une liste : chaque réglage porte, dans
 sa rangée, une explication d'une ligne sous son libellé, en langage simple (ni montant, ni chiffre, ni nom de
@@ -1086,27 +1086,40 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
 - Soldes réels DeepSeek et xAI (clé de gestion facultative), relus au plus toutes les 5 minutes.
 - Une seule vue : tous les appels enregistrés comptent, filtrés seulement par la période (Aujourd'hui, 7 jours,
   30 jours, Tout). Les cartes, la liste des derniers appels et le menu de la barre partagent ces mêmes appels.
-- Carte « Bascules vers un fournisseur de secours », sur la période choisie : une phrase dit ce qu'est une bascule
-  (fournisseur principal en échec, trop lent ou mis de côté, la même demande part chez un autre fournisseur), puis un
-  état : aucune bascule (« tes fournisseurs principaux ont toujours répondu »), secours toujours réussi (normal),
-  ou à surveiller quand le secours a lui aussi échoué ou qu'un fournisseur principal a été mis de côté. Ensuite, par
-  étape (transcription, correction, dictionnaire) : nombre de fois, sens (« xAI → OpenAI ») et ce que cela veut dire ;
-  enfin les cinq dernières bascules (date, étape, fournisseurs, raison, secours réussi ou non). Seules deux raisons
-  sont enregistrées : « échec ou délai dépassé » et « principal mis de côté ». Chaque passage au secours compte, même
-  en échec. Quand la période commence avant le début de l'enregistrement des bascules, sa date est rappelée en petit.
-- « D'où venaient les échecs », dans la même carte, dès qu'un appel a échoué sur la période (avec ou sans bascule) :
-  chaque appel raté garde la cause lue dans l'erreur reçue, jamais son texte. Causes : pas d'internet sur ce Mac
-  (aucune connexion, connexion perdue, nom du service introuvable), pas de réponse à temps (délai du système ou de
-  Wispad), panne du service (erreur 5xx, connexion refusée), limite ou crédit atteint (429), clé refusée (401, 402,
+- En tête, la dépense de la période en grand (« Dépensé aujourd'hui », « Dépensé ces 7 derniers jours »…), le
+  nombre d'appels et, si un coût manque, ce que veut dire « ≥ » (« au moins » : le coût de N appels est inconnu, ou
+  la consommation n'a pas pu être relue). À côté, la part de chaque fournisseur : une barre en couleurs, puis pour
+  chacun ce qu'il a fait (voix, correction, dictionnaire), son montant et sa part (« < 1 % » sous 1 %), du plus cher
+  au moins cher ; Jev pour TypeSafe, « Modèle local » pour un serveur sur ce Mac. Dessous, une phrase sur la période :
+  « Tous les appels ont abouti », ou combien n'ont pas abouti et ce que le relais a fait (« Le relais a réussi 9 fois
+  sur 10 », « Aucun relais n'a pris la suite »). Une dictée annulée ou trop courte n'est pas un échec. Sans appel sur
+  la période : « Aucun appel aujourd'hui : rien à payer », sans les cartes qui en dépendent.
+- Carte « Relais de secours », dès qu'il y a des appels sur la période : une phrase dit ce qu'est un relais (un
+  service ne répond pas, Wispad envoie la même demande à un autre), puis ce qui s'est passé, avec une jauge (relais
+  réussis en vert, en échec en orange) : « Aucun relais nécessaire » ; « 9 demandes sauvées par le relais », normal de
+  temps en temps ; à surveiller quand le relais a lui aussi échoué (« 9 demandes sauvées sur 10 ») ou qu'un service a
+  été mis de côté ; sans relais, « 2 appels en échec, sans relais » (« Ce Mac n'avait pas internet » quand tous ces
+  échecs viennent de la connexion). Chaque passage au relais compte, même en échec. Ensuite :
+  - « Qui a pris le relais » : par étape (Voix, Correction, Dictionnaire) et par sens, les pastilles « xAI → OpenAI »
+    et l'issue (« 3 fois · tous réussis », « 5 fois · 1 en échec ») ; au survol, ce que cela veut dire.
+  - « Pourquoi », dès qu'un appel a échoué avec une cause connue ou qu'un service a été mis de côté : une barre et sa
+    légende par côté (Ta connexion et Le fournisseur toujours, Clé refusée et Incertain s'il y en a), la cause la plus
+    fréquente avec son service (« Le plus souvent : DeepSeek, pas de réponse à temps (3 fois). »), les services mis de
+    côté, puis « Détail par service », replié : chaque fournisseur qui a échoué, quel qu'il soit, avec ses causes du
+    plus fréquent au plus rare.
+  - « Quand » : les cinq derniers relais (heure, et le jour s'il n'est pas d'aujourd'hui, étape, fournisseurs, cause de
+    l'échec du service principal quand elle est connue, sinon « échec ou délai dépassé » ou « principal mis de côté »,
+    relais réussi ou non) ; « les 5 plus récents sur 12 » quand il y en a davantage.
+  Quand la période commence avant le début de l'enregistrement des relais ou des causes, sa date est rappelée en petit
+  (une seule phrase si les deux ont commencé le même jour).
+- Causes d'un échec : chaque appel raté garde la cause lue dans l'erreur reçue, jamais son texte. Pas d'internet sur
+  ce Mac (aucune connexion, connexion perdue, nom du service introuvable), pas de réponse à temps (délai du système ou
+  de Wispad), panne du service (erreur 5xx, connexion refusée), limite ou crédit atteint (429), clé refusée (401, 402,
   403), demande refusée (autre 4xx, erreur annoncée dans le flux), réponse inutilisable (vide, tronquée, illisible).
-  Trois cases : Ta connexion (pas d'internet), Fournisseurs (le reste), Clés refusées, plus Incertain pour un délai
-  dépassé sans aucun autre appel réussi dans la minute autour (la connexion a pu être en cause ; sinon le délai compte
-  pour le fournisseur). Puis chaque fournisseur qui a échoué, quel qu'il soit, avec ses causes du plus fréquent au
-  plus rare et le nombre de fois où il a été mis de côté. Une dictée annulée ou trop courte, ou une correction
-  abandonnée parce que la dictée est annulée, n'est pas un échec. Les appels d'avant ce suivi n'ont pas de cause : ils
-  restent hors de ce détail, et la date de début est rappelée en petit. Les dernières bascules montrent la cause de
-  l'échec du service principal quand elle est connue. Sans bascule mais avec des échecs (aucune clé de secours),
-  l'état le dit au lieu de « tes fournisseurs principaux ont toujours répondu ».
+  Côtés : Ta connexion (pas d'internet), Le fournisseur (le reste), Clé refusée, et Incertain pour un délai dépassé
+  sans aucun autre appel réussi dans la minute autour (la connexion a pu être en cause ; sinon le délai compte pour le
+  fournisseur). Une dictée annulée ou trop courte, ou une correction abandonnée parce que la dictée est annulée, n'est
+  pas un échec. Les appels d'avant ce suivi n'ont pas de cause : ils restent hors de ce détail.
 - Période « Tout », sur l'Accueil comme dans Consommation : sous le sélecteur, depuis quand et combien de temps
   (« Depuis le 1 oct. 2026 · 16 jours »), du premier jour d'utilisation à aujourd'hui, les deux compris (le jour
   même compte pour 1 jour). Moins d'un mois : en jours ; au-delà, en mois et jours (« 1 mois et 4 jours »), puis
@@ -1129,13 +1142,29 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
   (jusqu'au 30 septembre 2027), Suisse 8,1 %, Singapour 9 %, Japon 10 %, Nouvelle-Zélande 15 %, Mexique 16 %,
   France 20 %, Roumanie 21 %, Slovaquie 23 %, Estonie 24 %, Finlande 25,5 %. À moins de 0,3 point d'un repère, le
   curseur s'y place exactement ; ailleurs, au dixième. Le taux est enregistré au relâchement du curseur.
+- Graphique de la dépense, titré d'après la durée de chaque barre (« Dépense par heure » pour Aujourd'hui, par jour,
+  par semaine ou par mois pour Tout), une couleur par fournisseur avec sa légende (Jev pour TypeSafe). Les appels au
+  coût inconnu n'y sont pas, et une phrase le dit (« Sans les 9 appels au coût inconnu. »).
+- « Par service » : une ligne par API (« DeepSeek · correction ») avec ses appels, l'audio ou les jetons envoyés et
+  reçus, ses échecs, ses modèles, son montant et sa part de la dépense (barre et pourcentage) ; au survol, le tarif
+  du modèle.
 - Tableau « Derniers appels » : en-têtes (heure, service, détail, durée, coût), lignes alternées ; par appel, son
   état (pastille verte ou rouge), l'heure (et le jour s'il n'est pas d'aujourd'hui), le fournisseur en couleur
   (Jev pour TypeSafe), la tâche (transcription en direct, du fichier, correction, dictionnaire) et le modèle, l'audio
   ou les jetons (« 370 + 4 480 en cache → 30 jetons »), la durée (en secondes au-delà d'une seconde) et le coût
   (« inconnu » sinon). En couleur sous le détail : « Secours après DeepSeek · échec ou délai dépassé », « Secours en
   échec après … » ou « Échec ». Au survol : tarif du modèle et compteurs détaillés. 15 appels, puis « Afficher
-  plus » (30 de plus par clic) ; « 15 sur 1 234 » en haut à droite ; changer de période revient à 15.
+  plus » (30 de plus par clic) ; « 15 sur 1 234 » en haut à droite ; changer de période revient à 15. Fenêtre
+  étroite : la colonne du service se resserre pour garder le détail lisible.
+- Copier et exporter les appels, sans rien de dicté. Un appel, au survol (bouton de copie) ou par clic droit, en une
+  ligne lisible : date, fournisseur, tâche, modèle, quantités, durée, coût, relais ou échec et sa cause. « Copier »
+  donne tous les appels de la période, en texte lisible (une ligne de titre : période, nombre d'appels, total) ou en
+  CSV pour un tableur ; « Exporter… » enregistre ce CSV dans un fichier (« Wispad-appels-7-jours-2026-10-31.csv »).
+  CSV : virgules, lignes en CRLF, une ligne d'en-tête ; colonnes Date (« 2026-10-31 13:40:01 », heure de ce Mac),
+  Fournisseur, Tâche, Modèle, Statut, Cause de l'échec, Relais après, Raison du relais, Durée (ms), Audio (s), Jetons
+  en entrée, en cache et en sortie, Coût (USD) ; nombres avec un point décimal ; un coût ou un compteur inconnu reste
+  vide. Un nom de modèle qui n'en a pas la forme (texte inattendu d'une réponse) ne sort pas. Un message en bas de la
+  fenêtre confirme chaque copie et chaque export.
 - Rien de l'historique n'est effacé ; l'ancienne date de début du suivi financier est retirée au lancement.
 
 ## Clés API
@@ -1389,8 +1418,8 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
 
 ## Aide et retours
 
-Réglages › Aide › Aide et retours : une ligne d'explication (« Sur GitHub : seules les versions de
-Wispad et de macOS sont préremplies. ») et trois liens. « Signaler un problème » et « Proposer une idée » sont
+Réglages › Aide › Aide et retours, en tête de l'onglet : une ligne d'explication (« Sur GitHub : seules les versions
+de Wispad et de macOS sont préremplies. ») et quatre rangées. « Signaler un problème » et « Proposer une idée » sont
 aussi dans le menu de la barre des menus, juste avant Quitter, et dans le menu Aide. Chaque lien ouvre sa page dans
 le navigateur ; depuis un menu, la fenêtre de Wispad ne s'ouvre pas.
 
@@ -1398,11 +1427,26 @@ le navigateur ; depuis un menu, la fenêtre de Wispad ne s'ouvre pas.
   Champ `version` : la version et le commit de la barre latérale, sans le nom de l'app (« 0.1.0 · abc1234 ») ; le
   commit seul si la version manque, la version seule sans commit gravé, rien si les deux manquent. Champ `macos` :
   « macOS 15.3.1 », toujours trois nombres. Valeurs encodées pour l'adresse (espace, « · », « + », « & », « # »…).
+  À côté, **Copier le diagnostic** met le rapport du diagnostic dans le presse-papiers, prêt à coller dans le ticket.
+- **Enquêter avec ton agent IA** : **Copier le prompt** met dans le presse-papiers des consignes pour Codex, Claude
+  Code ou un autre agent, suivies du diagnostic. L'agent rassemble les faits sur ce Mac (journaux de Wispad avec
+  `/usr/bin/log show --predicate 'subsystem == "com.yatofix.wispad"'`, `latence.log`, diagnostic, autorisations),
+  cherche la cause, vérifie qu'aucun ticket n'existe déjà, puis prépare un ticket sur le modèle du formulaire de bug
+  (titre, ce qui se passe, étapes, ce qui était attendu, versions de Wispad et de macOS, fournisseur, type de Mac,
+  extraits utiles) en l'anonymisant : ni texte dicté, nom, e-mail, chemin personnel, nom de la machine, clé, ni
+  contenu des apps. Il ne lit ni la base, ni l'audio, ni les clés, ne change rien sans accord et ne publie le ticket
+  (avec `gh` ou par le formulaire prérempli) qu'avec l'accord de l'utilisateur. Prompt en français, ou en anglais si
+  Wispad est en anglais. N'y entrent que les versions de Wispad et de macOS, le type de Mac (Apple Silicon ou Intel)
+  et le fournisseur de voix, avec le diagnostic.
 - **Proposer une idée** : Discussions du dépôt, catégorie Ideas. **Poser une question** : catégorie Q&A.
 - Rien d'autre dans l'adresse : ni dictée, ni réglage, ni donnée personnelle. Wispad n'envoie rien lui-même : un
-  ticket n'existe que si on le publie sur GitHub.
+  ticket n'existe que si on le publie sur GitHub. Les copies restent dans le presse-papiers ; un message en bas de la
+  fenêtre les confirme.
 
 ## Diagnostic
 
 Réglages › Aide › Diagnostic exporte un JSON local : autorisations, raccourci, bulle, durées et API des 50 dernières
-tentatives. Aucun texte dicté, audio, contexte, chemin ni clé. Rien n'est envoyé automatiquement.
+tentatives. Aucun texte dicté, audio, contexte, chemin ni clé. Rien n'est envoyé automatiquement. « Copier le
+diagnostic » (Aide et retours) met le même rapport dans le presse-papiers, dans un bloc repliable `<details>` titré
+par les versions de Wispad et de macOS ; au-delà de 40 000 octets (un ticket GitHub accepte 65 536 caractères), les
+tentatives les plus anciennes sont retirées, et une phrase le dit.
