@@ -317,7 +317,8 @@ extension DictationCoordinator {
         context: DictationContext,
         field: Task<FieldSnapshot?, Never>,
         window: Task<String?, Never>?,
-        model: AppModel
+        model: AppModel,
+        local: String? = nil
     ) async -> CorrectionRequest {
         if !context.fieldRead { context.apply(await field.value) }
         var windowText: String?
@@ -338,6 +339,15 @@ extension DictationCoordinator {
         request.tone = model.tone(bundleID: context.bundleID, appName: context.appName)
         request.dateFormat = model.settings.dateFormat
         request.numberFormat = model.settings.numberFormat
+        if let local, !local.isEmpty {
+            let terms = request.dictionary
+            request.localDivergences = LocalHearing.divergences(
+                transcript: transcript, hearing: local,
+                knownWord: Self.knownWord(for: transcript, language: model.settings.language, terms: terms),
+                isTerm: Self.englishTerm(for: transcript, language: model.settings.language),
+                protectedTerms: terms + TechVocabulary.correction
+            )
+        }
         return request
     }
 

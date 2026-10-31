@@ -100,6 +100,8 @@ struct AppDependencies {
         return (response as? HTTPURLResponse)?.statusCode ?? 0
     }
     var requestMicrophone: () async -> Bool = { await PermissionCenter.requestMicrophone() }
+    /// Seconde écoute sur le Mac pour une dictée dans cette langue ; nil sans le modèle d'Apple déjà installé.
+    var makeLocalHearing: (DictationLanguage) -> (any LocalHearingSession)? = { LocalHearingEngine.make(language: $0) }
     /// Accès au micro, relu sans rien demander pendant l'écoute : retiré dans Réglages Système, la dictée s'arrête.
     /// Lu hors du fil principal : la question à macOS prend une dizaine de millisecondes.
     var microphoneAuthorized: @Sendable () -> Bool = { PermissionCenter.microphoneAuthorized() }

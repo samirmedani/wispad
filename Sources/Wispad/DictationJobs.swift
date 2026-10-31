@@ -25,6 +25,8 @@ final class Capture {
     var audioURL: URL?
     var speech: SpeechRequest?
     var session: (any SpeechStreaming)?
+    /// Seconde écoute sur le Mac, pour la seule correction (`LocalHearingSession`) ; nil si indisponible.
+    var localHearing: (any LocalHearingSession)?
     var startTask: Task<Bool, Never>?
     /// Flux en direct branché (true), en échec (false), ou pas encore fixé (nil).
     var streamStarted: Bool?

@@ -55,9 +55,14 @@ extension DictationCoordinator {
         guard !text.isEmpty, model.commandSelection(for: text, context: current.context) == nil,
               !current.earlyCorrections.contains(where: { TranscriptEquivalence.equivalent($0.text, text) }) else { return }
         let task = Task { @MainActor in
+            // À l'arrêt, la dernière phrase de la seconde écoute arrive pendant la lecture du contexte.
+            let local = atRelease ? await current.localHearing?.finalText(within: Self.localHearingWait)
+                                  : current.localHearing?.text
             let request = await self.makeCorrectionRequest(
-                transcript: text, context: current.context, field: current.field, window: current.window, model: model
+                transcript: text, context: current.context, field: current.field, window: current.window, model: model,
+                local: local
             )
+            current.run.trace.localPassages = max(current.run.trace.localPassages ?? 0, request.localDivergences.count)
             guard !Task.isCancelled, !current.cancelled, model.correctionReachable else {
                 return PreparedCorrection(outcome: CleanupOutcome(text: text), milliseconds: 0)
             }
@@ -131,6 +136,20 @@ extension DictationCoordinator {
                 || checker.checkSpelling(of: word, startingAt: 0, language: code, wrap: false, inSpellDocumentWithTag: 0,
                                          wordCount: nil).location == NSNotFound
         }
+    }
+
+    /// Terme anglais dans une dictée française (« repo », « unlock ») : connu de l'orthographe anglaise, inconnu de la
+    /// française. La seconde écoute ne le remplace jamais.
+    static func englishTerm(for transcript: String, language: DictationLanguage) -> ((String) -> Bool)? {
+        let spoken = language == .auto ? TranscriptLanguage.guess(transcript) : language
+        let checker = NSSpellChecker.shared
+        guard spoken != .english, checker.availableLanguages.contains(where: { $0.hasPrefix("en") }),
+              checker.availableLanguages.contains(where: { $0.hasPrefix("fr") }) else { return nil }
+        func known(_ word: String, _ code: String) -> Bool {
+            checker.checkSpelling(of: word, startingAt: 0, language: code, wrap: false, inSpellDocumentWithTag: 0,
+                                  wordCount: nil).location == NSNotFound
+        }
+        return { word in known(word, "en") && !known(word, "fr") }
     }
 
     /// Vrai si `ledger` termine avant `other` (ou est déjà prête). Attendre l'une n'annule jamais l'autre.

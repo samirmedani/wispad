@@ -36,6 +36,19 @@ private final class EarlyStream: SpeechStreaming, @unchecked Sendable {
     func cancel() {}
 }
 
+/// Seconde écoute simulée : rend son texte, et note sa fin.
+private final class EarlyLocalHearing: LocalHearingSession, @unchecked Sendable {
+    let heard: String
+    var finished = false
+    var stopped = false
+    init(_ heard: String) { self.heard = heard }
+    func feed(_ pcm: Data) {}
+    var text: String { heard }
+    func finish() { finished = true }
+    func finalText(within limit: Double) async -> String { heard }
+    func stop() { stopped = true }
+}
+
 /// Flux, fichier, correction et collage simulés ; la correction rend le texte en majuscules pour la reconnaître.
 @MainActor
 private final class EarlyFixture {
@@ -58,6 +71,8 @@ private final class EarlyFixture {
     var cleanTexts: [String] = []
     var cleanStartedBeforeFile: [Bool] = []
     var cleanAlternatives: [String?] = []
+    var cleanLocal: [[LocalDivergence]] = []
+    var localHearing: EarlyLocalHearing?
     var inserted: [String] = []
     var model: AppModel!
 
@@ -82,6 +97,7 @@ private final class EarlyFixture {
         }
         dependencies.readWindow = { _ in nil }
         dependencies.makeCapture = { [audio] in audio }
+        dependencies.makeLocalHearing = { [weak self] _ in self?.localHearing }
         dependencies.makeSession = { [stream] _ in stream }
         dependencies.transcribe = { [weak self] _, _ in
             if let self, self.fileWaitsForCleanText != nil {
@@ -95,6 +111,7 @@ private final class EarlyFixture {
             self?.cleanTexts.append(text)
             self?.cleanStartedBeforeFile.append(self?.finishedTranscriptionAt == nil)
             self?.cleanAlternatives.append(request.alternativeTranscript)
+            self?.cleanLocal.append(request.localDivergences)
             if self?.fileWaitsForCleanText == text { self?.fileRelease.resolve(.success(())) }
             if first, self?.holdPrepared == true { _ = try? await self?.preparedRelease.value() }
             guard enabled else { return CleanupOutcome(text: text) }
@@ -176,6 +193,26 @@ struct EarlyCorrectionTests {
         #expect(f.cleanupCount() == 2)
         #expect((try f.trace().earlyCorrections ?? 0) <= 2)
         #expect(try f.trace().calls.filter { $0.api == .deepSeekCleanup }.count == 2)
+    }
+
+    /// Seconde écoute sur le Mac : ses passages divergents accompagnent la correction faite à l'arrêt, puis elle se
+    /// clôt. Sans elle, la correction ne change pas (tous les autres tests).
+    @Test func theSecondHearingJoinsTheCorrectionAtRelease() async throws {
+        let f = try EarlyFixture()
+        defer { f.dispose() }
+        let local = EarlyLocalHearing("Si t'es développeur, si t'as un problème, tu codes.")
+        f.localHearing = local
+        f.fileText = "Faut voter développeur, c'est un problème, tu codes."
+        await f.model.coordinator.begin(.pushToTalk)
+        f.stream.onPartial?(f.fileText)
+        f.stream.text = f.fileText
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        await f.model.coordinator.end()
+
+        #expect(f.cleanTexts == [f.fileText])
+        #expect(f.cleanLocal.last?.map(\.local) == ["Si t'es développeur,", "développeur, si t'as un"])
+        #expect(try f.trace().localPassages == 2)
+        #expect(local.finished)
     }
 
     @Test func worksWithoutFileVerificationToo() async throws {

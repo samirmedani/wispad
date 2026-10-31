@@ -462,6 +462,33 @@ Mesures du 17 octobre 2026 sur un MacBook Pro :
 
 Le micro standard, réglage coupé, ne change pas.
 
+### Seconde écoute sur le Mac
+
+Le fournisseur se trompe parfois sur des mots courants dits vite (« Faut voter développeur » pour « Si t'es
+développeur »), et sa réécoute du fichier, faite par le même modèle, répète l'erreur. Pendant l'écoute, le même son
+passe aussi par le moteur de dictée d'Apple, entièrement sur le Mac : rien ne part ailleurs, rien n'est demandé ni
+téléchargé. Il ne sert qu'avec macOS 26 ou plus récent, une langue réglée sur français ou anglais, la correction
+active et le modèle d'Apple déjà installé pour cette langue ; sinon Wispad dicte exactement comme avant.
+
+- Le moteur d'Apple clôt ses phrases à chaque pause de 0,3 s ; au relâchement, la correction attend sa dernière
+  phrase au plus 0,25 s (0,003 à 0,21 s mesuré), pendant la lecture du contexte. Il se ferme 10 s après l'arrêt, ou
+  aussitôt si la dictée est annulée.
+- Seule la transcription du fournisseur est corrigée et collée. La correction reçoit en plus les passages où la
+  seconde écoute a entendu d'autres mots courants, une ligne par passage avec un mot de contexte de chaque côté, et
+  la consigne de ne prendre la version de la seconde écoute que si celle de la transcription n'a pas de sens.
+- Ne deviennent jamais un passage : un nom propre, une marque ou un terme technique de la transcription (capitale
+  hors début de phrase, capitale intérieure, chiffre, mot du dictionnaire ou du vocabulaire technique, mot anglais
+  inconnu en français comme « repo »), un nombre ou une unité, un simple accord (« fonctionne » / « fonctionnent »),
+  des petits mots seuls, ni une version écrite avec un mot que l'orthographe de macOS ne connaît pas quand la
+  transcription n'en a pas (« juriqueidique »). Au-delà de 8 passages, la seconde écoute a décroché : rien n'est
+  donné. Un mot repris de la seconde écoute n'est pas une invention pour le garde-fou.
+- La trace compte les passages donnés (« localPassages »), jamais leur texte.
+
+Mesuré le 31 octobre 2026 sur de vraies dictées : sur 12 erreurs de sens du fournisseur, la correction en répare 7
+avec ces passages (« Frérot, t'es développeur, si t'as un problème, tu codes », « des bails de bijoux », « Elle est
+où la vidéo », « On regarde le rendu »), sans erreur ajoutée sur 32 dictées témoins ; même latence de correction,
+coût de correction à peine plus élevé sur les seules dictées concernées.
+
 ## Correction
 
 - Automatique : deux services au plus, DeepSeek (`deepseek-flash`, sans raisonnement) d'abord s'il a une clé.
