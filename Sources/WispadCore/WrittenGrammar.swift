@@ -75,8 +75,8 @@ enum WrittenGrammar {
         }
     }
 
-    /// Alternative isolée par une pause de la transcription (« … à qui tu as répondu. Ou non. ») : rattachée à la
-    /// phrase qui la précède (« … à qui tu as répondu ou non. »). Seulement « ou non » et « ou pas » seuls dans leur
+    /// Alternative isolée par une pause de la transcription (« … si elle est payée. Ou non. ») : rattachée à la
+    /// phrase qui la précède (« … si elle est payée ou non. »). Seulement « ou non » et « ou pas » seuls dans leur
     /// phrase (suivis d'une ponctuation finale ou de la fin du texte), sur la même ligne, après une phrase finie par un
     /// point ou un point d'interrogation ; une question garde son point d'interrogation et son espacement.
     static func joinAlternativeFragments(_ text: String) -> String {
