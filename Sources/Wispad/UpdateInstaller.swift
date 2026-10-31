@@ -70,6 +70,11 @@ struct UpdateSystem {
     /// Arrêt forcé, quand macOS refuse de fermer l'app après le remplacement. Ne rend jamais la main hors des tests.
     var forceQuit: @MainActor () -> Void = { UpdateTools.forceQuit() }
     var open: @MainActor (URL) -> Void = { _ = NSWorkspace.shared.open($0) }
+    /// Pause qui laisse voir une étape trop rapide pour l'œil (vérification, échange des noms, relance).
+    var pause: (Duration) async -> Void = { try? await Task.sleep(for: $0) }
+    /// Installation finie, notée juste avant la relance (`UpdateCompletion`) : la nouvelle version rouvre la fenêtre de
+    /// mise à jour sur ses étapes et termine l'avancement.
+    var handoff: (ReleaseInfo, String) -> Void = { UpdateCompletion.save($0, from: $1) }
 }
 
 /// Installation en un clic d'une release : téléchargement du disque, vérification de la signature, copie à côté de
@@ -105,6 +110,9 @@ final class UpdateInstaller {
     /// Chaque installation a son numéro : une installation annulée ne touche plus à l'état de la suivante.
     @ObservationIgnored private var attempt = 0
     private static let log = Logger.wispad("mise-a-jour")
+    /// Durée minimale d'affichage de la vérification, de l'installation et de la relance : sans elle, l'échange de
+    /// l'app, instantané, faisait sauter les étapes 3 et 4 et l'app se refermait sans qu'on les voie.
+    static let stepDisplay: Duration = .milliseconds(600)
 
     var isBusy: Bool {
         switch phase {
@@ -158,7 +166,7 @@ final class UpdateInstaller {
         work = Task { [weak self] in
             await previous?.value
             await self?.run(attempt: current, asset: asset, teamID: team, app: app, installed: installed,
-                            target: target, isIdle: isIdle, relaunchArguments: relaunchArguments,
+                            release: release, target: target, isIdle: isIdle, relaunchArguments: relaunchArguments,
                             beforeQuit: beforeQuit)
         }
         return true
@@ -191,7 +199,7 @@ final class UpdateInstaller {
     }
 
     private func run(attempt current: Int, asset: DiskImageAsset, teamID: String, app: URL, installed: String,
-                     target: SemanticVersion?, isIdle: @MainActor () -> Bool,
+                     release: ReleaseInfo, target: SemanticVersion?, isIdle: @MainActor () -> Bool,
                      relaunchArguments: @MainActor () -> [String],
                      beforeQuit: @MainActor () -> Void) async {
         let system = self.system
@@ -212,6 +220,7 @@ final class UpdateInstaller {
         }
         guard !Task.isCancelled else { return finish(current, .idle) }
         set(.verifying, attempt: current)
+        let verifyingSince = ContinuousClock.now
         let volume: URL
         do {
             volume = try await system.mount(image, workspace)
@@ -228,6 +237,8 @@ final class UpdateInstaller {
             system.remove(staged)
             return finish(current, .failed(problem))
         }
+        // Une vérification rapide reste visible un instant : chaque étape se voit passer.
+        await system.pause(Self.remaining(since: verifyingSince))
         // Jamais pendant une dictée : la nouvelle version attend, vérifiée, à côté de l'app.
         while !Task.isCancelled, !isIdle() {
             set(.waitingForDictation, attempt: current)
@@ -238,21 +249,25 @@ final class UpdateInstaller {
             return finish(current, .idle)
         }
         set(.installing, attempt: current)
+        await system.pause(Self.stepDisplay)
         do {
             try system.swap(staged, app)
         } catch {
             system.remove(staged)
             return finish(current, .failed(.replace))
         }
-        // Après l'échange, la copie cachée contient l'ancienne version.
-        system.remove(staged)
-        system.remove(workspace)
         set(.relaunching, attempt: current)
         if target == nil {
             Self.log.notice("nouvelle version installée : relance")
         } else {
             Self.log.notice("version précédente installée : relance")
         }
+        system.handoff(release, installed)
+        // « Redémarrage » se voit avant la fermeture ; la nouvelle version le coche en rouvrant la fenêtre. L'ancienne
+        // version (dans la copie cachée après l'échange) reste sur le disque jusque-là : cette instance tourne encore.
+        await system.pause(Self.stepDisplay)
+        system.remove(staged)
+        system.remove(workspace)
         guard system.relaunch(app, relaunchArguments()) else { return finish(current, .failed(.relaunch)) }
         beforeQuit()
         await system.terminate()
@@ -292,6 +307,11 @@ final class UpdateInstaller {
     private func set(_ next: Phase, attempt current: Int) {
         guard attempt == current, phase != next else { return }
         phase = next
+    }
+
+    /// Ce qui reste à montrer d'une étape commencée à `since` ; zéro si elle a déjà duré assez.
+    private static func remaining(since: ContinuousClock.Instant) -> Duration {
+        max(.zero, stepDisplay - (ContinuousClock.now - since))
     }
 
     private func noteProgress(_ fraction: Double?, attempt current: Int) {

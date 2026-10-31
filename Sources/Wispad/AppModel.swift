@@ -874,9 +874,40 @@ final class AppModel {
         }
     }
 
-    /// Premier lancement après une mise à jour en un clic : la bulle le confirme, sans prendre le focus.
-    func announceUpdated() {
-        coordinator.announce(String(localized: "Wispad \(BuildStatus.shared.version ?? "—") est installé"), relay: false)
+    /// Version qui tournait avant l'installation qui vient de finir : la fenêtre de mise à jour, rouverte par la
+    /// nouvelle version, termine son avancement (« Redémarrage » coché) au lieu d'afficher seulement les notes. Vide
+    /// quand la version d'avant n'a rien noté (installée par une version qui ne le faisait pas encore).
+    var updateCompletedFrom: String?
+    /// Release d'une version, lue sur GitHub ; remplacée par les tests.
+    @ObservationIgnored var fetchRelease: @Sendable (SemanticVersion) async -> ReleaseInfo? = { await BuildStatus.fetchRelease($0) }
+
+    /// Premier lancement après une mise à jour en un clic. Fenêtre rouverte (elle était affichée) et installation
+    /// notée par l'ancienne version : la fenêtre de mise à jour reprend là où elle s'était arrêtée. Sinon, la bulle
+    /// le confirme, sans prendre le focus.
+    func announceUpdated(showsWindow: Bool = false, completion: UpdateCompletion? = nil,
+                         installed: String? = BuildStatus.shared.version) {
+        if showsWindow, let completion {
+            updateCompletedFrom = completion.previous
+            updateSheet = completion.release
+            return
+        }
+        let message = String(localized: "Wispad \(installed ?? "—") est installé")
+        // Rien de noté (l'ancienne version ne le faisait pas encore) : les notes viennent de GitHub ; sans réponse, la
+        // bulle seule.
+        guard showsWindow, let version = installed.flatMap(SemanticVersion.init) else {
+            coordinator.announce(message, relay: false)
+            return
+        }
+        let fetch = fetchRelease
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            guard let release = await fetch(version), release.version == version, updateSheet == nil else {
+                coordinator.announce(message, relay: false)
+                return
+            }
+            updateCompletedFrom = ""
+            updateSheet = release
+        }
     }
 
     // MARK: - Clés saisies dans Fournisseurs

@@ -333,6 +333,9 @@ struct UpdateInterruptionTests {
         system.terminate = { journal.quitSteps.append("fermeture") }
         system.forceQuit = { journal.quitSteps.append("arrêt forcé") }
         system.open = { journal.opened.append($0) }
+        // Aucune attente réelle ni note dans les préférences du processus de test.
+        system.pause = { _ in }
+        system.handoff = { _, _ in }
         installer.system = system
         return SimulatedInstance(installer: installer, journal: journal)
     }

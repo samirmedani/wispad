@@ -267,14 +267,16 @@ enum DesignPreview {
                     reportSnapshot(record: record, model: model, to: URL(fileURLWithPath: path))
                 }
                 // `--update-preview` : fenêtre de mise à jour avec deux versions à rattraper ; `--installed-preview` :
-                // nouveautés de la version installée. Notes d'exemple, rien n'est demandé à GitHub.
+                // nouveautés de la version installée ; `--completed-preview` : fenêtre rouverte après la relance, qui
+                // finit l'avancement. Notes d'exemple, rien n'est demandé à GitHub.
                 // `--footer-preview` : pied de la barre latérale, à jour, nouvelle version, build de développement.
                 if arguments.contains("--footer-preview") {
                     footerSnapshot(model: model, to: URL(fileURLWithPath: path))
                 }
-                if arguments.contains("--update-preview") || arguments.contains("--installed-preview") {
-                    updateSnapshot(model: model, installed: arguments.contains("--installed-preview"),
-                                   to: URL(fileURLWithPath: path))
+                if arguments.contains("--update-preview") || arguments.contains("--installed-preview")
+                    || arguments.contains("--completed-preview") {
+                    updateSnapshot(model: model, installed: !arguments.contains("--update-preview"),
+                                   completed: arguments.contains("--completed-preview"), to: URL(fileURLWithPath: path))
                 }
                 // « --config-import-preview » : fenêtre d'import d'une configuration fictive (réglages et termes).
                 if arguments.contains("--config-import-preview") {
@@ -545,8 +547,12 @@ enum DesignPreview {
     }
 
     /// Fenêtre de mise à jour hors écran, avec des notes d'exemple de la forme des vraies.
-    private static func updateSnapshot(model: AppModel, installed: Bool, to url: URL) {
+    private static func updateSnapshot(model: AppModel, installed: Bool, completed: Bool = false, to url: URL) {
         let current = BuildStatus.shared.version.flatMap(SemanticVersion.init) ?? SemanticVersion(major: 0, minor: 3, patch: 0)
+        if completed {
+            model.updateCompletedFrom = SemanticVersion(major: current.major, minor: current.minor,
+                                                        patch: max(0, current.patch - 1)).description
+        }
         func release(_ patch: Int, _ notes: String, daysAgo: Double) -> ReleaseInfo {
             let version = SemanticVersion(major: current.major, minor: current.minor, patch: current.patch + patch)
             return ReleaseInfo(version: version, tag: "v" + version.description, notes: notes, pageURL: ReleaseCheck.releasesURL,
@@ -584,13 +590,25 @@ enum DesignPreview {
             return
         }
         window.contentView?.layoutSubtreeIfNeeded()
+        if completed {
+            // Ouverture : « Redémarrage » encore en cours ; puis, l'animation finie, les quatre étapes cochées.
+            snapshot(window, to: url.deletingPathExtension().appendingPathExtension("update-completed-start.png"))
+            RunLoop.main.run(until: Date().addingTimeInterval(1.2))
+            window.contentView?.layoutSubtreeIfNeeded()
+            snapshot(window, to: url.deletingPathExtension().appendingPathExtension("update-completed.png"))
+            window.orderOut(nil)
+            return
+        }
         snapshot(window, to: url.deletingPathExtension().appendingPathExtension("update.png"))
         if !installed {
-            // Installation en cours : vérification de la signature, étapes 1 faite et 2 en cours.
-            model.updater.previewPhase(.verifying)
-            window.contentView?.layoutSubtreeIfNeeded()
-            RunLoop.main.run(until: Date().addingTimeInterval(0.3))
-            snapshot(window, to: url.deletingPathExtension().appendingPathExtension("update-progress.png"))
+            // Installation en cours : vérification, installation, puis relance, chacune son image.
+            for (phase, name) in [(UpdateInstaller.Phase.verifying, "update-progress"), (.installing, "update-installing"),
+                                  (.relaunching, "update-relaunching")] {
+                model.updater.previewPhase(phase)
+                window.contentView?.layoutSubtreeIfNeeded()
+                RunLoop.main.run(until: Date().addingTimeInterval(0.4))
+                snapshot(window, to: url.deletingPathExtension().appendingPathExtension(name + ".png"))
+            }
             model.updater.previewPhase(.idle)
         }
         window.orderOut(nil)

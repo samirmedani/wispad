@@ -21,6 +21,12 @@ struct UpdateInstallerTests {
         var signatureValid = true
         var diskVersion: String? = "0.1.2"
         var idle = true
+        /// Étape affichée à chaque pause : chacune doit rester visible un instant.
+        var paused: [UpdateInstaller.Phase?] = []
+        /// Installation notée pour la nouvelle version : « tag ← version d'avant ».
+        var handoff: String?
+        /// Effacements de la copie cachée notés à chaque pause (le premier, avant la copie, la vide seulement).
+        var stagedRemovalsAtPause: [Int] = []
     }
 
     private static var app: URL { URL(fileURLWithPath: "/Applications/Wispad.app") }
@@ -74,6 +80,12 @@ struct UpdateInstallerTests {
         }
         system.forceQuit = { journal.quitSteps.append("arrêt forcé") }
         system.open = { journal.opened.append($0) }
+        // Aucune attente réelle : seule l'étape affichée au moment de la pause est notée.
+        system.pause = { [weak installer] _ in
+            journal.paused.append(installer?.phase)
+            journal.stagedRemovalsAtPause.append(journal.removed.filter { $0 == Self.staged }.count)
+        }
+        system.handoff = { release, previous in journal.handoff = release.tag + " ← " + previous }
         installer.system = system
         return installer
     }
@@ -138,6 +150,13 @@ struct UpdateInstallerTests {
                                   "verify .Wispad.nouveau.app", "detach", "swap .Wispad.nouveau.app Wispad.app"])
         #expect(journal.relaunched == ["--updated", "--section", "home"])
         #expect(journal.phaseAtTerminate == .relaunching)
+        // Chaque étape rapide reste visible un instant, puis la nouvelle version reprend l'avancement.
+        #expect(journal.paused == [.verifying, .installing, .relaunching])
+        #expect(journal.handoff == "v0.1.2 ← 0.1.1")
+        // Après l'échange, la copie cachée contient l'ancienne version : elle reste sur le disque pendant la pause de
+        // la relance (cette instance tourne encore), puis est effacée.
+        #expect(journal.stagedRemovalsAtPause.last == 1)
+        #expect(journal.removed.filter { $0 == Self.staged }.count == 2)
         // La fenêtre de mise à jour (en feuille) se ferme avant la demande : sinon macOS refuse de quitter.
         #expect(journal.quitSteps.prefix(2) == ["fenêtres", "fermeture"])
         // L'ancienne version (dans la copie cachée après l'échange) est effacée ; l'app elle-même jamais.
