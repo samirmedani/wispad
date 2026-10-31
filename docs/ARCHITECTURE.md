@@ -263,12 +263,24 @@ et une dictée relue à l'identique (l'historique est relu après chaque dictée
 ni seconde copie de l'historique n'y restent. `HistoryRenderingObserver` permet aux tests et à la sonde de compter
 les lignes évaluées.
 
+## Écran Fournisseurs
+
+`ProvidersView` (`ProvidersViews.swift`) lit l'écran une fois par affichage dans `ProvidersSnapshot`
+(`ProvidersState.swift`) : choix enregistrés, clés enregistrées et actives, services de correction qu'une dictée
+prend vraiment (un seul `speechRequest`). Les sections reçoivent ces valeurs sans relire le modèle.
+`ProvidersOverview.make` en tire la vue d'ensemble : les clés en cause sont regroupées par compte (`KeyGap`),
+une alerte par cause. Les listes de modèles (lecture de « /models », latences mesurées dans la consommation, tri par
+rapidité et coût) ne se calculent qu'à l'ouverture du sélecteur (`ModelPickerSheet`, `ModelPicker.swift`). Les
+choix passent par `AppModel.chooseVoice`, `chooseVoiceRelay`, `chooseCleanup`, `chooseCleanupRelay` et
+`chooseJudge` (règles des anciens menus), testés avec la vue d'ensemble par `ProvidersScreenTests`.
+
 ## Ajouter…
 
 **Un fournisseur de correction** : une route dans `TextCleaner.routes`, un cas `UsageAPI`, son tarif dans
 `Pricing.tokenRate`, son libellé dans `Presentation.swift`, une clé dans `APIKeys.accounts`. Pour qu'il se
-choisisse dans Fournisseurs › Modèles : un cas `CleanupChoice` (route dans `TextCleaner.chosenRoute`) et sa place
-dans `ModelStepsSection.cleanupGroups`.
+choisisse dans le sélecteur de Fournisseurs : un compte dans `CleanupChoice.accounts` (route dans
+`TextCleaner.modelRoute`), sa pastille dans `ProviderTile` et la page de ses clés dans `ProviderLinks`
+(`ProvidersViews.swift`) ; un modèle d'origine a son nom lisible dans `CleanupModelText.name`.
 
 **Un fournisseur de voix** : un cas `ProviderID` (catalogue et modèles dans `Catalog.swift`), le flux dans
 `LiveSpeechSession`, le fichier dans `BatchTranscriber`, les coûts dans `UsageAPI` et `ProviderCatalog`.
@@ -356,7 +368,10 @@ ne réécrit jamais un fichier abîmé (les clés de sa partie intacte servent).
   demandée ni micro ouvert), `--shortcut-preview custom|long|disabled|recording` (Réglages › Raccourci avec des
   raccourcis fictifs), `--settings-tab general|dictation|formatting|bubble|privacy|permissions|help` (onglet de
   Réglages, `SettingsTab`), `--glass-bubble` (style Verre et ses réglages ; le verre lui-même ne se rend qu'à
-  l'écran), `--customer-preview`, `-AppleLanguages "(en)"`.
+  l'écran), `--customer-preview`, `--keys-preview`, `-AppleLanguages "(en)"`. Fournisseurs :
+  `--providers-advanced` (réglages avancés dépliés), `--disable-keys openai,xai` (clés fictives coupées),
+  `--cleanup-choice <modèle>`, `--relay` (service en pause), et `--model-picker voice|voiceRelay|correction|
+  correctionRelay` qui rend aussi le sélecteur ouvert (`--expand-models`, `--picker-key-form <compte>`).
 - Toutes les bulles et leurs messages, hors écran : `Wispad --bubble-gallery <dossier>` avec le build Debug. Une
   planche PNG par famille (dictée, texte prêt, erreurs, messages, survol), rendue avec les vues et les textes de l'app,
   sans l'effet de verre de macOS 26.

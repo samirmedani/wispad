@@ -30,6 +30,10 @@ import SwiftUI
 /// `--previous-versions-preview` : Réglages › Aide avec des versions précédentes fictives, rien n'est demandé à GitHub.
 /// `--period today|days7|days30|all` : période de l'Accueil et de Consommation (« all » : durée d'utilisation, coût par
 /// mois face aux abonnements).
+/// `--providers-advanced` : Fournisseurs avec les réglages avancés dépliés. `--model-picker voice|voiceRelay|correction|
+/// correctionRelay` : rend aussi le sélecteur de modèle ouvert (« .picker.png ») ; `--expand-models` y déplie les listes
+/// complètes, `--picker-key-form <compte>` y ouvre la saisie d'une clé. Avec `--keys-preview` ou `--customer-preview`, les
+/// listes de modèles sont fictives : rien n'est demandé aux fournisseurs.
 @MainActor
 enum DesignPreview {
     static func run(arguments: [String]) {
@@ -109,6 +113,21 @@ enum DesignPreview {
         if arguments.contains("--profile-preview") { model.selectedSection = .profile }
         if arguments.contains("--remote-keys-preview") {
             KeySourceRow.previewCommand = "ssh mon-serveur 'cat ~/.secrets/{name}'"
+        }
+        if arguments.contains("--providers-advanced") { ProvidersView.previewAdvanced = true }
+        // `--cleanup-choice gpt-5.6-luna` : modèle de correction choisi ; `--disable-keys openai,xai` : ces clés fictives
+        // coupées, après que les relais ont été retenus (alertes de Fournisseurs).
+        if let index = arguments.firstIndex(of: "--cleanup-choice"), arguments.indices.contains(index + 1),
+           let choice = CleanupChoice(rawValue: arguments[index + 1]) {
+            model.settings.cleanupChoice = choice
+        }
+        if let index = arguments.firstIndex(of: "--disable-keys"), arguments.indices.contains(index + 1) {
+            model.settleRelays()
+            model.settings.disabledKeys.formUnion(arguments[index + 1].split(separator: ",").map(String.init))
+        }
+        if arguments.contains("--keys-preview") || arguments.contains("--customer-preview"),
+           !arguments.contains("--local-model-url") {
+            TextModelDirectory.shared.usePreviewListings(previewModelListings)
         }
         if arguments.contains("--history-filter-preview") {
             model.historyFilter = HistoryFilter(title: "Application Wispad", dictations: Set(model.history.prefix(60).map(\.id)))
@@ -265,6 +284,15 @@ enum DesignPreview {
                 }
                 if arguments.contains("--report-preview"), let record = model.history.first {
                     reportSnapshot(record: record, model: model, to: URL(fileURLWithPath: path))
+                }
+                if let index = arguments.firstIndex(of: "--model-picker"), arguments.indices.contains(index + 1),
+                   let kind = ModelPickerKind(rawValue: arguments[index + 1]) {
+                    var keyEntry: KeyEntryHost?
+                    if let form = arguments.firstIndex(of: "--picker-key-form"), arguments.indices.contains(form + 1) {
+                        keyEntry = .picker(arguments[form + 1])
+                    }
+                    modelPickerSnapshot(model: model, kind: kind, expanded: arguments.contains("--expand-models"),
+                                        keyEntry: keyEntry, to: URL(fileURLWithPath: path))
                 }
                 // `--update-preview` : fenêtre de mise à jour avec deux versions à rattraper ; `--installed-preview` :
                 // nouveautés de la version installée ; `--completed-preview` : fenêtre rouverte après la relance, qui
@@ -479,6 +507,36 @@ enum DesignPreview {
         snapshot(window, to: url.deletingPathExtension().appendingPathExtension("report.png"))
         window.orderOut(nil)
     }
+
+    /// Sélecteur de modèle ouvert, hors écran, à sa taille de feuille.
+    private static func modelPickerSnapshot(model: AppModel, kind: ModelPickerKind, expanded: Bool, keyEntry: KeyEntryHost?,
+                                            to url: URL) {
+        let state = ProvidersSnapshot(model: model)
+        let sheet = ModelPickerSheet(kind: kind, snapshot: state, keyEntry: .constant(keyEntry),
+                                     previewExpanded: expanded ? Set(CleanupChoice.accounts) : [],
+                                     previewHeight: kind.isCorrection ? (expanded ? 1_640 : 1_120) : nil)
+        let window = NSWindow(contentRect: NSRect(x: -20_000, y: -20_000, width: 640, height: 600),
+                              styleMask: [.borderless], backing: .buffered, defer: false)
+        window.contentView = NSHostingView(rootView: sheet.environment(model).tint(Theme.brand))
+        window.orderFrontRegardless()
+        guard !NSScreen.screens.contains(where: { $0.frame.intersects(window.frame) }) else {
+            window.orderOut(nil)
+            return
+        }
+        window.setContentSize(window.contentView?.fittingSize ?? window.frame.size)
+        window.contentView?.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.5))
+        snapshot(window, to: url.deletingPathExtension().appendingPathExtension("picker.png"))
+        window.orderOut(nil)
+    }
+
+    /// Listes de modèles fictives des aperçus, de la forme de celles des fournisseurs.
+    private static let previewModelListings: [String: [String]] = [
+        CleanupModel.deepSeekAccount: ["deepseek-flash", "deepseek-chat", "deepseek-reasoner"],
+        ProviderID.openAI.rawValue: ["gpt-5.4-mini", "gpt-5.6-luna", "gpt-5.4", "gpt-5.4-nano", "gpt-4.1-mini", "gpt-4.1-nano",
+                                     "gpt-4o-mini", "o3-mini", "gpt-5.4-pro", "gpt-4o-mini-transcribe", "text-embedding-3-small"],
+        ProviderID.xai.rawValue: ["grok-4.7", "grok-4.7-fast-non-reasoning", "grok-4.6", "grok-3-mini"]
+    ]
 
     /// Pied de la barre latérale dans trois états, rendu sans fenêtre, à la largeur de la barre.
     private static func footerSnapshot(model: AppModel, to url: URL) {

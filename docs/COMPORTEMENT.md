@@ -386,7 +386,7 @@ fermeture compte.
 
 ## Transcription
 
-Toujours chez un fournisseur, au choix dans Fournisseurs › Modèles (étape 1) : xAI `grok-voice-transcribe-2.0` (recommandé) ou OpenAI
+Toujours chez un fournisseur, au choix dans Fournisseurs › Modèles › Voix : xAI `grok-voice-transcribe-2.0` (recommandé) ou OpenAI
 `gpt-live-transcribe`, en direct pendant l'écoute. Par défaut, l'enregistrement complet est aussi transcrit à la fin
 (« Vérifier chaque dictée sur l'enregistrement complet », environ 0,0005 $ de plus) :
 
@@ -496,30 +496,32 @@ coût de correction à peine plus élevé sur les seules dictées concernées.
   OpenAI : DeepSeek seul s'il a une clé, sinon le modèle de correction d'OpenAI. 2,5 s chacun, 4 s pour un service
   seul, plus 1 s par 800 caractères dictés. Au-delà, le texte transcrit est inséré tel quel (avec les seules
   commandes explicites de mise en page).
-- Modèle au choix (Fournisseurs › Modèles, étape 3) : « Automatique · selon tes clés » par défaut, ou n'importe quel
-  modèle de texte d'une clé active DeepSeek, OpenAI ou xAI. Le menu a une section par fournisseur : ses modèles
-  recommandés (`deepseek-flash`, `gpt-5.4-mini`, `gpt-5.6-luna`, `grok-4.7`), puis « Tous les modèles … (N) », un sous-menu
-  rangé en Rapides, Équilibrés et Lents. La liste vient du fournisseur (« /models »), lue quand la clé est active et
-  relue au plus une fois par jour ; sans réponse, les modèles recommandés restent proposés, et le modèle choisi reste
-  dans la liste même s'il en disparaît. En sont écartés les modèles qui ne rendent pas de texte de chat (voix,
-  images, vidéo, embeddings, modération, recherche, code) et les versions datées d'un modèle qui existe sans date.
-  Chaque ligne dit sa rapidité (« ≈ 0,92 s chez toi », médiane des corrections réussies de ce modèle, sinon « rapide »,
-  « moyen » ou « lent » devinés sur son nom) et son coût estimé pour 100 corrections typiques (1 800 jetons en entrée,
-  150 en sortie), ou « prix inconnu ». Ordre : recommandés, puis du plus rapide au plus lent, du moins cher au plus
-  cher. Un modèle hors des quatre recommandés s'enregistre « compte/modèle » (« openai/gpt-4.1-mini »). Le réglage de
-  raisonnement n'est envoyé qu'aux modèles qui l'acceptent (« none » pour GPT-5.1 et suivants, « minimal » pour
-  GPT-5, « low » pour la série o et Grok hors « non-reasoning ») : un autre modèle n'a pas de requête refusée puis
-  refaite. Le modèle choisi passe en premier avec la clé de son fournisseur. Choisir comme modèle le relais en cours
-  remet le relais sur « Aucun relais ». Le
-  modèle choisi passe en premier avec la clé de son fournisseur. Sa clé absente ou coupée, le premier de l'ordre
-  automatique le remplace, et l'étape le dit en orange. Un choix illisible (version plus récente) se lit
-  « Automatique », sans toucher aux autres réglages.
-- Relais au choix (même étape) : un modèle dont la clé est active, autre que le service principal, ou « Aucun
-  relais ». Deux services au plus, mêmes délais. Tant qu'aucun relais n'est choisi, le premier possible d'après
+- Modèle au choix (Fournisseurs › Modèles › Correction) : « Automatique » par défaut (sa carte dit le modèle qu'il
+  prend maintenant), ou n'importe quel modèle de texte d'une clé active DeepSeek, OpenAI ou xAI. Le sélecteur a un
+  groupe par fournisseur : ses modèles recommandés en cartes (`deepseek-flash`, `gpt-5.4-mini`, `gpt-5.6-luna`,
+  `grok-4.7`, sous un nom lisible : DeepSeek Flash, GPT-5.4 mini, GPT-5.6 Luna, Grok 4.7), puis « Tous les modèles …
+  (N) », une liste dépliable rangée en Rapides, Équilibrés et Lents ; « Chercher un modèle » filtre tous les groupes
+  par nom. La liste vient du fournisseur (« /models »), lue quand la clé est active et relue au plus une fois par
+  jour, celle du modèle local à chaque ouverture du sélecteur ; sans réponse, les modèles recommandés restent
+  proposés, et le modèle choisi reste dans la liste même s'il en disparaît. En sont écartés les modèles qui ne rendent
+  pas de texte de chat (voix, images, vidéo, embeddings, modération, recherche, code) et les versions datées d'un
+  modèle qui existe sans date. Chaque carte dit sa rapidité (« ≈ 0,92 s chez toi », médiane des corrections réussies
+  de ce modèle, sinon « Rapide », « Moyen » ou « Lent » devinés sur son nom) et son coût estimé pour 100 corrections
+  typiques (1 800 jetons en entrée, 150 en sortie), ou « Prix inconnu » ; dans la liste dépliée, la rapidité devinée
+  est le titre du groupe. Ordre : recommandés, puis du plus rapide au plus lent, du moins cher au plus cher. Un modèle
+  hors des quatre recommandés s'enregistre « compte/modèle » (« openai/gpt-4.1-mini »). Le réglage de raisonnement
+  n'est envoyé qu'aux modèles qui l'acceptent (« none » pour GPT-5.1 et suivants, « minimal » pour GPT-5, « low » pour
+  la série o et Grok hors « non-reasoning ») : un autre modèle n'a pas de requête refusée puis refaite. Le modèle
+  choisi passe en premier avec la clé de son fournisseur. Choisir comme modèle le relais en cours remet le relais sur
+  « Aucun relais ». Sa clé absente ou coupée, le premier de l'ordre automatique le remplace, et la vue d'ensemble de
+  Fournisseurs le dit (« La correction ne passe pas par OpenAI », avec le service qui corrige en attendant). Un choix
+  illisible (version plus récente) se lit « Automatique », sans toucher aux autres réglages.
+- Relais au choix (Fournisseurs › Réglages avancés › Relais de la correction) : un modèle dont la clé est active,
+  autre que le service principal, ou « Aucun relais ». Deux services au plus, mêmes délais. Tant qu'aucun relais n'est choisi, le premier possible d'après
   l'ordre automatique (OpenAI `gpt-5.4-mini` derrière DeepSeek, par exemple) est enregistré comme choix dès que les
   clés le permettent, à la lecture des clés ou quand une clé est ajoutée ou rallumée. Ensuite, seul un choix à la
-  main le change : relais dont la clé est coupée, pas de relais, et l'étape le dit en orange. Le juge des mots appris
-  suit le même ordre.
+  main le change : relais dont la clé est coupée, pas de relais, et la vue d'ensemble de Fournisseurs le dit. Le juge
+  des mots appris suit le même ordre.
 - Pas d'autre service de correction : le serveur compatible OpenAI choisi par l'utilisateur (fonction retirée)
   repasse sur la correction automatique au lancement ; son adresse et son modèle sont effacés, ses anciens appels
   sortent de Consommation. Sa clé reste dans le fichier de clés, comme celle de tout fournisseur retiré.
@@ -912,10 +914,11 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
 ## Relais en cas de panne
 
 - Voix : si le fournisseur de voix ne répond pas, le même enregistrement part chez le relais choisi dans Fournisseurs
-  › Modèles (étape 1) : un modèle de l'autre fournisseur, ou « Aucun relais ». Après deux échecs, la dictée démarre
-  directement chez le relais. Tant qu'aucun relais n'est choisi, le modèle recommandé de l'autre fournisseur est
-  enregistré comme choix dès que sa clé est active. Un relais dont la clé est coupée ne sert pas, et l'étape le dit
-  en orange. Prendre pour la voix le fournisseur du relais fait de l'ancien modèle de voix le relais.
+  › Réglages avancés › Relais de la voix : un modèle de l'autre fournisseur, ou « Aucun relais ». Après deux échecs,
+  la dictée démarre directement chez le relais. Tant qu'aucun relais n'est choisi, le modèle recommandé de l'autre
+  fournisseur est enregistré comme choix dès que sa clé est active. Un relais dont la clé est coupée ne sert pas, et
+  la vue d'ensemble de Fournisseurs le dit. Prendre pour la voix le fournisseur du relais fait de l'ancien modèle de
+  voix le relais.
 - Correction : après deux échecs, DeepSeek passe après son relais, y compris quand il est choisi lui-même ; sans
   relais, il reste seul. Un service mis de côté est contrôlé chaque minute et repris dès qu'il répond, au plus tard
   après 30 minutes.
@@ -1140,7 +1143,7 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
 
 ## Clés API
 
-- Où sont tes clés ? (en tête de Fournisseurs › Clés API) : « Sur ce Mac » (fichier de l'app) ou « Serveur ou
+- Où sont tes clés ? (Fournisseurs › Réglages avancés › Source des clés) : « Sur ce Mac » (fichier de l'app) ou « Serveur ou
   gestionnaire » : une commande lancée dans un shell de connexion de l'utilisateur (son PATH : Homebrew, op…), où
   « {name} » devient le nom de la clé (WISPAD_XAI_API_KEY, WISPAD_OPENAI_API_KEY, WISPAD_DEEPSEEK_API_KEY,
   WISPAD_XAI_MANAGEMENT_KEY, TYPESAFE_API_KEY). « Modèles » propose SSH vers un serveur, 1Password, Doppler, Infisical,
@@ -1152,14 +1155,14 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
   « Ajouter une clé » est remplacé par « ajoute une clé dans ton serveur ou ton gestionnaire, puis recharge ». Revenir
   à « Sur ce Mac » relit le fichier. Un coffre configuré à part (WISPAD_SECRET_COMMAND ou wispad.secretCommand) garde
   la priorité : la ligne dit seulement « Clés lues dans ton coffre de secrets (outil) ».
-- Modèle local (section sous Clés API) : Aucun, Ollama (http://localhost:11434/v1), LM Studio
+- Modèle local (Fournisseurs › Réglages avancés) : Aucun, Ollama (http://localhost:11434/v1), LM Studio
   (http://localhost:1234/v1) ou une autre adresse compatible OpenAI, et un interrupteur. Wispad lit la liste de ses
   modèles (« 2 modèles : qwen2.5, llama3.2 », modèles d'embedding écartés) ou dit « Aucun serveur ne répond à … ».
-  Ses modèles apparaissent dans le menu de la correction, section Local, « gratuit, sur ce Mac » ; ils servent aussi
+  Ses modèles apparaissent dans le sélecteur de la correction, groupe Modèle local, « Gratuit, sur ce Mac » ; ils servent aussi
   à l'analyse des sujets. Aucune clé ni réglage de raisonnement n'est envoyé ; délai de 15 s (chargement du modèle).
   Les appels comptent dans Consommation à 0 $ (« Modèle local · correction »). Repasser sur Aucun remet la correction
   en automatique si elle utilisait le modèle local.
-- Fournisseurs › Clés API liste les clés enregistrées, une ligne par clé : fournisseur, rôle, clé masquée (son
+- Fournisseurs › Clés API liste les clés enregistrées, une ligne par clé : pastille et nom du fournisseur, rôle, clé masquée (son
   début connu, comme « xai- » ou « sk-proj- », et ses quatre derniers caractères : « xai-••••3f9a »), un interrupteur
   et, pour le fichier de l'app, une corbeille (après confirmation). Une clé coupée reste enregistrée mais n'est plus
   utilisée nulle part : voix, relais, correction, Jev, soldes. Choisir pour la voix un fournisseur dont la clé est
@@ -1172,22 +1175,44 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
   Anthropic, OpenRouter, Groq, Google ou Hugging Face est nommée et refusée (Wispad ne s'en sert pas). Une clé sans
   forme reconnue (TypeSafe) demande seulement de choisir son fournisseur. La clé est vérifiée chez ce fournisseur
   seul, jamais envoyée à un autre pour essayer ; une clé xAI refusée comme clé d'API est essayée comme clé de gestion,
-  toujours chez xAI. Vérifiée, elle est enregistrée, remplace l'ancienne clé de ce compte et devient active.
-- Fournisseurs › Modèles montre les quatre étapes d'une dictée, numérotées dans leur ordre et reliées par un trait :
-  1 Voix en direct (fournisseur et modèle dans un seul menu, groupé par xAI puis OpenAI, puis « Relais si xAI ne
-  répond pas »), 2 Vérification (interrupteur ; même fournisseur que la voix), 3 Correction (« Automatique · selon
-  tes clés » ou un modèle, l'interrupteur de la correction, puis son relais), 4 Mots appris (« Comme la correction »
-  ou Jev, et l'interrupteur de l'apprentissage). Les interrupteurs sont ceux de Réglages. Un modèle dont la clé
-  manque ou est coupée ne se choisit pas et le dit (« aucune clé », « clé coupée ») ; le relais de la correction ne
-  peut pas être le service principal (« déjà en premier »). Sous chaque étape, une ligne dit ce qu'elle fait
-  maintenant : prix en direct de la voix et de son relais, modèle et prix de l'enregistrement complet, services de
-  correction réellement essayés (« Maintenant : DeepSeek deepseek-flash · relais : OpenAI gpt-5.4-mini »), juge des
-  mots. Pastille
-  rouge : l'étape travaille ; orange : elle ne peut pas comme choisi (clé absente ou coupée) ; grise : coupée.
-  Choisir Jev allume la clé TypeSafe, « Comme la correction » la coupe (elle ne sert qu'aux mots appris).
-- Fournisseurs recommande, sous les clés : xAI pour la voix, DeepSeek pour la correction (la moins chère), et Jev
-  (TypeSafe), facultatif, pour les mots à apprendre. Chaque service se remplace par un autre dont on a la clé ; sans
-  clé TypeSafe, le modèle de correction juge seul.
+  toujours chez xAI. Vérifiée, elle est enregistrée, remplace l'ancienne clé de ce compte et devient active. La même
+  saisie s'ouvre sur place depuis la vue d'ensemble, depuis le groupe d'un fournisseur sans clé dans le sélecteur de
+  modèle et depuis les mots appris (clé TypeSafe), avec un lien « Créer une clé » vers la page du fournisseur (xAI,
+  OpenAI, DeepSeek). Avec une source de clés en lecture seule, l'écran dit d'ajouter la clé dans la source, puis de
+  recharger.
+- Fournisseurs commence par une vue d'ensemble : ce qui marche, ce qui manque et le bouton qui règle. Les alertes de
+  même cause n'en font qu'une. Coffre injoignable ou fichier illisible : ce seul message, avec « Recharger ». Aucune
+  clé : « Ajoute une clé pour dicter », et la saisie s'ouvre sur place. Voix sans clé active : « Ajoute ta clé xAI
+  pour dicter » ou « Ta clé xAI est coupée » (« Rallumer la clé xAI »), avec « Dicter avec OpenAI » si l'autre
+  fournisseur a sa clé ; la vérification, la correction et les mots appris qui en dépendent ne sont pas signalés à
+  part. Ensuite, une alerte par clé qui manque ou qui est coupée alors qu'un choix en a besoin (correction choisie,
+  relais de la voix, relais de la correction), même si elle sert à plusieurs : une clé OpenAI coupée qui sert aux deux
+  relais donne « Les relais ne serviront pas » ; une correction choisie sans clé, « La correction ne passe pas par
+  OpenAI », avec le service qui corrige en attendant et « Choisir un autre modèle ». Deux clés en cause : « 2 réglages
+  attendent une clé », une ligne chacune (« Clé OpenAI coupée · Nécessaire pour le relais de la voix et le relais de
+  la correction », « Rallumer »). Un service mis de côté s'affiche avec son relais et « Réessayer maintenant », relu
+  chaque minute. Sinon : « Tout est prêt », avec le fournisseur de la voix et celui de la correction. Pastille rouge :
+  pas de dictée possible ; orange : un choix ne sert pas ; verte du relais : un service est en pause ; verte : prêt.
+- Fournisseurs › Modèles : Voix et Correction (avec l'interrupteur de la correction, celui de Réglages), chacun dans
+  un bouton qui montre la pastille du fournisseur, le modèle et son prix, ou d'un point orange la clé qui manque, et
+  ouvre le sélecteur. Le sélecteur est une feuille de cartes groupées par fournisseur : pastille, nom, état de la clé
+  (« Clé active », « Clé coupée » avec « Rallumer », « Aucune clé » avec « Ajouter la clé » ; pour le modèle local,
+  « Pas réglé » avec « Régler le modèle local », qui ouvre les réglages avancés). Chaque carte donne le nom du modèle,
+  ses pastilles « Recommandé » (Grok Voice Transcribe 2.0 pour la voix, le modèle d'origine de l'autre fournisseur pour
+  son relais, DeepSeek Flash pour la correction, GPT-5.4 mini pour son relais) et « Économique » (0,25 $ de l'heure au
+  plus pour la voix ; moins de 0,10 $ pour 100 dictées, ou le modèle local, pour la correction), puis son prix (voix :
+  par heure de dictée, et celui de la vérification quand elle est active) ou sa rapidité et son prix (correction).
+  Le choix en cours a le bord et la coche rouges. Un modèle dont la clé n'est pas active est grisé et ne se choisit
+  pas ; le relais de la correction ne peut pas être le service principal (« Déjà en premier »). « Automatique » et
+  « Aucun relais » sont une carte en tête. Choisir applique et ferme ; Échap ou ✕ ferme sans rien changer.
+- Fournisseurs › Réglages avancés, repliés à l'ouverture de l'écran (« À régler » signale un relais qui attend sa
+  clé) : Relais de la voix et Relais de la correction (même sélecteur), Vérifier sur l'enregistrement complet (même
+  fournisseur que la voix, avec le modèle et son prix), Mots appris (interrupteur, et « Comme la correction » ou
+  « Jev (TypeSafe) », ou « Ajouter une clé TypeSafe » sans cette clé ; choisir Jev allume la clé TypeSafe, « Comme la
+  correction » la coupe : elle ne sert qu'aux mots appris), Modèle local, Source des clés et État des services. Les
+  interrupteurs sont ceux de Réglages.
+- Chaque service se remplace par un autre dont on a la clé ; sans clé TypeSafe, le modèle de correction juge seul
+  les mots appris.
 - Par défaut : fichier de l'app (`Application Support/Wispad/api-keys.json`, lisible par le seul utilisateur du Mac).
 - Coffre de secrets, au choix : une commande qui répond à `get NOM` (valeur sur la sortie, code 1 si absente) et
   `put NOM` (valeur sur l'entrée), indiquée par `WISPAD_SECRET_COMMAND` ou

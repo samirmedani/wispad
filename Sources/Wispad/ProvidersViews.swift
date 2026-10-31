@@ -1,536 +1,521 @@
 import SwiftUI
 import WispadCore
 
-/// Fournisseurs : le modèle de chaque étape d'une dictée, les clés API et l'état des services.
+/// Fournisseurs : en tête, une vue d'ensemble (ce qui marche, ce qui manque, le bouton qui règle) ; puis le modèle de
+/// la voix et celui de la correction, choisis dans un sélecteur en cartes ; les clés API ; et, repliés dans « Réglages
+/// avancés », les relais, la vérification, les mots appris, le modèle local, la source des clés et l'état des services.
+/// L'écran est lu une fois par affichage (`ProvidersSnapshot`) : les listes de modèles ne se calculent qu'à
+/// l'ouverture du sélecteur.
 struct ProvidersView: View {
+    @Environment(AppModel.self) private var model
+    @State private var picker: ModelPickerKind?
+    @State private var keyEntry: KeyEntryHost?
+    @State private var advanced = false
+
+    #if DEBUG
+    /// Aperçus : réglages avancés dépliés.
+    static var previewAdvanced = false
+    #endif
+
     var body: some View {
+        let snapshot = ProvidersSnapshot(model: model)
         FormScreen(title: String(localized: "Fournisseurs"), subtitle: String(localized: "Où ta voix est transcrite, et ce qui corrige le texte.")) {
-            ModelStepsSection()
-            APIKeysSection()
-            LocalModelSection()
-            ServiceStatusSection()
+            OverviewSection(snapshot: snapshot, picker: $picker, keyEntry: $keyEntry)
+            ModelsSection(snapshot: snapshot, picker: $picker)
+            APIKeysSection(snapshot: snapshot, keyEntry: $keyEntry)
+            AdvancedToggleSection(expanded: $advanced, attention: snapshot.advancedNeedsAttention)
+            if advanced {
+                RelaysSection(snapshot: snapshot, picker: $picker)
+                LearningSection(snapshot: snapshot, keyEntry: $keyEntry)
+                LocalModelSection()
+                KeySourceSection()
+                ServiceStatusSection()
+            }
+        }
+        .sheet(item: $picker, onDismiss: {
+            if case .picker = keyEntry { keyEntry = nil }
+        }) { kind in
+            ModelPickerSheet(kind: kind, snapshot: snapshot, keyEntry: $keyEntry, openAdvanced: { advanced = true })
+                .environment(model)
+                .tint(Theme.brand)
+        }
+        // Liste des modèles de chaque clé de correction, relue au plus une fois par jour.
+        .task(id: model.cleanupKeys.keys.sorted()) {
+            await TextModelDirectory.shared.refresh(keys: model.cleanupKeys)
+        }
+        #if DEBUG
+        .onAppear { if Self.previewAdvanced { advanced = true } }
+        #endif
+    }
+}
+
+// MARK: - Vue d'ensemble
+
+/// Ce qui marche, ce qui manque, et le bouton qui règle. Relue chaque minute : un service mis de côté est repris avec
+/// le temps.
+private struct OverviewSection: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.interactionReduceMotion) private var reduceMotion
+    var snapshot: ProvidersSnapshot
+    @Binding var picker: ModelPickerKind?
+    @Binding var keyEntry: KeyEntryHost?
+    @State private var checking = false
+    @State private var reloading = false
+
+    var body: some View {
+        // Un service mis de côté ou repris change la vue d'ensemble tout de suite ; l'expiration, à la minute.
+        let _ = model.health
+        Section {
+            TimelineView(.periodic(from: .now, by: 60)) { _ in
+                card(ProvidersOverview.make(snapshot, paused: model.relayLines()))
+            }
+        }
+    }
+
+    private func card(_ overview: ProvidersOverview) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 14) {
+                OverviewGlyph(tone: overview.tone)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(verbatim: overview.title)
+                        .font(.system(size: 15, weight: .semibold))
+                    Text(verbatim: overview.detail)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if !overview.actions.isEmpty {
+                        HStack(spacing: 8) {
+                            ForEach(Array(overview.actions.enumerated()), id: \.element) { index, action in
+                                actionButton(action, prominent: index == 0)
+                            }
+                        }
+                        .padding(.top, 6)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            if case .overview(let expected) = keyEntry {
+                KeyEntryForm(expected: expected) { keyEntry = nil }
+                    .padding(.leading, 48)
+            }
+            ForEach(overview.rows) { gap in
+                Divider().padding(.leading, 48)
+                gapRow(gap)
+            }
+            if !overview.paused.isEmpty {
+                Divider().padding(.leading, 48)
+                pausedRow(overview.paused)
+            }
+        }
+        .padding(.vertical, 6)
+        .animation(reduceMotion ? nil : Theme.spring, value: overview)
+    }
+
+    /// Une autre clé à régler : pastille, ce qui ne sert pas, et le bouton qui règle.
+    private func gapRow(_ gap: KeyGap) -> some View {
+        HStack(spacing: 12) {
+            ProviderTile(account: gap.account, size: 24)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(verbatim: gap.title)
+                    .font(.system(size: 13, weight: .medium))
+                Text(verbatim: gap.detail)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 8)
+            if gap.stored {
+                Button(String(localized: "Rallumer")) { perform(.enableKey(gap.account)) }
+                    .hoverFeedback()
+            } else if !snapshot.readOnlyKeys, keyEntry != .overview(gap.account) {
+                Button(String(localized: "Ajouter la clé")) { perform(.addKey(gap.account)) }
+                    .hoverFeedback()
+            }
+        }
+        .padding(.leading, 48)
+    }
+
+    /// Services en pause et relais pris à leur place, quand le titre parle d'autre chose.
+    private func pausedRow(_ lines: [String]) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "arrow.triangle.branch")
+                .foregroundStyle(OverlayStyle.relay)
+                .frame(width: 24)
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach(lines, id: \.self) { line in
+                    Text(verbatim: line).font(.callout)
+                }
+            }
+            Spacer(minLength: 8)
+            actionButton(.retryServices, prominent: false)
+        }
+        .padding(.leading, 48)
+    }
+
+    @ViewBuilder
+    private func actionButton(_ action: ProvidersOverview.Action, prominent: Bool) -> some View {
+        let button = Button(label(action)) { perform(action) }
+            .disabled(busy(action))
+        if prominent {
+            button.buttonStyle(.borderedProminent).hoverFeedback()
+        } else {
+            button.hoverFeedback()
+        }
+    }
+
+    private func label(_ action: ProvidersOverview.Action) -> String {
+        switch action {
+        case .reload:
+            if reloading { return String(localized: "Lecture…") }
+            if snapshot.readOnlyKeys { return String(localized: "Recharger depuis la source") }
+            return snapshot.keyStore == .vault ? String(localized: "Recharger depuis le coffre") : String(localized: "Réessayer")
+        case .addKey(let account):
+            return account.map { String(localized: "Ajouter la clé \(ProviderName.of($0))") } ?? String(localized: "Ajouter une clé")
+        case .enableKey(let account):
+            return String(localized: "Rallumer la clé \(ProviderName.of(account))")
+        case .useVoice(let provider):
+            return String(localized: "Dicter avec \(provider.displayName)")
+        case .retryServices:
+            return checking ? String(localized: "Vérification…") : String(localized: "Réessayer maintenant")
+        case .choose(let kind):
+            return kind == .voiceRelay || kind == .correctionRelay ? String(localized: "Choisir un autre relais")
+                : String(localized: "Choisir un autre modèle")
+        }
+    }
+
+    private func busy(_ action: ProvidersOverview.Action) -> Bool {
+        switch action {
+        case .reload: return reloading
+        case .retryServices: return checking
+        case .addKey(let account): return keyEntry == .overview(account)
+        default: return false
+        }
+    }
+
+    private func perform(_ action: ProvidersOverview.Action) {
+        switch action {
+        case .reload:
+            reloading = true
+            Task {
+                await model.refreshKeys()
+                reloading = false
+            }
+        case .addKey(let account):
+            model.keysMessage = nil
+            keyEntry = .overview(account)
+        case .enableKey(let account):
+            withAnimation(reduceMotion ? nil : Theme.spring) { model.setKeyEnabled(account, true) }
+        case .useVoice(let provider):
+            withAnimation(reduceMotion ? nil : Theme.spring) { model.chooseVoice(provider, model: model.liveModel(for: provider)) }
+        case .retryServices:
+            checking = true
+            Task {
+                await model.checkDownServices()
+                checking = false
+            }
+        case .choose(let kind):
+            picker = kind
+        }
+    }
+}
+
+/// Pastille de la vue d'ensemble : verte quand tout est prêt, verte du relais quand un service est en pause, orange
+/// quand un choix ne sert pas, rouge de la marque quand on ne peut pas dicter.
+private struct OverviewGlyph: View {
+    var tone: ProvidersOverview.Tone
+
+    var body: some View {
+        Image(systemName: symbol)
+            .font(.system(size: 15, weight: .bold))
+            .foregroundStyle(.white)
+            .frame(width: 34, height: 34)
+            .background(Circle().fill(color.gradient))
+            .shadow(color: color.opacity(0.3), radius: 5, y: 2)
+            .accessibilityHidden(true)
+    }
+
+    private var symbol: String {
+        switch tone {
+        case .ready: return "checkmark"
+        case .relay: return "arrow.triangle.branch"
+        case .attention: return "exclamationmark"
+        case .blocked: return "key.fill"
+        }
+    }
+
+    private var color: Color {
+        switch tone {
+        case .ready: return .green
+        case .relay: return OverlayStyle.relay
+        case .attention: return .orange
+        case .blocked: return Theme.brand
         }
     }
 }
 
 // MARK: - Modèles
 
-/// Ce qu'une étape fait maintenant, et sur quel ton l'afficher.
-struct StepStatus: Equatable {
-    enum Tone: Equatable {
-        /// L'étape travaille : modèle, relais, prix.
-        case ready
-        /// L'étape ne peut pas travailler comme choisi (clé absente ou coupée).
-        case warning
-        /// Étape coupée par son interrupteur.
-        case off
-    }
-
-    var text: String
-    var tone: Tone
-}
-
-/// Fournisseurs › Modèles : les quatre étapes d'une dictée, numérotées dans leur ordre. Chacune a son choix, la voix et
-/// la correction leur relais au choix, puis une ligne qui dit ce que l'étape fait maintenant (modèle réel, relais, prix).
-struct ModelStepsSection: View {
+/// Les deux choix qui comptent : le modèle de la voix et celui de la correction, chacun dans un bouton qui ouvre le
+/// sélecteur en cartes.
+private struct ModelsSection: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.interactionReduceMotion) private var reduceMotion
+    var snapshot: ProvidersSnapshot
+    @Binding var picker: ModelPickerKind?
 
-    /// Largeur réservée aux interrupteurs : le sélecteur du relais s'aligne sur celui du modèle, au-dessus.
+    /// Largeur réservée à l'interrupteur de la correction : les deux boutons de modèle s'alignent.
     private static let switchWidth: CGFloat = 40
 
     var body: some View {
-        let speech = model.speechRequest(context: nil)
-        let services = TextCleaner.services(speech)
-        // Service principal hors panne en cours : celui que le relais ne peut pas doubler.
-        let primary = TextCleaner.services({ var calm = speech; calm.cleanupPrimaryDown = false; return calm }()).first
         Section {
-            VStack(spacing: 0) {
-                ModelStepRow(number: 1, title: String(localized: "Voix en direct"),
-                             summary: String(localized: "Transcrit pendant que tu parles."),
-                             status: voiceStatus, isLast: false,
-                             relayTitle: String(localized: "Relais si \(model.settings.provider.displayName) ne répond pas")) {
-                    voicePicker
-                } relay: {
-                    voiceRelayPicker
+            ModelRow(symbol: "waveform", tint: Theme.brand, title: String(localized: "Voix"),
+                     summary: String(localized: "Transcrit pendant que tu parles.")) {
+                ModelSummaryButton(summary: snapshot.voiceSummary, help: String(localized: "Choisir le modèle de la voix")) {
+                    picker = .voice
                 }
-                ModelStepRow(number: 2, title: String(localized: "Vérification"),
-                             summary: String(localized: "Réécoute l'enregistrement complet à la fin."),
-                             status: verifyStatus, isLast: false) {
-                    Toggle(String(localized: "Vérifier sur l'enregistrement complet"), isOn: Binding(
-                        get: { model.settings.verifyWithFile },
-                        set: { model.settings.verifyWithFile = $0; model.saveSettings() }
-                    ))
-                    .toggleStyle(.switch)
-                    .labelsHidden()
-                }
-                ModelStepRow(number: 3, title: String(localized: "Correction"),
-                             summary: String(localized: "Ponctuation, mots mal entendus, mise en forme."),
-                             status: correctionStatus(services: services, speech: speech), isLast: false,
-                             relayTitle: primary.map { String(localized: "Relais si \($0.provider) ne répond pas") } ?? String(localized: "Relais")) {
-                    HStack(spacing: 12) {
-                        correctionPicker
-                            .disabled(!model.settings.cleanupEnabled)
-                        Toggle(String(localized: "Corriger le texte avant insertion"), isOn: Binding(
-                            get: { model.settings.cleanupEnabled },
-                            set: { model.settings.cleanupEnabled = $0; model.saveSettings() }
-                        ))
-                        .toggleStyle(.switch)
-                        .labelsHidden()
-                        .frame(width: Self.switchWidth, alignment: .trailing)
-                    }
-                } relay: {
-                    cleanupRelayPicker(primary: primary)
-                        .disabled(!model.settings.cleanupEnabled)
-                        .padding(.trailing, Self.switchWidth + 12)
-                }
-                ModelStepRow(number: 4, title: String(localized: "Mots appris"),
-                             summary: String(localized: "Décide si un mot corrigé entre au dictionnaire."),
-                             status: learningStatus(services: services), isLast: true) {
-                    HStack(spacing: 12) {
-                        judgePicker
-                            .disabled(!model.settings.learnCorrections)
-                        Toggle(String(localized: "Apprendre de mes corrections"), isOn: Binding(
-                            get: { model.settings.learnCorrections },
-                            set: { model.settings.learnCorrections = $0; model.saveSettings() }
-                        ))
-                        .toggleStyle(.switch)
-                        .labelsHidden()
-                        .frame(width: Self.switchWidth, alignment: .trailing)
-                    }
-                }
+                .padding(.trailing, Self.switchWidth + 12)
             }
-            .padding(.vertical, 8)
+            ModelRow(symbol: "wand.and.stars", tint: .purple, title: String(localized: "Correction"),
+                     summary: String(localized: "Ponctuation, mots mal entendus, mise en forme.")) {
+                ModelSummaryButton(summary: snapshot.correctionSummary, help: String(localized: "Choisir le modèle de correction")) {
+                    picker = .correction
+                }
+                .disabled(!snapshot.cleanupEnabled)
+                Toggle(String(localized: "Corriger le texte avant insertion"), isOn: Binding(
+                    get: { snapshot.cleanupEnabled },
+                    set: { model.setSetting(\.cleanupEnabled, $0) }
+                ))
+                .toggleStyle(.switch)
+                .labelsHidden()
+                .frame(width: Self.switchWidth, alignment: .trailing)
+            }
         } header: {
             Text("Modèles")
-        } footer: {
-            Text("Un modèle par étape, dans l'ordre d'une dictée, et un relais au choix pour la voix et la correction : il prend la main quand le premier ne répond pas. Seuls les fournisseurs dont la clé est active se choisissent : ajoute les autres juste en dessous.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
         }
-    }
-
-    // MARK: Étape 1 : voix en direct
-
-    private struct VoiceChoice: Hashable {
-        var provider: ProviderID
-        var model: String
-    }
-
-    private var voicePicker: some View {
-        Picker(String(localized: "Modèle de la voix en direct"), selection: Binding(
-            get: { VoiceChoice(provider: model.settings.provider, model: model.settings.liveModel) },
-            set: { choice in
-                guard model.hasKey(choice.provider) else { return }
-                withAnimation(reduceMotion ? nil : Theme.spring) {
-                    model.selectProvider(choice.provider)
-                    model.settings.liveModel = choice.model
-                    model.saveSettings()
-                }
-            }
-        )) {
-            ForEach(ProviderID.allCases) { provider in
-                Section(provider.displayName) {
-                    ForEach(ProviderCatalog.models(for: provider)) { item in
-                        Text(option(provider.displayName, item.displayName,
-                                    availability(provider.rawValue) ?? (item.recommended ? String(localized: "recommandé") : nil)))
-                            .tag(VoiceChoice(provider: provider, model: item.id))
-                            .selectionDisabled(!model.hasKey(provider))
-                    }
-                }
-            }
-        }
-        .labelsHidden()
-        .fixedSize()
-    }
-
-    private var voiceStatus: StepStatus {
-        let provider = model.settings.provider
-        let other: ProviderID = provider == .xai ? .openAI : .xai
-        guard model.hasKey(provider) else {
-            let name = provider.displayName
-            let text: String
-            switch (model.hasStoredKey(account: provider.rawValue), model.hasKey(other)) {
-            case (true, true): text = String(localized: "Clé \(name) coupée : rallume-la, ou choisis un modèle \(other.displayName).")
-            case (true, false): text = String(localized: "Clé \(name) coupée : rallume-la dans Clés API pour dicter.")
-            case (false, true): text = String(localized: "Aucune clé \(name) : ajoute-la, ou choisis un modèle \(other.displayName).")
-            case (false, false): text = String(localized: "Aucune clé \(name) : ajoute-la dans Clés API pour dicter.")
-            }
-            return StepStatus(text: text, tone: .warning)
-        }
-        let chosen = ProviderCatalog.liveModel(id: model.settings.liveModel, provider: provider)
-        let price = MoneyFormat.price(chosen.streamingUSDPerHour)
-        if let relay = model.chosenVoiceRelay, !model.hasKey(relay.provider) {
-            return StepStatus(text: String(localized: "\(price)/h en direct · relais \(relay.provider.displayName) sans clé active : ajoute-la, ou choisis « Aucun relais »."),
-                              tone: .warning)
-        }
-        if let relay = model.voiceRelayModel(for: provider), model.hasKey(relay.provider) {
-            let relayPrice = MoneyFormat.price(relay.streamingUSDPerHour)
-            return StepStatus(text: String(localized: "\(price)/h en direct · relais \(relay.provider.displayName) : \(relayPrice)/h"), tone: .ready)
-        }
-        return StepStatus(text: String(localized: "\(price)/h en direct · sans relais"), tone: .ready)
-    }
-
-    /// Relais affiché : le choix enregistré, ou tant qu'il n'y en a pas, le recommandé de l'autre fournisseur s'il a
-    /// une clé active (« Aucun relais » sinon).
-    private var displayedVoiceRelay: String {
-        if let chosen = model.chosenVoiceRelay { return chosen.id }
-        let other = model.settings.provider.other
-        if model.settings.voiceRelay == AppSettings.voiceRelayOff || !model.hasKey(other) { return AppSettings.voiceRelayOff }
-        return other.defaultLiveModel
-    }
-
-    private var voiceRelayPicker: some View {
-        let other = model.settings.provider.other
-        return Picker(String(localized: "Relais de la voix"), selection: Binding(
-            get: { displayedVoiceRelay },
-            set: { choice in
-                guard choice == AppSettings.voiceRelayOff || model.hasKey(other) else { return }
-                model.settings.voiceRelay = choice
-                model.saveSettings()
-            }
-        )) {
-            Text("Aucun relais").tag(AppSettings.voiceRelayOff)
-            Section(other.displayName) {
-                ForEach(ProviderCatalog.models(for: other)) { item in
-                    Text(option(other.displayName, item.displayName,
-                                availability(other.rawValue) ?? (item.recommended ? String(localized: "recommandé") : nil)))
-                        .tag(item.id)
-                        .selectionDisabled(!model.hasKey(other))
-                }
-            }
-        }
-        .labelsHidden()
-        .fixedSize()
-    }
-
-    // MARK: Étape 2 : vérification
-
-    private var verifyStatus: StepStatus {
-        guard model.settings.verifyWithFile else {
-            return StepStatus(text: String(localized: "Coupée : seul le texte reçu en direct compte."), tone: .off)
-        }
-        let provider = model.settings.provider
-        guard model.hasKey(provider) else {
-            return StepStatus(text: String(localized: "Suit la voix, qui n'a pas de clé active."), tone: .warning)
-        }
-        let chosen = ProviderCatalog.liveModel(id: model.settings.liveModel, provider: provider)
-        let price = MoneyFormat.price(chosen.batchUSDPerHour)
-        return StepStatus(text: String(localized: "Même fournisseur que la voix : \(provider.displayName) \(chosen.fileDisplayName) · \(price)/h"),
-                          tone: .ready)
-    }
-
-    // MARK: Étape 3 : correction
-
-    private var correctionPicker: some View {
-        CleanupModelMenu(title: String(localized: "Modèle de correction"), selection: Binding(
-            get: { model.settings.cleanupChoice },
-            set: { choice in
-                guard choice.account.map({ model.hasKey(account: $0) }) ?? true else { return }
-                model.settings.cleanupChoice = choice
-                if model.settings.cleanupRelay == choice { model.settings.cleanupRelay = .off }
-                model.saveSettings()
-            }
-        ), neutral: .automatic, neutralLabel: String(localized: "Automatique · selon tes clés"))
-    }
-
-    /// Relais de la correction : « Aucun relais » ou un modèle dont la clé est active, autre que le service principal.
-    private func cleanupRelayPicker(primary: CleanupService?) -> some View {
-        CleanupModelMenu(title: String(localized: "Relais de la correction"), selection: Binding(
-            get: { model.displayedCleanupRelay },
-            set: { choice in
-                guard choice == .off || (choice.account.map { model.hasKey(account: $0) } ?? false) else { return }
-                model.settings.cleanupRelay = choice
-                model.saveSettings()
-            }
-        ), neutral: .off, neutralLabel: String(localized: "Aucun relais"),
-           excluded: primary.flatMap { CleanupChoice(providerName: $0.provider, model: $0.model) })
-    }
-
-    private func correctionStatus(services: [CleanupService], speech: SpeechRequest) -> StepStatus {
-        guard model.settings.cleanupEnabled else {
-            return StepStatus(text: String(localized: "Coupée : le texte est collé tel que transcrit."), tone: .off)
-        }
-        guard let first = services.first else {
-            return StepStatus(text: String(localized: "Aucune clé active pour corriger : le texte est collé tel que transcrit."), tone: .warning)
-        }
-        let choice = model.settings.cleanupChoice
-        if let name = choice.providerName, speech.chosenCleanupKey == nil {
-            let text = services.count > 1
-                ? String(localized: "Pas de clé \(name) active : correction automatique par \(first.label), puis \(services[1].label) si besoin.")
-                : String(localized: "Pas de clé \(name) active : correction automatique par \(first.label).")
-            return StepStatus(text: text, tone: .warning)
-        }
-        if let name = model.settings.cleanupRelay.providerName, speech.relayCleanupKey == nil {
-            return StepStatus(text: String(localized: "Maintenant : \(first.label) · relais \(name) sans clé active : ajoute-la, ou choisis « Aucun relais »."),
-                              tone: .warning)
-        }
-        let text = services.count > 1
-            ? String(localized: "Maintenant : \(first.label) · relais : \(services[1].label)")
-            : String(localized: "Maintenant : \(first.label) · sans relais")
-        return StepStatus(text: text, tone: .ready)
-    }
-
-    // MARK: Étape 4 : mots appris
-
-    private enum JudgeChoice: Hashable {
-        /// Le modèle de correction juge seul.
-        case correction
-        /// Jev (TypeSafe) note d'abord ; le modèle de correction tranche les cas douteux.
-        case jev
-    }
-
-    /// Jev n'a pas d'autre usage que les mots appris : le choisir allume la clé TypeSafe, « Comme la correction » la coupe.
-    private var judgePicker: some View {
-        Picker(String(localized: "Modèle qui choisit les mots appris"), selection: Binding(
-            get: { model.hasKey(account: APIKeys.typesafe) ? JudgeChoice.jev : .correction },
-            set: { choice in
-                guard model.hasStoredKey(account: APIKeys.typesafe) else { return }
-                model.setKeyEnabled(APIKeys.typesafe, choice == .jev)
-            }
-        )) {
-            Text("Comme la correction").tag(JudgeChoice.correction)
-            Text(option(APIKeys.title(APIKeys.typesafe), "Jev",
-                        model.hasStoredKey(account: APIKeys.typesafe) ? nil : String(localized: "aucune clé")))
-                .tag(JudgeChoice.jev)
-                .selectionDisabled(!model.hasStoredKey(account: APIKeys.typesafe))
-        }
-        .labelsHidden()
-        .fixedSize()
-    }
-
-    private func learningStatus(services: [CleanupService]) -> StepStatus {
-        guard model.settings.learnCorrections else {
-            return StepStatus(text: String(localized: "Coupé : aucun mot n'est appris de tes corrections."), tone: .off)
-        }
-        if model.hasKey(account: APIKeys.typesafe) {
-            let text = services.first.map { String(localized: "Jev note chaque mot ; en cas de doute, \($0.label) tranche.") }
-                ?? String(localized: "Jev note chaque mot, seul : aucun modèle de correction actif.")
-            return StepStatus(text: text, tone: .ready)
-        }
-        guard let first = services.first else {
-            return StepStatus(text: String(localized: "Aucun modèle actif : aucun mot n'est appris."), tone: .warning)
-        }
-        return StepStatus(text: String(localized: "Maintenant : \(first.label), comme la correction."), tone: .ready)
-    }
-
-    // MARK: Libellés
-
-    /// « xAI · Grok Voice Transcribe 2.0 · recommandé » : fournisseur, modèle, puis une précision facultative.
-    private func option(_ provider: String, _ name: String, _ note: String?) -> String {
-        [provider, name, note].compactMap { $0 }.joined(separator: " · ")
-    }
-
-    /// Pourquoi un fournisseur ne se choisit pas : « aucune clé » ou « clé coupée » ; nil si sa clé est active.
-    private func availability(_ account: String) -> String? {
-        guard !model.hasKey(account: account) else { return nil }
-        return model.hasStoredKey(account: account) ? String(localized: "clé coupée") : String(localized: "aucune clé")
     }
 }
 
-/// Une étape numérotée : pastille, titre et rôle, contrôle à droite, relais au choix s'il y en a un, puis ce que
-/// l'étape fait maintenant. Un trait relie la pastille à celle de l'étape suivante.
-struct ModelStepRow<Control: View, Relay: View>: View {
-    var number: Int
+/// Une étape : pastille, titre et rôle en une ligne, puis son choix à droite.
+private struct ModelRow<Control: View>: View {
+    var symbol: String
+    var tint: Color
     var title: String
     var summary: String
-    var status: StepStatus
-    var isLast: Bool
-    var relayTitle: String = ""
     @ViewBuilder var control: Control
-    @ViewBuilder var relay: Relay
 
     var body: some View {
-        HStack(alignment: .top, spacing: 14) {
-            VStack(spacing: 6) {
-                StepBadge(number: number, tone: status.tone)
-                if !isLast {
-                    Capsule()
-                        .fill(Theme.brand.opacity(0.22))
-                        .frame(width: 2)
-                        .frame(maxHeight: .infinity)
-                }
+        HStack(spacing: 12) {
+            IconBadge(symbol: symbol, tint: tint, size: 30)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(verbatim: title)
+                    .font(.system(size: 13.5, weight: .semibold))
+                Text(verbatim: summary)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
             }
-            .frame(width: 30)
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .center, spacing: 16) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(title)
-                            .font(.system(size: 14, weight: .semibold))
-                        Text(summary)
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer(minLength: 16)
-                    control
-                }
-                .frame(minHeight: 30)
-                if Relay.self != EmptyView.self {
-                    HStack(alignment: .center, spacing: 16) {
-                        Label {
-                            Text(relayTitle)
-                        } icon: {
-                            Image(systemName: "arrow.triangle.branch")
-                                .foregroundStyle(Theme.brand)
-                        }
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        Spacer(minLength: 16)
-                        relay
-                    }
-                    .frame(minHeight: 26)
-                }
-                StepStatusLine(status: status)
-            }
-            .padding(.bottom, isLast ? 0 : 22)
+            .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 12)
+            HStack(spacing: 12) { control }
         }
-        .fixedSize(horizontal: false, vertical: true)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(String(localized: "Étape \(number) : \(title)"))
+        .padding(.vertical, 4)
     }
 }
 
-extension ModelStepRow where Relay == EmptyView {
-    init(number: Int, title: String, summary: String, status: StepStatus, isLast: Bool, @ViewBuilder control: () -> Control) {
-        self.init(number: number, title: title, summary: summary, status: status, isLast: isLast, control: control, relay: { EmptyView() })
-    }
-}
+/// Bouton d'un choix de modèle : pastille du fournisseur, nom, précision (fournisseur et prix) ou ce qui l'empêche de
+/// servir, en orange. Ouvre le sélecteur.
+struct ModelSummaryButton: View {
+    var summary: ModelSummary
+    var help: String
+    var action: () -> Void
+    @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.interactionPreviewHover) private var previewHover
+    @State private var hovering = false
 
-/// Pastille numérotée d'une étape : rouge de la marque quand l'étape travaille, orange quand elle ne peut pas, grise
-/// quand elle est coupée.
-struct StepBadge: View {
-    var number: Int
-    var tone: StepStatus.Tone
+    private var highlighted: Bool { isEnabled && (hovering || previewHover) }
 
     var body: some View {
-        Text(verbatim: String(number))
-            .font(.system(size: 14, weight: .bold, design: .rounded))
-            .monospacedDigit()
-            .foregroundStyle(tone == .off ? Color.secondary : Color.white)
-            .frame(width: 30, height: 30)
-            .background {
-                switch tone {
-                case .ready:
-                    Circle().fill(Theme.brand.gradient)
-                case .warning:
-                    Circle().fill(Color.orange.gradient)
-                case .off:
-                    Circle().fill(Theme.subtleFill)
-                        .overlay(Circle().strokeBorder(Theme.cardBorder, lineWidth: 1))
+        Button(action: action) {
+            HStack(spacing: 10) {
+                if let account = summary.account {
+                    ProviderTile(account: account, size: 24)
+                } else {
+                    Image(systemName: "minus.circle")
+                        .font(.system(size: 15))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 24, height: 24)
                 }
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(verbatim: summary.title)
+                        .font(.system(size: 13, weight: .semibold))
+                        .lineLimit(1)
+                    if let warning = summary.warning {
+                        // Discret : la vue d'ensemble porte l'alerte et le bouton qui règle.
+                        HStack(spacing: 5) {
+                            Circle().fill(Color.orange).frame(width: 6, height: 6)
+                            Text(verbatim: warning)
+                        }
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                    } else {
+                        Text(verbatim: summary.caption)
+                            .font(.system(size: 11.5))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+                Spacer(minLength: 6)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .foregroundStyle(.secondary)
             }
-            .shadow(color: shadow, radius: 5, y: 2)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .frame(width: 280, alignment: .leading)
+            .background {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(highlighted ? Theme.brand.opacity(0.06) : Theme.subtleFill)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(highlighted ? Theme.brand.opacity(0.35) : Theme.cardBorder, lineWidth: 1)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .opacity(isEnabled ? 1 : 0.5)
+        .onHover { hovering = $0 }
+        .animation(Theme.hover, value: highlighted)
+        .help(help)
+        .accessibilityLabel(help)
+        .accessibilityValue(Text(verbatim: "\(summary.title), \(summary.warning ?? summary.caption)"))
+    }
+}
+
+/// Pastille d'un fournisseur : sa couleur et un signe simple, sans logo officiel.
+struct ProviderTile: View {
+    var account: String
+    var size: CGFloat = 28
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
+        glyph
+            .foregroundStyle(.white)
+            .frame(width: size, height: size)
+            .background(shape.fill(tint.gradient))
+            .overlay(shape.strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.14 : 0), lineWidth: 1))
             .accessibilityHidden(true)
     }
 
-    private var shadow: Color {
-        switch tone {
-        case .ready: return Theme.brand.opacity(0.3)
-        case .warning: return Color.orange.opacity(0.3)
-        case .off: return .clear
-        }
-    }
-}
-
-/// Ce que l'étape fait maintenant, dans un bandeau discret ; orange quand elle ne peut pas travailler comme choisi.
-struct StepStatusLine: View {
-    var status: StepStatus
-
-    var body: some View {
-        Label {
-            Text(status.text)
-                .fixedSize(horizontal: false, vertical: true)
-        } icon: {
+    @ViewBuilder private var glyph: some View {
+        switch account {
+        case ProviderID.xai.rawValue, APIKeys.xaiManagement:
+            Text(verbatim: "xAI")
+                .font(.system(size: size * 0.34, weight: .heavy, design: .rounded))
+        default:
             Image(systemName: symbol)
-        }
-        .font(.callout)
-        .foregroundStyle(status.tone == .warning ? Color.orange : Color.secondary)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(status.tone == .warning ? Color.orange.opacity(0.12) : Theme.subtleFill)
+                .font(.system(size: size * 0.48, weight: .semibold))
         }
     }
 
     private var symbol: String {
-        switch status.tone {
-        case .ready: return "arrow.turn.down.right"
-        case .warning: return "exclamationmark.triangle.fill"
-        case .off: return "pause.circle"
+        switch account {
+        case ProviderID.openAI.rawValue: return "circle.hexagongrid.fill"
+        case CleanupModel.deepSeekAccount: return "fish.fill"
+        case APIKeys.typesafe: return "checkmark.seal.fill"
+        case CleanupModel.localAccount: return "laptopcomputer"
+        default: return "key.fill"
+        }
+    }
+
+    private var tint: Color {
+        switch account {
+        case ProviderID.xai.rawValue, APIKeys.xaiManagement: return Color(white: 0.12)
+        case ProviderID.openAI.rawValue: return Color(red: 0.06, green: 0.64, blue: 0.5)
+        case CleanupModel.deepSeekAccount: return Color(red: 0.3, green: 0.42, blue: 1)
+        case APIKeys.typesafe: return Color(red: 0.49, green: 0.36, blue: 1)
+        default: return .gray
         }
     }
 }
 
 // MARK: - Clés API
 
-/// Clés enregistrées, masquées, chacune avec son interrupteur (et sa corbeille hors coffre), puis « Ajouter une
-/// clé » : le fournisseur d'une clé collée est reconnu à sa forme, puis la clé est vérifiée chez lui seul.
-struct APIKeysSection: View {
+/// Page où chaque fournisseur crée ses clés.
+enum ProviderLinks {
+    static func createKey(_ account: String) -> URL? {
+        switch account {
+        case ProviderID.xai.rawValue: return URL(string: "https://console.x.ai")
+        case ProviderID.openAI.rawValue: return URL(string: "https://platform.openai.com/api-keys")
+        case CleanupModel.deepSeekAccount: return URL(string: "https://platform.deepseek.com/api_keys")
+        default: return nil
+        }
+    }
+}
+
+/// Clés enregistrées, masquées, chacune avec son interrupteur (et sa corbeille hors coffre), puis « Ajouter une clé ».
+private struct APIKeysSection: View {
     @Environment(AppModel.self) private var model
+    var snapshot: ProvidersSnapshot
+    @Binding var keyEntry: KeyEntryHost?
 
     var body: some View {
-        let accounts = APIKeys.accounts.filter { model.hasStoredKey(account: $0) }
+        let accounts = APIKeys.accounts.filter { snapshot.stored.contains($0) }
         Section {
-            KeySourceRow()
-            if !model.keysReachable {
-                Label(model.dependencies.keyStore == .vault ? String(localized: "Coffre injoignable") : String(localized: "Clés illisibles"),
+            if !snapshot.keysReachable {
+                Label(snapshot.keyStore == .vault ? String(localized: "Coffre injoignable") : String(localized: "Clés illisibles"),
                       systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.red)
             } else if accounts.isEmpty {
-                Text("Aucune clé pour l'instant. Ajoute celle de ton fournisseur de voix, xAI ou OpenAI, pour dicter.")
+                Text("Aucune clé pour l'instant.")
                     .foregroundStyle(.secondary)
             }
             ForEach(accounts, id: \.self) { account in
                 APIKeyListRow(account: account)
             }
-            if model.usesRemoteKeySource {
+            if snapshot.readOnlyKeys {
                 Text("Ta source de clés se lit seulement : ajoute une clé dans ton serveur ou ton gestionnaire, puis recharge.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             } else {
-                AddKeyRow()
+                AddKeyRow(keyEntry: $keyEntry)
             }
-            if let message = model.keysMessage {
+            if let message = model.keysMessage, keyEntry == nil {
                 Label(message, systemImage: "info.circle")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
-            if model.dependencies.keyStore == .vault {
-                Button(model.usesRemoteKeySource ? String(localized: "Recharger depuis la source") : String(localized: "Recharger depuis le coffre")) {
+            if snapshot.keyStore == .vault {
+                Button {
                     Task { await model.refreshKeys() }
+                } label: {
+                    Label(snapshot.readOnlyKeys ? String(localized: "Recharger depuis la source") : String(localized: "Recharger depuis le coffre"),
+                          systemImage: "arrow.clockwise")
                 }
-                    .hoverFeedback()
+                .hoverFeedback()
             }
         } header: {
             Text("Clés API")
         } footer: {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Recommandé : xAI pour la voix, DeepSeek pour la correction, la moins chère. Facultatif : Jev (TypeSafe) pour mieux choisir les mots à apprendre. Chaque service se remplace par un autre dont tu as la clé.")
-                Text(footer)
-                Text(model.dependencies.keyStore == .vault
-                     ? String(localized: "Une clé coupée reste dans le coffre, mais Wispad ne s'en sert plus. Pour en supprimer une, passe par l'outil de ton coffre.")
-                     : String(localized: "Une clé coupée reste enregistrée, mais Wispad ne s'en sert plus."))
-            }
-            .font(.footnote)
-            .foregroundStyle(.secondary)
+            Text(footer)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
         }
     }
 
     private var footer: String {
-        switch model.dependencies.keyStore {
-        case .vault where model.usesRemoteKeySource:
-            return String(localized: "Les clés sont lues sur ta source à chaque lancement et restent en mémoire : rien n'est écrit sur ce Mac.")
+        switch snapshot.keyStore {
+        case .vault where snapshot.readOnlyKeys:
+            return String(localized: "Clés lues sur ta source à chaque lancement et gardées en mémoire : rien n'est écrit sur ce Mac.")
         case .vault:
-            return String(localized: "Les clés viennent de ton coffre de secrets et restent en mémoire, rien n'est écrit sur ce Mac. Une nouvelle clé est enregistrée dans le coffre.")
+            return String(localized: "Clés lues dans ton coffre de secrets et gardées en mémoire : rien n'est écrit sur ce Mac. Pour en supprimer une, passe par ton coffre.")
         case .file:
-            return String(localized: "Chaque clé est vérifiée auprès du fournisseur, puis enregistrée sur ce Mac, lisible par ton seul compte. Elle ne sert qu'aux appels de Wispad, payés directement à ce fournisseur.")
+            return String(localized: "Chaque clé est vérifiée chez son fournisseur, puis gardée sur ce Mac, lisible par ton seul compte.")
         }
     }
 }
 
-/// Une clé enregistrée : nom, rôle, clé masquée, interrupteur, et corbeille pour le fichier de l'app.
+/// Une clé enregistrée : pastille, nom, rôle, clé masquée, interrupteur, et corbeille pour le fichier de l'app.
 struct APIKeyListRow: View {
     @Environment(AppModel.self) private var model
     var account: String
@@ -539,84 +524,115 @@ struct APIKeyListRow: View {
     var body: some View {
         let enabled = model.isKeyEnabled(account)
         let title = APIKeys.title(account)
-        LabeledContent {
-            HStack(spacing: 12) {
-                if case .rejected = model.keyChecks[account] {
-                    StatusChip(text: String(localized: "Refusée"), tint: .red)
-                }
-                Text(model.maskedKey(account))
-                    .font(.callout.monospaced())
+        HStack(spacing: 12) {
+            ProviderTile(account: account, size: 26)
+                .opacity(enabled ? 1 : 0.45)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(verbatim: title)
+                Text(enabled ? APIKeys.purpose(account) : String(localized: "Coupée : gardée, mais Wispad ne s'en sert pas"))
+                    .font(.callout)
                     .foregroundStyle(.secondary)
-                Toggle(String(localized: "Utiliser la clé \(title)"), isOn: Binding(
-                    get: { enabled },
-                    set: { model.setKeyEnabled(account, $0) }
-                ))
-                .toggleStyle(.switch)
-                .labelsHidden()
-                .help(enabled ? String(localized: "Wispad utilise cette clé") : String(localized: "Clé coupée : gardée, mais pas utilisée"))
-                if model.dependencies.keyStore.allowsDeletion {
-                    // Corbeille discrète : la confirmation porte l'alerte.
-                    Button {
-                        confirmsDeletion = true
-                    } label: {
-                        Image(systemName: "trash").foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.borderless)
-                    .hoverFeedback()
-                    .help(String(localized: "Supprimer la clé"))
-                    .accessibilityLabel(String(localized: "Supprimer la clé \(title)"))
-                    .confirmationDialog(String(localized: "Supprimer la clé \(title) ?"), isPresented: $confirmsDeletion) {
-                        Button(String(localized: "Supprimer"), role: .destructive) { Task { await model.removeKey(account) } }
-                    } message: {
-                        Text("Elle est effacée de ce Mac. Tu pourras en ajouter une autre à tout moment.")
-                    }
+            }
+            Spacer(minLength: 12)
+            if case .rejected = model.keyChecks[account] {
+                StatusChip(text: String(localized: "Refusée"), tint: .red)
+            }
+            Text(model.maskedKey(account))
+                .font(.callout.monospaced())
+                .foregroundStyle(.secondary)
+            Toggle(String(localized: "Utiliser la clé \(title)"), isOn: Binding(
+                get: { enabled },
+                set: { model.setKeyEnabled(account, $0) }
+            ))
+            .toggleStyle(.switch)
+            .labelsHidden()
+            .help(enabled ? String(localized: "Wispad utilise cette clé") : String(localized: "Clé coupée : gardée, mais pas utilisée"))
+            if model.dependencies.keyStore.allowsDeletion {
+                // Corbeille discrète : la confirmation porte l'alerte.
+                Button {
+                    confirmsDeletion = true
+                } label: {
+                    Image(systemName: "trash").foregroundStyle(.secondary)
+                }
+                .buttonStyle(.borderless)
+                .hoverFeedback()
+                .help(String(localized: "Supprimer la clé"))
+                .accessibilityLabel(String(localized: "Supprimer la clé \(title)"))
+                .confirmationDialog(String(localized: "Supprimer la clé \(title) ?"), isPresented: $confirmsDeletion) {
+                    Button(String(localized: "Supprimer"), role: .destructive) { Task { await model.removeKey(account) } }
+                } message: {
+                    Text("Elle est effacée de ce Mac. Tu pourras en ajouter une autre à tout moment.")
                 }
             }
-        } label: {
-            Text(title)
-            Text(enabled ? APIKeys.purpose(account) : String(localized: "Coupée : gardée, mais Wispad ne s'en sert pas"))
         }
     }
 }
 
-/// « Ajouter une clé » : on colle, le fournisseur s'affiche tout seul, puis la clé est vérifiée chez lui et
-/// enregistrée. Une clé sans signe distinctif (TypeSafe) demande seulement de choisir son fournisseur.
-struct AddKeyRow: View {
+/// « Ajouter une clé » : ouvre la saisie ici. Ouverte aussi tant qu'une clé saisie est en cours de vérification
+/// (retour sur l'écran pendant une vérification).
+private struct AddKeyRow: View {
     @Environment(AppModel.self) private var model
-    @State private var open = false
-    @FocusState private var focused: Bool
+    @Binding var keyEntry: KeyEntryHost?
 
     var body: some View {
-        // Ouverte aussi tant qu'une clé est en cours de saisie (retour sur l'écran pendant une vérification).
-        if open || !model.newKeyDraft.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 8) {
-                    SecureField(String(localized: "Nouvelle clé"), text: Binding(
-                        get: { model.newKeyDraft },
-                        set: { model.newKeyDraft = $0 }
-                    ), prompt: Text("Colle la clé ici"))
-                    .labelsHidden()
-                    .focused($focused)
-                    .onSubmit(add)
-                    Button("Annuler", action: close)
-                        .hoverFeedback()
-                    Button(model.addingKey ? String(localized: "Vérification…") : String(localized: "Ajouter"), action: add)
-                        .buttonStyle(.borderedProminent)
-                        .hoverFeedback()
-                        .disabled(!canAdd)
-                }
-                recognition
-            }
-            .onAppear { focused = true }
+        if keyEntry == .keys || (keyEntry == nil && !model.newKeyDraft.isEmpty) {
+            KeyEntryForm(expected: nil) { keyEntry = nil }
         } else {
             Button {
                 model.keysMessage = nil
-                open = true
+                keyEntry = .keys
             } label: {
                 Label("Ajouter une clé", systemImage: "plus")
             }
             .hoverFeedback()
         }
+    }
+}
+
+/// Saisie d'une clé : on colle, le fournisseur s'affiche d'après la forme de la clé, puis elle est vérifiée chez lui
+/// seul et enregistrée (`AppModel.addKey`). `expected` : fournisseur attendu, pour l'invite et le lien « Créer une
+/// clé » ; une clé collée d'un autre fournisseur est reconnue et rangée chez le sien.
+struct KeyEntryForm: View {
+    @Environment(AppModel.self) private var model
+    var expected: String?
+    var onClose: () -> Void
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                SecureField(String(localized: "Nouvelle clé"), text: Binding(
+                    get: { model.newKeyDraft },
+                    set: { model.newKeyDraft = $0 }
+                ), prompt: Text(prompt))
+                .labelsHidden()
+                .textFieldStyle(.roundedBorder)
+                .focused($focused)
+                .onSubmit(add)
+                Button("Annuler", action: close)
+                    .hoverFeedback()
+                Button(model.addingKey ? String(localized: "Vérification…") : String(localized: "Ajouter"), action: add)
+                    .buttonStyle(.borderedProminent)
+                    .hoverFeedback()
+                    .disabled(!canAdd)
+            }
+            recognition
+            if let message = model.keysMessage {
+                Label(message, systemImage: "info.circle")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            links
+        }
+        .onAppear {
+            focused = true
+            // Une clé sans forme reconnue (TypeSafe) va au fournisseur attendu, sans avoir à le choisir.
+            if let expected, model.newKeyAccount == nil { model.newKeyAccount = expected }
+        }
+    }
+
+    private var prompt: String {
+        expected.map { String(localized: "Colle ta clé \(ProviderName.of($0))") } ?? String(localized: "Colle la clé ici")
     }
 
     private var draft: String { APIKeyFormat.normalize(model.newKeyDraft) }
@@ -628,7 +644,9 @@ struct AddKeyRow: View {
     /// Fournisseur reconnu à la forme de la clé, au fil de la saisie ; sinon le choix à faire.
     @ViewBuilder private var recognition: some View {
         if draft.isEmpty {
-            hint(String(localized: "Colle une clé xAI, OpenAI, DeepSeek ou TypeSafe : son fournisseur est reconnu tout seul."), symbol: "info.circle")
+            if expected == nil {
+                hint(String(localized: "Colle une clé xAI, OpenAI, DeepSeek ou TypeSafe : son fournisseur est reconnu tout seul."), symbol: "info.circle")
+            }
         } else {
             switch APIKeyFormat.guess(draft) {
             case .account(let account):
@@ -662,6 +680,26 @@ struct AddKeyRow: View {
         }
     }
 
+    /// « Créer une clé xAI », ou les pages des fournisseurs de voix et de correction.
+    @ViewBuilder private var links: some View {
+        let accounts = expected.map { [$0] } ?? [ProviderID.xai.rawValue, ProviderID.openAI.rawValue, CleanupModel.deepSeekAccount]
+        let pages = accounts.compactMap { account in ProviderLinks.createKey(account).map { (account, $0) } }
+        if !pages.isEmpty {
+            HStack(spacing: 12) {
+                Text(pages.count == 1 ? String(localized: "Pas encore de clé ?") : String(localized: "Créer une clé :"))
+                    .foregroundStyle(.secondary)
+                ForEach(pages, id: \.0) { account, url in
+                    Link(destination: url) {
+                        Label(pages.count == 1 ? String(localized: "Créer une clé \(APIKeys.title(account))") : APIKeys.title(account),
+                              systemImage: "arrow.up.right.square")
+                    }
+                    .hoverFeedback()
+                }
+            }
+            .font(.callout)
+        }
+    }
+
     private func hint(_ text: String, symbol: String, tint: Color = .secondary) -> some View {
         Label {
             Text(text)
@@ -674,74 +712,175 @@ struct AddKeyRow: View {
 
     private func add() {
         guard canAdd else { return }
-        Task { if await model.addKey() { open = false } }
+        Task { if await model.addKey() { onClose() } }
     }
 
     private func close() {
         model.newKeyDraft = ""
         model.newKeyAccount = nil
-        open = false
+        model.keysMessage = nil
+        onClose()
     }
 }
 
-// MARK: - État des services
+// MARK: - Réglages avancés
 
-/// Services mis de côté après deux échecs, et relais pris à leur place. Contrôlés toutes les minutes ;
-/// « Réessayer » le fait tout de suite.
-struct ServiceStatusSection: View {
-    @Environment(AppModel.self) private var model
-    @State private var checking = false
-    /// La mise de côté expire avec le temps : la liste est relue chaque minute.
-    @State private var minute = 0
+/// « Réglages avancés » : replié par défaut ; une pastille orange signale un relais qui attend sa clé.
+private struct AdvancedToggleSection: View {
+    @Binding var expanded: Bool
+    var attention: Bool
+    @Environment(\.interactionReduceMotion) private var reduceMotion
 
     var body: some View {
-        let _ = minute
-        let lines = model.relayLines()
         Section {
-            if lines.isEmpty {
-                Label("Tous les services répondent", systemImage: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
-            } else {
-                ForEach(lines, id: \.self) { line in
-                    Label(line, systemImage: "arrow.triangle.branch")
-                        .foregroundStyle(OverlayStyle.relay)
-                }
-                Button(checking ? String(localized: "Vérification…") : String(localized: "Réessayer maintenant")) {
-                    checking = true
-                    Task {
-                        await model.checkDownServices()
-                        checking = false
+            Button {
+                withAnimation(reduceMotion ? nil : Theme.spring) { expanded.toggle() }
+            } label: {
+                HStack(spacing: 12) {
+                    IconBadge(symbol: "slider.horizontal.3", tint: .secondary, size: 30)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Réglages avancés")
+                            .font(.system(size: 13.5, weight: .semibold))
+                        Text("Relais, vérification, mots appris, modèle local, source des clés.")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
                     }
+                    Spacer(minLength: 12)
+                    if attention, !expanded {
+                        StatusChip(text: String(localized: "À régler"), tint: .orange)
+                    }
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                        .rotationEffect(.degrees(expanded ? 90 : 0))
                 }
-                .hoverFeedback()
-                .disabled(checking)
+                .padding(.vertical, 4)
+                .contentShape(Rectangle())
             }
-        } header: {
-            Text("État des services")
-                .task {
-                    while !Task.isCancelled {
-                        try? await Task.sleep(nanoseconds: 60_000_000_000)
-                        minute += 1
-                    }
-                }
-        } footer: {
-            Text("Après deux échecs de suite, un service est mis de côté et ses dictées passent par le relais. Il est réessayé chaque minute, et repris au plus tard après 30 minutes.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+            .buttonStyle(.plain)
+            .accessibilityLabel(expanded ? String(localized: "Masquer les réglages avancés") : String(localized: "Afficher les réglages avancés"))
         }
     }
 }
 
-/// Serveur de modèles choisi dans Fournisseurs › Modèle local.
-enum LocalModelPreset: Hashable {
+/// Relais de la voix et de la correction, et vérification sur l'enregistrement complet.
+private struct RelaysSection: View {
+    @Environment(AppModel.self) private var model
+    var snapshot: ProvidersSnapshot
+    @Binding var picker: ModelPickerKind?
+
+    var body: some View {
+        Section {
+            LabeledContent {
+                ModelSummaryButton(summary: snapshot.voiceRelaySummary, help: String(localized: "Choisir le relais de la voix")) {
+                    picker = .voiceRelay
+                }
+            } label: {
+                Text("Relais de la voix")
+                Text("Prend la main si \(snapshot.voice.provider.displayName) ne répond pas.")
+            }
+            LabeledContent {
+                Toggle(String(localized: "Vérifier sur l'enregistrement complet"), isOn: Binding(
+                    get: { snapshot.verifyWithFile },
+                    set: { model.setSetting(\.verifyWithFile, $0) }
+                ))
+                .toggleStyle(.switch)
+                .labelsHidden()
+            } label: {
+                Text("Vérifier sur l'enregistrement complet")
+                Text(verbatim: snapshot.verificationSummary)
+            }
+            LabeledContent {
+                ModelSummaryButton(summary: snapshot.correctionRelaySummary, help: String(localized: "Choisir le relais de la correction")) {
+                    picker = .correctionRelay
+                }
+                .disabled(!snapshot.cleanupEnabled)
+            } label: {
+                Text("Relais de la correction")
+                Text(verbatim: correctionRelayLine)
+            }
+        } header: {
+            Text("Relais et vérification")
+        } footer: {
+            Text("Un relais reprend la même demande quand le premier fournisseur ne répond pas.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var correctionRelayLine: String {
+        guard snapshot.cleanupEnabled else { return String(localized: "Coupée : le texte est collé tel que transcrit.") }
+        return snapshot.primary.map { String(localized: "Prend la main si \($0.provider) ne répond pas.") }
+            ?? String(localized: "Prend la main si le premier modèle ne répond pas.")
+    }
+}
+
+/// Mots appris : l'interrupteur, et qui juge qu'un mot corrigé entre au dictionnaire.
+private struct LearningSection: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.interactionReduceMotion) private var reduceMotion
+    var snapshot: ProvidersSnapshot
+    @Binding var keyEntry: KeyEntryHost?
+
+    var body: some View {
+        Section {
+            LabeledContent {
+                Toggle(String(localized: "Apprendre de mes corrections"), isOn: Binding(
+                    get: { snapshot.learnCorrections },
+                    set: { model.setSetting(\.learnCorrections, $0) }
+                ))
+                .toggleStyle(.switch)
+                .labelsHidden()
+            } label: {
+                Text("Apprendre de mes corrections")
+                Text("Ajoute au dictionnaire les noms que tu corriges ou que la correction répare souvent.")
+            }
+            LabeledContent {
+                if snapshot.jevStored {
+                    PillPicker(options: [false, true], selection: Binding(
+                        get: { snapshot.jevActive },
+                        set: { jev in withAnimation(reduceMotion ? nil : Theme.spring) { model.chooseJudge(jev: jev) } }
+                    ), title: { $0 ? String(localized: "Jev (TypeSafe)") : String(localized: "Comme la correction") })
+                } else if !snapshot.readOnlyKeys, keyEntry != .learning {
+                    Button(String(localized: "Ajouter une clé TypeSafe")) {
+                        model.keysMessage = nil
+                        keyEntry = .learning
+                    }
+                    .hoverFeedback()
+                }
+            } label: {
+                Text("Qui choisit les mots")
+                Text(verbatim: snapshot.learningSummary)
+            }
+            .disabled(!snapshot.learnCorrections)
+            if keyEntry == .learning {
+                KeyEntryForm(expected: APIKeys.typesafe) { keyEntry = nil }
+            }
+        } header: {
+            Text("Mots appris")
+        }
+    }
+}
+
+/// Serveur de modèles choisi dans Fournisseurs › Réglages avancés › Modèle local.
+enum LocalModelPreset: Hashable, CaseIterable {
     case none
     case ollama
     case lmStudio
     case custom
+
+    var label: String {
+        switch self {
+        case .none: return String(localized: "Aucun")
+        case .ollama: return "Ollama"
+        case .lmStudio: return "LM Studio"
+        case .custom: return String(localized: "Autre adresse")
+        }
+    }
 }
 
-/// Fournisseurs › Modèle local : un serveur de modèles sur ce Mac, compatible OpenAI (Ollama, LM Studio, llama.cpp…).
-/// Sans clé ni coût, il corrige les dictées et lit les sujets du Profil sans que le texte quitte le Mac.
+/// Modèle local : un serveur de modèles sur ce Mac, compatible OpenAI (Ollama, LM Studio, llama.cpp…). Sans clé ni
+/// coût, il corrige les dictées et lit les sujets du Profil sans que le texte quitte le Mac.
 struct LocalModelSection: View {
     @Environment(AppModel.self) private var model
     @State private var draft = ""
@@ -753,35 +892,36 @@ struct LocalModelSection: View {
 
     var body: some View {
         Section {
-            SettingRow(text: SettingText(title: String(localized: "Serveur"),
-                                         summary: String(localized: "L'app qui fait tourner le modèle sur ton Mac."))) {
-                Picker(String(localized: "Serveur"), selection: Binding(get: { preset }, set: { choose($0) })) {
-                    Text("Aucun").tag(Preset.none)
-                    Text("Ollama").tag(Preset.ollama)
-                    Text("LM Studio").tag(Preset.lmStudio)
-                    Text("Autre adresse").tag(Preset.custom)
+            LabeledContent {
+                HStack(spacing: 12) {
+                    PillPicker(options: Preset.allCases, selection: Binding(get: { preset }, set: { choose($0) }), title: { $0.label })
+                    if preset != .none {
+                        Toggle(String(localized: "Utiliser le modèle local"), isOn: Binding(
+                            get: { model.isKeyEnabled(account) },
+                            set: { model.setKeyEnabled(account, $0) }
+                        ))
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                    }
                 }
-                .labelsHidden()
-                .fixedSize()
-                if preset != .none {
-                    Toggle(String(localized: "Utiliser le modèle local"), isOn: Binding(
-                        get: { model.isKeyEnabled(account) },
-                        set: { model.setKeyEnabled(account, $0) }
-                    ))
-                    .toggleStyle(.switch)
-                    .labelsHidden()
-                }
+            } label: {
+                Text("Serveur")
+                Text("L'app qui fait tourner le modèle sur ton Mac.")
             }
             if preset == .custom {
-                SettingRow(text: SettingText(title: String(localized: "Adresse"),
-                                             summary: String(localized: "Compatible OpenAI, avec son « /v1 »."))) {
-                    TextField(String(localized: "Adresse du serveur"), text: $draft, prompt: Text(verbatim: "http://localhost:8080/v1"))
-                        .labelsHidden()
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 260)
-                        .onSubmit { save(draft) }
-                    Button(String(localized: "Enregistrer")) { save(draft) }
-                        .disabled(TextCleaner.localBase(draft) == nil)
+                LabeledContent {
+                    HStack(spacing: 8) {
+                        TextField(String(localized: "Adresse du serveur"), text: $draft, prompt: Text(verbatim: "http://localhost:8080/v1"))
+                            .labelsHidden()
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 260)
+                            .onSubmit { save(draft) }
+                        Button(String(localized: "Enregistrer")) { save(draft) }
+                            .disabled(TextCleaner.localBase(draft) == nil)
+                    }
+                } label: {
+                    Text("Adresse")
+                    Text("Compatible OpenAI, avec son « /v1 ».")
                 }
             }
             if preset != .none {
@@ -790,7 +930,7 @@ struct LocalModelSection: View {
         } header: {
             Text("Modèle local")
         } footer: {
-            Text("Gratuit et privé : la correction et l'analyse des sujets tournent sur ton Mac, le texte ne part nulle part. Plus lent qu'un modèle en ligne, surtout au premier appel. Lance Ollama ou LM Studio avec un modèle téléchargé, puis choisis-le dans Correction.")
+            Text("Gratuit et privé : le texte reste sur ton Mac. Lance Ollama ou LM Studio avec un modèle, puis choisis-le dans Correction.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
@@ -864,7 +1004,66 @@ struct LocalModelSection: View {
     }
 }
 
-/// Fournisseurs › Clés API › « Où sont tes clés ? » : sur ce Mac, ou lues sur un serveur ou dans un gestionnaire de
+/// Source des clés : ce Mac, un coffre de secrets, ou un serveur ou gestionnaire lu par une commande.
+private struct KeySourceSection: View {
+    var body: some View {
+        Section {
+            KeySourceRow()
+        } header: {
+            Text("Source des clés")
+        }
+    }
+}
+
+// MARK: - État des services
+
+/// Services mis de côté après deux échecs, et relais pris à leur place. Contrôlés toutes les minutes ;
+/// « Réessayer » le fait tout de suite.
+struct ServiceStatusSection: View {
+    @Environment(AppModel.self) private var model
+    @State private var checking = false
+    /// La mise de côté expire avec le temps : la liste est relue chaque minute.
+    @State private var minute = 0
+
+    var body: some View {
+        let _ = minute
+        let lines = model.relayLines()
+        Section {
+            if lines.isEmpty {
+                Label("Tous les services répondent", systemImage: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+            } else {
+                ForEach(lines, id: \.self) { line in
+                    Label(line, systemImage: "arrow.triangle.branch")
+                        .foregroundStyle(OverlayStyle.relay)
+                }
+                Button(checking ? String(localized: "Vérification…") : String(localized: "Réessayer maintenant")) {
+                    checking = true
+                    Task {
+                        await model.checkDownServices()
+                        checking = false
+                    }
+                }
+                .hoverFeedback()
+                .disabled(checking)
+            }
+        } header: {
+            Text("État des services")
+                .task {
+                    while !Task.isCancelled {
+                        try? await Task.sleep(nanoseconds: 60_000_000_000)
+                        minute += 1
+                    }
+                }
+        } footer: {
+            Text("Après deux échecs de suite, un service est mis de côté et ses dictées passent par le relais. Il est réessayé chaque minute, et repris au plus tard après 30 minutes.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+
+/// Fournisseurs › Réglages avancés › Source des clés, « Où sont tes clés ? » : sur ce Mac, ou lues sur un serveur ou dans un gestionnaire de
 /// secrets par une commande où « {name} » devient le nom de la clé. Un coffre configuré à part (variable
 /// WISPAD_SECRET_COMMAND ou préférence wispad.secretCommand) garde la main et n'est pas modifiable ici.
 struct KeySourceRow: View {
