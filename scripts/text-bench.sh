@@ -5,6 +5,8 @@
 #   scripts/text-bench.sh --base v0.8.0   contre une autre release (scripts/release.sh n'accepte que la dernière)
 #   scripts/text-bench.sh --record        enregistre d'abord l'étape flux dans xAI (0,04 $ au plus)
 #   scripts/text-bench.sh --refresh       reconstruit d'abord le corpus de l'étape correction depuis l'historique
+# Étape mots si mots.json est dans ce dossier (référence privée de ce qui a été dit, faite à la main), sinon sautée ;
+# WISPAD_TEXT_BENCH_MOTS=<fichier> en prend un autre pour un essai.
 # Un banc coûte quelques centimes de DeepSeek (quatre passages) et dure une dizaine de minutes. Clés : variables
 # WISPAD_TEST_* ou coffre (WISPAD_SECRET_COMMAND, voir scripts/test-keys.sh), gardées dans l'environnement du seul
 # processus de test. Tout reste dans ~/Library/Application Support/Wispad/benchmarks/texte (dossier 0700, fichiers
@@ -62,6 +64,19 @@ fi
 if (( ! record )); then
   python3 scripts/text-bench.py verifie-flux --dir "$bench" --tree "$root"
 fi
+# Étape mots : la référence de ce qui a vraiment été dit, faite à la main (le script ne la crée jamais). Absente,
+# l'étape est sautée et le banc reste valable ; présente, elle est vérifiée avant toute compilation.
+mots="${WISPAD_TEXT_BENCH_MOTS:-$bench/mots.json}"
+if [[ -f "$mots" ]]; then
+  mots=${mots:A}
+  python3 scripts/text-bench.py verifie-mots --corpus "$mots"
+  export WISPAD_TEXT_BENCH_MOTS="$mots"
+elif [[ -n "${WISPAD_TEXT_BENCH_MOTS:-}" ]]; then
+  fail "WISPAD_TEXT_BENCH_MOTS ne désigne aucun fichier."
+else
+  print "Étape mots sautée : pas de mots.json, la référence privée de ce qui a été dit."
+  mots=""
+fi
 
 unset WISPAD_LIVE_XAI_KEY WISPAD_LIVE_DEEPSEEK_KEY WISPAD_LIVE_OPENAI_KEY WISPAD_LIVE_TYPESAFE_KEY
 source scripts/test-keys.sh
@@ -70,10 +85,17 @@ export WISPAD_LIVE_DEEPSEEK_KEY="$deepseek"
 unset deepseek
 export WISPAD_LIVE_TESTS=1 WISPAD_TEXT_BENCH=1 WISPAD_TEXT_BENCH_DIR="$bench"
 
-# Compile un arbre ; le journal reste privé, seules les erreurs du compilateur s'affichent.
+# Compile un arbre ; le journal reste privé, seules les erreurs du compilateur s'affichent. Une fonction de version
+# n'entre dans le harnais que sous son drapeau, posé seulement sur un arbre qui a son fichier : le harnais copié dans
+# une base plus ancienne compile sans elle (docs/BANC-TEXTE.md). Ici, le vote des écoutes.
 build() {
   local tree=$1 name=$2
-  if ! (cd "$tree" && swift build --build-tests > "$run/compilation-$name.txt" 2>&1); then
+  local -a flags=()
+  if [[ -f "$tree/Sources/WispadCore/ListeningVote.swift" ]]; then
+    flags+=(-Xswiftc -DWISPAD_VOTE_DES_ECOUTES)
+    print "Vote des écoutes (ListeningVote) compilé dans $name."
+  fi
+  if ! (cd "$tree" && swift build --build-tests "${flags[@]}" > "$run/compilation-$name.txt" 2>&1); then
     grep -E 'error:' "$run/compilation-$name.txt" | sort -u | head -20 >&2 || true
     fail "compilation de $name impossible (journal : $run/compilation-$name.txt)."
   fi
@@ -123,17 +145,20 @@ build "$base_tree" base
 
 for name in base-0 head-0 base-1 head-1; do
   step "Passage $name"
+  pass_tree=$root
   if [[ $name == base-* ]]; then
-    bench_test "$base_tree" pass "$name" testBenchPass
-  else
-    bench_test "$root" pass "$name" testBenchPass
+    pass_tree=$base_tree
+  fi
+  bench_test "$pass_tree" pass "$name" testBenchPass
+  if [[ -n "$mots" ]]; then
+    bench_test "$pass_tree" mots "mots-$name" testWordsPass
   fi
 done
 
 step "Analyse"
 verdict=0
 python3 scripts/text-bench.py analyse --dir "$bench" --run "$run" --sha "$head_sha" --base "$base" --base-sha "$base_sha" \
-  --base-tree "$base_tree" || verdict=$?
+  --base-tree "$base_tree" --mots "$mots" || verdict=$?
 spent=$(python3 -c 'import json, sys; print(("%.4f" % json.load(open(sys.argv[1]))["usd"]).replace(".", ","))' \
   "$data/api-test-spend.json" 2>/dev/null || print "?")
 print "Plafond des tests réseau : $spent \$ dépensés sur 6 \$."
