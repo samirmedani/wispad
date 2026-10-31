@@ -91,6 +91,8 @@ struct SettingsUpgradeTests {
         settings.profileTopicsEnabled = true
         settings.profilePortraitEnabled = true
         settings.profileTopicsWeekly = true
+        settings.profileCards.brain = true
+        settings.profileCards.tics = false
         settings.localModelURL = "http://localhost:11434/v1"
         settings.usageTaxRate = 8.1
         settings.lastSection = .dictionary

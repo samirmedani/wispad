@@ -101,6 +101,91 @@ import Testing
         #expect(!hidden.topWords.contains { $0.label == "build" })
     }
 
+    /// Une carte masquée n'est pas calculée : ses chiffres restent vides, les chiffres clés ne bougent pas. Toutes les
+    /// cartes ensemble, et le cerveau tiré du même passage, rendent le résultat des calculs séparés.
+    @Test func hiddenCardsAreNotComputed() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Europe/Paris")!
+        let now = calendar.date(from: DateComponents(year: 2026, month: 10, day: 24, hour: 15))!
+        let records = (0..<12).map { index in
+            index % 2 == 0
+                ? record("Je pousse le build sur GitHub, demande à Claude.", raw: "euh je pousse le build sur github demande à cloud",
+                         daysAgo: Double(index), now: now)
+                : record("Train pour Lyon et hôtel réservé.", raw: "du coup train pour lyon et hôtel réservé", daysAgo: Double(index),
+                         app: "Mail", now: now)
+        }
+        let full = ProfileBuilder.build(records: records, now: now, calendar: calendar)
+        let bare = ProfileBuilder.build(records: records, parts: [], now: now, calendar: calendar)
+        #expect(bare.topWords.isEmpty && bare.tics.isEmpty && bare.fixes.isEmpty && bare.apps.isEmpty)
+        #expect(bare.byHour.allSatisfy { $0 == 0 } && bare.byWeekday.allSatisfy { $0 == 0 } && bare.daily.isEmpty)
+        #expect(bare.englishDictations + bare.frenchDictations == 0)
+        #expect(!full.topWords.isEmpty && !full.tics.isEmpty && !full.fixes.isEmpty && full.apps.count == 2)
+        #expect(full.byHour.reduce(0, +) == 12 && full.daily.count == DictationProfile.heatmapDays)
+        #expect(bare.words == full.words && bare.dictations == full.dictations && bare.currentStreak == full.currentStreak
+                && bare.bestStreak == full.bestStreak && bare.activeDays == full.activeDays && bare.longest == full.longest)
+        let tics = ProfileBuilder.build(records: records, parts: .tics, now: now, calendar: calendar)
+        #expect(tics.tics == full.tics && tics.topWords.isEmpty && tics.fixes.isEmpty)
+        let both = ProfileBuilder.analyze(records: records, graph: true, now: now, calendar: calendar)
+        #expect(both.profile == full)
+        #expect(both.graph == WordGraph.build(records: records))
+        #expect(ProfileBuilder.analyze(records: records, graph: false, now: now, calendar: calendar).graph == nil)
+    }
+
+    /// Le découpage rapide (texte latin) rend exactement les mots de la règle caractère par caractère, et lui laisse
+    /// la main pour les accents décomposés, les émojis ou les écritures où des caractères se combinent.
+    @Test func fastTokensMatchTheCharacterRule() {
+        let pieces = ["Le", "build", "l'appli", "aujourd’hui", "e\u{301}te\u{301}", "Été", "café,", "--tiret--", "'cité'",
+                      "jean@exemple.fr", "https://wispad.app/a.b", "v1.2.3", "3,5", "½", "²", "ﬁn", "İstanbul", "😀",
+                      "👩‍💻", "🇫🇷", "한국어", "Straße", "«", "»", "…", "—", "\u{00A0}", "\u{202F}", "\n", "x\u{200D}y",
+                      "naïve", "Œuvre", "ǅ", "ŉ", "...", "'", "’", "-", ".", "@", "/", " ", "l’-api", "qu'", "Ỳ"]
+        forAll(400, seed: 41, { generator in
+            (0..<generator.int(0...12)).map { _ in generator.pick(pieces) }.joined(separator: generator.chance(70) ? " " : "")
+        }) { text in
+            let expected = ProfileBuilder.characterTokens(text.lowercased())
+            let tokens = ProfileBuilder.tokens(text)
+            return tokens.map(\.unicodeScalars).elementsEqual(expected.map(\.unicodeScalars), by: { $0.elementsEqual($1) })
+                ? nil : "\(text.debugDescription) : \(tokens) au lieu de \(expected)"
+        }
+    }
+
+    /// Les tics se comptent mot à mot comme la recherche du tic entouré d'espaces qu'ils remplacent : sans
+    /// chevauchement, et deux occurrences collées (« euh euh ») n'en font qu'une.
+    @Test func ticsCountLikeTheSpacedSearch() {
+        let words = ["euh", "en", "fait", "tu", "vois", "du", "coup", "genre", "voilà", "quoi", "like", "you", "know",
+                     "bref", "par", "exemple", "le", "build"]
+        forAll(400, seed: 43, { generator in
+            (0..<generator.int(0...16)).map { _ in generator.pick(words) }
+        }) { tokens in
+            let raw = " " + tokens.joined(separator: " ") + " "
+            var expected: [String: Int] = [:]
+            for tic in ProfileBuilder.ticPhrases {
+                let count = raw.components(separatedBy: " \(tic) ").count - 1
+                if count > 0 { expected[tic] = count }
+            }
+            let counts = ProfileBuilder.tics(in: tokens)
+            return counts == expected ? nil : "\(tokens) : \(counts) au lieu de \(expected)"
+        }
+    }
+
+    /// La langue d'une dictée se devine sur les mêmes mots qu'avec la règle caractère par caractère, apostrophe
+    /// typographique comprise, quel que soit le découpage choisi.
+    @Test func languageWordsMatchTheCharacterRule() {
+        let pieces = ["The", "and", "is", "le", "la", "c’est", "j'ai", "qu’il", "it's", "don’t", "Été", "e\u{301}te\u{301}",
+                      "naïve", "l’-api", "’", "'", "😀", "👩‍💻", "İstanbul", "ﬁn", "3,5", "½", "«", "»", "\u{00A0}", "—", "Straße",
+                      "x\u{200D}y", ".", "-", " ", "\n"]
+        forAll(400, seed: 47, { generator in
+            (0..<generator.int(0...12)).map { _ in generator.pick(pieces) }.joined(separator: generator.chance(70) ? " " : "")
+        }) { text in
+            let lower = text.lowercased()
+            let expected = lower.split { !($0.isLetter || $0 == "'" || $0 == "’") }.map { $0.replacingOccurrences(of: "’", with: "'") }
+            let words = TranscriptLanguage.words(lower)
+            return words.map(\.unicodeScalars).elementsEqual(expected.map(\.unicodeScalars), by: { $0.elementsEqual($1) })
+                ? nil : "\(text.debugDescription) : \(words) au lieu de \(expected)"
+        }
+        #expect(TranscriptLanguage.guess("I think it’s done and the build is green") == .english)
+        #expect(TranscriptLanguage.guess("J’ai poussé le build, c’est vert") == .french)
+    }
+
     @Test func brainLinksWordsSaidTogetherAndIsStable() {
         let now = Date()
         let records = (0..<12).map { index in

@@ -74,7 +74,11 @@ struct RootView: View {
         .frame(minWidth: 820, minHeight: 540)
         .tint(Theme.brand)
         // Alerte de la barre latérale : relue hors du fil principal, qui dessine la fenêtre qui s'ouvre.
-        .onAppear { model.refreshPermissionsInBackground() }
+        // Le Profil se calcule aussi en arrière-plan : il s'ouvre ensuite sans attente.
+        .onAppear {
+            model.refreshPermissionsInBackground()
+            ProfileLoader.shared.prepare(model)
+        }
         .sheet(item: Binding(get: { model.updateSheet }, set: { model.updateSheet = $0 }),
                onDismiss: {
                    model.updater.dismissFailure()

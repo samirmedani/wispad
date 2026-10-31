@@ -85,8 +85,8 @@ curseur : messagerie, e-mail, éditeur de code, terminal, navigateur.
       <br><b>Dictionnaire</b> · tes noms, marques et sigles, envoyés à la transcription et à la correction.
     </td>
     <td width="50%" align="center">
-      <img src="docs/images/ecran-providers.png" alt="Écran Fournisseurs : les 4 étapes d'une dictée, chacune avec son modèle, puis les clés API">
-      <br><b>Fournisseurs</b> · un modèle par étape, choisi parmi tous les modèles de tes clés, classés par vitesse et coût.
+      <img src="docs/images/ecran-providers.png" alt="Écran Fournisseurs : une vue d'ensemble, le modèle de la voix et celui de la correction, puis les clés API">
+      <br><b>Fournisseurs</b> · ce qui marche et ce qui manque d'un coup d'œil ; chaque modèle se choisit sur une carte, avec son prix.
     </td>
   </tr>
   <tr>
@@ -157,7 +157,7 @@ fournisseur**, à l'usage, et l'écran Consommation estime le coût de chaque ap
 | **Transcription** (ta voix) | **xAI** Grok Voice Transcribe 2.0 *(recommandé)* ou **OpenAI** GPT Live Transcribe | En direct pendant l'écoute ; chez xAI, 0,20 $ de l'heure en direct. |
 | **Correction** (le texte) | N'importe quel modèle de texte de tes clés **DeepSeek**, **OpenAI** ou **xAI**, choisi dans Fournisseurs › Modèles (rangés par vitesse, avec leur coût), ou automatique : **DeepSeek** d'abord s'il a une clé, puis **OpenAI**, puis le modèle du fournisseur de voix (**xAI** ou **OpenAI**) | Seul le texte part à la correction, jamais l'audio. |
 | **Modèle local** *(facultatif)* | **Ollama**, **LM Studio** ou tout serveur compatible OpenAI sur ton Mac | Gratuit, rien ne quitte ton Mac ; plus lent qu'un modèle en ligne. |
-| **Relais** | Au choix dans Fournisseurs › Modèles, pour la voix et pour la correction, ou aucun | Un service en panne est mis de côté, puis repris dès qu'il répond. |
+| **Relais** | Au choix dans Fournisseurs › Réglages avancés, pour la voix et pour la correction, ou aucun | Un service en panne est mis de côté, puis repris dès qu'il répond. |
 
 Tes clés peuvent rester **sur ton Mac** ou être **lues sur ton serveur ou dans ton gestionnaire de secrets** (SSH,
 1Password, Doppler, Infisical, Bitwarden, curl…), sans rien écrire sur le Mac.

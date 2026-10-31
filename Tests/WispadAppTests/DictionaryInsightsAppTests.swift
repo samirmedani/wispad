@@ -54,6 +54,32 @@ struct DictionaryInsightsAppTests {
     private let jev = DictionaryJudge(kind: .jev, provider: "TypeSafe", model: "modele-fictif")
     private static let answered = [UsageEvent(api: .typesafeJudge, model: "modele-fictif", costUSD: nil, succeeded: true)]
 
+    /// Un nom écrit de plusieurs façons d'une dictée à l'autre passe par le même juge, puis entre au dictionnaire
+    /// avec sa graphie marquée et son origine « écrit de plusieurs façons ».
+    @Test func aNameWrittenSeveralWaysIsJudgedThenLearned() async throws {
+        var judged: [[CorrectionLearner.Candidate]] = []
+        let jev = self.jev
+        let f = try InsightsFixture(judge: { candidates, _, _ in
+            judged.append(candidates)
+            return TermJudgement(kept: candidates.map { LearnedTerm(term: $0.corrected, judge: jev) }, usages: Self.answered)
+        })
+        defer { f.dispose() }
+        for (id, text) in [("a", "On pousse sur TestFlight ce soir."), ("b", "La build part sur Testflight."),
+                           ("c", "Mets-la sur Testflight demain.")] {
+            try await f.dictate(id, raw: text, final: text)
+        }
+        try f.model.store.insert(DictationRecord(id: "d", finalText: "TestFlight est prêt.", rawText: "TestFlight est prêt.",
+                                                 durationSeconds: 3, wordCount: 3, provider: "xai", model: "modele-fictif",
+                                                 insertionStatus: InsertionStatus.inserted.rawValue))
+        f.model.reloadHistory()
+        f.model.considerSpellings(final: "TestFlight est prêt.", dictationID: "d", speech: f.model.speechRequest(context: nil))
+        await f.model.learning?.value
+        #expect(judged.last == [CorrectionLearner.Candidate(heard: "Testflight", corrected: "TestFlight")])
+        let entry = try #require(f.model.dictionary.first { $0.term == "TestFlight" })
+        #expect(entry.source == .spelling)
+        #expect(entry.origin == .learned(jev))
+    }
+
     @Test func aNameRepairedInTwoDictationsIsJudgedThenLearned() async throws {
         var judged: [[CorrectionLearner.Candidate]] = []
         var dictatedTexts: [String] = []

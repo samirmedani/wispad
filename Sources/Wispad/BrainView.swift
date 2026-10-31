@@ -2,16 +2,20 @@ import SwiftUI
 import WispadCore
 
 /// Le cerveau : les mots fréquents en 3D, reliés quand ils reviennent dans les mêmes dictées, colorés par famille.
-/// Glisser pour tourner, pincer ou « + / − » pour zoomer, cliquer un mot pour voir ses voisins.
+/// Glisser pour tourner, pincer ou « + / − » pour zoomer, cliquer un mot pour voir ses voisins. La rotation seule
+/// redessine 30 images par seconde : assez pour un mouvement lent, deux fois moins de calcul.
 struct BrainCard: View {
     var graph: WordGraph
     @Binding var selected: Int?
     /// Masquer un mot (cerveau par mots) ; nil pour les sujets.
     var hide: ((String) -> Void)?
-    var caption: String
+    var caption: String?
     var emptyText: String
     var modePicker: AnyView?
-    var accessory: AnyView?
+    /// Montré à la place du nuage quand il a moins de trois nœuds (présentation des sujets).
+    var placeholder: AnyView?
+    /// Sous le nuage (état et actions des sujets).
+    var footer: AnyView?
     /// Ouvre l'Historique sur les dictées d'un mot ou d'un sujet.
     var openHistory: ((HistoryFilter) -> Void)?
 
@@ -27,28 +31,35 @@ struct BrainCard: View {
     static let palette: [Color] = [Theme.brand, .blue, .green, .orange, .purple, .teal, .pink, .yellow, .indigo, .mint]
 
     var body: some View {
+        let drawn = graph.nodes.count >= 3
         VStack(alignment: .leading, spacing: 12) {
             CardTitle(title: String(localized: "Ton cerveau")) {
                 HStack(spacing: 4) {
                     if let modePicker { modePicker.padding(.trailing, 8) }
-                    zoomButton("minus.magnifyingglass", String(localized: "Dézoomer")) { zoom = max(0.6, zoom / 1.2) }
-                    zoomButton("plus.magnifyingglass", String(localized: "Zoomer")) { zoom = min(2.6, zoom * 1.2) }
-                    zoomButton("arrow.counterclockwise", String(localized: "Recentrer")) { reset() }
+                    if drawn {
+                        zoomButton("minus.magnifyingglass", String(localized: "Dézoomer")) { zoom = max(0.6, zoom / 1.2) }
+                        zoomButton("plus.magnifyingglass", String(localized: "Zoomer")) { zoom = min(2.6, zoom * 1.2) }
+                        zoomButton("arrow.counterclockwise", String(localized: "Recentrer")) { reset() }
+                    }
                 }
+                .frame(minHeight: 22)
             }
-            Text(caption)
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            if let accessory { accessory }
-            if graph.nodes.count < 3 {
+            if let caption {
+                Text(caption)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if !drawn, let placeholder {
+                placeholder
+            } else if !drawn {
                 Text(emptyText)
                     .font(.system(size: 12))
                     .foregroundStyle(.tertiary)
                     .frame(maxWidth: .infinity, minHeight: 120)
             } else {
                 HStack(alignment: .top, spacing: 14) {
-                    TimelineView(.animation(minimumInterval: 1 / 60, paused: !spinning || reduceMotion)) { timeline in
+                    TimelineView(.animation(minimumInterval: 1 / 30, paused: !spinning || reduceMotion)) { timeline in
                         let angle = currentYaw(at: timeline.date)
                         GeometryReader { proxy in
                             let projected = project(size: proxy.size, yaw: angle)
@@ -69,6 +80,7 @@ struct BrainCard: View {
                         .frame(width: 210, alignment: .topLeading)
                 }
             }
+            if let footer { footer }
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .topLeading)

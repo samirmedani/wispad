@@ -845,12 +845,7 @@ private struct OnboardingKeyField: View {
 
     /// Page de création de clé de chaque fournisseur.
     static func createURL(_ account: String) -> URL? {
-        switch account {
-        case ProviderID.xai.rawValue: return URL(string: "https://console.x.ai")
-        case ProviderID.openAI.rawValue: return URL(string: "https://platform.openai.com/api-keys")
-        case CleanupModel.deepSeekAccount: return URL(string: "https://platform.deepseek.com/api_keys")
-        default: return nil
-        }
+        ProviderLinks.createKey(account)
     }
 
     var body: some View {

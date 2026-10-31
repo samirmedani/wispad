@@ -41,7 +41,8 @@ testée (`ReleaseScriptTests`), couverte par la signature de l'app, et indépend
 - **Publier** : `scripts/release.sh` (en-tête : variables d'environnement, étapes). Rien de propre au mainteneur
   (équipe, certificat, clé de notarisation) n'est dans le dépôt.
 
-« Aide et retours » : `HelpPage` (`HelpPages.swift`) donne les trois liens de Réglages (`HelpSection`), dont les
+« Aide et retours » : `HelpPage` (`HelpPages.swift`) donne les trois liens de Réglages (`HelpSection`, dans
+`HelpViews.swift` avec « Copier le diagnostic », `AppDiagnostics.clipboardText`, et le prompt `AgentHelpPrompt`), dont les
 deux premiers servent aussi au menu de la barre (`StatusMenu`) et au menu Aide (`MainMenu.helpMenu`, actions du
 délégué de l'app) ; chaque page s'ouvre avec `NSWorkspace.shared.open`. L'adresse du ticket de bug prérempli est
 la fonction pure `FeedbackLinks.bugReportURL` (WispadCore, testée) : version et commit de `BuildStatus`, version de
@@ -145,7 +146,8 @@ est faux, ou quand l'utilisateur rejoue la configuration depuis Réglages (`repl
    détail et le diagnostic.
    L'écran Consommation compte tous les appels enregistrés, filtrés par la seule période
    (`UsagePresentation.events`) ; les bascules vers un fournisseur de secours sont lues dans ces appels
-   (`FallbackSummary`, textes de la carte dans `FallbackPresentation`).
+   (`FallbackSummary`, textes de la carte dans `FallbackPresentation`). Copie et export des appels, sans rien de
+   dicté : `UsageExport` (texte lisible, CSV).
    Une clé devenue inutile dans `app_metadata` est supprimée à l'ouverture de `HistoryStore`, jamais les appels.
 
 ## Origine des mots du dictionnaire
@@ -263,12 +265,46 @@ et une dictée relue à l'identique (l'historique est relu après chaque dictée
 ni seconde copie de l'historique n'y restent. `HistoryRenderingObserver` permet aux tests et à la sonde de compter
 les lignes évaluées.
 
+## Écran Fournisseurs
+
+`ProvidersView` (`ProvidersViews.swift`) lit l'écran une fois par affichage dans `ProvidersSnapshot`
+(`ProvidersState.swift`) : choix enregistrés, clés enregistrées et actives, services de correction qu'une dictée
+prend vraiment (un seul `speechRequest`). Les sections reçoivent ces valeurs sans relire le modèle.
+`ProvidersOverview.make` en tire la vue d'ensemble : les clés en cause sont regroupées par compte (`KeyGap`),
+une alerte par cause. Les listes de modèles (lecture de « /models », latences mesurées dans la consommation, tri par
+rapidité et coût) ne se calculent qu'à l'ouverture du sélecteur (`ModelPickerSheet`, `ModelPicker.swift`). Les
+choix passent par `AppModel.chooseVoice`, `chooseVoiceRelay`, `chooseCleanup`, `chooseCleanupRelay` et
+`chooseJudge` (règles des anciens menus), testés avec la vue d'ensemble par `ProvidersScreenTests`.
+
+## Écran Profil
+
+`ProfileView` (`ProfileViews.swift`) affiche le dernier calcul de `ProfileLoader.shared` (`ProfileLoader.swift`) et le
+redemande quand ses entrées changent (`ProfileRequest` : période, jour, `AppModel.historyRevision`, mots masqués, cartes,
+vitesse de frappe). Le calcul (`ProfileSnapshot.compute`, puis `ProfileBuilder.analyze` de WispadCore) tourne hors du fil
+principal ; l'écran garde l'ancien résultat jusqu'au nouveau, et un résultat qui couvre la demande (mêmes entrées, au
+moins ses cartes) ne relance rien. La fenêtre le prépare dès son ouverture (`ProfileLoader.prepare`). Rien n'est écrit
+sur le disque.
+
+- **Cartes** : `ProfileCards` (réglage `profileCards`, lu champ par champ) dit lesquelles sont affichées ; `ProfileCard`
+  donne leur titre, leur icône, leur place (`rows` : les étroites par deux) et leur partie du calcul
+  (`ProfileBuilder.Parts`). Une carte masquée n'est pas calculée. Panneau « Personnaliser » : `ProfileCardsPanel`.
+- **Calcul** : `ProfileBuilder.analyze` découpe chaque dictée en mots une seule fois pour les mots, le cerveau
+  (`WordGraph.build(documents:)`), les tics (`tics(in:)`, mot à mot) et les corrections. `ProfileBuilder.tokens` et
+  `TranscriptLanguage.words` découpent un texte latin scalaire par scalaire (`Unicode.Scalar.formsCharacterAlone`),
+  plus vite, et laissent tout autre texte à la règle caractère par caractère (`characterTokens`) ; des tests de
+  propriétés vérifient que les deux chemins rendent les mêmes mots.
+- **Sujets** : `BrainSection` (`ProfileTopics.swift`) demande à `ProfileLoader.loadTopics` le cerveau des sujets et les
+  coûts estimés (`TopicsRequest`, `TopicsSnapshot`), calculés hors du fil principal ; `ProfileTopicsController` lance,
+  arrête et garde l'analyse, et ne relit rien seul quand le cerveau est masqué. L'image de présentation est
+  `ProfileTopicsIllustration` (catalogue d'images de l'app).
+
 ## Ajouter…
 
 **Un fournisseur de correction** : une route dans `TextCleaner.routes`, un cas `UsageAPI`, son tarif dans
 `Pricing.tokenRate`, son libellé dans `Presentation.swift`, une clé dans `APIKeys.accounts`. Pour qu'il se
-choisisse dans Fournisseurs › Modèles : un cas `CleanupChoice` (route dans `TextCleaner.chosenRoute`) et sa place
-dans `ModelStepsSection.cleanupGroups`.
+choisisse dans le sélecteur de Fournisseurs : un compte dans `CleanupChoice.accounts` (route dans
+`TextCleaner.modelRoute`), sa pastille dans `ProviderTile` et la page de ses clés dans `ProviderLinks`
+(`ProvidersViews.swift`) ; un modèle d'origine a son nom lisible dans `CleanupModelText.name`.
 
 **Un fournisseur de voix** : un cas `ProviderID` (catalogue et modèles dans `Catalog.swift`), le flux dans
 `LiveSpeechSession`, le fichier dans `BatchTranscriber`, les coûts dans `UsageAPI` et `ProviderCatalog`.
@@ -356,7 +392,10 @@ ne réécrit jamais un fichier abîmé (les clés de sa partie intacte servent).
   demandée ni micro ouvert), `--shortcut-preview custom|long|disabled|recording` (Réglages › Raccourci avec des
   raccourcis fictifs), `--settings-tab general|dictation|formatting|bubble|privacy|permissions|help` (onglet de
   Réglages, `SettingsTab`), `--glass-bubble` (style Verre et ses réglages ; le verre lui-même ne se rend qu'à
-  l'écran), `--customer-preview`, `-AppleLanguages "(en)"`.
+  l'écran), `--customer-preview`, `--keys-preview`, `-AppleLanguages "(en)"`. Fournisseurs :
+  `--providers-advanced` (réglages avancés dépliés), `--disable-keys openai,xai` (clés fictives coupées),
+  `--cleanup-choice <modèle>`, `--relay` (service en pause), et `--model-picker voice|voiceRelay|correction|
+  correctionRelay` qui rend aussi le sélecteur ouvert (`--expand-models`, `--picker-key-form <compte>`).
 - Toutes les bulles et leurs messages, hors écran : `Wispad --bubble-gallery <dossier>` avec le build Debug. Une
   planche PNG par famille (dictée, texte prêt, erreurs, messages, survol), rendue avec les vues et les textes de l'app,
   sans l'effet de verre de macOS 26.
@@ -364,6 +403,16 @@ ne réécrit jamais un fichier abîmé (les clés de sa partie intacte servent).
   --performance-probe [--scroll-steps 240]` avec le build Debug. Lignes `PERFORMANCE` : deux ouvertures de l'écran
   (temps, vues natives, lignes rendues), puis un défilement simulé vers le bas et vers le haut (temps par étape :
   moyenne, p95, max, étapes de plus de 16 ms ; évaluations de lignes et lignes distinctes).
+- Ouverture de chaque écran, hors écran : `Wispad --design-preview --offscreen --history-count 3300
+  --sections-probe` avec un build Debug optimisé (`SWIFT_OPTIMIZATION_LEVEL=-O`). Lignes `PERFORMANCE` : chaque
+  section deux fois (première ouverture, puis retour), temps du fil principal jusqu'à l'affichage. Les longs écrans
+  (`ScreenScroll` : Accueil, Profil, Consommation, Dictionnaire) sont des piles paresseuses : seules les cartes
+  visibles sont construites à l'ouverture.
+- Ouverture du Profil, hors écran : `Wispad --design-preview --offscreen --profile-count 3300 --profile-probe
+  [--profile-brain]` avec le build Debug. Lignes `PERFORMANCE` : le calcul seul (`compute_ms`), puis trois ouvertures
+  du Profil séparées par l'Accueil (temps jusqu'au contenu, écran d'attente vu ou non). Aperçus du Profil :
+  `--profile-preview`, `--profile-brain`, `--profile-hide tics,fixes`, `--profile-topics-intro` (avec `--keys-preview`
+  pour une clé de correction fictive), `--profile-topics-preview`, `--profile-cards-preview` (panneau « Personnaliser »).
 - Tests réseau à la demande, clés de test seulement : `scripts/live-test.sh SelfCorrectionLiveTests`.
 - Sonde de délais (clés de test) : `WISPAD_LATENCY_PROBE=1 scripts/live-test.sh LatencyProbeLiveTests` mesure, sur
   des phrases synthétiques, le délai entre l'arrêt et le texte final du flux xAI. Elle mesure aussi le fichier

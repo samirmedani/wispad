@@ -43,13 +43,49 @@ public enum TranscriptLanguage {
     public static func guess(_ text: String) -> DictationLanguage {
         var french = 0
         var english = 0
-        let words = text.lowercased().split { !($0.isLetter || $0 == "'" || $0 == "’") }
-        for word in words {
-            let token = word.replacingOccurrences(of: "’", with: "'")
-            if frenchWords.contains(token) || frenchElisions.contains(where: { token.hasPrefix($0) }) { french += 1 }
+        for token in words(text.lowercased()) {
+            // Une élision (« j' », « qu' ») a toujours une apostrophe : sans elle, inutile de chercher.
+            let elided = token.utf8.contains(UInt8(ascii: "'")) && frenchElisions.contains(where: { token.hasPrefix($0) })
+            if frenchWords.contains(token) || elided { french += 1 }
             if englishWords.contains(token) { english += 1 }
         }
         return english > french ? .english : .french
+    }
+
+    /// Mots d'un texte en minuscules : lettres et apostrophes, « ’ » écrite « ' ». Un texte latin (chaque caractère
+    /// d'un seul scalaire) se découpe scalaire par scalaire, plus vite, avec le même résultat.
+    static func words(_ lower: String) -> [String] {
+        guard lower.unicodeScalars.allSatisfy(\.formsCharacterAlone) else {
+            return lower.split { !($0.isLetter || $0 == "'" || $0 == "’") }.map { word in
+                word.contains("’") ? word.replacingOccurrences(of: "’", with: "'") : String(word)
+            }
+        }
+        let scalars = lower.unicodeScalars
+        var result: [String] = []
+        func append(_ range: Range<String.UnicodeScalarView.Index>) {
+            let word = scalars[range]
+            result.append(word.contains("\u{2019}") ? String(String.UnicodeScalarView(word.map { $0 == "\u{2019}" ? "'" : $0 }))
+                                                    : String(word))
+        }
+        var start: String.UnicodeScalarView.Index?
+        var index = scalars.startIndex
+        while index < scalars.endIndex {
+            let scalar = scalars[index]
+            let inWord = switch scalar.value {
+            case 0x61...0x7A, 0x41...0x5A, 0x27, 0x2019: true
+            case 0..<0x80: false
+            default: scalar.properties.isAlphabetic
+            }
+            if inWord {
+                if start == nil { start = index }
+            } else if let begin = start {
+                append(begin..<index)
+                start = nil
+            }
+            index = scalars.index(after: index)
+        }
+        if let begin = start { append(begin..<scalars.endIndex) }
+        return result
     }
 
     private static let frenchWords: Set<String> = [
