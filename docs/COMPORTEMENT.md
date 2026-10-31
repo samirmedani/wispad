@@ -1348,14 +1348,24 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
   5. si une dictée est en cours, attente de sa fin (« Après la dictée… ») ; puis remplacement atomique de l'app par
      la copie (échange des deux noms, APFS : un échange raté, disque plein ou droits retirés, laisse l'app à sa
      place sans la déplacer ; sur un volume qui ne sait pas échanger, HFS+, exFAT ou partage réseau, deux
-     renommages, l'ancienne app remise en place si le second échoue) ; l'ancienne version est effacée ;
-  6. relance : la fenêtre de mise à jour se ferme (affichée en feuille, elle fait refuser, sans rien dire, la
-     fermeture de l'app par macOS), puis Wispad quitte ; une petite aide attend la fin de cette instance (60 s au
-     plus), puis ouvre la nouvelle version, qui rouvre la fenêtre si elle était affichée ; la bulle confirme
+     renommages, l'ancienne app remise en place si le second échoue) ;
+  6. relance : « Redémarrage » s'affiche, puis l'ancienne version (dans la copie cachée) est effacée, la fenêtre de
+     mise à jour se ferme (affichée en feuille, elle fait refuser, sans rien dire, la fermeture de l'app par macOS),
+     et Wispad quitte ; une petite aide attend la fin de cette instance (60 s au plus), puis ouvre la nouvelle
+     version. Fenêtre affichée avant la relance : la nouvelle version la rouvre aussitôt, sans attendre les clés,
+     sur la fenêtre de mise à jour là où elle s'était arrêtée (« Redémarrage » en cours) ; l'étape se coche, puis
+     « Wispad 0.1.2 est installé. », « Mise à jour depuis la 0.1.1 » (« Retour depuis… » après un retour en arrière)
+     et les notes de version, lues dans ce que l'ancienne version a noté juste avant sa relance
+     (`wispad.update.completion`, version et notes publiques, lu une seule fois, 10 min au plus), donc même hors
+     ligne. Installée par une version qui ne notait rien encore (avant la 0.7.7) : les notes sont lues sur GitHub,
+     sans la ligne « Mise à jour depuis… » ; sans réponse, la bulle seule. Fenêtre fermée : la bulle confirme
      « Wispad 0.1.2 est installé ». Si macOS refuse quand même de fermer Wispad (trois demandes, par exemple une
      autre feuille ouverte), Wispad s'arrête de force après avoir rangé comme à une fermeture normale (son du Mac
      rétabli, réglages écrits) : une fois ses fichiers remplacés, l'ancienne instance n'a plus accès au micro ni à
      l'accessibilité et ne peut plus dicter. L'aide ouvre alors la nouvelle version.
+
+  Vérification, installation et redémarrage restent chacune affichées 0,6 s au moins : l'échange des noms est
+  instantané, et sans cette pause les étapes 3 et 4 n'apparaissaient jamais avant la fermeture.
 
   Réglages, clés API, historique, audios et dictionnaire vivent hors de l'app (préférences de `com.yatofix.wispad`,
   `Application Support/Wispad`, coffre de secrets) : la mise à jour n'y touche pas. Les copies cachées laissées par

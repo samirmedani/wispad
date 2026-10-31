@@ -76,7 +76,10 @@ struct RootView: View {
         // Alerte de la barre latérale : relue hors du fil principal, qui dessine la fenêtre qui s'ouvre.
         .onAppear { model.refreshPermissionsInBackground() }
         .sheet(item: Binding(get: { model.updateSheet }, set: { model.updateSheet = $0 }),
-               onDismiss: { model.updater.dismissFailure() }) { release in
+               onDismiss: {
+                   model.updater.dismissFailure()
+                   model.updateCompletedFrom = nil
+               }) { release in
             UpdateSheet(release: release)
                 .environment(model)
                 .tint(Theme.brand)

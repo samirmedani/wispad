@@ -69,8 +69,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             BuildStatus.shared.start()
             model.isWindowVisible = { [weak self] in self?.window?.isVisible == true }
             model.updater.removeLeftovers()
-            // Relancé par une mise à jour en un clic : la bulle le confirme, sans prendre le focus.
-            if CommandLine.arguments.contains("--updated") { model.announceUpdated() }
+            // Relance technique ou diagnostic : aucune fenêtre, même si le coffre ne répond pas.
+            let quiet = ["--status-diagnostic", "--window-context-probe", "--background", "--offscreen"]
+                .contains(where: CommandLine.arguments.contains)
+            // `--section usage` (ou autre) ouvre directement la fenêtre sur cette section, sans attendre les clés : la
+            // relance d'une mise à jour rouvre la fenêtre aussitôt.
+            let requested = CommandLine.arguments.firstIndex(of: "--section").flatMap { index in
+                CommandLine.arguments.indices.contains(index + 1) ? AppSection(rawValue: CommandLine.arguments[index + 1]) : nil
+            }
+            // Relancé par une mise à jour en un clic : la fenêtre de mise à jour finit son avancement si elle était
+            // ouverte, sinon la bulle le confirme, sans prendre le focus.
+            if CommandLine.arguments.contains("--updated") {
+                model.announceUpdated(showsWindow: !quiet && requested != nil,
+                                      completion: UpdateCompletion.take(version: BuildStatus.shared.version))
+            }
+            if !quiet, let requested { show(section: requested) }
             retentionTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak model] _ in
                 Task { @MainActor in
                     model?.purgeAudio()
@@ -82,17 +95,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             retentionTimer?.tolerance = 6
             Task { @MainActor [weak self] in
                 await model.refreshKeys()
-                // Relance technique ou diagnostic : aucune fenêtre, même si le coffre ne répond pas.
-                guard !CommandLine.arguments.contains("--status-diagnostic"),
-                      !CommandLine.arguments.contains("--window-context-probe"),
-                      !CommandLine.arguments.contains("--background"),
-                      !CommandLine.arguments.contains("--offscreen") else { return }
-                // `--section usage` (ou autre) ouvre directement la fenêtre sur cette section.
-                if let index = CommandLine.arguments.firstIndex(of: "--section"),
-                   CommandLine.arguments.indices.contains(index + 1),
-                   let section = AppSection(rawValue: CommandLine.arguments[index + 1]) {
-                    self?.show(section: section)
-                } else if model.onboarding != nil {
+                guard !quiet, requested == nil else { return }
+                if model.onboarding != nil {
                     self?.show(section: .home)
                 } else if model.setupWarning != nil {
                     self?.show(section: .providers)

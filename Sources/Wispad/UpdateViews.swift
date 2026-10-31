@@ -18,6 +18,8 @@ struct UpdateSheet: View {
     private let fixedReleases: Bool
     /// Versions anciennes dépliées : sans cela, seules les `Self.unfolded` plus récentes s'affichent.
     @State private var showsAll = false
+    /// Fin de l'avancement montrée après la relance : « Redémarrage » coché.
+    @State private var finished = false
     /// Versions montrées dépliées avant « Afficher les versions précédentes ».
     static let unfolded = 3
 
@@ -32,6 +34,11 @@ struct UpdateSheet: View {
     private var current: SemanticVersion? { status.version.flatMap(SemanticVersion.init) }
     /// Version déjà installée : ses nouveautés, sans bouton d'installation.
     private var installed: Bool { current.map { release.version <= $0 } ?? false }
+    /// Installation qui vient de finir, rouverte par la nouvelle version : la version d'avant ; nil sinon.
+    private var completedFrom: String? {
+        guard let current, release.version == current else { return nil }
+        return model.updateCompletedFrom
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -123,6 +130,11 @@ struct UpdateSheet: View {
     }
 
     private var subtitle: String {
+        if let completedFrom, !completedFrom.isEmpty {
+            let wentBack = SemanticVersion(completedFrom).map { $0 > release.version } ?? false
+            return wentBack ? String(localized: "Retour depuis la \(completedFrom)")
+                : String(localized: "Mise à jour depuis la \(completedFrom)")
+        }
         if installed {
             guard let date = release.publishedAt else { return String(localized: "Ta version actuelle") }
             return String(localized: "Publiée le \(date.formatted(.dateTime.day().month(.wide)))")
@@ -135,7 +147,9 @@ struct UpdateSheet: View {
 
     @ViewBuilder private var footer: some View {
         let updater = model.updater
-        if installed {
+        if completedFrom != nil {
+            completionFooter
+        } else if installed {
             HStack(spacing: 10) {
                 Button("Voir sur GitHub") { NSWorkspace.shared.open(release.pageURL) }
                     .hoverFeedback()
@@ -153,6 +167,42 @@ struct UpdateSheet: View {
                 failureFooter(failure)
             case .downloading, .verifying, .waitingForDictation, .installing, .relaunching:
                 progressFooter(updater)
+            }
+        }
+    }
+
+    /// Après la relance : les quatre étapes, « Redémarrage » encore en cours puis coché, et la version prête.
+    private var completionFooter: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            UpdateSteps(current: finished ? UpdateSteps.count : UpdateSteps.count - 1)
+            HStack(spacing: 10) {
+                Label {
+                    Text(finished ? String(localized: "Wispad \(release.version.description) est installé.")
+                         : UpdateInstaller.Phase.relaunching.detailText)
+                        .contentTransition(.opacity)
+                } icon: {
+                    Image(systemName: finished ? "checkmark.seal.fill" : "arrow.clockwise")
+                        .foregroundStyle(finished ? Color.green : Theme.brand)
+                }
+                .font(.callout)
+                Spacer()
+                Button("Voir sur GitHub") { NSWorkspace.shared.open(release.pageURL) }
+                    .hoverFeedback()
+                Button("Fermer") { dismiss() }
+                    .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.defaultAction)
+                    .hoverFeedback()
+            }
+        }
+        .onAppear {
+            guard !finished else { return }
+            // Un instant sur « Redémarrage » en cours, là où l'ancienne version s'est arrêtée, puis coché.
+            // Minuterie de la boucle principale : elle part aussi dans l'aperçu hors écran, qui attend dans une tâche
+            // du fil principal.
+            Timer.scheduledTimer(withTimeInterval: 0.45, repeats: false) { _ in
+                MainActor.assumeIsolated {
+                    withAnimation(Theme.spring) { finished = true }
+                }
             }
         }
     }
@@ -354,12 +404,13 @@ extension ReleaseDigest.Kind {
 }
 
 /// Avancement de l'installation : téléchargement, vérification, installation, redémarrage. Les étapes faites sont
-/// cochées, celle en cours porte la couleur de l'app.
+/// cochées, celle en cours porte la couleur de l'app ; `count` : toutes faites (nouvelle version relancée).
 struct UpdateSteps: View {
     var current: Int
 
     private static let titles = [String(localized: "Téléchargement"), String(localized: "Vérification"),
                                  String(localized: "Installation"), String(localized: "Redémarrage")]
+    static var count: Int { titles.count }
 
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
@@ -399,7 +450,8 @@ struct UpdateSteps: View {
         }
         .animation(Theme.spring, value: current)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(String(localized: "Étape \(current + 1) sur 4 : \(Self.titles[min(current, 3)])"))
+        .accessibilityLabel(current >= Self.count ? String(localized: "Installation terminée")
+                            : String(localized: "Étape \(current + 1) sur 4 : \(Self.titles[min(current, 3)])"))
     }
 }
 

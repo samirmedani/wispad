@@ -1945,6 +1945,38 @@ struct AppRegressionTests {
         #expect(f.model.keyDrafts["openai"] == "fixture-secret")
     }
 
+    /// Relance après une mise à jour, fenêtre ouverte : la fenêtre de mise à jour reprend et finit son avancement ;
+    /// fenêtre fermée : seule la bulle le dit.
+    @Test func theRelaunchedVersionFinishesTheUpdateWindow() async throws {
+        let f = try Fixture()
+        defer { f.dispose() }
+        let release = ReleaseInfo(version: SemanticVersion("0.7.7")!, tag: "v0.7.7", notes: "", pageURL: ReleaseCheck.releasesURL,
+                                  diskImage: nil)
+        let completion = UpdateCompletion(release: release, previous: "0.7.6")
+        f.model.announceUpdated(showsWindow: false, completion: completion)
+        #expect(f.model.updateSheet == nil && f.model.updateCompletedFrom == nil)
+        f.model.announceUpdated(showsWindow: true, completion: completion)
+        #expect(f.model.updateSheet == release)
+        #expect(f.model.updateCompletedFrom == "0.7.6")
+    }
+
+    /// Installée par une version qui ne notait rien encore : les notes viennent de GitHub et l'avancement se finit
+    /// quand même ; sans réponse de GitHub, la bulle seule.
+    @Test func withoutANoteTheRelaunchedVersionReadsItsNotesOnGitHub() async throws {
+        let f = try Fixture()
+        defer { f.dispose() }
+        let release = ReleaseInfo(version: SemanticVersion("0.7.7")!, tag: "v0.7.7", notes: "", pageURL: ReleaseCheck.releasesURL,
+                                  diskImage: nil)
+        f.model.fetchRelease = { _ in nil }
+        f.model.announceUpdated(showsWindow: true, completion: nil, installed: "0.7.7")
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(f.model.updateSheet == nil)
+        f.model.fetchRelease = { _ in release }
+        f.model.announceUpdated(showsWindow: true, completion: nil, installed: "0.7.7")
+        #expect(await waitFor { f.model.updateSheet == release })
+        #expect(f.model.updateCompletedFrom == "")
+    }
+
     @Test func missingKeyRereadsTheVaultOnceBeforeGivingUp() async throws {
         var refreshes = 0
         var vault: [String: String] = [:]
