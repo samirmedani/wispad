@@ -200,6 +200,44 @@ struct TextInsertionTests {
         #expect(f.board.string(forType: .string) == "Copie conservée")
     }
 
+    /// L'app a lu la dictée : le presse-papiers revient aussitôt, sans attendre le délai prévu pour une app lente.
+    /// Un ⌘V fait juste après colle à nouveau ce que l'utilisateur avait copié (lien recollé en dictée le 31 octobre).
+    @Test func theClipboardComesBackAsSoonAsTheAppReadTheDictation() async throws {
+        let f = InsertionFixture(); defer { f.dispose() }
+        f.field = InsertionField(); f.deliver = false; f.hold = 5
+        var pasted: String?
+        var system = f.system
+        system.postPaste = { _ in pasted = f.board.string(forType: .string); return true }
+        let started = Date()
+        #expect(await f.insert(system: system) == .pasteSent)
+        #expect(pasted == "Bonjour.")
+        try await Task.sleep(nanoseconds: 400_000_000)
+        #expect(f.board.string(forType: .string) == "Copie conservée")
+        #expect(Date().timeIntervalSince(started) < 2)
+    }
+
+    /// Lecture d'avance (service système, presse-papiers universel) : ce n'est pas le collage, le délai prévu reste.
+    @Test func aReadBeforeThePasteDoesNotGiveTheClipboardBackEarly() async throws {
+        let board = NSPasteboard(name: .init("wispad-insertion-" + UUID().uuidString))
+        defer { board.releaseGlobally() }
+        board.setString("https://exemple.fr/lien", forType: .string)
+        let transaction = try #require(PasteboardTransaction(text: "Dictée.", pasteboard: board))
+        // Marquée temporaire : les gestionnaires de presse-papiers ne la gardent pas dans leur historique.
+        #expect(board.types?.contains(PasteboardTransaction.transientType) == true)
+        #expect(board.string(forType: .string) == "Dictée.")
+        transaction.expectPaste()
+        #expect(await transaction.waitForPasteRead(within: 0.05) == false)
+        transaction.restoreIfUnchanged()
+        #expect(board.string(forType: .string) == "https://exemple.fr/lien")
+        // Sans lecture d'avance, la lecture qui suit ⌘V est bien celle du collage.
+        let next = try #require(PasteboardTransaction(text: "Dictée.", pasteboard: board))
+        next.expectPaste()
+        #expect(board.string(forType: .string) == "Dictée.")
+        #expect(await next.waitForPasteRead(within: 1))
+        next.restoreIfUnchanged()
+        #expect(board.string(forType: .string) == "https://exemple.fr/lien")
+    }
+
     @Test func theNextInsertionWaitsForTheClipboardToBeGivenBack() async {
         let f = InsertionFixture(); defer { f.dispose() }
         f.field = InsertionField(); f.deliver = false; f.hold = 0.2
