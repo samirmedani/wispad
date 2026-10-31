@@ -840,9 +840,6 @@ struct MessageBubble: View {
             kind: .learning, message: terms.isEmpty ? fallback : DictationCoordinator.learnedLine(terms),
             countdown: coordinator.noticeTimer.countdown, onDismiss: coordinator.closeMessage, actions: [
                 MessageAction(title: String(localized: "Voir")) {
-                    if let term = terms.first {
-                        model.setDisplayChoice(\.dictionaryKind, DictionaryKind.classify(term))
-                    }
                     model.setDisplayChoice(\.dictionaryOriginFilter, .learned)
                     model.setDisplayChoice(\.dictionaryPeriod, .all)
                     coordinator.acceptLearning()

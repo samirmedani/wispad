@@ -995,6 +995,7 @@ final class DictationCoordinator {
         if commandSelection == nil, trial == nil {
             model.considerRepeatedFixes(raw: transcript, final: finalText, dictationID: record.id, speech: speech,
                                         traceID: current.run.trace.id)
+            model.considerSpellings(final: finalText, dictationID: record.id, speech: speech, traceID: current.run.trace.id)
         }
         if status.delivered {
             // Apprentissage seulement sur un texte vu dans le champ ; un champ illisible ne dit rien de plus.

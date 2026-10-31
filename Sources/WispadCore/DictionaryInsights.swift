@@ -167,6 +167,37 @@ public enum DictionaryInsights {
         }
     }
 
+    /// Noms de la dictée `final` écrits de plusieurs façons dans les dictées récentes (elle comprise) : chaque écriture
+    /// dans au moins `spellingMinimum` dictées, dont une graphie marquée (« TestFlight » / « Testflight »), absents du
+    /// dictionnaire et jamais refusés. Pour chacun, la graphie marquée la plus fréquente et l'autre écriture la plus
+    /// fréquente, à soumettre au juge. Seuls les noms écrits avec une majuscule dans cette dictée comptent, et seules
+    /// les dictées qui les contiennent sont relues : l'analyse reste légère après chaque dictée.
+    public static func learnableSpellings(final: String, recent: [Dictation], dictionary: [DictionaryEntry],
+                                          refused: [String]) -> [Fix] {
+        let words = CorrectionLearner.words(in: final)
+        var names: [String: String] = [:]
+        for (index, word) in words.enumerated() {
+            let bare = droppingElision(CorrectionLearner.strip(word))
+            guard bare.filter(\.isLetter).count >= 2, bare.contains(where: \.isUppercase) else { continue }
+            let shape = Shape([String(bare)], startsSentence: startsSentence(at: index, in: words))
+            guard shape.isMarked || shape.isProperNoun else { continue }
+            names[fastKey(bare)] = String(bare)
+        }
+        guard !names.isEmpty else { return [] }
+        let related = recent.map(\.final).filter { text in
+            names.values.contains { text.range(of: $0, options: [.caseInsensitive, .diacriticInsensitive]) != nil }
+        }
+        let tally = SpellingTally(related, dictionary: dictionary)
+        let exclusions = Exclusions(dictionary: dictionary, refused: refused)
+        return spellingSuggestions(tally, exclusions: exclusions).compactMap { suggestion -> Fix? in
+            guard names[key(suggestion.term)] != nil, case .spellings(let forms) = suggestion.reason,
+                  let other = forms.first(where: { $0.text != suggestion.term }) else { return nil }
+            return Fix(heard: other.text, written: suggestion.term)
+        }
+        .prefix(CorrectionLearner.maxTermsPerDictation)
+        .map { $0 }
+    }
+
     /// Réparations regroupées par nom ; une dictée compte une fois par nom.
     public static func repeatedFixes(_ dictations: [Dictation], fixes index: [String: [Fix]]) -> [String: RepeatedFix] {
         var written: [String: [String: Int]] = [:]

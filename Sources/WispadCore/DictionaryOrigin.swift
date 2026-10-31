@@ -48,6 +48,8 @@ public enum DictionarySource: String, CaseIterable, Sendable {
     case repeatedFix = "fix"
     /// Ajouté depuis les suggestions de l'écran Dictionnaire.
     case suggestion
+    /// Nom écrit de plusieurs façons dans les dictées : la graphie marquée, retenue par le juge.
+    case spelling
 }
 
 extension DictionaryOrigin {

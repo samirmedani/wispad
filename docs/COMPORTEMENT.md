@@ -189,6 +189,15 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 - Section Profil de la barre latérale, sous Historique : ce que les dictées conservées disent de la façon de parler.
   Tout est calculé sur ce Mac, à partir de l'historique, sans appel à un fournisseur. Période en haut à droite
   (Aujourd'hui, 7 jours, 30 jours, Tout ; Tout par défaut), retrouvée au lancement suivant.
+- « Personnaliser », sous la période, ouvre la liste des cartes dans l'ordre de l'écran, chacune avec son icône et son
+  interrupteur : Ton rythme, Tes jours, Ton cerveau (et, dessous, Sujets · IA), Tes mots, Tes tics de langage, Ce que
+  Wispad corrige le plus, Langues, Applications. Une carte masquée n'est ni calculée ni dessinée. Le cerveau, animé et
+  plus gourmand, est masqué par défaut, même après une mise à jour ; les autres cartes sont affichées. Les choix sont
+  retrouvés au lancement suivant. Les cartes étroites vont par deux ; restée seule, une carte prend toute la ligne.
+- Ouverture sans attente : le Profil se calcule hors du fil principal dès l'ouverture de la fenêtre, et le dernier
+  calcul reste en mémoire. Une nouvelle dictée, une autre période, un mot masqué ou une carte rallumée le refont en
+  arrière-plan ; l'écran garde l'ancien jusque-là, et une carte rallumée apparaît quand son calcul est prêt. L'écran
+  d'attente ne se voit qu'au tout premier calcul, si le Profil est ouvert avant sa fin.
 - Chiffres clés : mots dictés, équivalent (« 15 pages » à 250 mots la page, « 2,3 romans » à 80 000 mots dès un
   demi-roman), temps économisé, mots par minute, série en cours (jours d'affilée jusqu'à aujourd'hui ou hier),
   meilleure série, jours actifs, plus longue dictée.
@@ -199,35 +208,39 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 - Ton cerveau : les 48 mots les plus fréquents (vus dans au moins deux dictées), en nuage 3D. Deux mots sont reliés
   quand ils reviennent dans les mêmes dictées (les 4 liens les plus forts de chaque mot, deux dictées communes au
   moins), et colorés par famille (propagation d'étiquettes sur les liens). Le placement est calculé (forces), le même
-  à chaque calcul. Le nuage tourne lentement seul, sauf avec « Réduire les animations » ; glisser le tourne et arrête
-  la rotation, pincer ou « + / − » zoome, la flèche recentre. Une étiquette qui en chevaucherait une autre n'est pas
-  écrite. Cliquer un mot montre ses dictées et ses voisins (« Souvent avec »), cliquables, et éclaire ses liens.
-- Cerveau par sujets (« Mots | Sujets · IA » en haut de la carte) : coupé par défaut. « Analyser mes sujets avec
-  l'IA » l'allume ; la ligne dit avant tout appel combien de dictées seront relues, les jetons et le coût estimés
-  avec le premier service de correction (« environ 9 k jetons, ≈ 0,002 $ avec DeepSeek deepseek-flash », « prix
-  inconnu » sans tarif ; estimation prudente, 3,6 caractères par jeton). Rien n'est envoyé tant que « Lancer
-  l'analyse · coût » n'est pas cliqué. L'IA relit tout l'historique (700 caractères au plus par dictée), par lots de
-  36 000 caractères, trois lots à la fois, et rend des sujets concrets (projet, activité, thème), leur catégorie
-  (Code, Travail, Voyages…), 3 à 5 mots-clés et les dictées qui en parlent ; mots vides, verbes, tics et données
-  personnelles sont exclus par la consigne. Les sujets de même nom sont réunis. Le cerveau montre les 8 plus grandes
-  catégories (gros nœuds cerclés, nom toujours écrit) et leurs 6 sujets principaux, reliés à leur catégorie et entre
-  eux quand ils partagent deux dictées ; cliquer un sujet montre ses mots-clés. Progression « Lot 3 sur 12 » et
-  « Arrêter » pendant l'analyse. Le résultat est gardé sur ce Mac (sujets et numéros de dictées, pas de texte) avec
-  sa date, le nombre de dictées relues, le service, le coût réel et les dictées nouvelles depuis ; « Mettre à jour · N
-  nouvelles dictées · coût » ne relit que les dictées arrivées depuis (sujets fusionnés, coût cumulé) ; « Tout relire ·
-  coût » refait tout. « Mettre à jour chaque semaine » (coupé par défaut, coût d'une semaine type affiché : les
-  dictées des 4 dernières semaines divisées par 4) lance seul cette mise à jour quand l'analyse a 7 jours et que des
-  dictées sont arrivées, vérifié chaque minute ; jamais une première analyse. Les dictées supprimées sont oubliées
-  des sujets. Après une tentative ratée ou interrompue, la prochaine relance automatique attend au moins 6 heures,
-  puis 24 heures, puis 7 jours si les échecs se répètent. Cette échéance est enregistrée avant l'envoi et survit à
-  une relance de l'app ; une mise à jour manuelle reste possible. Une annulation garde le créneau occupé jusqu'à la
-  fin effective des requêtes : aucun chevauchement, aucun ancien résultat ne réapparaît après l'arrêt. Les lots
-  réussis sont retenus par identifiant ; les lots ratés restent à relire, même s'ils précèdent un lot réussi.
-  Avec un modèle local, le coût affiché est « gratuit ». Chaque appel compte dans Consommation dès son retour,
-  même si l'analyse globale échoue ou est annulée. Couper l'interrupteur efface le résultat.
-  « Écrire mon portrait » (sous le premier, coupé par défaut, avec son coût en plus) ajoute trois phrases sur ce qui
-  occupe la personne, d'après ses sujets et ses chiffres. Sans clé de correction active, le lancement est remplacé par
-  « Aucune clé de correction active ». Le cerveau s'ouvre sur les sujets quand l'analyse est allumée et faite.
+  à chaque calcul. Le nuage tourne lentement seul (30 images par seconde), sauf avec « Réduire les animations » ;
+  glisser le tourne et arrête la rotation, pincer ou « + / − » zoome, la flèche recentre. Une étiquette qui en
+  chevaucherait une autre n'est pas écrite. Cliquer un mot montre ses dictées et ses voisins (« Souvent avec »),
+  cliquables, et éclaire ses liens.
+- Sujets · IA (dans Personnaliser, sous le cerveau ; coupé par défaut) : ajoute « Mots | Sujets · IA » en haut du
+  cerveau, et l'allumer ouvre cet onglet. Avant la première analyse, l'onglet montre une image (des dictées, l'IA,
+  des sujets) et une phrase, puis le nombre de dictées qui seront relues, le service de correction en pastille de
+  couleur et « Lancer l'analyse · coût » : coût estimé avec le premier service de correction (« ≈ 0,05 $ »,
+  « < 0,001 $ » sous un millième, « gratuit » avec un modèle local, les jetons seuls sans tarif ; jetons et service en
+  bulle d'aide ; estimation prudente, 3,6 caractères par jeton). Rien n'est envoyé avant ce clic. L'IA relit tout
+  l'historique (700 caractères au plus par dictée), par lots de 36 000 caractères, trois lots à la fois, et rend des
+  sujets concrets (projet, activité, thème), leur catégorie (Code, Travail, Voyages…), 3 à 5 mots-clés et les dictées
+  qui en parlent ; mots vides, verbes, tics et données personnelles sont exclus par la consigne. Les sujets de même
+  nom sont réunis. Le cerveau montre les 8 plus grandes catégories (gros nœuds cerclés, nom toujours écrit) et leurs
+  6 sujets principaux, reliés à leur catégorie et entre eux quand ils partagent deux dictées ; cliquer un sujet montre
+  ses mots-clés. Progression « Lot 3 sur 12 » et « Arrêter » pendant l'analyse. Le résultat est gardé sur ce Mac
+  (sujets et numéros de dictées, pas de texte). Sous le cerveau des sujets : le portrait s'il est demandé, puis en
+  pastilles la date de l'analyse, le nombre de dictées relues et le coût réel (service en bulle d'aide), puis « Mettre
+  à jour · N nouvelles dictées · coût » (« À jour » sans nouvelle dictée), qui ne relit que les dictées arrivées depuis
+  (sujets fusionnés, coût cumulé), et « Tout relire · coût », qui refait tout. Deux pastilles avec leur coût se
+  cochent d'un clic, coupées par défaut : « Portrait » ajoute trois phrases sur ce qui occupe la personne, d'après ses
+  sujets et ses chiffres ; « Chaque semaine » (coût d'une semaine type : les dictées des 4 dernières semaines divisées
+  par 4) lance seul la mise à jour quand l'analyse a 7 jours et que des dictées sont arrivées, vérifié chaque minute ;
+  jamais une première analyse, ni quand le cerveau est masqué. Les dictées supprimées sont oubliées des sujets. Après
+  une tentative ratée ou interrompue, la prochaine relance automatique attend au moins 6 heures, puis 24 heures, puis
+  7 jours si les échecs se répètent. Cette échéance est enregistrée avant l'envoi et survit à une relance de l'app ;
+  une mise à jour manuelle reste possible. Une annulation garde le créneau occupé jusqu'à la fin effective des
+  requêtes : aucun chevauchement, aucun ancien résultat ne réapparaît après l'arrêt. Les lots réussis sont retenus par
+  identifiant ; les lots ratés restent à relire, même s'ils précèdent un lot réussi. Chaque appel compte dans
+  Consommation dès son retour, même si l'analyse globale échoue ou est annulée. Couper « Sujets · IA » coupe aussi le
+  portrait et la mise à jour de chaque semaine et efface le résultat, ce que le panneau rappelle ; masquer le cerveau
+  le garde. Sans clé de correction active, le lancement est remplacé par « Aucune clé de correction active » et un
+  lien vers Fournisseurs. Le cerveau s'ouvre sur les sujets quand l'analyse est allumée et faite.
 - Historique d'un nœud : un mot, un sujet ou une catégorie choisi dans le cerveau propose « Voir ses N dictées ».
   L'Historique s'ouvre filtré sur elles, avec « Dictées de « … » · N dictées » et « Toutes les dictées » pour enlever
   le filtre ; la recherche s'applique dans le filtre. Quitter l'Historique enlève le filtre.
@@ -269,8 +282,8 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 
 Sept onglets en haut de la page, un thème par page : plus besoin de tout faire défiler. **Général** (Raccourci,
 Général, Apparence), **Dictée** (Audio, Transcription, Correction, Apprentissage), **Mise en forme** (Mise en forme,
-Ton selon l'app), **Bulle** (Bulle et messages), **Confidentialité**, **Autorisations**, **Aide** (Mises à jour,
-Diagnostic, Aide et retours). Chaque onglet s'ouvre en haut de sa page ; le dernier ouvert est retrouvé au lancement suivant. Un micro
+Ton selon l'app), **Bulle** (Bulle et messages), **Confidentialité**, **Autorisations**, **Aide** (Aide et retours,
+Mises à jour, Diagnostic). Chaque onglet s'ouvre en haut de sa page ; le dernier ouvert est retrouvé au lancement suivant. Un micro
 refusé au moment de dicter ouvre Autorisations, et un point orange y signale une autorisation manquante. Fenêtre
 étroite : les icônes seules, leur nom en bulle d'aide. Aucun bloc de texte sous une liste : chaque réglage porte, dans
 sa rangée, une explication d'une ligne sous son libellé, en langage simple (ni montant, ni chiffre, ni nom de
@@ -386,7 +399,7 @@ fermeture compte.
 
 ## Transcription
 
-Toujours chez un fournisseur, au choix dans Fournisseurs › Modèles (étape 1) : xAI `grok-voice-transcribe-2.0` (recommandé) ou OpenAI
+Toujours chez un fournisseur, au choix dans Fournisseurs › Modèles › Voix : xAI `grok-voice-transcribe-2.0` (recommandé) ou OpenAI
 `gpt-live-transcribe`, en direct pendant l'écoute. Par défaut, l'enregistrement complet est aussi transcrit à la fin
 (« Vérifier chaque dictée sur l'enregistrement complet », environ 0,0005 $ de plus) :
 
@@ -496,30 +509,32 @@ coût de correction à peine plus élevé sur les seules dictées concernées.
   OpenAI : DeepSeek seul s'il a une clé, sinon le modèle de correction d'OpenAI. 2,5 s chacun, 4 s pour un service
   seul, plus 1 s par 800 caractères dictés. Au-delà, le texte transcrit est inséré tel quel (avec les seules
   commandes explicites de mise en page).
-- Modèle au choix (Fournisseurs › Modèles, étape 3) : « Automatique · selon tes clés » par défaut, ou n'importe quel
-  modèle de texte d'une clé active DeepSeek, OpenAI ou xAI. Le menu a une section par fournisseur : ses modèles
-  recommandés (`deepseek-flash`, `gpt-5.4-mini`, `gpt-5.6-luna`, `grok-4.7`), puis « Tous les modèles … (N) », un sous-menu
-  rangé en Rapides, Équilibrés et Lents. La liste vient du fournisseur (« /models »), lue quand la clé est active et
-  relue au plus une fois par jour ; sans réponse, les modèles recommandés restent proposés, et le modèle choisi reste
-  dans la liste même s'il en disparaît. En sont écartés les modèles qui ne rendent pas de texte de chat (voix,
-  images, vidéo, embeddings, modération, recherche, code) et les versions datées d'un modèle qui existe sans date.
-  Chaque ligne dit sa rapidité (« ≈ 0,92 s chez toi », médiane des corrections réussies de ce modèle, sinon « rapide »,
-  « moyen » ou « lent » devinés sur son nom) et son coût estimé pour 100 corrections typiques (1 800 jetons en entrée,
-  150 en sortie), ou « prix inconnu ». Ordre : recommandés, puis du plus rapide au plus lent, du moins cher au plus
-  cher. Un modèle hors des quatre recommandés s'enregistre « compte/modèle » (« openai/gpt-4.1-mini »). Le réglage de
-  raisonnement n'est envoyé qu'aux modèles qui l'acceptent (« none » pour GPT-5.1 et suivants, « minimal » pour
-  GPT-5, « low » pour la série o et Grok hors « non-reasoning ») : un autre modèle n'a pas de requête refusée puis
-  refaite. Le modèle choisi passe en premier avec la clé de son fournisseur. Choisir comme modèle le relais en cours
-  remet le relais sur « Aucun relais ». Le
-  modèle choisi passe en premier avec la clé de son fournisseur. Sa clé absente ou coupée, le premier de l'ordre
-  automatique le remplace, et l'étape le dit en orange. Un choix illisible (version plus récente) se lit
-  « Automatique », sans toucher aux autres réglages.
-- Relais au choix (même étape) : un modèle dont la clé est active, autre que le service principal, ou « Aucun
-  relais ». Deux services au plus, mêmes délais. Tant qu'aucun relais n'est choisi, le premier possible d'après
+- Modèle au choix (Fournisseurs › Modèles › Correction) : « Automatique » par défaut (sa carte dit le modèle qu'il
+  prend maintenant), ou n'importe quel modèle de texte d'une clé active DeepSeek, OpenAI ou xAI. Le sélecteur a un
+  groupe par fournisseur : ses modèles recommandés en cartes (`deepseek-flash`, `gpt-5.4-mini`, `gpt-5.6-luna`,
+  `grok-4.7`, sous un nom lisible : DeepSeek Flash, GPT-5.4 mini, GPT-5.6 Luna, Grok 4.7), puis « Tous les modèles …
+  (N) », une liste dépliable rangée en Rapides, Équilibrés et Lents ; « Chercher un modèle » filtre tous les groupes
+  par nom. La liste vient du fournisseur (« /models »), lue quand la clé est active et relue au plus une fois par
+  jour, celle du modèle local à chaque ouverture du sélecteur ; sans réponse, les modèles recommandés restent
+  proposés, et le modèle choisi reste dans la liste même s'il en disparaît. En sont écartés les modèles qui ne rendent
+  pas de texte de chat (voix, images, vidéo, embeddings, modération, recherche, code) et les versions datées d'un
+  modèle qui existe sans date. Chaque carte dit sa rapidité (« ≈ 0,92 s chez toi », médiane des corrections réussies
+  de ce modèle, sinon « Rapide », « Moyen » ou « Lent » devinés sur son nom) et son coût estimé pour 100 corrections
+  typiques (1 800 jetons en entrée, 150 en sortie), ou « Prix inconnu » ; dans la liste dépliée, la rapidité devinée
+  est le titre du groupe. Ordre : recommandés, puis du plus rapide au plus lent, du moins cher au plus cher. Un modèle
+  hors des quatre recommandés s'enregistre « compte/modèle » (« openai/gpt-4.1-mini »). Le réglage de raisonnement
+  n'est envoyé qu'aux modèles qui l'acceptent (« none » pour GPT-5.1 et suivants, « minimal » pour GPT-5, « low » pour
+  la série o et Grok hors « non-reasoning ») : un autre modèle n'a pas de requête refusée puis refaite. Le modèle
+  choisi passe en premier avec la clé de son fournisseur. Choisir comme modèle le relais en cours remet le relais sur
+  « Aucun relais ». Sa clé absente ou coupée, le premier de l'ordre automatique le remplace, et la vue d'ensemble de
+  Fournisseurs le dit (« La correction ne passe pas par OpenAI », avec le service qui corrige en attendant). Un choix
+  illisible (version plus récente) se lit « Automatique », sans toucher aux autres réglages.
+- Relais au choix (Fournisseurs › Réglages avancés › Relais de la correction) : un modèle dont la clé est active,
+  autre que le service principal, ou « Aucun relais ». Deux services au plus, mêmes délais. Tant qu'aucun relais n'est choisi, le premier possible d'après
   l'ordre automatique (OpenAI `gpt-5.4-mini` derrière DeepSeek, par exemple) est enregistré comme choix dès que les
   clés le permettent, à la lecture des clés ou quand une clé est ajoutée ou rallumée. Ensuite, seul un choix à la
-  main le change : relais dont la clé est coupée, pas de relais, et l'étape le dit en orange. Le juge des mots appris
-  suit le même ordre.
+  main le change : relais dont la clé est coupée, pas de relais, et la vue d'ensemble de Fournisseurs le dit. Le juge
+  des mots appris suit le même ordre.
 - Pas d'autre service de correction : le serveur compatible OpenAI choisi par l'utilisateur (fonction retirée)
   repasse sur la correction automatique au lancement ; son adresse et son modèle sont effacés, ses anciens appels
   sortent de Consommation. Sa clé reste dans le fichier de clés, comme celle de tout fournisseur retiré.
@@ -837,6 +852,12 @@ Réglages › Mise en forme : **Montants et unités** (symboles, par défaut, ou
   plus resoumis avant le prochain lancement (un juge muet n'écarte rien). Jamais avec « Apprendre de mes
   corrections » coupé, après une sélection réécrite sur consigne, ni pour l'essai du premier lancement. L'analyse
   de l'historique tourne hors du fil principal ; chaque dictée n'est analysée qu'une fois par lancement.
+- Les noms écrits de plusieurs façons sont appris aussi : à la fin de chaque dictée, un nom écrit avec une
+  majuscule (graphie marquée ou nom propre hors début de phrase) que les dictées des 90 derniers jours écrivent de
+  plusieurs façons, chacune dans au moins deux dictées, dont une graphie marquée (« TestFlight » / « Testflight »),
+  passe par le même juge avec sa graphie marquée la plus fréquente et l'autre écriture comme « entendu », puis la
+  même bulle. Absent du dictionnaire, jamais refusé, trois au plus par dictée ; seules les dictées qui contiennent
+  ces noms sont relues, hors du fil principal. Origine : « Écrit de plusieurs façons dans tes dictées ».
 - Seuls la phrase dictée et le mot corrigé sont envoyés (à Jev et au modèle de correction) ; le journal ne contient ni mot ni texte.
 
 ### Origine des mots
@@ -856,21 +877,19 @@ Chaque mot garde, sur ce Mac, qui l'a ajouté :
 - **Avant le suivi** : mot ajouté par une version précédente. L'historique ne relie aucun appel de jugement à un
   mot ni ne garde le verdict de chaque mot : l'origine n'est pas devinée.
 
-Le dictionnaire affiche par défaut les entrées les plus récentes en haut, dans tous les filtres et dans les deux
-sections. Les en-têtes **Mot / Expression**, **Origine**, **Ajouté le** et **Dictées** trient la liste ; un second
+Le dictionnaire affiche par défaut les entrées les plus récentes en haut, dans tous les filtres. Les en-têtes
+**Terme**, **Origine**, **Ajouté le** et **Dictées** trient la liste ; un second
 clic inverse le sens, indiqué par une flèche. **Dictées** trie d'abord les plus dictées. Le choix reste mémorisé après relance. Le tri par origine groupe Par toi,
 Automatique puis Avant le suivi (ou l'inverse), avec les plus récents en tête de chaque groupe. Il ne change ni
 les données conservées ni l'ordre des termes transmis aux fournisseurs.
 
-Écran Dictionnaire : deux sections mémorisées, Mots et Expressions et phrases. La classification suit le texte :
-un seul élément sans espace reste un mot, plusieurs éléments (espaces ou retours à la ligne) forment une
-expression. Les termes existants sont répartis sans être modifiés. Les noms composés peuvent donc être dans
-Expressions et phrases ; ce n'est pas une décision du modèle. Aucune limite de longueur n'est ajoutée.
-
-Les mots utilisent une table compacte Mot / Origine / Ajouté le / Dictées. Les expressions ont toute la largeur,
-avec retour à la ligne et métadonnées dessous. Leur saisie accepte plusieurs lignes. Ajouter un terme ouvre sa section
-et remet les filtres à Tous / Toute période pour qu'il reste visible. La recherche est temporaire ; origine et
-période sont mémorisées. Les filtres se croisent, avec un compteur de résultats et un bouton de réinitialisation.
+Écran Dictionnaire : une seule liste pour les mots, les noms et les expressions, dans une table Terme / Origine /
+Ajouté le / Dictées ; une expression longue passe à la ligne dans sa colonne. Un seul champ d'ajout, qui grandit
+avec le texte jusqu'à cinq lignes (Option-Retour pour une nouvelle ligne, Retour pour ajouter). Aucune limite de
+longueur n'est ajoutée. Ajouter un terme remet les filtres à Tous / Toute période pour qu'il reste visible. La
+recherche est temporaire ; origine et période sont mémorisées. Les filtres se croisent, avec un compteur de
+résultats et un bouton de réinitialisation. (Les anciennes sections Mots et Expressions et phrases sont réunies ;
+leur réglage `dictionaryKind` reste enregistré pour une version précédente.)
 
 Badges : bleu « Par toi », violet « Automatique », gris « Avant le suivi ». Pour un terme appris, le juge
 (« Jev », « DeepSeek », « OpenAI », « xAI »…) reste visible ; l'info-bulle précise le fournisseur, le modèle et
@@ -889,6 +908,9 @@ est refusé avec un message.
 
 En tête de l'écran Dictionnaire, une carte **Suggestions** propose, d'après les dictées des 90 derniers jours,
 calculé sur ce Mac sans rien envoyer et hors du fil principal :
+
+Avec au moins deux suggestions, **Tout ajouter** (en tête de la carte) les accepte toutes d'un coup, comme un clic sur
+chacune.
 
 - **Mal entendu dans N dictées** (ou **Mal écrit** pour un changement de casse) : un nom réparé par la correction
   dans au moins deux dictées et pas encore appris, avec ce qui avait été entendu. **Ajouter** l'ajoute comme
@@ -912,10 +934,11 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
 ## Relais en cas de panne
 
 - Voix : si le fournisseur de voix ne répond pas, le même enregistrement part chez le relais choisi dans Fournisseurs
-  › Modèles (étape 1) : un modèle de l'autre fournisseur, ou « Aucun relais ». Après deux échecs, la dictée démarre
-  directement chez le relais. Tant qu'aucun relais n'est choisi, le modèle recommandé de l'autre fournisseur est
-  enregistré comme choix dès que sa clé est active. Un relais dont la clé est coupée ne sert pas, et l'étape le dit
-  en orange. Prendre pour la voix le fournisseur du relais fait de l'ancien modèle de voix le relais.
+  › Réglages avancés › Relais de la voix : un modèle de l'autre fournisseur, ou « Aucun relais ». Après deux échecs,
+  la dictée démarre directement chez le relais. Tant qu'aucun relais n'est choisi, le modèle recommandé de l'autre
+  fournisseur est enregistré comme choix dès que sa clé est active. Un relais dont la clé est coupée ne sert pas, et
+  la vue d'ensemble de Fournisseurs le dit. Prendre pour la voix le fournisseur du relais fait de l'ancien modèle de
+  voix le relais.
 - Correction : après deux échecs, DeepSeek passe après son relais, y compris quand il est choisi lui-même ; sans
   relais, il reste seul. Un service mis de côté est contrôlé chaque minute et repris dès qu'il répond, au plus tard
   après 30 minutes.
@@ -1086,27 +1109,40 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
 - Soldes réels DeepSeek et xAI (clé de gestion facultative), relus au plus toutes les 5 minutes.
 - Une seule vue : tous les appels enregistrés comptent, filtrés seulement par la période (Aujourd'hui, 7 jours,
   30 jours, Tout). Les cartes, la liste des derniers appels et le menu de la barre partagent ces mêmes appels.
-- Carte « Bascules vers un fournisseur de secours », sur la période choisie : une phrase dit ce qu'est une bascule
-  (fournisseur principal en échec, trop lent ou mis de côté, la même demande part chez un autre fournisseur), puis un
-  état : aucune bascule (« tes fournisseurs principaux ont toujours répondu »), secours toujours réussi (normal),
-  ou à surveiller quand le secours a lui aussi échoué ou qu'un fournisseur principal a été mis de côté. Ensuite, par
-  étape (transcription, correction, dictionnaire) : nombre de fois, sens (« xAI → OpenAI ») et ce que cela veut dire ;
-  enfin les cinq dernières bascules (date, étape, fournisseurs, raison, secours réussi ou non). Seules deux raisons
-  sont enregistrées : « échec ou délai dépassé » et « principal mis de côté ». Chaque passage au secours compte, même
-  en échec. Quand la période commence avant le début de l'enregistrement des bascules, sa date est rappelée en petit.
-- « D'où venaient les échecs », dans la même carte, dès qu'un appel a échoué sur la période (avec ou sans bascule) :
-  chaque appel raté garde la cause lue dans l'erreur reçue, jamais son texte. Causes : pas d'internet sur ce Mac
-  (aucune connexion, connexion perdue, nom du service introuvable), pas de réponse à temps (délai du système ou de
-  Wispad), panne du service (erreur 5xx, connexion refusée), limite ou crédit atteint (429), clé refusée (401, 402,
+- En tête, la dépense de la période en grand (« Dépensé aujourd'hui », « Dépensé ces 7 derniers jours »…), le
+  nombre d'appels et, si un coût manque, ce que veut dire « ≥ » (« au moins » : le coût de N appels est inconnu, ou
+  la consommation n'a pas pu être relue). À côté, la part de chaque fournisseur : une barre en couleurs, puis pour
+  chacun ce qu'il a fait (voix, correction, dictionnaire), son montant et sa part (« < 1 % » sous 1 %), du plus cher
+  au moins cher ; Jev pour TypeSafe, « Modèle local » pour un serveur sur ce Mac. Dessous, une phrase sur la période :
+  « Tous les appels ont abouti », ou combien n'ont pas abouti et ce que le relais a fait (« Le relais a réussi 9 fois
+  sur 10 », « Aucun relais n'a pris la suite »). Une dictée annulée ou trop courte n'est pas un échec. Sans appel sur
+  la période : « Aucun appel aujourd'hui : rien à payer », sans les cartes qui en dépendent.
+- Carte « Relais de secours », dès qu'il y a des appels sur la période : une phrase dit ce qu'est un relais (un
+  service ne répond pas, Wispad envoie la même demande à un autre), puis ce qui s'est passé, avec une jauge (relais
+  réussis en vert, en échec en orange) : « Aucun relais nécessaire » ; « 9 demandes sauvées par le relais », normal de
+  temps en temps ; à surveiller quand le relais a lui aussi échoué (« 9 demandes sauvées sur 10 ») ou qu'un service a
+  été mis de côté ; sans relais, « 2 appels en échec, sans relais » (« Ce Mac n'avait pas internet » quand tous ces
+  échecs viennent de la connexion). Chaque passage au relais compte, même en échec. Ensuite :
+  - « Qui a pris le relais » : par étape (Voix, Correction, Dictionnaire) et par sens, les pastilles « xAI → OpenAI »
+    et l'issue (« 3 fois · tous réussis », « 5 fois · 1 en échec ») ; au survol, ce que cela veut dire.
+  - « Pourquoi », dès qu'un appel a échoué avec une cause connue ou qu'un service a été mis de côté : une barre et sa
+    légende par côté (Ta connexion et Le fournisseur toujours, Clé refusée et Incertain s'il y en a), la cause la plus
+    fréquente avec son service (« Le plus souvent : DeepSeek, pas de réponse à temps (3 fois). »), les services mis de
+    côté, puis « Détail par service », replié : chaque fournisseur qui a échoué, quel qu'il soit, avec ses causes du
+    plus fréquent au plus rare.
+  - « Quand » : les cinq derniers relais (heure, et le jour s'il n'est pas d'aujourd'hui, étape, fournisseurs, cause de
+    l'échec du service principal quand elle est connue, sinon « échec ou délai dépassé » ou « principal mis de côté »,
+    relais réussi ou non) ; « les 5 plus récents sur 12 » quand il y en a davantage.
+  Quand la période commence avant le début de l'enregistrement des relais ou des causes, sa date est rappelée en petit
+  (une seule phrase si les deux ont commencé le même jour).
+- Causes d'un échec : chaque appel raté garde la cause lue dans l'erreur reçue, jamais son texte. Pas d'internet sur
+  ce Mac (aucune connexion, connexion perdue, nom du service introuvable), pas de réponse à temps (délai du système ou
+  de Wispad), panne du service (erreur 5xx, connexion refusée), limite ou crédit atteint (429), clé refusée (401, 402,
   403), demande refusée (autre 4xx, erreur annoncée dans le flux), réponse inutilisable (vide, tronquée, illisible).
-  Trois cases : Ta connexion (pas d'internet), Fournisseurs (le reste), Clés refusées, plus Incertain pour un délai
-  dépassé sans aucun autre appel réussi dans la minute autour (la connexion a pu être en cause ; sinon le délai compte
-  pour le fournisseur). Puis chaque fournisseur qui a échoué, quel qu'il soit, avec ses causes du plus fréquent au
-  plus rare et le nombre de fois où il a été mis de côté. Une dictée annulée ou trop courte, ou une correction
-  abandonnée parce que la dictée est annulée, n'est pas un échec. Les appels d'avant ce suivi n'ont pas de cause : ils
-  restent hors de ce détail, et la date de début est rappelée en petit. Les dernières bascules montrent la cause de
-  l'échec du service principal quand elle est connue. Sans bascule mais avec des échecs (aucune clé de secours),
-  l'état le dit au lieu de « tes fournisseurs principaux ont toujours répondu ».
+  Côtés : Ta connexion (pas d'internet), Le fournisseur (le reste), Clé refusée, et Incertain pour un délai dépassé
+  sans aucun autre appel réussi dans la minute autour (la connexion a pu être en cause ; sinon le délai compte pour le
+  fournisseur). Une dictée annulée ou trop courte, ou une correction abandonnée parce que la dictée est annulée, n'est
+  pas un échec. Les appels d'avant ce suivi n'ont pas de cause : ils restent hors de ce détail.
 - Période « Tout », sur l'Accueil comme dans Consommation : sous le sélecteur, depuis quand et combien de temps
   (« Depuis le 1 oct. 2026 · 16 jours »), du premier jour d'utilisation à aujourd'hui, les deux compris (le jour
   même compte pour 1 jour). Moins d'un mois : en jours ; au-delà, en mois et jours (« 1 mois et 4 jours »), puis
@@ -1129,18 +1165,34 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
   (jusqu'au 30 septembre 2027), Suisse 8,1 %, Singapour 9 %, Japon 10 %, Nouvelle-Zélande 15 %, Mexique 16 %,
   France 20 %, Roumanie 21 %, Slovaquie 23 %, Estonie 24 %, Finlande 25,5 %. À moins de 0,3 point d'un repère, le
   curseur s'y place exactement ; ailleurs, au dixième. Le taux est enregistré au relâchement du curseur.
+- Graphique de la dépense, titré d'après la durée de chaque barre (« Dépense par heure » pour Aujourd'hui, par jour,
+  par semaine ou par mois pour Tout), une couleur par fournisseur avec sa légende (Jev pour TypeSafe). Les appels au
+  coût inconnu n'y sont pas, et une phrase le dit (« Sans les 9 appels au coût inconnu. »).
+- « Par service » : une ligne par API (« DeepSeek · correction ») avec ses appels, l'audio ou les jetons envoyés et
+  reçus, ses échecs, ses modèles, son montant et sa part de la dépense (barre et pourcentage) ; au survol, le tarif
+  du modèle.
 - Tableau « Derniers appels » : en-têtes (heure, service, détail, durée, coût), lignes alternées ; par appel, son
   état (pastille verte ou rouge), l'heure (et le jour s'il n'est pas d'aujourd'hui), le fournisseur en couleur
   (Jev pour TypeSafe), la tâche (transcription en direct, du fichier, correction, dictionnaire) et le modèle, l'audio
   ou les jetons (« 370 + 4 480 en cache → 30 jetons »), la durée (en secondes au-delà d'une seconde) et le coût
   (« inconnu » sinon). En couleur sous le détail : « Secours après DeepSeek · échec ou délai dépassé », « Secours en
   échec après … » ou « Échec ». Au survol : tarif du modèle et compteurs détaillés. 15 appels, puis « Afficher
-  plus » (30 de plus par clic) ; « 15 sur 1 234 » en haut à droite ; changer de période revient à 15.
+  plus » (30 de plus par clic) ; « 15 sur 1 234 » en haut à droite ; changer de période revient à 15. Fenêtre
+  étroite : la colonne du service se resserre pour garder le détail lisible.
+- Copier et exporter les appels, sans rien de dicté. Un appel, au survol (bouton de copie) ou par clic droit, en une
+  ligne lisible : date, fournisseur, tâche, modèle, quantités, durée, coût, relais ou échec et sa cause. « Copier »
+  donne tous les appels de la période, en texte lisible (une ligne de titre : période, nombre d'appels, total) ou en
+  CSV pour un tableur ; « Exporter… » enregistre ce CSV dans un fichier (« Wispad-appels-7-jours-2026-10-31.csv »).
+  CSV : virgules, lignes en CRLF, une ligne d'en-tête ; colonnes Date (« 2026-10-31 13:40:01 », heure de ce Mac),
+  Fournisseur, Tâche, Modèle, Statut, Cause de l'échec, Relais après, Raison du relais, Durée (ms), Audio (s), Jetons
+  en entrée, en cache et en sortie, Coût (USD) ; nombres avec un point décimal ; un coût ou un compteur inconnu reste
+  vide. Un nom de modèle qui n'en a pas la forme (texte inattendu d'une réponse) ne sort pas. Un message en bas de la
+  fenêtre confirme chaque copie et chaque export.
 - Rien de l'historique n'est effacé ; l'ancienne date de début du suivi financier est retirée au lancement.
 
 ## Clés API
 
-- Où sont tes clés ? (en tête de Fournisseurs › Clés API) : « Sur ce Mac » (fichier de l'app) ou « Serveur ou
+- Où sont tes clés ? (Fournisseurs › Réglages avancés › Source des clés) : « Sur ce Mac » (fichier de l'app) ou « Serveur ou
   gestionnaire » : une commande lancée dans un shell de connexion de l'utilisateur (son PATH : Homebrew, op…), où
   « {name} » devient le nom de la clé (WISPAD_XAI_API_KEY, WISPAD_OPENAI_API_KEY, WISPAD_DEEPSEEK_API_KEY,
   WISPAD_XAI_MANAGEMENT_KEY, TYPESAFE_API_KEY). « Modèles » propose SSH vers un serveur, 1Password, Doppler, Infisical,
@@ -1152,14 +1204,14 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
   « Ajouter une clé » est remplacé par « ajoute une clé dans ton serveur ou ton gestionnaire, puis recharge ». Revenir
   à « Sur ce Mac » relit le fichier. Un coffre configuré à part (WISPAD_SECRET_COMMAND ou wispad.secretCommand) garde
   la priorité : la ligne dit seulement « Clés lues dans ton coffre de secrets (outil) ».
-- Modèle local (section sous Clés API) : Aucun, Ollama (http://localhost:11434/v1), LM Studio
+- Modèle local (Fournisseurs › Réglages avancés) : Aucun, Ollama (http://localhost:11434/v1), LM Studio
   (http://localhost:1234/v1) ou une autre adresse compatible OpenAI, et un interrupteur. Wispad lit la liste de ses
   modèles (« 2 modèles : qwen2.5, llama3.2 », modèles d'embedding écartés) ou dit « Aucun serveur ne répond à … ».
-  Ses modèles apparaissent dans le menu de la correction, section Local, « gratuit, sur ce Mac » ; ils servent aussi
+  Ses modèles apparaissent dans le sélecteur de la correction, groupe Modèle local, « Gratuit, sur ce Mac » ; ils servent aussi
   à l'analyse des sujets. Aucune clé ni réglage de raisonnement n'est envoyé ; délai de 15 s (chargement du modèle).
   Les appels comptent dans Consommation à 0 $ (« Modèle local · correction »). Repasser sur Aucun remet la correction
   en automatique si elle utilisait le modèle local.
-- Fournisseurs › Clés API liste les clés enregistrées, une ligne par clé : fournisseur, rôle, clé masquée (son
+- Fournisseurs › Clés API liste les clés enregistrées, une ligne par clé : pastille et nom du fournisseur, rôle, clé masquée (son
   début connu, comme « xai- » ou « sk-proj- », et ses quatre derniers caractères : « xai-••••3f9a »), un interrupteur
   et, pour le fichier de l'app, une corbeille (après confirmation). Une clé coupée reste enregistrée mais n'est plus
   utilisée nulle part : voix, relais, correction, Jev, soldes. Choisir pour la voix un fournisseur dont la clé est
@@ -1172,22 +1224,44 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
   Anthropic, OpenRouter, Groq, Google ou Hugging Face est nommée et refusée (Wispad ne s'en sert pas). Une clé sans
   forme reconnue (TypeSafe) demande seulement de choisir son fournisseur. La clé est vérifiée chez ce fournisseur
   seul, jamais envoyée à un autre pour essayer ; une clé xAI refusée comme clé d'API est essayée comme clé de gestion,
-  toujours chez xAI. Vérifiée, elle est enregistrée, remplace l'ancienne clé de ce compte et devient active.
-- Fournisseurs › Modèles montre les quatre étapes d'une dictée, numérotées dans leur ordre et reliées par un trait :
-  1 Voix en direct (fournisseur et modèle dans un seul menu, groupé par xAI puis OpenAI, puis « Relais si xAI ne
-  répond pas »), 2 Vérification (interrupteur ; même fournisseur que la voix), 3 Correction (« Automatique · selon
-  tes clés » ou un modèle, l'interrupteur de la correction, puis son relais), 4 Mots appris (« Comme la correction »
-  ou Jev, et l'interrupteur de l'apprentissage). Les interrupteurs sont ceux de Réglages. Un modèle dont la clé
-  manque ou est coupée ne se choisit pas et le dit (« aucune clé », « clé coupée ») ; le relais de la correction ne
-  peut pas être le service principal (« déjà en premier »). Sous chaque étape, une ligne dit ce qu'elle fait
-  maintenant : prix en direct de la voix et de son relais, modèle et prix de l'enregistrement complet, services de
-  correction réellement essayés (« Maintenant : DeepSeek deepseek-flash · relais : OpenAI gpt-5.4-mini »), juge des
-  mots. Pastille
-  rouge : l'étape travaille ; orange : elle ne peut pas comme choisi (clé absente ou coupée) ; grise : coupée.
-  Choisir Jev allume la clé TypeSafe, « Comme la correction » la coupe (elle ne sert qu'aux mots appris).
-- Fournisseurs recommande, sous les clés : xAI pour la voix, DeepSeek pour la correction (la moins chère), et Jev
-  (TypeSafe), facultatif, pour les mots à apprendre. Chaque service se remplace par un autre dont on a la clé ; sans
-  clé TypeSafe, le modèle de correction juge seul.
+  toujours chez xAI. Vérifiée, elle est enregistrée, remplace l'ancienne clé de ce compte et devient active. La même
+  saisie s'ouvre sur place depuis la vue d'ensemble, depuis le groupe d'un fournisseur sans clé dans le sélecteur de
+  modèle et depuis les mots appris (clé TypeSafe), avec un lien « Créer une clé » vers la page du fournisseur (xAI,
+  OpenAI, DeepSeek). Avec une source de clés en lecture seule, l'écran dit d'ajouter la clé dans la source, puis de
+  recharger.
+- Fournisseurs commence par une vue d'ensemble : ce qui marche, ce qui manque et le bouton qui règle. Les alertes de
+  même cause n'en font qu'une. Coffre injoignable ou fichier illisible : ce seul message, avec « Recharger ». Aucune
+  clé : « Ajoute une clé pour dicter », et la saisie s'ouvre sur place. Voix sans clé active : « Ajoute ta clé xAI
+  pour dicter » ou « Ta clé xAI est coupée » (« Rallumer la clé xAI »), avec « Dicter avec OpenAI » si l'autre
+  fournisseur a sa clé ; la vérification, la correction et les mots appris qui en dépendent ne sont pas signalés à
+  part. Ensuite, une alerte par clé qui manque ou qui est coupée alors qu'un choix en a besoin (correction choisie,
+  relais de la voix, relais de la correction), même si elle sert à plusieurs : une clé OpenAI coupée qui sert aux deux
+  relais donne « Les relais ne serviront pas » ; une correction choisie sans clé, « La correction ne passe pas par
+  OpenAI », avec le service qui corrige en attendant et « Choisir un autre modèle ». Deux clés en cause : « 2 réglages
+  attendent une clé », une ligne chacune (« Clé OpenAI coupée · Nécessaire pour le relais de la voix et le relais de
+  la correction », « Rallumer »). Un service mis de côté s'affiche avec son relais et « Réessayer maintenant », relu
+  chaque minute. Sinon : « Tout est prêt », avec le fournisseur de la voix et celui de la correction. Pastille rouge :
+  pas de dictée possible ; orange : un choix ne sert pas ; verte du relais : un service est en pause ; verte : prêt.
+- Fournisseurs › Modèles : Voix et Correction (avec l'interrupteur de la correction, celui de Réglages), chacun dans
+  un bouton qui montre la pastille du fournisseur, le modèle et son prix, ou d'un point orange la clé qui manque, et
+  ouvre le sélecteur. Le sélecteur est une feuille de cartes groupées par fournisseur : pastille, nom, état de la clé
+  (« Clé active », « Clé coupée » avec « Rallumer », « Aucune clé » avec « Ajouter la clé » ; pour le modèle local,
+  « Pas réglé » avec « Régler le modèle local », qui ouvre les réglages avancés). Chaque carte donne le nom du modèle,
+  ses pastilles « Recommandé » (Grok Voice Transcribe 2.0 pour la voix, le modèle d'origine de l'autre fournisseur pour
+  son relais, DeepSeek Flash pour la correction, GPT-5.4 mini pour son relais) et « Économique » (0,25 $ de l'heure au
+  plus pour la voix ; moins de 0,10 $ pour 100 dictées, ou le modèle local, pour la correction), puis son prix (voix :
+  par heure de dictée, et celui de la vérification quand elle est active) ou sa rapidité et son prix (correction).
+  Le choix en cours a le bord et la coche rouges. Un modèle dont la clé n'est pas active est grisé et ne se choisit
+  pas ; le relais de la correction ne peut pas être le service principal (« Déjà en premier »). « Automatique » et
+  « Aucun relais » sont une carte en tête. Choisir applique et ferme ; Échap ou ✕ ferme sans rien changer.
+- Fournisseurs › Réglages avancés, repliés à l'ouverture de l'écran (« À régler » signale un relais qui attend sa
+  clé) : Relais de la voix et Relais de la correction (même sélecteur), Vérifier sur l'enregistrement complet (même
+  fournisseur que la voix, avec le modèle et son prix), Mots appris (interrupteur, et « Comme la correction » ou
+  « Jev (TypeSafe) », ou « Ajouter une clé TypeSafe » sans cette clé ; choisir Jev allume la clé TypeSafe, « Comme la
+  correction » la coupe : elle ne sert qu'aux mots appris), Modèle local, Source des clés et État des services. Les
+  interrupteurs sont ceux de Réglages.
+- Chaque service se remplace par un autre dont on a la clé ; sans clé TypeSafe, le modèle de correction juge seul
+  les mots appris.
 - Par défaut : fichier de l'app (`Application Support/Wispad/api-keys.json`, lisible par le seul utilisateur du Mac).
 - Coffre de secrets, au choix : une commande qui répond à `get NOM` (valeur sur la sortie, code 1 si absente) et
   `put NOM` (valeur sur l'entrée), indiquée par `WISPAD_SECRET_COMMAND` ou
@@ -1389,8 +1463,8 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
 
 ## Aide et retours
 
-Réglages › Aide › Aide et retours : une ligne d'explication (« Sur GitHub : seules les versions de
-Wispad et de macOS sont préremplies. ») et trois liens. « Signaler un problème » et « Proposer une idée » sont
+Réglages › Aide › Aide et retours, en tête de l'onglet : une ligne d'explication (« Sur GitHub : seules les versions
+de Wispad et de macOS sont préremplies. ») et quatre rangées. « Signaler un problème » et « Proposer une idée » sont
 aussi dans le menu de la barre des menus, juste avant Quitter, et dans le menu Aide. Chaque lien ouvre sa page dans
 le navigateur ; depuis un menu, la fenêtre de Wispad ne s'ouvre pas.
 
@@ -1398,11 +1472,26 @@ le navigateur ; depuis un menu, la fenêtre de Wispad ne s'ouvre pas.
   Champ `version` : la version et le commit de la barre latérale, sans le nom de l'app (« 0.1.0 · abc1234 ») ; le
   commit seul si la version manque, la version seule sans commit gravé, rien si les deux manquent. Champ `macos` :
   « macOS 15.3.1 », toujours trois nombres. Valeurs encodées pour l'adresse (espace, « · », « + », « & », « # »…).
+  À côté, **Copier le diagnostic** met le rapport du diagnostic dans le presse-papiers, prêt à coller dans le ticket.
+- **Enquêter avec ton agent IA** : **Copier le prompt** met dans le presse-papiers des consignes pour Codex, Claude
+  Code ou un autre agent, suivies du diagnostic. L'agent rassemble les faits sur ce Mac (journaux de Wispad avec
+  `/usr/bin/log show --predicate 'subsystem == "com.yatofix.wispad"'`, `latence.log`, diagnostic, autorisations),
+  cherche la cause, vérifie qu'aucun ticket n'existe déjà, puis prépare un ticket sur le modèle du formulaire de bug
+  (titre, ce qui se passe, étapes, ce qui était attendu, versions de Wispad et de macOS, fournisseur, type de Mac,
+  extraits utiles) en l'anonymisant : ni texte dicté, nom, e-mail, chemin personnel, nom de la machine, clé, ni
+  contenu des apps. Il ne lit ni la base, ni l'audio, ni les clés, ne change rien sans accord et ne publie le ticket
+  (avec `gh` ou par le formulaire prérempli) qu'avec l'accord de l'utilisateur. Prompt en français, ou en anglais si
+  Wispad est en anglais. N'y entrent que les versions de Wispad et de macOS, le type de Mac (Apple Silicon ou Intel)
+  et le fournisseur de voix, avec le diagnostic.
 - **Proposer une idée** : Discussions du dépôt, catégorie Ideas. **Poser une question** : catégorie Q&A.
 - Rien d'autre dans l'adresse : ni dictée, ni réglage, ni donnée personnelle. Wispad n'envoie rien lui-même : un
-  ticket n'existe que si on le publie sur GitHub.
+  ticket n'existe que si on le publie sur GitHub. Les copies restent dans le presse-papiers ; un message en bas de la
+  fenêtre les confirme.
 
 ## Diagnostic
 
 Réglages › Aide › Diagnostic exporte un JSON local : autorisations, raccourci, bulle, durées et API des 50 dernières
-tentatives. Aucun texte dicté, audio, contexte, chemin ni clé. Rien n'est envoyé automatiquement.
+tentatives. Aucun texte dicté, audio, contexte, chemin ni clé. Rien n'est envoyé automatiquement. « Copier le
+diagnostic » (Aide et retours) met le même rapport dans le presse-papiers, dans un bloc repliable `<details>` titré
+par les versions de Wispad et de macOS ; au-delà de 40 000 octets (un ticket GitHub accepte 65 536 caractères), les
+tentatives les plus anciennes sont retirées, et une phrase le dit.

@@ -2,7 +2,8 @@ import SwiftUI
 import WispadCore
 
 /// Suggestions tirées de l'historique, en tête de l'écran Dictionnaire : noms que la correction répare souvent,
-/// entrées écrites autrement dans les dictées, noms écrits de plusieurs façons. Rien n'est ajouté sans un clic.
+/// entrées écrites autrement dans les dictées, noms écrits de plusieurs façons. Rien n'est ajouté sans un clic ;
+/// « Tout ajouter » les accepte toutes d'un coup.
 struct DictionarySuggestionsCard: View {
     @Environment(AppModel.self) private var model
     var suggestions: [DictionaryInsights.Suggestion]
@@ -30,10 +31,21 @@ struct DictionarySuggestionsCard: View {
                     .padding(.vertical, 1)
                     .background(Capsule().fill(Color.purple.opacity(0.12)))
                 Spacer(minLength: 8)
-                Text("D'après tes dictées")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .help("Calculé sur ce Mac à partir de tes dictées des 90 derniers jours. Rien n'est envoyé.")
+                if suggestions.count > 1 {
+                    Button {
+                        withAnimation(Theme.spring) { model.acceptAllSuggestions() }
+                    } label: {
+                        Label("Tout ajouter", systemImage: "plus.circle.fill")
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .help("Accepter les \(suggestions.count) suggestions")
+                } else {
+                    Text("D'après tes dictées")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .help("Calculé sur ce Mac à partir de tes dictées des 90 derniers jours. Rien n'est envoyé.")
+                }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)

@@ -298,7 +298,9 @@ struct ScreenScroll<Content: View>: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            // Pile paresseuse : à l'ouverture d'un écran, seules les cartes visibles sont construites et mesurées ;
+            // les suivantes le sont au défilement. Une longue page (Consommation, Profil) s'ouvre sans tout calculer.
+            LazyVStack(alignment: .leading, spacing: 20) {
                 content
             }
             .padding(.horizontal, 32)

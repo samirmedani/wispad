@@ -4,78 +4,106 @@ import WispadCore
 
 // MARK: - Profil
 
-/// Profil : ce que tes dictées disent de toi. Chiffres clés, rythme, vocabulaire, tics, corrections, et le cerveau,
-/// un nuage 3D des mots qui reviennent ensemble. Tout est calculé sur ce Mac.
+/// Instrumentation locale, inactive dans l'app : la sonde de l'aperçu note quand le Profil affiche son contenu (vrai)
+/// ou son écran d'attente (faux).
+@MainActor
+enum ProfileRenderingObserver {
+    static var didShow: ((Bool) -> Void)?
+}
+
+/// Profil : ce que tes dictées disent de toi. Chiffres clés, puis les cartes choisies dans « Personnaliser » : rythme,
+/// jours, cerveau, mots, tics, corrections, langues, applications. Tout est calculé sur ce Mac, hors du fil principal,
+/// par `ProfileLoader`, qui garde le dernier calcul : rouvrir le Profil est immédiat.
 struct ProfileView: View {
     @Environment(AppModel.self) private var model
-    @State private var data: ProfileData?
     @State private var selectedWord: Int?
-
-    struct ProfileData: Equatable {
-        var profile: DictationProfile
-        var graph: WordGraph
-    }
-
-    private struct Key: Hashable {
-        var period: StatsPeriod
-        var count: Int
-        var newest: String?
-        var hidden: [String]
-    }
-
-    private var period: StatsPeriod { model.settings.profilePeriod }
-    private var hidden: Set<String> { Set(model.settings.profileHiddenWords) }
+    @State private var customizing = false
+    private var loader: ProfileLoader { .shared }
 
     var body: some View {
-        let records = model.records(in: period)
-        let summary = StatsCalculator.summary(samples: model.samples(for: period), typingWordsPerMinute: model.settings.typingWPM)
+        let request = ProfileRequest(model: model)
         ScreenScroll {
             ScreenHeader(title: String(localized: "Profil"),
                          subtitle: String(localized: "Ce que tes dictées disent de toi. Calculé sur ce Mac, rien n'est envoyé.")) {
-                PillPicker(selection: Binding(
-                    get: { model.settings.profilePeriod },
-                    set: { model.setDisplayChoice(\.profilePeriod, $0) }
-                ))
+                // Sous la période, comme la durée d'utilisation de l'Accueil : l'en-tête garde sa largeur.
+                VStack(alignment: .trailing, spacing: 6) {
+                    PillPicker(selection: Binding(
+                        get: { model.settings.profilePeriod },
+                        set: { model.setDisplayChoice(\.profilePeriod, $0) }
+                    ))
+                    customizeButton
+                }
             }
-            if let data, data.profile.dictations > 0 {
-                ProfileHeadline(profile: data.profile, savedSeconds: summary.savedSeconds)
-                HStack(alignment: .top, spacing: 12) {
-                    RhythmCard(profile: data.profile)
-                    DaysCard(profile: data.profile)
-                }
-                .fixedSize(horizontal: false, vertical: true)
-                BrainSection(wordGraph: data.graph, profile: data.profile, selected: $selectedWord, hide: hide)
-                WordsCard(words: data.profile.topWords, hide: hide)
-                HStack(alignment: .top, spacing: 12) {
-                    TicsCard(tics: data.profile.tics)
-                    FixesCard(fixes: data.profile.fixes)
-                }
-                .fixedSize(horizontal: false, vertical: true)
-                HStack(alignment: .top, spacing: 12) {
-                    LanguagesCard(profile: data.profile)
-                    AppsCard(records: records)
-                }
-                .fixedSize(horizontal: false, vertical: true)
-                HiddenWordsFooter(words: model.settings.profileHiddenWords) { word in
-                    model.setDisplayChoice(\.profileHiddenWords, model.settings.profileHiddenWords.filter { $0 != word })
-                }
-            } else if data != nil {
+            if let snapshot = loader.snapshot, snapshot.profile.dictations > 0 {
+                content(snapshot)
+            } else if loader.snapshot != nil {
                 ContentUnavailableView(String(localized: "Pas encore de dictée"),
                                        systemImage: "brain.head.profile",
                                        description: Text("Ton profil se remplit au fil de tes dictées."))
                     .frame(maxWidth: .infinity, minHeight: 280)
             } else {
                 ProgressView().frame(maxWidth: .infinity, minHeight: 280)
+                    .onAppear { ProfileRenderingObserver.didShow?(false) }
             }
         }
-        .task(id: Key(period: period, count: records.count, newest: records.first?.id, hidden: model.settings.profileHiddenWords)) {
-            let hidden = self.hidden
-            let computed = await Task.detached(priority: .userInitiated) {
-                ProfileData(profile: ProfileBuilder.build(records: records, hidden: hidden),
-                            graph: WordGraph.build(records: records, hidden: hidden))
-            }.value
-            if computed.graph.nodes.indices.contains(selectedWord ?? -1) == false { selectedWord = nil }
-            data = computed
+        .task(id: request) { loader.load(request, model: model) }
+        // Un nouveau cerveau range ses mots autrement : le mot choisi dans l'ancien n'a plus de sens.
+        .onChange(of: loader.snapshot?.graph) { selectedWord = nil }
+    }
+
+    @ViewBuilder
+    private func content(_ snapshot: ProfileSnapshot) -> some View {
+        ProfileHeadline(profile: snapshot.profile, savedSeconds: snapshot.savedSeconds)
+            .onAppear { ProfileRenderingObserver.didShow?(true) }
+        // Une carte rallumée apparaît dès que son calcul est prêt, jamais vide en attendant.
+        ForEach(ProfileCard.rows(model.settings.profileCards.shown.filter(snapshot.has)), id: \.self) { row in
+            if row.count == 1, row[0].isWide {
+                card(row[0], in: snapshot)
+            } else {
+                HStack(alignment: .top, spacing: 12) {
+                    ForEach(row) { card($0, in: snapshot) }
+                }
+                .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        HiddenWordsFooter(words: model.settings.profileHiddenWords) { word in
+            model.setDisplayChoice(\.profileHiddenWords, model.settings.profileHiddenWords.filter { $0 != word })
+        }
+    }
+
+    @ViewBuilder
+    private func card(_ card: ProfileCard, in snapshot: ProfileSnapshot) -> some View {
+        let profile = snapshot.profile
+        switch card {
+        case .rhythm: RhythmCard(profile: profile)
+        case .days: DaysCard(profile: profile)
+        case .brain:
+            if let graph = snapshot.graph { BrainSection(wordGraph: graph, selected: $selectedWord, hide: hide) }
+        case .words: WordsCard(words: profile.topWords, hide: hide)
+        case .tics: TicsCard(tics: profile.tics)
+        case .fixes: FixesCard(fixes: profile.fixes)
+        case .languages: LanguagesCard(profile: profile)
+        case .apps: AppsCard(records: model.records(in: snapshot.request.period))
+        }
+    }
+
+    private var customizeButton: some View {
+        Button {
+            customizing.toggle()
+        } label: {
+            Label(String(localized: "Personnaliser"), systemImage: "slider.horizontal.3")
+                .font(.system(size: 12, weight: .medium))
+                .lineLimit(1)
+                .fixedSize()
+                .padding(.horizontal, 11)
+                .frame(height: 26)
+                .background(Capsule().fill(Theme.subtleFill))
+                .contentShape(Capsule())
+        }
+        .buttonStyle(HoverButtonStyle())
+        .help(String(localized: "Choisir les cartes du profil"))
+        .popover(isPresented: $customizing, arrowEdge: .bottom) {
+            ProfileCardsPanel().environment(model)
         }
     }
 
@@ -83,6 +111,79 @@ struct ProfileView: View {
         guard !model.settings.profileHiddenWords.contains(word) else { return }
         selectedWord = nil
         model.setDisplayChoice(\.profileHiddenWords, model.settings.profileHiddenWords + [word])
+    }
+}
+
+// MARK: Personnaliser
+
+/// Panneau « Personnaliser » : chaque carte du Profil avec son interrupteur, dans l'ordre de l'écran. Une carte masquée
+/// n'est ni calculée ni dessinée. « Sujets · IA », sous le cerveau, ajoute l'onglet des sujets (une IA relit
+/// l'historique, à la demande) ; le couper efface les sujets trouvés.
+struct ProfileCardsPanel: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        let cards = model.settings.profileCards
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Cartes du profil")
+                .font(.system(size: 13, weight: .semibold))
+            Text("Une carte masquée n'est pas calculée.")
+                .font(.system(size: 11.5))
+                .foregroundStyle(.secondary)
+                .padding(.top, 2)
+            Divider().padding(.vertical, 10)
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(ProfileCard.allCases) { card in
+                    row(title: card.title, symbol: card.symbol, tint: card.tint,
+                        note: card == .brain ? String(localized: "Nuage animé, plus gourmand") : nil,
+                        isOn: Binding(get: { model.settings.profileCards[card] }, set: { shown in
+                            var changed = model.settings.profileCards
+                            changed[card] = shown
+                            model.setDisplayChoice(\.profileCards, changed)
+                        }))
+                    if card == .brain {
+                        row(title: String(localized: "Sujets · IA"), symbol: "sparkles", tint: .purple, note: topicsNote,
+                            isOn: Binding(get: { model.settings.profileTopicsEnabled }, set: { on in
+                                ProfileTopicsController.shared.setEnabled(on, model: model)
+                            }))
+                        .padding(.leading, 20)
+                        .disabled(!cards.brain)
+                        .opacity(cards.brain ? 1 : 0.45)
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .frame(width: 340)
+    }
+
+    private var topicsNote: String {
+        ProfileTopicsController.shared.analysis != nil && model.settings.profileTopicsEnabled
+            ? String(localized: "Couper efface les sujets trouvés")
+            : String(localized: "Une IA range tes dictées")
+    }
+
+    private func row(title: String, symbol: String, tint: Color, note: String?, isOn: Binding<Bool>) -> some View {
+        HStack(spacing: 10) {
+            IconBadge(symbol: symbol, tint: tint, size: 24)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.system(size: 12.5, weight: .medium))
+                    .lineLimit(1)
+                if let note {
+                    Text(note)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            Spacer(minLength: 8)
+            Toggle(title, isOn: isOn)
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .labelsHidden()
+        }
+        .padding(.vertical, 3)
     }
 }
 

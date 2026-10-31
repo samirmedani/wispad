@@ -13,7 +13,8 @@ import SwiftUI
 /// `--offscreen` force toujours le rendu hors écran, même si `--show-window` est présent.
 /// `--history-count N` ajoute N longues dictées fictives le même jour ; `--performance-probe`
 /// mesure deux ouvertures de l'historique, séparées par un retour à l'accueil, puis un défilement simulé
-/// (`--scroll-steps N`, 240 par défaut) vers le bas puis vers le haut, et quitte.
+/// (`--scroll-steps N`, 240 par défaut) vers le bas puis vers le haut, et quitte. `--sections-probe` mesure
+/// l'ouverture de chaque écran, deux fois, sans défilement.
 /// `--audio-preview` ouvre le lecteur avec un WAV silencieux de 30 secondes, entièrement fictif.
 /// `--fallback-preview` ajoute des bascules fictives et ouvre Consommation.
 /// `--blur-recent` masque les extraits fictifs de la carte d'accueil.
@@ -30,6 +31,15 @@ import SwiftUI
 /// `--previous-versions-preview` : Réglages › Aide avec des versions précédentes fictives, rien n'est demandé à GitHub.
 /// `--period today|days7|days30|all` : période de l'Accueil et de Consommation (« all » : durée d'utilisation, coût par
 /// mois face aux abonnements).
+/// `--providers-advanced` : Fournisseurs avec les réglages avancés dépliés. `--model-picker voice|voiceRelay|correction|
+/// correctionRelay` : rend aussi le sélecteur de modèle ouvert (« .picker.png ») ; `--expand-models` y déplie les listes
+/// complètes, `--picker-key-form <compte>` y ouvre la saisie d'une clé. Avec `--keys-preview` ou `--customer-preview`, les
+/// listes de modèles sont fictives : rien n'est demandé aux fournisseurs.
+/// `--profile-count N` : N dictées fictives du Profil, de la longueur des vraies ; `--profile-probe` mesure trois
+/// ouvertures du Profil, séparées par un retour à l'Accueil (temps jusqu'au contenu, écran d'attente vu ou non), et quitte.
+/// `--profile-brain` affiche le cerveau ; `--profile-hide tics,fixes` masque ces cartes ; `--profile-topics-intro`
+/// ouvre le cerveau sur « Sujets · IA » avant toute analyse (avec `--keys-preview` pour une clé de correction
+/// fictive) ; `--profile-cards-preview` rend aussi le panneau « Personnaliser » (`.cards.png`).
 @MainActor
 enum DesignPreview {
     static func run(arguments: [String]) {
@@ -42,7 +52,7 @@ enum DesignPreview {
         if arguments.contains("--dark") { app.appearance = NSAppearance(named: .darkAqua) }
         if arguments.contains("--light") { app.appearance = NSAppearance(named: .aqua) }
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("wispad-design-preview-\(UUID().uuidString)")
-        let performanceProbe = arguments.contains("--performance-probe")
+        let performanceProbe = arguments.contains("--performance-probe") || arguments.contains("--sections-probe")
         let audioPreview = arguments.contains("--audio-preview")
         let historyCount: Int?
         if let index = arguments.firstIndex(of: "--history-count"),
@@ -83,7 +93,10 @@ enum DesignPreview {
                 try seedDictionaryInsights(model.store)
             }
             if arguments.contains("--details-preview") { try seedDetails(model.store) }
-            if arguments.contains("--profile-preview") { try seedProfile(model.store) }
+            let profileCount = arguments.firstIndex(of: "--profile-count")
+                .flatMap { arguments.indices.contains($0 + 1) ? Int(arguments[$0 + 1]) : nil }
+                .map { min(max($0, 0), 20_000) }
+            if arguments.contains("--profile-preview") || profileCount != nil { try seedProfile(model.store, count: profileCount) }
             if arguments.contains("--fallback-preview") { try seedFallbacks(model.store) }
             if arguments.contains("--usage-accuracy-preview") {
                 for api in [UsageAPI.deepSeekCleanup, .openAIFile] {
@@ -110,6 +123,21 @@ enum DesignPreview {
         if arguments.contains("--remote-keys-preview") {
             KeySourceRow.previewCommand = "ssh mon-serveur 'cat ~/.secrets/{name}'"
         }
+        if arguments.contains("--providers-advanced") { ProvidersView.previewAdvanced = true }
+        // `--cleanup-choice gpt-5.6-luna` : modèle de correction choisi ; `--disable-keys openai,xai` : ces clés fictives
+        // coupées, après que les relais ont été retenus (alertes de Fournisseurs).
+        if let index = arguments.firstIndex(of: "--cleanup-choice"), arguments.indices.contains(index + 1),
+           let choice = CleanupChoice(rawValue: arguments[index + 1]) {
+            model.settings.cleanupChoice = choice
+        }
+        if let index = arguments.firstIndex(of: "--disable-keys"), arguments.indices.contains(index + 1) {
+            model.settleRelays()
+            model.settings.disabledKeys.formUnion(arguments[index + 1].split(separator: ",").map(String.init))
+        }
+        if arguments.contains("--keys-preview") || arguments.contains("--customer-preview"),
+           !arguments.contains("--local-model-url") {
+            TextModelDirectory.shared.usePreviewListings(previewModelListings)
+        }
         if arguments.contains("--history-filter-preview") {
             model.historyFilter = HistoryFilter(title: "Application Wispad", dictations: Set(model.history.prefix(60).map(\.id)))
             model.selectedSection = .history
@@ -120,6 +148,7 @@ enum DesignPreview {
         }
         if arguments.contains("--profile-topics-preview") {
             model.selectedSection = .profile
+            model.settings.profileCards.brain = true
             model.settings.profileTopicsEnabled = true
             model.settings.profilePortraitEnabled = true
             let ids = model.history.map(\.id)
@@ -143,6 +172,18 @@ enum DesignPreview {
                 newestDictation: model.history.dropFirst(5).first?.createdAt, service: "DeepSeek deepseek-flash", costUSD: 0.0123,
                 portrait: "Tu passes l'essentiel de ton temps sur ton application et ses mises en ligne. Entre deux livraisons, tu gères devis et clients. Et tu prépares déjà ton prochain week-end à Lyon."
             ))
+        }
+        if arguments.contains("--profile-brain") { model.settings.profileCards.brain = true }
+        if arguments.contains("--profile-topics-intro") {
+            model.selectedSection = .profile
+            model.settings.profileCards.brain = true
+            model.settings.profileTopicsEnabled = true
+            BrainSection.previewMode = .topics
+        }
+        if let index = arguments.firstIndex(of: "--profile-hide"), arguments.indices.contains(index + 1) {
+            for name in arguments[index + 1].split(separator: ",") {
+                if let card = ProfileCard(rawValue: String(name)) { model.settings.profileCards[card] = false }
+            }
         }
         if arguments.contains("--blur-recent") { model.settings.blurRecentDictations = true }
         // `--glass-bubble` : style Verre, pour voir ses réglages et leur aperçu ; `--glass-variant clear|regular` et
@@ -199,7 +240,6 @@ enum DesignPreview {
             model.health.record(ServiceHealth.deepSeek, succeeded: false)
         }
         if arguments.contains("--dictionary-phrases") {
-            model.settings.dictionaryKind = .phrase
             for value in ["Visual Studio Code", "Observatoire des aurores boréales", "Merci pour ton retour. Nous préparerons ensemble la prochaine étape, en prenant le temps de vérifier chaque détail.", String(repeating: "Une expression longue reste entièrement lisible. ", count: 8)] {
                 try? model.store.addTerm(value, origin: .user)
             }
@@ -218,6 +258,9 @@ enum DesignPreview {
         } else {
             rowDidRender = nil
         }
+        let profileProbe = arguments.contains("--profile-probe")
+        // La sonde mesure une vraie ouverture : la fenêtre part de l'Accueil.
+        if profileProbe { model.selectedSection = .home }
         let window = MainWindow.make(model: model, offscreen: offscreen, historyRowDidRender: rowDidRender,
                                     interactionPreviewHover: arguments.contains("--hover-preview"),
                                     reduceMotion: arguments.contains("--reduce-motion") ? true : nil,
@@ -242,14 +285,16 @@ enum DesignPreview {
         print("PREVIEW offscreen=\(offscreen) active=\(app.isActive) onScreen=\(NSScreen.screens.contains { $0.frame.intersects(window.frame) })")
         print("WINDOW \(window.windowNumber)")
         fflush(stdout)
-        if performanceProbe {
+        if profileProbe {
+            runProfileProbe(model: model, window: window, directory: directory)
+        } else if performanceProbe {
             var scrollSteps = 240
             if let index = arguments.firstIndex(of: "--scroll-steps"),
                arguments.indices.contains(index + 1), let steps = Int(arguments[index + 1]) {
                 scrollSteps = min(max(steps, 0), 5_000)
             }
             runPerformanceProbe(model: model, window: window, directory: directory, renderedRows: renderedRows,
-                                scrollSteps: scrollSteps)
+                                scrollSteps: scrollSteps, allSections: arguments.contains("--sections-probe"))
         } else if let index = arguments.firstIndex(of: "--snapshot"), arguments.indices.contains(index + 1) {
             let path = arguments[index + 1]
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
@@ -265,6 +310,18 @@ enum DesignPreview {
                 }
                 if arguments.contains("--report-preview"), let record = model.history.first {
                     reportSnapshot(record: record, model: model, to: URL(fileURLWithPath: path))
+                }
+                if let index = arguments.firstIndex(of: "--model-picker"), arguments.indices.contains(index + 1),
+                   let kind = ModelPickerKind(rawValue: arguments[index + 1]) {
+                    var keyEntry: KeyEntryHost?
+                    if let form = arguments.firstIndex(of: "--picker-key-form"), arguments.indices.contains(form + 1) {
+                        keyEntry = .picker(arguments[form + 1])
+                    }
+                    modelPickerSnapshot(model: model, kind: kind, expanded: arguments.contains("--expand-models"),
+                                        keyEntry: keyEntry, to: URL(fileURLWithPath: path))
+                }
+                if arguments.contains("--profile-cards-preview") {
+                    profileCardsSnapshot(model: model, to: URL(fileURLWithPath: path))
                 }
                 // `--update-preview` : fenêtre de mise à jour avec deux versions à rattraper ; `--installed-preview` :
                 // nouveautés de la version installée ; `--completed-preview` : fenêtre rouverte après la relance, qui
@@ -347,15 +404,17 @@ enum DesignPreview {
     /// Le résultat inclut la prochaine mise à jour SwiftUI et le layout/display forcé ; il ne mesure pas
     /// le moment où le compositeur présente la dernière image d'une animation.
     private static func runPerformanceProbe(model: AppModel, window: NSWindow, directory: URL,
-                                            renderedRows: HistoryProbeRenderCount, scrollSteps: Int) {
-        let sections: [AppSection] = [.history, .home, .history]
+                                            renderedRows: HistoryProbeRenderCount, scrollSteps: Int,
+                                            allSections: Bool = false) {
+        // `--sections-probe` : chaque écran deux fois (première ouverture, puis retour), sans défilement.
+        let sections: [AppSection] = allSections ? AppSection.allCases + AppSection.allCases : [.history, .home, .history]
         func measure(_ index: Int) {
             guard let view = window.contentView else {
                 try? FileManager.default.removeItem(at: directory)
                 exit(0)
             }
             guard index < sections.count else {
-                runScrollProbe(model: model, view: view, renderedRows: renderedRows, steps: scrollSteps) {
+                runScrollProbe(model: model, view: view, renderedRows: renderedRows, steps: allSections ? 0 : scrollSteps) {
                     try? FileManager.default.removeItem(at: directory)
                     exit(0)
                 }
@@ -376,6 +435,54 @@ enum DesignPreview {
             }
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) { measure(0) }
+    }
+
+    /// Trois ouvertures du Profil, séparées par l'Accueil. Chaque ouverture mesure, sur le fil principal, le temps entre
+    /// le choix de la section et l'image où le contenu du Profil est affiché (mise à jour SwiftUI, layout et affichage
+    /// forcés à chaque tour), et note si l'écran d'attente est apparu avant.
+    private static func runProfileProbe(model: AppModel, window: NSWindow, directory: URL) {
+        let visits: [AppSection] = [.profile, .home, .profile, .home, .profile]
+        let state = ProfileProbeState()
+        // Calcul seul, sur ce fil, avec les cartes du moment : ce qu'une ouverture attendrait sans le calcul gardé.
+        let request = ProfileRequest(model: model)
+        let records = model.records(in: request.period)
+        let computeStart = ContinuousClock.now
+        _ = ProfileSnapshot.compute(request, records: records)
+        let compute = computeStart.duration(to: .now).components
+        print("PERFORMANCE profile records=\(model.history.count) brain=\(request.brain) compute_ms=\(String(format: "%.1f", Double(compute.seconds) * 1_000 + Double(compute.attoseconds) / 1e15))")
+        ProfileRenderingObserver.didShow = { content in
+            if content { state.content = true } else { state.waiting = true }
+        }
+        func finish() {
+            try? FileManager.default.removeItem(at: directory)
+            exit(0)
+        }
+        func visit(_ index: Int) {
+            guard let view = window.contentView, index < visits.count else { return finish() }
+            let section = visits[index]
+            state.content = false
+            state.waiting = false
+            let start = ContinuousClock.now
+            model.selectedSection = section
+            func poll() {
+                view.layoutSubtreeIfNeeded()
+                view.displayIfNeeded()
+                let elapsed = start.duration(to: .now)
+                guard section != .profile || state.content || elapsed > .seconds(120) else {
+                    DispatchQueue.main.async { poll() }
+                    return
+                }
+                if section == .profile {
+                    let parts = elapsed.components
+                    let milliseconds = Double(parts.seconds) * 1_000 + Double(parts.attoseconds) / 1e15
+                    print("PERFORMANCE profile records=\(model.history.count) visit=\(index / 2 + 1) content_ms=\(String(format: "%.1f", milliseconds)) waiting_screen=\(state.waiting ? "yes" : "no")")
+                    fflush(stdout)
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { visit(index + 1) }
+            }
+            DispatchQueue.main.async { poll() }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { visit(0) }
     }
 
     /// Défilement simulé de l'historique, sans souris ni écran : la vue de défilement avance de 60 points par étape,
@@ -477,6 +584,53 @@ enum DesignPreview {
         }
         window.contentView?.layoutSubtreeIfNeeded()
         snapshot(window, to: url.deletingPathExtension().appendingPathExtension("report.png"))
+        window.orderOut(nil)
+    }
+
+    /// Sélecteur de modèle ouvert, hors écran, à sa taille de feuille.
+    private static func modelPickerSnapshot(model: AppModel, kind: ModelPickerKind, expanded: Bool, keyEntry: KeyEntryHost?,
+                                            to url: URL) {
+        let state = ProvidersSnapshot(model: model)
+        let sheet = ModelPickerSheet(kind: kind, snapshot: state, keyEntry: .constant(keyEntry),
+                                     previewExpanded: expanded ? Set(CleanupChoice.accounts) : [],
+                                     previewHeight: kind.isCorrection ? (expanded ? 1_640 : 1_120) : nil)
+        let window = NSWindow(contentRect: NSRect(x: -20_000, y: -20_000, width: 640, height: 600),
+                              styleMask: [.borderless], backing: .buffered, defer: false)
+        window.contentView = NSHostingView(rootView: sheet.environment(model).tint(Theme.brand))
+        window.orderFrontRegardless()
+        guard !NSScreen.screens.contains(where: { $0.frame.intersects(window.frame) }) else {
+            window.orderOut(nil)
+            return
+        }
+        window.setContentSize(window.contentView?.fittingSize ?? window.frame.size)
+        window.contentView?.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.5))
+        snapshot(window, to: url.deletingPathExtension().appendingPathExtension("picker.png"))
+        window.orderOut(nil)
+    }
+
+    /// Listes de modèles fictives des aperçus, de la forme de celles des fournisseurs.
+    private static let previewModelListings: [String: [String]] = [
+        CleanupModel.deepSeekAccount: ["deepseek-flash", "deepseek-chat", "deepseek-reasoner"],
+        ProviderID.openAI.rawValue: ["gpt-5.4-mini", "gpt-5.6-luna", "gpt-5.4", "gpt-5.4-nano", "gpt-4.1-mini", "gpt-4.1-nano",
+                                     "gpt-4o-mini", "o3-mini", "gpt-5.4-pro", "gpt-4o-mini-transcribe", "text-embedding-3-small"],
+        ProviderID.xai.rawValue: ["grok-4.7", "grok-4.7-fast-non-reasoning", "grok-4.6", "grok-3-mini"]
+    ]
+
+    /// Panneau « Personnaliser » du Profil, hors écran, rendu à sa taille.
+    private static func profileCardsSnapshot(model: AppModel, to url: URL) {
+        let window = NSWindow(contentRect: NSRect(x: -20_000, y: -20_000, width: 340, height: 480),
+                              styleMask: [.borderless], backing: .buffered, defer: false)
+        window.contentView = NSHostingView(rootView: ProfileCardsPanel().environment(model).tint(Theme.brand)
+            .background(Color(nsColor: .windowBackgroundColor)))
+        window.orderFrontRegardless()
+        guard !NSScreen.screens.contains(where: { $0.frame.intersects(window.frame) }) else {
+            window.orderOut(nil)
+            return
+        }
+        window.setContentSize(window.contentView?.fittingSize ?? window.frame.size)
+        window.contentView?.layoutSubtreeIfNeeded()
+        snapshot(window, to: url.deletingPathExtension().appendingPathExtension("cards.png"))
         window.orderOut(nil)
     }
 
@@ -683,8 +837,9 @@ enum DesignPreview {
     }
 
     /// « --profile-preview » : quatre mois de dictées fictives sur quatre sujets, avec tics et mots mal entendus dans
-    /// la transcription brute, pour le Profil et son cerveau.
-    private static func seedProfile(_ store: HistoryStore) throws {
+    /// la transcription brute, pour le Profil et son cerveau. Avec `count`, autant de dictées de trois phrases, de la
+    /// longueur moyenne des vraies (environ 250 caractères).
+    private static func seedProfile(_ store: HistoryStore, count: Int? = nil) throws {
         let themes: [[(raw: String, final: String)]] = [
             [("euh je pousse le build sur github et le déploiement part sur vercel", "Je pousse le build sur GitHub et le déploiement part sur Vercel."),
              ("du coup les tests passent sur la branche principale avant le déploiement", "Les tests passent sur la branche principale avant le déploiement."),
@@ -702,9 +857,13 @@ enum DesignPreview {
         ]
         var generator = SeededGenerator(seed: 7)
         let now = Date()
-        for index in 0..<220 {
+        for index in 0..<(count ?? 220) {
             let theme = themes[index % themes.count]
-            let pick = theme[Int.random(in: 0..<theme.count, using: &generator)]
+            var pick = theme[Int.random(in: 0..<theme.count, using: &generator)]
+            if count != nil {
+                let more = (0..<2).map { _ in theme[Int.random(in: 0..<theme.count, using: &generator)] }
+                pick = (([pick] + more).map(\.raw).joined(separator: " "), ([pick] + more).map(\.final).joined(separator: " "))
+            }
             let day = Double(Int.random(in: 0..<120, using: &generator)) * (index % 5 == 0 ? 0.3 : 1)
             let hour = [9, 10, 11, 14, 15, 16, 18, 21][Int.random(in: 0..<8, using: &generator)]
             let date = Calendar.current.date(bySettingHour: hour, minute: Int.random(in: 0..<60, using: &generator), second: 0,
@@ -858,6 +1017,12 @@ enum DesignPreview {
 private final class ScrollProbeState {
     var durations: [Double] = []
     var offset: CGFloat = 0
+}
+
+@MainActor
+private final class ProfileProbeState {
+    var content = false
+    var waiting = false
 }
 
 @MainActor

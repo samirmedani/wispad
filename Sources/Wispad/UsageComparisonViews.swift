@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import UniformTypeIdentifiers
 import WispadCore
 
 // MARK: - Durée d'utilisation (période « Tout »)
@@ -278,9 +279,13 @@ private struct ComparisonBar: View {
 
 // MARK: - Derniers appels
 
+/// Largeurs des colonnes, les mêmes pour l'en-tête et chaque ligne. Le service se resserre dans une fenêtre étroite
+/// pour laisser au détail une place lisible.
 private enum CallColumns {
     static let time: CGFloat = 86
+    static let serviceMin: CGFloat = 132
     static let service: CGFloat = 214
+    static let detailMin: CGFloat = 72
     static let duration: CGFloat = 58
     static let cost: CGFloat = 80
 }
@@ -334,9 +339,16 @@ enum CallText {
 }
 
 /// Tableau des appels : en-têtes, fournisseur en couleur, modèle, jetons, durée, coût ; plus de lignes à la demande.
+/// Un appel se copie au survol ou par clic droit ; tous les appels de la période se copient en texte lisible ou en CSV,
+/// ou s'exportent dans un fichier CSV. Rien de dicté n'en sort (`UsageExport`).
 struct UsageCallsTable: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.interactionPreviewHover) private var previewHover
     var events: [UsageEvent]
     var now: Date
+    var period: StatsPeriod = .today
+    /// Total minimum : des coûts sont inconnus ou la consommation n'a pas pu être relue.
+    var incomplete = false
     @State private var limit = UsageCallsTable.pageSize
 
     static let pageSize = 15
@@ -345,15 +357,19 @@ struct UsageCallsTable: View {
         let shown = Array(events.prefix(limit))
         VStack(alignment: .leading, spacing: 10) {
             CardTitle(title: String(localized: "Derniers appels")) {
-                Text(String(localized: "\(UsageText.count(shown.count)) sur \(UsageText.count(events.count))"))
-                    .font(.system(size: 11.5))
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
+                HStack(spacing: 12) {
+                    Text(String(localized: "\(UsageText.count(shown.count)) sur \(UsageText.count(events.count))"))
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                    copyMenu
+                    exportButton
+                }
             }
             VStack(spacing: 2) {
                 header
                 ForEach(Array(shown.enumerated()), id: \.element.id) { index, event in
-                    UsageCallRow(event: event, now: now)
+                    UsageCallRow(event: event, now: now, showsCopy: previewHover && index == 0)
                         .background {
                             if index.isMultiple(of: 2) {
                                 RoundedRectangle(cornerRadius: 7, style: .continuous).fill(Theme.subtleFill.opacity(0.7))
@@ -375,14 +391,78 @@ struct UsageCallsTable: View {
         .card()
     }
 
+    /// Tous les appels de la période, en texte lisible ou en CSV.
+    private var copyMenu: some View {
+        Menu {
+            Button(String(localized: "En texte lisible")) { copyAll(csv: false) }
+            Button(String(localized: "En CSV, pour un tableur")) { copyAll(csv: true) }
+        } label: {
+            Label(String(localized: "Copier"), systemImage: "doc.on.doc")
+                .font(.system(size: 12))
+        }
+        .menuStyle(.borderlessButton)
+        .tint(.primary)
+        .fixedSize()
+        .help(String(localized: "Copie les appels de la période, sans rien de dicté."))
+    }
+
+    private var exportButton: some View {
+        Button {
+            export()
+        } label: {
+            Label(String(localized: "Exporter…"), systemImage: "square.and.arrow.up")
+                .font(.system(size: 12))
+        }
+        .buttonStyle(HoverButtonStyle(treatment: .quiet))
+        .help(String(localized: "Enregistre les appels de la période dans un fichier CSV, sans rien de dicté."))
+    }
+
+    private func copyAll(csv: Bool) {
+        let count = events.count
+        if csv {
+            model.dependencies.copyText(UsageExport.csv(events))
+            model.statusBanner = count == 1 ? String(localized: "1 appel copié en CSV : colle-le dans un tableur.")
+                : String(localized: "\(UsageText.count(count)) appels copiés en CSV : colle-les dans un tableur.")
+        } else {
+            model.dependencies.copyText(UsageExport.text(events, period: period, incomplete: incomplete))
+            model.statusBanner = count == 1 ? String(localized: "1 appel copié en texte.")
+                : String(localized: "\(UsageText.count(count)) appels copiés en texte.")
+        }
+    }
+
+    /// Fichier CSV choisi dans une fenêtre d'enregistrement, écrit hors du fil principal.
+    private func export() {
+        let csv = UsageExport.csv(events)
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.commaSeparatedText]
+        panel.canCreateDirectories = true
+        panel.isExtensionHidden = false
+        panel.nameFieldStringValue = UsageExport.fileName(period: period, now: now)
+        panel.title = String(localized: "Exporter les appels")
+        panel.message = String(localized: "Un fichier CSV pour un tableur : heure, service, modèle, durée, jetons et coût de chaque appel. Rien de dicté.")
+        panel.begin { response in
+            Task { @MainActor in
+                guard response == .OK, let url = panel.url else { return }
+                do {
+                    try await UsageExport.writes.run { try Data(csv.utf8).write(to: url, options: .atomic) }
+                    model.statusBanner = String(localized: "Appels exportés : \(url.lastPathComponent).")
+                } catch {
+                    // Une erreur brute peut contenir le chemin choisi : elle ne va pas à l'écran.
+                    model.statusBanner = String(localized: "Export impossible. Choisis un dossier accessible puis réessaie.")
+                }
+            }
+        }
+    }
+
     private var header: some View {
         HStack(spacing: 10) {
             Text("Heure").frame(width: CallColumns.time, alignment: .leading)
-            Text("Service").frame(width: CallColumns.service, alignment: .leading)
-            Text("Détail").frame(maxWidth: .infinity, alignment: .leading)
+            Text("Service").frame(minWidth: CallColumns.serviceMin, maxWidth: CallColumns.service, alignment: .leading)
+            Text("Détail").frame(minWidth: CallColumns.detailMin, maxWidth: .infinity, alignment: .leading)
             Text("Durée").frame(width: CallColumns.duration, alignment: .trailing)
             Text("Coût").frame(width: CallColumns.cost, alignment: .trailing)
         }
+        .lineLimit(1)
         .font(.system(size: 10.5, weight: .semibold))
         .foregroundStyle(.tertiary)
         .padding(.horizontal, 8)
@@ -391,8 +471,12 @@ struct UsageCallsTable: View {
 }
 
 private struct UsageCallRow: View {
+    @Environment(AppModel.self) private var model
     var event: UsageEvent
     var now: Date
+    /// Aperçu hors écran : le bouton de copie, comme au survol.
+    var showsCopy = false
+    @State private var hovering = false
 
     var body: some View {
         HStack(alignment: .center, spacing: 10) {
@@ -422,7 +506,7 @@ private struct UsageCallRow: View {
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
             }
-            .frame(width: CallColumns.service, alignment: .leading)
+            .frame(minWidth: CallColumns.serviceMin, maxWidth: CallColumns.service, alignment: .leading)
             VStack(alignment: .leading, spacing: 2) {
                 Text(CallText.quantities(event))
                     .foregroundStyle(.secondary)
@@ -434,7 +518,13 @@ private struct UsageCallRow: View {
                         .lineLimit(1)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(minWidth: CallColumns.detailMin, maxWidth: .infinity, alignment: .leading)
+            .overlay(alignment: .trailing) {
+                if hovering || showsCopy {
+                    HoverIconButton(symbol: "doc.on.doc", help: String(localized: "Copier cet appel")) { copy() }
+                        .transition(.opacity)
+                }
+            }
             Text(CallText.latency(event.latencyMs))
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
@@ -448,6 +538,17 @@ private struct UsageCallRow: View {
         .padding(.vertical, 6)
         .contentShape(Rectangle())
         .help(CallText.help(event))
+        .onHover { hovering = $0 }
+        .contextMenu {
+            Button(String(localized: "Copier cet appel")) { copy() }
+        }
+        .accessibilityAction(named: Text("Copier cet appel")) { copy() }
+    }
+
+    /// L'appel en une ligne lisible (`UsageExport.line`), sans rien de dicté.
+    private func copy() {
+        model.dependencies.copyText(UsageExport.line(event))
+        model.statusBanner = String(localized: "Appel copié.")
     }
 }
 

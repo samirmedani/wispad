@@ -115,9 +115,10 @@ final class ProfileTopicsController {
 
     /// Mise à jour hebdomadaire : après une tentative interrompue ou ratée, attendre 6 h, 24 h puis 7 jours.
     /// Le lancement manuel reste possible ; les tentatives et leur échéance survivent à une relance de l'app.
+    /// Cerveau masqué : rien n'est relu, une carte qu'on ne voit pas ne coûte rien.
     func runIfDue(model: AppModel, now: Date = Date()) {
         let settings = model.settings
-        guard settings.profileTopicsEnabled, settings.profileTopicsWeekly, !isRunning, let analysis,
+        guard settings.profileCards.brain, settings.profileTopicsEnabled, settings.profileTopicsWeekly, !isRunning, let analysis,
               canAttemptAutomatically(at: now), model.dependencies.isOnline(),
               TextCleaner.services(model.speechRequest(context: nil)).first != nil else { return }
         let sources = model.history.map(TopicSource.init)
@@ -125,9 +126,9 @@ final class ProfileTopicsController {
         start(model: model, portrait: settings.profilePortraitEnabled, stats: Self.stats(for: model), full: false, now: now)
     }
 
-    /// Chiffres donnés au portrait.
+    /// Chiffres donnés au portrait : seules les parties du profil qu'il cite sont calculées.
     static func stats(for model: AppModel) -> String {
-        let profile = ProfileBuilder.build(records: model.history)
+        let profile = ProfileBuilder.build(records: model.history, parts: [.rhythm, .languages])
         let peak = profile.byHour.indices.max { profile.byHour[$0] < profile.byHour[$1] } ?? 0
         return "\(profile.words) mots dictés en \(profile.dictations) dictées, \(profile.activeDays) jours actifs, pic vers \(peak) h, \(profile.englishDictations) dictées surtout en anglais."
     }
@@ -138,6 +139,18 @@ final class ProfileTopicsController {
         // La tâche conserve son créneau jusqu'à la fin des requêtes : aucun chevauchement, même si le
         // transport met un instant à terminer son annulation. Ses derniers usages restent comptés.
         if task == nil { state = .idle }
+    }
+
+    /// « Sujets · IA » allumé ou coupé (Profil › Personnaliser). Coupé : le portrait et la mise à jour de chaque
+    /// semaine le sont aussi, et le résultat gardé est effacé.
+    func setEnabled(_ on: Bool, model: AppModel) {
+        model.settings.profileTopicsEnabled = on
+        if !on {
+            model.settings.profilePortraitEnabled = false
+            model.settings.profileTopicsWeekly = false
+            forget()
+        }
+        model.saveSettings()
     }
 
     #if DEBUG
@@ -155,166 +168,240 @@ final class ProfileTopicsController {
     }
 }
 
-/// Le cerveau du Profil : par mots (sur ce Mac, gratuit) ou par sujets (une IA relit l'historique, sur demande).
+/// Le cerveau du Profil : par mots (sur ce Mac, gratuit) ou, avec « Sujets · IA », par sujets (une IA relit
+/// l'historique, à la demande). Le cerveau des sujets et les coûts estimés sont calculés hors du fil principal
+/// (`ProfileLoader`).
 struct BrainSection: View {
     @Environment(AppModel.self) private var model
     var wordGraph: WordGraph
-    var profile: DictationProfile
     @Binding var selected: Int?
     var hide: (String) -> Void
 
     @State private var mode: Mode = .words
     private var controller: ProfileTopicsController { .shared }
+    private var loader: ProfileLoader { .shared }
 
     enum Mode: Hashable {
         case words
         case topics
     }
 
+    #if DEBUG
+    /// Aperçus : onglet ouvert d'emblée.
+    static var previewMode: Mode?
+    #endif
+
     var body: some View {
-        let existing = Set(model.history.map(\.id))
-        let topicGraph = controller.analysis.map { WordGraph.topics($0.pruned(keeping: existing)) } ?? .empty
-        let showsTopics = mode == .topics
+        let topicsOn = model.settings.profileTopicsEnabled
+        let showsTopics = topicsOn && mode == .topics
+        let analysis = controller.analysis
+        let service = topicsOn ? TextCleaner.services(model.speechRequest(context: nil)).first : nil
+        let request = topicsOn ? TopicsRequest(history: model.historyRevision, analysis: analysis, model: service?.model,
+                                               portrait: model.settings.profilePortraitEnabled) : nil
+        let topics = loader.topics
+        // Sujets analysés mais leur cerveau pas encore dessiné (premier passage) : une attente, plutôt que « pas assez ».
+        let drawing = analysis != nil && topics?.request.analysis != analysis
         BrainCard(
-            graph: showsTopics ? (model.settings.profileTopicsEnabled ? topicGraph : .empty) : wordGraph,
+            graph: showsTopics ? (analysis == nil ? .empty : topics?.graph ?? .empty) : wordGraph,
             selected: $selected,
             hide: showsTopics ? nil : hide,
-            caption: showsTopics
-                ? String(localized: "Tes sujets, lus par une IA dans tout ton historique et rangés en grandes catégories. Un sujet est relié à sa catégorie, et à un autre quand tu en parles dans les mêmes dictées.")
-                : String(localized: "Tes mots les plus fréquents, reliés quand tu les dis dans les mêmes dictées. Chaque couleur est une famille de sujets."),
+            caption: !showsTopics
+                ? String(localized: "Tes mots les plus fréquents, reliés quand tu les dis ensemble. Une couleur par famille.")
+                : analysis == nil ? nil : String(localized: "Tes grands sujets, trouvés par l'IA dans tes dictées."),
             emptyText: showsTopics
-                ? String(localized: "Lance l'analyse pour voir tes sujets.")
+                ? String(localized: "Pas encore assez de sujets pour dessiner ton cerveau.")
                 : String(localized: "Encore quelques dictées et ton cerveau prendra forme."),
-            modePicker: AnyView(
-                Picker(String(localized: "Cerveau"), selection: Binding(get: { mode }, set: { mode = $0; selected = nil })) {
-                    Text("Mots").tag(Mode.words)
-                    Text("Sujets · IA").tag(Mode.topics)
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .fixedSize()
-            ),
-            accessory: showsTopics ? AnyView(TopicsControls(profile: profile)) : nil,
+            modePicker: topicsOn ? AnyView(picker) : nil,
+            placeholder: !showsTopics ? nil
+                : analysis == nil ? AnyView(TopicsIntro(topics: topics, service: service))
+                : drawing ? AnyView(ProgressView().controlSize(.small).frame(maxWidth: .infinity, minHeight: 120)) : nil,
+            footer: showsTopics && analysis != nil ? AnyView(TopicsResult(topics: topics, service: service)) : nil,
             openHistory: { filter in
                 model.historyFilter = filter
                 model.selectedSection = .history
             }
         )
-        .onChange(of: controller.analysis) { selected = nil }
+        .task(id: request) {
+            if let request { loader.loadTopics(request, model: model) }
+        }
+        .onChange(of: analysis) { selected = nil }
+        // « Sujets · IA » allumé dans Personnaliser : son onglet s'ouvre ; coupé, retour aux mots.
+        .onChange(of: topicsOn) { _, on in
+            mode = on ? .topics : .words
+            selected = nil
+        }
         .onAppear {
-            if model.settings.profileTopicsEnabled, controller.analysis != nil { mode = .topics }
+            if topicsOn, analysis != nil { mode = .topics }
+            #if DEBUG
+            if let preview = Self.previewMode { mode = preview }
+            #endif
+        }
+    }
+
+    private var picker: some View {
+        Picker(String(localized: "Cerveau"), selection: Binding(get: { mode }, set: { mode = $0; selected = nil })) {
+            Text("Mots").tag(Mode.words)
+            Text("Sujets · IA").tag(Mode.topics)
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .fixedSize()
+    }
+}
+
+/// Les sujets avant la première analyse : une image, ce qui sera relu et par qui, puis le lancement avec son coût.
+/// Rien n'est envoyé avant le clic.
+private struct TopicsIntro: View {
+    @Environment(AppModel.self) private var model
+    var topics: TopicsSnapshot?
+    var service: CleanupService?
+    private var controller: ProfileTopicsController { .shared }
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 28) {
+            Image("ProfileTopicsIllustration")
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: 300)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Tes dictées, rangées par sujets")
+                        .font(.system(size: 17, weight: .semibold))
+                    Text("L'IA lit ton historique et trouve tes grands thèmes.")
+                        .font(.system(size: 12.5))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                HStack(spacing: 6) {
+                    let count = topics?.dictations ?? model.history.count
+                    TopicChip(symbol: "text.bubble",
+                              text: count == 1 ? String(localized: "1 dictée") : String(localized: "\(count) dictées"))
+                    if let service {
+                        ProviderBadge(provider: service.provider)
+                            .help(service.label)
+                    }
+                }
+                action
+                if service != nil, controller.analysis == nil {
+                    TopicsOptions(topics: topics, service: service)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.vertical, 4)
+    }
+
+    @ViewBuilder
+    private var action: some View {
+        if case .running(let done, let total) = controller.state {
+            TopicsProgress(done: done, total: total)
+        } else {
+            VStack(alignment: .leading, spacing: 8) {
+                if case .failed(let message) = controller.state {
+                    Label(message, systemImage: "exclamationmark.triangle.fill")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if let service {
+                    let launch = topics?.launch
+                    Button {
+                        controller.start(model: model, portrait: model.settings.profilePortraitEnabled,
+                                         stats: ProfileTopicsController.stats(for: model), full: true)
+                    } label: {
+                        Label(launch.map { String(localized: "Lancer l'analyse · \(TopicCost.text($0, service: service, short: true))") }
+                              ?? String(localized: "Lancer l'analyse"),
+                              systemImage: "sparkles")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .disabled(launch == nil || topics?.dictations == 0)
+                    .help(launch.map { TopicCost.text($0, service: service) } ?? "")
+                } else {
+                    NoCorrectionKey()
+                }
+            }
         }
     }
 }
 
-/// Réglages et état de l'analyse par sujets : interrupteurs, coûts estimés, lancement, progression, résultat.
-private struct TopicsControls: View {
+/// Les sujets après une analyse, sous leur cerveau : portrait, date, dictées relues, coût réel, puis la mise à jour et
+/// les options.
+private struct TopicsResult: View {
     @Environment(AppModel.self) private var model
-    var profile: DictationProfile
+    var topics: TopicsSnapshot?
+    var service: CleanupService?
     private var controller: ProfileTopicsController { .shared }
 
     var body: some View {
-        let speech = model.speechRequest(context: nil)
-        let service = TextCleaner.services(speech).first
-        let sources = model.history.map(TopicSource.init)
-        let portrait = model.settings.profilePortraitEnabled
-        let everything = TopicAnalyzer.estimate(sources, model: service?.model, portrait: false)
-        let portraitOnly = TopicEstimate(batches: 0, tokens: TopicAnalyzer.portraitTokens,
-                                         costUSD: service.flatMap { Pricing.tokenCost(model: $0.model, tokens: TopicAnalyzer.portraitTokens, at: Date()) })
-        let weekly = TopicAnalyzer.weeklyEstimate(sources, model: service?.model, portrait: portrait)
         VStack(alignment: .leading, spacing: 10) {
-            option(title: String(localized: "Analyser mes sujets avec l'IA"),
-                   detail: String(localized: "Une IA relit tout ton historique (\(sources.count) dictées) pour en tirer tes sujets et tes catégories. Elle utilise ta clé de correction : \(cost(everything, service: service))."),
-                   isOn: Binding(get: { model.settings.profileTopicsEnabled }, set: { on in
-                       model.settings.profileTopicsEnabled = on
-                       if !on {
-                           model.settings.profilePortraitEnabled = false
-                           model.settings.profileTopicsWeekly = false
-                           controller.forget()
-                       }
-                       model.saveSettings()
-                   }))
-            if model.settings.profileTopicsEnabled {
-                option(title: String(localized: "Écrire mon portrait"),
-                       detail: String(localized: "Trois phrases sur ce qui t'occupe, d'après tes sujets et tes chiffres : \(cost(portraitOnly, service: service)) de plus à chaque analyse."),
-                       isOn: Binding(get: { model.settings.profilePortraitEnabled }, set: {
-                           model.settings.profilePortraitEnabled = $0
-                           model.saveSettings()
-                       }))
-                option(title: String(localized: "Mettre à jour chaque semaine"),
-                       detail: String(localized: "Une fois par semaine, seules les nouvelles dictées sont relues, sans rien te demander. À ton rythme actuel : \(cost(weekly, service: service)) par semaine."),
-                       isOn: Binding(get: { model.settings.profileTopicsWeekly }, set: {
-                           model.settings.profileTopicsWeekly = $0
-                           model.saveSettings()
-                       }))
-                status(service: service, sources: sources, portrait: portrait, everything: everything)
+            if case .failed(let message) = controller.state {
+                Label(message, systemImage: "exclamationmark.triangle.fill")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if let analysis = controller.analysis {
+                if let text = analysis.portrait, model.settings.profilePortraitEnabled {
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: "quote.opening")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(Theme.brand)
+                        Text(text)
+                            .font(.system(size: 13))
+                            .fixedSize(horizontal: false, vertical: true)
+                            .textSelection(.enabled)
+                    }
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Theme.brand.opacity(0.08)))
+                }
+                HStack(spacing: 6) {
+                    TopicChip(symbol: "calendar", text: analysis.analyzedAt.formatted(.dateTime.day().month(.abbreviated).locale(appLocale)))
+                        .help(String(localized: "Analysé le \(analysis.analyzedAt.formatted(.dateTime.day().month(.wide).hour().minute().locale(appLocale)))"))
+                    TopicChip(symbol: "text.bubble",
+                              text: analysis.dictationCount == 1 ? String(localized: "1 dictée") : String(localized: "\(analysis.dictationCount) dictées"))
+                    TopicChip(symbol: "dollarsign.circle",
+                              text: analysis.costUSD.map { MoneyFormat.price(max($0, 0.0001)) } ?? String(localized: "coût inconnu"))
+                        .help(analysis.service)
+                }
+            }
+            FlowLayout(spacing: 8) {
+                HStack(spacing: 10) { actions }
+                if service != nil {
+                    TopicsOptions(topics: topics, service: service)
+                }
             }
         }
         .font(.system(size: 12))
     }
 
-    private func option(title: String, detail: String, isOn: Binding<Bool>) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.system(size: 12.5, weight: .medium))
-                Text(detail).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: 8)
-            Toggle(title, isOn: isOn).toggleStyle(.switch).labelsHidden().controlSize(.small)
-        }
-    }
-
     @ViewBuilder
-    private func status(service: CleanupService?, sources: [TopicSource], portrait: Bool, everything: TopicEstimate) -> some View {
-        switch controller.state {
-        case .running(let done, let total):
-            HStack(spacing: 10) {
-                ProgressView(value: Double(done), total: Double(max(total, 1))).frame(width: 160)
-                Text("Lot \(done) sur \(total)").monospacedDigit().foregroundStyle(.secondary)
-                Button(String(localized: "Arrêter")) { controller.cancel() }.buttonStyle(.borderless)
+    private var actions: some View {
+        if case .running(let done, let total) = controller.state {
+            TopicsProgress(done: done, total: total)
+        } else if let service {
+            let fresh = topics?.fresh ?? 0
+            Button {
+                launch(full: false)
+            } label: {
+                Label(fresh == 0 ? String(localized: "À jour")
+                      : String(localized: "Mettre à jour · \(fresh) nouvelles dictées · \(topics.map { TopicCost.text($0.update, service: service, short: true) } ?? "…")"),
+                      systemImage: fresh == 0 ? "checkmark" : "sparkles")
             }
-        default:
-            VStack(alignment: .leading, spacing: 6) {
-                if case .failed(let message) = controller.state {
-                    Label(message, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+            .disabled(fresh == 0)
+            if let launch = topics?.launch {
+                Button {
+                    self.launch(full: true)
+                } label: {
+                    Text("Tout relire · \(TopicCost.text(launch, service: service, short: true))")
                 }
-                let fresh = controller.analysis?.newSources(in: sources) ?? []
-                if let analysis = controller.analysis {
-                    Text(summary(analysis, fresh: fresh.count)).foregroundStyle(.secondary)
-                    if let text = analysis.portrait, portrait {
-                        Text(text)
-                            .font(.system(size: 13))
-                            .padding(10)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Theme.brand.opacity(0.08)))
-                            .textSelection(.enabled)
-                    }
-                }
-                if service == nil {
-                    Text("Aucune clé de correction active : ajoute-en une dans Fournisseurs.").foregroundStyle(.orange)
-                } else if controller.analysis == nil {
-                    let price = cost(TopicAnalyzer.estimate(sources, model: service?.model, portrait: portrait), service: service)
-                    Button { launch(full: true) } label: {
-                        Label(String(localized: "Lancer l'analyse · \(price)"), systemImage: "sparkles")
-                    }
-                    .disabled(sources.isEmpty)
-                } else {
-                    HStack(spacing: 10) {
-                        let update = TopicAnalyzer.estimate(fresh, model: service?.model, portrait: portrait)
-                        Button { launch(full: false) } label: {
-                            Label(fresh.isEmpty ? String(localized: "À jour")
-                                  : String(localized: "Mettre à jour · \(fresh.count) nouvelles dictées · \(cost(update, service: service, short: true))"),
-                                  systemImage: fresh.isEmpty ? "checkmark" : "sparkles")
-                        }
-                        .disabled(fresh.isEmpty)
-                        Button { launch(full: true) } label: {
-                            Text("Tout relire · \(cost(TopicEstimate(batches: everything.batches, tokens: everything.tokens, costUSD: everything.costUSD), service: service, short: true))")
-                        }
-                        .buttonStyle(.borderless)
-                        .help(String(localized: "Relit tout l'historique, par exemple après avoir changé de modèle de correction."))
-                    }
-                }
+                .buttonStyle(.borderless)
+                .help(String(localized: "Relit tout l'historique, par exemple après avoir changé de modèle de correction."))
             }
+        } else {
+            NoCorrectionKey()
         }
     }
 
@@ -322,8 +409,123 @@ private struct TopicsControls: View {
         controller.start(model: model, portrait: model.settings.profilePortraitEnabled,
                          stats: ProfileTopicsController.stats(for: model), full: full)
     }
+}
 
-    private func cost(_ estimate: TopicEstimate, service: CleanupService?, short: Bool = false) -> String {
+/// Portrait écrit et mise à jour de chaque semaine, en pastilles avec leur coût.
+private struct TopicsOptions: View {
+    @Environment(AppModel.self) private var model
+    var topics: TopicsSnapshot?
+    var service: CleanupService?
+
+    var body: some View {
+        let portrait = TopicEstimate(batches: 0, tokens: TopicAnalyzer.portraitTokens,
+                                     costUSD: service.flatMap { Pricing.tokenCost(model: $0.model, tokens: TopicAnalyzer.portraitTokens, at: Date()) })
+        HStack(spacing: 6) {
+            Toggle(String(localized: "Portrait"), isOn: Binding(get: { model.settings.profilePortraitEnabled }, set: {
+                model.settings.profilePortraitEnabled = $0
+                model.saveSettings()
+            }))
+            .toggleStyle(ChipToggleStyle(symbol: "text.quote", detail: TopicCost.text(portrait, service: service, short: true)))
+            .help(String(localized: "Trois phrases sur ce qui t'occupe, d'après tes sujets et tes chiffres, à chaque analyse."))
+            Toggle(String(localized: "Chaque semaine"), isOn: Binding(get: { model.settings.profileTopicsWeekly }, set: {
+                model.settings.profileTopicsWeekly = $0
+                model.saveSettings()
+            }))
+            .toggleStyle(ChipToggleStyle(symbol: "arrow.triangle.2.circlepath",
+                                         detail: topics.map { TopicCost.text($0.weekly, service: service, short: true) }))
+            .help(String(localized: "Une fois par semaine, seules les nouvelles dictées sont relues, sans rien te demander."))
+        }
+    }
+}
+
+private struct TopicsProgress: View {
+    var done: Int
+    var total: Int
+    private var controller: ProfileTopicsController { .shared }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            ProgressView(value: Double(done), total: Double(max(total, 1)))
+                .frame(width: 160)
+            Text("Lot \(done) sur \(total)")
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+            Button(String(localized: "Arrêter")) { controller.cancel() }
+                .buttonStyle(.borderless)
+        }
+        .font(.system(size: 12))
+    }
+}
+
+/// Sans clé de correction active, pas d'analyse : le lien mène à Fournisseurs.
+private struct NoCorrectionKey: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Label(String(localized: "Aucune clé de correction active"), systemImage: "key.fill")
+                .foregroundStyle(.orange)
+            Button(String(localized: "Fournisseurs")) { model.selectedSection = .providers }
+                .buttonStyle(.borderless)
+        }
+        .font(.system(size: 12))
+    }
+}
+
+/// Repère en pastille : une icône et un texte court.
+private struct TopicChip: View {
+    var symbol: String
+    var text: String
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: symbol)
+            Text(text).monospacedDigit()
+        }
+        .font(.system(size: 11.5, weight: .medium))
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 8)
+        .frame(height: 22)
+        .background(Capsule().fill(Theme.subtleFill))
+    }
+}
+
+/// Option en pastille : allumée, elle est cochée et teintée ; son coût suit son nom.
+private struct ChipToggleStyle: ToggleStyle {
+    var symbol: String
+    var detail: String?
+
+    func makeBody(configuration: Configuration) -> some View {
+        Button {
+            configuration.isOn.toggle()
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: configuration.isOn ? "checkmark.circle.fill" : symbol)
+                    .foregroundStyle(configuration.isOn ? Theme.brand : Color.secondary)
+                configuration.label
+                    .foregroundStyle(.primary)
+                if let detail {
+                    Text(detail)
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .font(.system(size: 11.5, weight: .medium))
+            .padding(.horizontal, 9)
+            .frame(height: 24)
+            .background(Capsule().fill(configuration.isOn ? Theme.brand.opacity(0.12) : Theme.subtleFill))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(HoverButtonStyle())
+        .accessibilityAddTraits(.isToggle)
+        .accessibilityValue(configuration.isOn ? Text("Activé") : Text("Désactivé"))
+    }
+}
+
+/// Coût d'une analyse en clair : court (« ≈ 0,05 $ », « gratuit ») sur les boutons, détaillé (jetons, service) en
+/// bulle d'aide.
+private enum TopicCost {
+    static func text(_ estimate: TopicEstimate, service: CleanupService?, short: Bool = false) -> String {
         let tokens = (estimate.tokens.input + estimate.tokens.output).formatted(.number.notation(.compactName).locale(appLocale))
         let price: String? = estimate.costUSD.map { usd in
             // Sous 0,001 $, « ≈ 0,00 $ » ferait croire à un appel gratuit.
@@ -336,12 +538,5 @@ private struct TopicsControls: View {
         guard let service else { return String(localized: "environ \(tokens) jetons") }
         if let price { return String(localized: "environ \(tokens) jetons, \(price) avec \(service.label)") }
         return String(localized: "environ \(tokens) jetons avec \(service.label), prix inconnu")
-    }
-
-    private func summary(_ analysis: TopicAnalysis, fresh: Int) -> String {
-        let date = analysis.analyzedAt.formatted(.dateTime.day().month(.wide).hour().minute().locale(appLocale))
-        let spent = analysis.costUSD.map { MoneyFormat.price(max($0, 0.0001)) } ?? String(localized: "coût inconnu")
-        let base = String(localized: "Analysé le \(date) · \(analysis.dictationCount) dictées · \(analysis.service) · \(spent)")
-        return fresh > 0 ? base + " · " + String(localized: "\(fresh) nouvelles dictées depuis") : base
     }
 }
