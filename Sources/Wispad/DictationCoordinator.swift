@@ -94,6 +94,10 @@ final class DictationCoordinator {
     static let meterInterval = 1.0 / 60.0
     /// En dessous, l'enregistrement est jeté sans appel API (appui trop bref, souffle).
     static let minimumDuration = 0.3
+    /// La seconde écoute reste ouverte ce temps après l'arrêt : corrections de fin et fichier compris.
+    static let localHearingLinger: TimeInterval = 10
+    /// Au plus ce temps, la correction de fin attend la dernière phrase de la seconde écoute (mesuré : 0,11 à 0,14 s).
+    static let localHearingWait = 0.25
     /// Durées d'affichage des messages ; une fine barre se vide pendant ce temps.
     /// Le temps de lire et de cliquer sur Copier ou Coller quand le texte n'a pas pu être collé.
     static let failureSeconds = 12.0
@@ -227,10 +231,14 @@ final class DictationCoordinator {
         audio.inputDeviceUID = model.settings.microphoneUID.isEmpty ? nil : model.settings.microphoneUID
         audio.voiceIsolation = model.settings.voiceIsolation
         let pcm = current.pcm
+        // Seconde écoute sur le Mac, pour la seule correction : le même son, qui ne part nulle part ailleurs.
+        let local = model.settings.cleanupEnabled ? model.dependencies.makeLocalHearing(model.settings.language) : nil
+        current.localHearing = local
         let firstPacket = OSAllocatedUnfairLock<Int?>(initialState: nil)
         audio.onPCM = { [weak self, weak current] data in
             guard !data.isEmpty else { return }
             pcm.push(data)
+            local?.feed(data)
             let at = KeyboardTap.now()
             let isFirst = firstPacket.withLock { first in
                 guard first == nil else { return false }
@@ -528,8 +536,14 @@ final class DictationCoordinator {
         let stopped = closeMicrophone(current)
         current.releaseFinished.resolve(.success(()))
         current.pcm.close()
+        // La seconde écoute clôt sa dernière phrase pendant que la correction lit le contexte.
+        current.localHearing?.finish()
         let url = stopped?.url ?? current.audioURL
         let duration = max(0, stopped?.duration ?? 0)
+        if let local = current.localHearing {
+            // Le temps des corrections de fin, fichier compris ; ensuite le moteur rend sa mémoire.
+            Task { try? await Task.sleep(for: .seconds(Self.localHearingLinger)); local.stop() }
+        }
         guard duration >= Self.minimumDuration else {
             current.correctionClaimed = true
             if let model { accountEarlyCorrections(current, model: model, cancel: true) }
@@ -606,6 +620,7 @@ final class DictationCoordinator {
 
     private func cancelCapture(_ current: Capture) {
         current.cancelled = true
+        current.localHearing?.stop()
         current.releaseTask?.cancel()
         current.voiceTailTask?.cancel()
         current.releaseFinished.resolve(.success(()))
@@ -651,6 +666,7 @@ final class DictationCoordinator {
     /// ouvert se referme, spectre et flux en direct compris.
     private func discard(_ current: Capture, outcome: DictationOutcome = .captureFailed) {
         current.cancelled = true
+        current.localHearing?.stop()
         current.releaseTask?.cancel()
         current.voiceTailTask?.cancel()
         current.releaseFinished.resolve(.success(()))
@@ -803,8 +819,10 @@ final class DictationCoordinator {
             // sans l'attendre (mesuré le 5 octobre : 1,1 s puis 1,0 s en série). Elle est comptée dès qu'elle finit,
             // même après le collage : la trace l'ajoute alors à la dictée.
             var correction = await makeCorrectionRequest(
-                transcript: transcript, context: context, field: current.field, window: current.window, model: model
+                transcript: transcript, context: context, field: current.field, window: current.window, model: model,
+                local: await current.localHearing?.finalText(within: Self.localHearingWait)
             )
+            current.run.trace.localPassages = max(current.run.trace.localPassages ?? 0, correction.localDivergences.count)
             correction.alternativeTranscript = alternative.map { FranglaisNormalizer.normalize($0) }
             let correctionBegan = KeyboardTap.now()
             let reachable = model.correctionReachable

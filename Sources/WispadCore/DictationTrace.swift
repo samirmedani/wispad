@@ -165,6 +165,8 @@ public struct DictationTrace: Codable, Equatable, Identifiable, Sendable {
     public var fileLatencyMs: Int?
     /// Corrections préparées pendant l'écoute, aux pauses de la parole. Absent : aucune.
     public var earlyCorrections: Int?
+    /// Passages entendus autrement par la seconde écoute sur le Mac et donnés à la correction (absent : aucune).
+    public var localPassages: Int?
     /// La correction collée était déjà prête (ou en cours) au moment d'arrêter.
     public var earlyCorrectionUsed: Bool?
     /// Flux et fichier en désaccord : nombre de mots qui diffèrent après normalisation. Aucun texte.
