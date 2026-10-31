@@ -529,7 +529,10 @@ public enum TranscriptEventParser {
 
 public struct TranscriptAssembler: Equatable, Sendable {
     public private(set) var displayText = ""
+    /// Segments finaux tels que reçus, mis bout à bout.
     private var committed = ""
+    /// Positions (UTF-16) des espaces posées entre deux segments finaux de `committed`, adoucies par `PauseJoin`.
+    private var joins: [Int] = []
     private var live = ""
     private var doneText: String?
     /// Le dernier segment qui a contribué est final, et aucun intermédiaire ne le suit.
@@ -547,7 +550,7 @@ public struct TranscriptAssembler: Equatable, Sendable {
 
     public var bestText: String {
         let shown = displayText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let closed = (doneText ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let closed = softenedDone()
         if !tailIsFinal {
             return closed.isEmpty ? shown : closed
         }
@@ -585,7 +588,7 @@ public struct TranscriptAssembler: Equatable, Sendable {
         case .done(let text):
             doneText = text
             if !tailIsFinal, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                displayText = text
+                displayText = softenedDone()
             }
         }
     }
@@ -601,6 +604,7 @@ public struct TranscriptAssembler: Equatable, Sendable {
                 doneText = transcript
                 displayText = transcript
                 committed = trimmed
+                joins = []
                 live = ""
             }
         case .error, .other:
@@ -616,9 +620,15 @@ public struct TranscriptAssembler: Equatable, Sendable {
         } else if segment == committed || committed.hasSuffix(segment) {
             return
         } else if segment.hasPrefix(committed) {
+            // Segment cumulatif : il reprend le texte déjà validé, puis le prolonge après une espace.
+            joins += Self.boundary(after: committed, in: segment)
             committed = segment
+        } else if committed.hasSuffix(" ") {
+            joins.append(committed.utf16.count - 1)
+            committed += segment
         } else {
-            committed += (committed.hasSuffix(" ") ? "" : " ") + segment
+            joins.append(committed.utf16.count)
+            committed += " " + segment
         }
     }
 
@@ -626,11 +636,25 @@ public struct TranscriptAssembler: Equatable, Sendable {
         if committed.isEmpty {
             displayText = live
         } else if live.isEmpty {
-            displayText = committed
+            displayText = PauseJoin.soften(committed, joins: joins)
         } else if live.hasPrefix(committed) {
-            displayText = live
+            displayText = PauseJoin.soften(live, joins: joins + Self.boundary(after: committed, in: live))
         } else {
-            displayText = committed + " " + live
+            displayText = PauseJoin.soften(committed + " " + live, joins: joins + [committed.utf16.count])
         }
+    }
+
+    /// `transcript.done` répète souvent les segments finaux : il reçoit alors les mêmes jonctions adoucies.
+    private func softenedDone() -> String {
+        let closed = (doneText ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !committed.isEmpty, closed.hasPrefix(committed) else { return closed }
+        return PauseJoin.soften(closed, joins: joins + Self.boundary(after: committed, in: closed))
+    }
+
+    /// Jonction entre un texte validé et la suite qui le reprend, si une espace les sépare.
+    private static func boundary(after prefix: String, in text: String) -> [Int] {
+        let position = prefix.utf16.count
+        guard text.utf16.count > position + 1, (text as NSString).character(at: position) == 0x20 else { return [] }
+        return [position]
     }
 }

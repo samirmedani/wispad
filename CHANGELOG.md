@@ -3,6 +3,16 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.8.2 — 31 octobre 2026
+
+Wispad 0.8.2 ne coupe plus tes phrases à chaque pause, dès la transcription.
+
+**Corrigé**
+- **Pauses au milieu d’une phrase** : la transcription en direct posait un point à chaque pause (« Il faudrait un dossier. Ou quand une facture arrive. »). Les morceaux sont maintenant recollés par une virgule avant même la correction, comme le fait la transcription de l’enregistrement complet.
+
+**Amélioré**
+- **Qualité vérifiée** : chaque version qui touche au texte passe d’abord sur un banc de dictées, qui compare sa qualité, sa vitesse et son coût à la version précédente.
+
 ## 0.8.1 — 31 octobre 2026
 
 Wispad 0.8.1 écrit tes phrases d’un seul tenant, même quand tu marques une pause en parlant.

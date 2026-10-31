@@ -213,6 +213,6 @@ struct StreamPauseTests {
         #expect(heard.withLock { $0 } == ["Bonjour à tous."])
         session.handle(.string(#"{"type":"transcript.partial","text":"Et merci","is_final":false,"speech_final":false}"#))
         session.handle(.string(#"{"type":"transcript.partial","text":"Et merci.","is_final":true,"speech_final":true}"#))
-        #expect(heard.withLock { $0 } == ["Bonjour à tous.", "Bonjour à tous. Et merci."])
+        #expect(heard.withLock { $0 } == ["Bonjour à tous.", "Bonjour à tous, et merci."])
     }
 }
