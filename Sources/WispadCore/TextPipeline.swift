@@ -632,8 +632,8 @@ public struct TranscriptAssembler: Equatable, Sendable {
         }
     }
 
-    /// L'intermédiaire en cours n'est jamais adouci : sa longueur change encore, et la bulle ne doit pas hésiter entre
-    /// un point et une virgule. Sa jonction est tranchée quand il devient final.
+    /// L'intermédiaire en cours n'est jamais adouci : sa longueur change encore, et le texte entendu ne doit pas hésiter
+    /// entre un point et une virgule. Sa jonction est tranchée quand il devient final.
     private mutating func refresh() {
         let settled = PauseJoin.soften(committed, joins: joins)
         if committed.isEmpty {

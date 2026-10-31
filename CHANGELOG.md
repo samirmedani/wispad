@@ -8,7 +8,7 @@ est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 Wispad 0.8.2 ne coupe plus tes phrases à chaque pause, dès la transcription.
 
 **Corrigé**
-- **Pauses au milieu d’une phrase** : la transcription en direct posait un point à chaque pause (« Il faudrait un dossier. Ou quand une facture arrive. »). Les morceaux sont maintenant recollés par une virgule avant même la correction, comme le fait la transcription de l’enregistrement complet.
+- **Pauses au milieu d’une phrase** : la transcription en direct posait un point à chaque pause, et un petit morceau comme « Ou pas. » ou « Sans le modifier. » restait seul. Il est maintenant recollé à sa phrase dès la transcription : le texte reste propre même quand la correction n’est pas disponible.
 
 **Amélioré**
 - **Qualité vérifiée** : chaque version qui touche au texte passe d’abord sur un banc de dictées, qui compare sa qualité, sa vitesse et son coût à la version précédente.
