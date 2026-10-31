@@ -17,6 +17,7 @@
   <img src="https://img.shields.io/badge/macOS-14%2B-111111?logo=apple&logoColor=white" alt="macOS 14 ou plus récent">
   <img src="https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white" alt="Swift 6">
   <a href="LICENSE"><img src="https://img.shields.io/badge/licence-MIT-e5483f" alt="Licence MIT"></a>
+  <a href="#versions"><img src="https://img.shields.io/badge/maintenu-activement-2ea44f" alt="Maintenu activement"></a>
   <a href="https://github.com/samirmedani/wispad/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/samirmedani/wispad/ci.yml?branch=main&label=v%C3%A9rification" alt="Vérification GitHub Actions"></a>
   <a href="https://github.com/samirmedani/wispad/stargazers"><img src="https://img.shields.io/github/stars/samirmedani/wispad?logo=github&label=%C3%A9toiles" alt="Étoiles GitHub"></a>
   <a href="#téléchargements"><img src="https://img.shields.io/github/downloads/samirmedani/wispad/total?label=t%C3%A9l%C3%A9chargements&color=e5483f" alt="Téléchargements"></a>
@@ -27,16 +28,27 @@
 </p>
 
 <p align="center">
+  <a href="#versions">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/samirmedani/wispad/metrics/status-dark.svg">
+      <img src="https://raw.githubusercontent.com/samirmedani/wispad/metrics/status-light.svg" alt="État de Wispad : maintenu activement, dernière version avec sa date et son heure de publication, nombre de versions" width="720">
+    </picture>
+  </a>
+</p>
+
+<p align="center">
   <a href="#installer"><b>Installer</b></a> ·
   <a href="#fonctionnalités"><b>Fonctionnalités</b></a> ·
   <a href="#confidentialité"><b>Confidentialité</b></a> ·
+  <a href="#versions"><b>Versions</b></a> ·
   <a href="#contribuer"><b>Contribuer</b></a>
 </p>
 
 > *English: Wispad is open-source voice dictation for macOS. Double-press fn, speak, and the text is typed wherever
 > your cursor is, in any app, with automatic cleanup (punctuation, technical terms, spoken self-corrections, bullet
 > lists) in French and English. Bring your own API keys (xAI, OpenAI, DeepSeek) and pay each provider directly:
-> no Wispad server, no account, no telemetry.*
+> no Wispad server, no account, no telemetry. Actively maintained: new versions ship every week, and the app updates
+> itself in one click.*
 
 <p align="center">
   <img src="docs/images/demo.svg" alt="Animation : double appui sur fn, la bulle de Wispad écoute « On se voit mardi… euh non, mercredi à quatorze heures », puis « On se voit mercredi à 14 h. » s'écrit lettre par lettre" width="100%">
@@ -75,14 +87,14 @@ curseur : messagerie, e-mail, éditeur de code, terminal, navigateur.
       <br><b>Historique</b> · tout est gardé sur ton Mac, cherchable ; une dictée ratée se retranscrit.
     </td>
     <td width="50%" align="center">
-      <img src="docs/images/ecran-usage.png" alt="Écran Consommation : coût estimé par fournisseur et bascules vers un fournisseur de secours">
-      <br><b>Consommation</b> · le coût de chaque appel, par fournisseur, et les bascules de secours.
+      <img src="docs/images/ecran-usage.png" alt="Écran Consommation : dépense des 7 derniers jours, part de chaque fournisseur, coût par mois face aux abonnements">
+      <br><b>Consommation</b> · ce que tu as dépensé, chez qui, et combien tu économises face aux abonnements ; chaque appel s'exporte en CSV.
     </td>
   </tr>
   <tr>
     <td width="50%" align="center">
-      <img src="docs/images/ecran-dictionary.png" alt="Écran Dictionnaire : liste de termes techniques et de noms propres">
-      <br><b>Dictionnaire</b> · tes noms, marques et sigles, envoyés à la transcription et à la correction.
+      <img src="docs/images/ecran-dictionary.png" alt="Écran Dictionnaire : suggestions tirées des dictées avec « Tout ajouter », puis une seule liste de noms et d'expressions">
+      <br><b>Dictionnaire</b> · tes noms, marques et expressions ; il en apprend aussi tout seul, et te suggère les autres.
     </td>
     <td width="50%" align="center">
       <img src="docs/images/ecran-providers.png" alt="Écran Fournisseurs : une vue d'ensemble, le modèle de la voix et celui de la correction, puis les clés API">
@@ -91,8 +103,27 @@ curseur : messagerie, e-mail, éditeur de code, terminal, navigateur.
   </tr>
   <tr>
     <td colspan="2" align="center">
-      <img src="docs/images/ecran-profile.png" alt="Profil, carte Ton cerveau : sujets de démonstration (Code, Travail, Voyages, Cuisine) reliés en 3D, avec le coût estimé de l'analyse et un portrait écrit" width="70%">
-      <br><b>Profil</b> · tes chiffres, ton rythme, tes mots et tes tics ; ton cerveau en 3D, par mots ou par sujets lus par une IA, avec le coût annoncé avant.
+      <img src="docs/images/ecran-profile.png" alt="Profil, carte Ton cerveau : sujets de démonstration (Code, Travail, Voyages, Cuisine) reliés en 3D, avec un portrait écrit et le coût de l'analyse" width="70%">
+      <br><b>Profil</b> · tes chiffres, ton rythme, tes mots et tes tics ; en option, ton cerveau en 3D, par mots ou par sujets lus par une IA, avec le coût annoncé avant.
+    </td>
+  </tr>
+</table>
+
+### Nouveau dans la 0.8
+
+<table>
+  <tr>
+    <td width="40%" align="center">
+      <img src="docs/images/nouveau-modeles.png" alt="Choix du modèle de la voix sur des cartes : xAI et OpenAI, prix par heure de dictée, badges Recommandé et Économique">
+      <br><b>Modèles en cartes</b> · chaque modèle avec son prix, sa rapidité et l'état de ta clé.
+    </td>
+    <td width="25%" align="center">
+      <img src="docs/images/nouveau-profil.png" alt="Panneau Personnaliser du Profil : une carte par ligne avec son interrupteur">
+      <br><b>Profil à ta façon</b> · masque les cartes inutiles : elles ne sont même plus calculées.
+    </td>
+    <td width="35%" align="center">
+      <img src="docs/images/nouveau-aide.png" alt="Réglages, Aide : Copier le diagnostic à côté de Signaler un problème, et Copier le prompt pour enquêter avec ton agent IA">
+      <br><b>Aide en un clic</b> · copie le diagnostic, ou un prompt pour que ton agent IA cherche la cause et prépare un ticket anonyme.
     </td>
   </tr>
 </table>
@@ -137,15 +168,30 @@ curseur : messagerie, e-mail, éditeur de code, terminal, navigateur.
 
 - Tu corriges à la main un nom mal entendu (« Sidance » → « Seedance ») : Wispad te propose de le **garder** dans
   le dictionnaire, d'un simple Oui / Non dans la bulle.
+- Il **apprend seul** les noms que la correction répare souvent et ceux que tu écris de plusieurs façons
+  (« TestFlight » / « Testflight »), après l'avis d'un juge ; la bulle te le dit, et un clic les retire.
+- Ses **suggestions** (mots mal entendus, mal écrits) s'ajoutent une par une ou toutes d'un coup.
 - **Signaler une erreur** depuis le détail d'une dictée garde, sur ton Mac, de quoi mesurer les progrès.
 
 ### Ton profil
 
 - **Tes chiffres** : mots dictés (en pages ou en romans), temps gagné, séries de jours, ton rythme par heure et par
   jour, tes mots favoris, tes tics de langage et ce que Wispad corrige le plus. Tout est calculé sur ton Mac.
-- **Ton cerveau en 3D** : tes mots reliés quand tu les dis ensemble, à faire tourner et zoomer. En option, une IA
-  relit ton historique avec ta clé de correction et le range par **sujets et catégories** (Code, Travail,
-  Voyages…), avec un portrait écrit. Coupé par défaut, coût annoncé avant, rien ne part sans ton clic.
+- **À ta façon** : « Personnaliser » masque les cartes dont tu n'as pas besoin ; une carte masquée n'est pas
+  calculée, et le Profil s'ouvre tout de suite.
+- **Ton cerveau en 3D** (à afficher dans « Personnaliser ») : tes mots reliés quand tu les dis ensemble, à faire
+  tourner et zoomer. En option, une IA relit ton historique avec ta clé de correction et le range par **sujets et
+  catégories** (Code, Travail, Voyages…), avec un portrait écrit. Coût annoncé avant, rien ne part sans ton clic.
+
+### Clair sur les coûts, simple à dépanner
+
+- **Consommation** : la dépense de la période en une ligne, la part de chaque fournisseur, ce qu'un abonnement
+  coûterait à la place, et les **relais de secours** expliqués (combien de dictées sauvées, vers qui, pourquoi).
+  Chaque appel se copie, et le tableau s'exporte en CSV, sans jamais rien de dicté.
+- **Fournisseurs** : une phrase dit si tout est prêt ou ce qui manque, avec le bouton qui règle ; les réglages
+  avancés (relais, vérification, modèle local) restent rangés à part.
+- **Aide** : « Copier le diagnostic » en un clic, ou un prompt pour ton agent IA (Codex, Claude Code…) qui cherche
+  la cause sur ton Mac et prépare avec toi un ticket GitHub anonymisé.
 
 ## Fournisseurs
 
@@ -189,7 +235,8 @@ dans Consommation) et TypeSafe (Jev, premier avis sur les mots appris ; sans ell
 
 Ensuite, Wispad se met à jour lui-même : quand une version est publiée, la barre latérale affiche « Mettre à jour ».
 Un clic télécharge la nouvelle version, vérifie sa signature, la met à la place de l'ancienne et relance Wispad ;
-réglages, clés, historique et dictionnaire restent.
+réglages, clés, historique et dictionnaire restent. Une mise à jour te pose problème ? Réglages › Aide › Mises à jour
+› « Revenir à une version précédente » réinstalle l'une des cinq dernières, avec les mêmes vérifications.
 
 Déjà configuré ailleurs ? Réglages › Général › Exporter sur l'ancien Mac, puis Importer sur le nouveau : réglages et
 dictionnaire suivent, les clés API s'ajoutent à nouveau. « Copier le prompt » le fait faire par ton agent.
@@ -264,6 +311,23 @@ Les tests réseau (`scripts/live-test.sh`, bancs) n'utilisent que des clés de t
 
 Les textes d'interface s'écrivent en français dans le code, puis se traduisent en anglais avec
 `scripts/localize.sh` ; `scripts/localize.sh check` doit passer.
+
+## Versions
+
+Wispad est **maintenu activement** : chaque correction part dans une nouvelle version, souvent plusieurs par jour,
+et l'app se met à jour en un clic. Ci-dessous, la dernière version avec sa date et son heure de publication, le
+rythme des mises à jour et les dernières versions publiées.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/samirmedani/wispad/metrics/releases-dark.svg">
+    <img src="https://raw.githubusercontent.com/samirmedani/wispad/metrics/releases-light.svg" alt="Versions de Wispad : dernière version avec sa date et son heure de publication, nombre de versions publiées par jour, et les six dernières versions avec leur accroche" width="100%">
+  </picture>
+</p>
+
+Le détail de chaque version : [Releases](https://github.com/samirmedani/wispad/releases) et
+[CHANGELOG.md](CHANGELOG.md). Graphique mis à jour toutes les heures et à chaque nouvelle version par le workflow
+[Métriques](.github/workflows/metrics.yml), depuis l'API de GitHub (heures de Paris).
 
 ## Téléchargements
 

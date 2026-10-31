@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Compteur de téléchargements de Wispad : relève les téléchargements des releases GitHub, les garde dans un CSV et
-dessine le graphique du README, en clair et en sombre. Lancé toutes les heures par .github/workflows/metrics.yml,
-sur la branche de données « metrics ».
+"""Compteur de téléchargements et suivi des versions de Wispad : relève les téléchargements des releases GitHub, les
+garde dans un CSV et dessine les graphiques du README, en clair et en sombre : téléchargements, versions (dernière
+version avec sa date et son heure, rythme des mises à jour, historique) et bandeau d'état du haut. Lancé toutes les
+heures par .github/workflows/metrics.yml, sur la branche de données « metrics ».
 
   scripts/download-stats.py --repo samirmedani/wispad --dir <dossier>
 
@@ -15,6 +16,7 @@ import datetime as dt
 import json
 import math
 import os
+import re
 import urllib.request
 from xml.sax.saxutils import escape
 
@@ -72,7 +74,8 @@ def fetch(repo, token):
         if release.get("draft") or not release.get("published_at"):
             continue
         count = sum(asset.get("download_count", 0) for asset in release.get("assets", []))
-        versions.append({"tag": release["tag_name"], "published": parse(release["published_at"]), "downloads": count})
+        versions.append({"tag": release["tag_name"], "published": parse(release["published_at"]), "downloads": count,
+                         "notes": release.get("body") or ""})
     versions.sort(key=lambda version: version["published"])
     return versions, stars
 
@@ -270,6 +273,185 @@ def render(theme, versions, history, stars):
     return "\n".join(parts) + "\n"
 
 
+# MARK: Versions : dernière version publiée, rythme des mises à jour et historique
+
+ACTIVE_DAYS = 60
+RHYTHM_WEEKS = 16
+HISTORY_ROWS = 6
+GREEN = {"light": "#1a7f37", "dark": "#3fb950"}
+AMBER = {"light": "#9a6700", "dark": "#d29922"}
+
+
+def headline(notes, limit=78):
+    """Première phrase des notes de version, sans markdown ; raccourcie à `limit` caractères."""
+    for raw in (notes or "").replace("\r", "").split("\n"):
+        line = raw.strip().lstrip("#>").strip()
+        if not line or line.startswith(("- ", "* ", "|", "```")) or line.lower().startswith("sha-256"):
+            continue
+        line = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", line)
+        line = line.replace("**", "").replace("__", "").replace("`", "")
+        if line.startswith("*") and line.endswith("*"):
+            line = line.strip("*")
+        if len(line) > limit:
+            line = line[: limit - 1].rstrip(" ,;:.") + "…"
+        return line
+    return ""
+
+
+def published_label(moment):
+    return f"{day_label(moment, year=True)} à {hour_label(moment)}"
+
+
+def maintenance(versions, now):
+    """Maintenu activement si la dernière version a moins de `ACTIVE_DAYS` jours ; sinon son âge, honnêtement."""
+    if not versions:
+        return False, "Aucune version publiée"
+    age = now - versions[-1]["published"]
+    if age <= dt.timedelta(days=ACTIVE_DAYS):
+        return True, "Maintenu activement"
+    months = max(2, int(age.days // 30))
+    return False, f"Dernière version il y a {months} mois"
+
+
+def rhythm(versions, now):
+    """Versions publiées par période, la plus ancienne d'abord, heure de Paris : par jour sur les 30 derniers jours tant
+    que le projet a moins de 45 jours, puis par semaine (du lundi) sur les `RHYTHM_WEEKS` dernières semaines.
+    Rend les débuts de période, les nombres et l'unité (« jour » ou « semaine »)."""
+    today = local(now).date()
+    first = local(versions[0]["published"]).date() if versions else today
+    daily = (today - first).days < 45
+    if daily:
+        starts = [today - dt.timedelta(days=29 - index) for index in range(30)]
+    else:
+        current = today - dt.timedelta(days=today.weekday())
+        starts = [current - dt.timedelta(weeks=RHYTHM_WEEKS - 1 - index) for index in range(RHYTHM_WEEKS)]
+    counts = [0] * len(starts)
+    for version in versions:
+        day = local(version["published"]).date()
+        start = day if daily else day - dt.timedelta(days=day.weekday())
+        if start in starts:
+            counts[starts.index(start)] += 1
+    return starts, counts, "jour" if daily else "semaine"
+
+
+def render_releases(theme, versions, now):
+    c = THEMES[theme]
+    active_color = GREEN[theme]
+    width, height = 960, 724
+    parts = []
+    add = parts.append
+    latest = versions[-1] if versions else None
+    active, state = maintenance(versions, now)
+    recent = sum(1 for version in versions if now - version["published"] <= dt.timedelta(days=30))
+    summary = (f"{state}. Dernière version {latest['tag']}, publiée le {published_label(latest['published'])} "
+               f"(heure de Paris). {len(versions)} versions publiées, {recent} ces 30 derniers jours.") if latest else state
+    add(f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" '
+        f'role="img" aria-labelledby="titre desc" font-family="{FONT}" style="font-variant-numeric: tabular-nums">')
+    add(f'<title id="titre">Versions de Wispad</title><desc id="desc">{escape(summary)}</desc>')
+    add(f'<rect x="0.5" y="0.5" width="{width - 1}" height="{height - 1}" rx="16" fill="{c["bg"]}" stroke="{c["border"]}"/>')
+
+    # En-tête : dernière version, sa date et son heure ; à droite, l'état et deux chiffres.
+    add(text(32, 58, "Dernière version", 15, c["muted"], 600))
+    if latest:
+        add(text(30, 114, latest["tag"], 54, c["text"], 700))
+        add(text(32, 142, f"Publiée le {published_label(latest['published'])}, heure de Paris", 13, c["muted"]))
+    pills = [
+        ("État", "Maintenu" if active else "En pause", active_color if active else AMBER[theme]),
+        ("30 derniers jours", f"{recent} version{'s' if recent > 1 else ''}", c["text"]),
+        ("Versions publiées", num(len(versions)), c["text"]),
+    ]
+    pill_width, gap, top = 170, 10, 36
+    left = width - 32 - len(pills) * pill_width - (len(pills) - 1) * gap
+    for index, (label, value, color) in enumerate(pills):
+        x = left + index * (pill_width + gap)
+        add(f'<rect x="{x}" y="{top}" width="{pill_width}" height="70" rx="12" fill="{c["panel"]}" stroke="{c["border"]}"/>')
+        add(text(x + 16, top + 26, label, 12, c["muted"], 500))
+        if index == 0:
+            add(f'<circle cx="{x + 22}" cy="{top + 48}" r="5" fill="{color}"/>')
+            add(text(x + 34, top + 54, value, 16, color, 700))
+        else:
+            add(text(x + 16, top + 55, value, 23, color, 700))
+
+    # Rythme : versions publiées par semaine, la semaine en cours en couleur pleine.
+    chart_left, chart_right, chart_top, chart_bottom = 72, 928, 222, 340
+    add(text(32, 196, "Rythme des mises à jour", 15, c["text"], 600))
+    starts, counts, unit = rhythm(versions, now)
+    caption = "versions par jour, 30 derniers jours" if unit == "jour" else f"versions par semaine, {RHYTHM_WEEKS} dernières semaines"
+    add(text(chart_right, 196, caption, 12, c["muted"], 400, "end"))
+    scale = ticks(max(counts + [1]), 3)
+    top_value = scale[-1]
+
+    def y_of(value):
+        return chart_bottom - value / top_value * (chart_bottom - chart_top)
+
+    for value in scale:
+        y = y_of(value)
+        dash = "" if value == 0 else ' stroke-dasharray="3 5"'
+        add(f'<line x1="{chart_left}" y1="{y:.1f}" x2="{chart_right}" y2="{y:.1f}" stroke="{c["grid"]}"{dash}/>')
+        add(text(chart_left - 12, y + 4, num(value), 12, c["muted"], 400, "end"))
+    slot = (chart_right - chart_left) / len(counts)
+    bar = min(34.0, slot * 0.62)
+    for index, (start, value) in enumerate(zip(starts, counts)):
+        center = chart_left + slot * (index + 0.5)
+        current = index == len(counts) - 1
+        if value > 0:
+            h = max(4.0, value / top_value * (chart_bottom - chart_top))
+            add(f'<rect x="{center - bar / 2:.1f}" y="{chart_bottom - h:.1f}" width="{bar:.1f}" height="{h:.1f}" '
+                f'rx="{min(4.0, bar / 4):.1f}" fill="{c["brand"]}" fill-opacity="{"1" if current else "0.55"}"/>')
+            add(text(center, chart_bottom - h - 7, str(value), 12, c["text"], 600, "middle"))
+        step = 5 if unit == "jour" else 3
+        if (len(counts) - 1 - index) % step == 0 and (current or len(counts) - 1 - index >= step - 1):
+            here = "Aujourd'hui" if unit == "jour" else "Cette semaine"
+            label = here if current else day_label(dt.datetime.combine(start, dt.time(12), PARIS))
+            add(text(center, chart_bottom + 20, label, 11.5, c["text"] if current else c["muted"],
+                     600 if current else 400, "middle"))
+
+    # Historique : les dernières versions, avec leur date, leur heure et leur accroche.
+    add(text(32, 404, "Dernières versions", 15, c["text"], 600))
+    rows_top, row_height = 424, 40
+    for index, version in enumerate(reversed(versions[-HISTORY_ROWS:])):
+        y = rows_top + index * row_height
+        if index:
+            add(f'<line x1="32" y1="{y:.1f}" x2="{width - 32}" y2="{y:.1f}" stroke="{c["grid"]}" stroke-opacity="0.6"/>')
+        newest = index == 0
+        add(f'<rect x="32" y="{y + 9:.1f}" width="74" height="24" rx="12" fill="{c["brand"] if newest else c["panel"]}" '
+            f'stroke="{c["brand"] if newest else c["border"]}"/>')
+        add(text(69, y + 26, version["tag"], 12.5, "#ffffff" if newest else c["text"], 700, "middle"))
+        add(text(122, y + 26, published_label(version["published"]), 13, c["muted"], 500))
+        add(text(292, y + 26, headline(version.get("notes", ""), 84), 13, c["text"], 400))
+
+    footer = f"Relevé toutes les heures depuis l'API GitHub · le {day_label(now, year=True)} à {hour_label(now)} (heure de Paris)"
+    add(text(32, height - 24, footer, 12, c["muted"]))
+    add("</svg>")
+    return "\n".join(parts) + "\n"
+
+
+def render_banner(theme, versions, now):
+    """Bandeau du haut du README : état de maintenance, dernière version, sa date et son heure."""
+    c = THEMES[theme]
+    active, state = maintenance(versions, now)
+    color = GREEN[theme] if active else AMBER[theme]
+    latest = versions[-1] if versions else None
+    width, height = 720, 52
+    detail = (f"Dernière version {latest['tag']} · {published_label(latest['published'])}" if latest else "")
+    count = f"{len(versions)} versions" if versions else ""
+    summary = " · ".join(part for part in (state, detail, count) if part)
+    parts = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" '
+             f'role="img" aria-label="{escape(summary)}" font-family="{FONT}" style="font-variant-numeric: tabular-nums">',
+             f'<title>{escape(summary)}</title>',
+             f'<rect x="0.5" y="0.5" width="{width - 1}" height="{height - 1}" rx="26" fill="{c["panel"]}" stroke="{c["border"]}"/>',
+             f'<circle cx="30" cy="26" r="6" fill="{color}"/>',
+             f'<circle cx="30" cy="26" r="10" fill="none" stroke="{color}" stroke-opacity="0.35" stroke-width="2"/>',
+             text(48, 31.5, state, 15, color, 700)]
+    x = 48 + 8.0 * len(state) + 12
+    if detail:
+        parts.append(text(x, 31.5, "·  " + detail, 15, c["text"], 500))
+    if count:
+        parts.append(text(width - 26, 31.5, count, 14, c["muted"], 500, "end"))
+    parts.append("</svg>")
+    return "\n".join(parts) + "\n"
+
+
 BRANCH_README = """# Métriques de Wispad
 
 Branche de données, mise à jour toutes les heures par le workflow « Métriques » (`.github/workflows/metrics.yml`
@@ -277,6 +459,9 @@ sur `main`). Ne pas la modifier à la main.
 
 - `downloads.csv` : un relevé à chaque changement (téléchargements, étoiles, versions), et au moins un par jour.
 - `downloads-light.svg`, `downloads-dark.svg` : le graphique affiché dans le README, en clair et en sombre.
+- `releases-light.svg`, `releases-dark.svg` : dernière version (date et heure), rythme des mises à jour et
+  historique des versions.
+- `status-light.svg`, `status-dark.svg` : le bandeau du haut du README (maintenance et dernière version).
 """
 
 
@@ -297,6 +482,11 @@ def main():
     for theme in THEMES:
         with open(os.path.join(args.dir, f"downloads-{theme}.svg"), "w", encoding="utf-8") as handle:
             handle.write(render(theme, versions, history, stars))
+    for theme in THEMES:
+        with open(os.path.join(args.dir, f"releases-{theme}.svg"), "w", encoding="utf-8") as handle:
+            handle.write(render_releases(theme, versions, history[-1]["time"] if history else now))
+        with open(os.path.join(args.dir, f"status-{theme}.svg"), "w", encoding="utf-8") as handle:
+            handle.write(render_banner(theme, versions, history[-1]["time"] if history else now))
     with open(os.path.join(args.dir, "README.md"), "w", encoding="utf-8") as handle:
         handle.write(BRANCH_README)
     print(f"{num(total)} téléchargements, {len(versions)} versions, {stars} étoiles ; "

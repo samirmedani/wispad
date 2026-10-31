@@ -3,6 +3,81 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.8.0 — 31 octobre 2026
+
+Wispad 0.8.0 est plus simple, plus clair et plus fluide.
+
+**Nouveau**
+- **Profil à ta façon** : le bouton « Personnaliser » masque les cartes que tu ne veux pas voir. Une carte masquée n'est pas calculée. « Ton cerveau » et « Sujets · IA » sont masqués par défaut ; tu peux les réafficher quand tu veux.
+- **Sujets IA en images** : une illustration et deux lignes au lieu d'un bloc de texte.
+- **Copier le diagnostic** en un clic, à côté de « Signaler un problème » (Réglages › Aide).
+- **Enquêter avec ton agent IA** : un prompt à coller dans Codex ou Claude Code, qui cherche la cause sur ton Mac et prépare avec toi un ticket anonyme.
+- **Derniers appels** : copie un appel, tout le tableau, ou exporte-le en CSV.
+
+**Amélioré**
+- **Profil** : il s'ouvre tout de suite, sans écran de chargement.
+- **Consommation** : un résumé clair en tête et une carte « Relais de secours » qui explique ce qui s'est passé.
+- **Fournisseurs** : une vue d'ensemble, des modèles choisis sur des cartes avec leur prix, et les réglages avancés rangés à part.
+- **Dictionnaire** : une seule liste pour les mots et les expressions, « Tout ajouter » pour les suggestions, et il apprend aussi les noms que tu écris de plusieurs façons.
+- **Fluidité** : les écrans s'ouvrent plus vite.
+
+## 0.7.7 — 31 octobre 2026
+
+Wispad 0.7.7 te montre toute l’installation d’une mise à jour, jusqu’au redémarrage.
+
+- Les étapes Vérification, Installation et Redémarrage restent visibles un instant chacune, au lieu de passer d’un coup avant la fermeture.
+- Après la relance, Wispad rouvre aussitôt la fenêtre de mise à jour là où elle s’était arrêtée. « Redémarrage » se coche, puis « Wispad 0.7.7 est installé. » s’affiche avec les nouveautés, même hors ligne.
+- Comprend le retour à une version précédente de la 0.7.6, dans Réglages › Aide › Mises à jour.
+
+## 0.7.6 — 31 octobre 2026
+
+Wispad 0.7.6 te permet de revenir à une version précédente si une mise à jour pose problème.
+
+- Dans Réglages › Aide › Mises à jour, « Revenir à une version précédente » propose les 5 dernières versions publiées. Tu choisis, tu confirmes, et Wispad installe cette version avec les mêmes vérifications qu'une mise à jour, puis redémarre.
+- Tes réglages, tes clés et ton historique restent. La version que tu quittes reste proposée dans « Mettre à jour », pour revenir quand tu veux.
+- Comprend les corrections de la 0.7.5 : le micro s'ouvre tout de suite après une mise à jour, même pendant que Wispad récupère tes clés.
+
+## 0.7.5 — 31 octobre 2026
+
+Wispad 0.7.5 corrige le démarrage qui suit une mise à jour.
+
+- Juste après une mise à jour, le raccourci pouvait répondre « Coffre de secrets injoignable », puis ouvrir le micro avec 10 à 20 secondes de retard. La cause : macOS réenregistre la nouvelle version de Wispad, et le coffre de secrets restait injoignable une vingtaine de secondes.
+- Désormais, le micro s'ouvre aussitôt pendant que Wispad récupère tes clés. Ta dictée est transcrite dès qu'elles arrivent, même si tu as déjà fini de parler.
+- Le coffre est relu par essais courts et rapprochés : Wispad le retrouve dès qu'il répond.
+- Comprend la seconde écoute sur le Mac de la 0.7.4 et le presse-papiers rendu après le collage de la 0.7.3.
+
+## 0.7.4 — 31 octobre 2026
+
+Wispad 0.7.4 ajoute une seconde écoute sur ton Mac pour rattraper les mots courants mal entendus.
+
+- Pendant que tu parles, le moteur de dictée d'Apple écoute aussi, entièrement sur le Mac : rien ne part ailleurs et il n'y a rien à installer. Quand la transcription donne une phrase sans sens et que cette seconde écoute a entendu autre chose, la correction peut reprendre la bonne version (par exemple « Si t'es développeur » au lieu de « Faut voter développeur »).
+- Les noms, marques, termes techniques et nombres restent ceux de la transcription.
+- Même rapidité de correction. Sans macOS 26 ou sans le modèle d'Apple déjà installé, Wispad fonctionne comme avant.
+- Comprend la correction de la 0.7.3 : ton presse-papiers revient juste après le collage.
+
+## 0.7.3 — 31 octobre 2026
+
+Wispad 0.7.3 rend ton presse-papiers juste après le collage.
+
+- Après une dictée, Wispad remet ce que tu avais copié dès que l'app a reçu le texte. Avant, la dictée restait jusqu'à 1,5 s dans le presse-papiers : un ⌘V fait juste après recollait la dictée au lieu de ton lien.
+- La dictée est marquée comme temporaire : les gestionnaires de presse-papiers ne la gardent plus dans leur historique.
+- Comprend les corrections de la 0.7.2 : les dictées orales gardent leur correction au lieu d'être collées brutes.
+
+## 0.7.2 — 31 octobre 2026
+
+Wispad 0.7.2 rend la correction à tes dictées orales.
+
+- Depuis la 0.6.9, Wispad jetait souvent toute la correction dès qu'elle retirait un faux départ, une répétition ou un « en gros » ; il collait alors le texte brut, « euh » compris. La correction est maintenant gardée.
+- Si la correction retire par erreur un mot qui porte le sens (« pas », « vraiment », « dans ce cas »), ce mot reprend sa place au lieu de faire tout jeter.
+- « mmh » est reconnu comme une hésitation.
+
+## 0.7.1 — 30 octobre 2026
+
+Wispad 0.7.1 corrige une coupure du micro pendant une dictée.
+
+- Quand une autre app active le traitement de la voix sur le micro du Mac (page web, appel, vidéo), le spectre pouvait se figer et la suite de la dictée était perdue jusqu'à l'arrêt. Wispad continue désormais d'enregistrer ta voix pendant ce temps.
+- Aucune limite de durée n'est en cause : les longues dictées ne sont pas coupées.
+
 ## 0.7.0 — 30 octobre 2026
 
 Une dictée plus cohérente à l'écrit, fidèle à ta façon de parler.

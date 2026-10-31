@@ -1,8 +1,9 @@
 name: Métriques
 
-# Compteur de téléchargements du README : relevé toutes les heures et à chaque nouvelle version, gardé avec ses
-# graphiques sur la branche de données « metrics » (jamais sur main). Un commit seulement si un chiffre change, et au
-# moins un relevé par jour pour que la courbe avance.
+# Graphiques du README : téléchargements, et versions (dernière version avec sa date et son heure, rythme des mises
+# à jour, historique), relevés toutes les heures et à chaque nouvelle version, gardés sur la branche de données
+# « metrics » (jamais sur main). Un commit seulement si un chiffre change, et au moins un relevé par jour pour que la
+# courbe avance.
 on:
   schedule:
     - cron: "23 * * * *"
@@ -43,7 +44,8 @@ jobs:
             git switch --quiet --orphan metrics
           fi
           python3 "$script" --repo "$GITHUB_REPOSITORY" --dir .
-          git add downloads.csv downloads-light.svg downloads-dark.svg README.md
+          git add downloads.csv downloads-light.svg downloads-dark.svg releases-light.svg releases-dark.svg \
+            status-light.svg status-dark.svg README.md
           if git diff --cached --quiet; then
             echo "Aucun changement."
             exit 0
