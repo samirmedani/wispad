@@ -11,12 +11,15 @@ public enum FidelityGuard {
         dictionary: [String] = [],
         previousDictations: [String] = [],
         alternative: String? = nil,
+        otherHearings: [String] = [],
         language: DictationLanguage = .french
     ) -> String {
         let heard = locatedWords(in: transcript).map(\.text)
         let grammarReference = language == .english ? transcript : WrittenGrammar.reference(transcript)
         // Autre écoute du même audio : un mot repris de là a été entendu, ce n'est ni une invention ni une traduction.
-        let alsoHeard = alternative.map { locatedWords(in: $0).map(\.text) } ?? []
+        // L'écoute locale compte aussi comme entendue ; seule l'autre écoute du fournisseur départage un petit mot
+        // (\`CorrectionPatch\`), car elle suit le même découpage.
+        let alsoHeard = ((alternative.map { [$0] } ?? []) + otherHearings).flatMap { locatedWords(in: $0).map(\.text) }
         let written = locatedWords(in: corrected).map(\.text)
         guard !heard.isEmpty, !written.isEmpty else { return written.isEmpty ? transcript : corrected }
         // Une correction enlève des hésitations et ajoute de la ponctuation : elle n'allonge pas le texte.
