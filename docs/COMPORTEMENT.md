@@ -543,6 +543,14 @@ coût de correction à peine plus élevé sur les seules dictées concernées.
   devient « mercredi ». Un « non » qui fait partie du message reste.
 - Nombres écrits en chiffres quand ils comptent vraiment quelque chose ; élisions purement orales écrites en entier
   (« j'sais » → « je sais »).
+- **Ponctuation selon le sens** : la transcription pose souvent un point à chaque pause de la voix. La correction
+  rattache à sa phrase, sans changer les mots, un morceau qui ne tient pas seul (« ou non », « ou pas », « quand… »,
+  « où… », un complément) et corrige « ou » / « où » selon le sens (« un écran où on choisit la langue »). Une phrase
+  qui tient seule reste une phrase. Après la correction, la finition locale (tons Naturel et Soigné, en français)
+  rattache aussi une alternative restée seule, « Ou non. » ou « Ou pas. », sur la même ligne, à la phrase qui la
+  précède si elle finit par un point ou un point d'interrogation : « … à qui tu as répondu. Ou non. » → « … à qui tu
+  as répondu ou non. », « Tu viens ? Ou pas ? » → « Tu viens ou pas ? ». Une alternative qui ouvre une vraie phrase
+  (« Ou non, je préfère attendre. »), après une exclamation ou dans une citation reste telle quelle.
 - **Français écrit naturel** : par défaut, la correction rétablit les négations certaines, y compris dans les
   subordonnées et avec les pronoms compléments, et complète les sujets impersonnels omis. Le vocabulaire, le sens,
   les nuances et les incertitudes restent ceux de la dictée. Un mot ambigu comme « plus » ne justifie jamais à lui

@@ -990,7 +990,7 @@ public enum TextCleaner {
     public static func completeWrittenGrammar(_ text: String, language: DictationLanguage, tone: DictationTone) -> String {
         let resolved = language == .auto ? TranscriptLanguage.guess(text) : language
         guard resolved == .french, tone != .casual else { return text }
-        return WrittenGrammar.completeImpersonalSubjects(text)
+        return WrittenGrammar.joinAlternativeFragments(WrittenGrammar.completeImpersonalSubjects(text))
     }
 
     static func clean(transcript: String, request: CorrectionRequest, speech: SpeechRequest, enabled: Bool, transport: @escaping HTTPTransport) async -> CleanupOutcome {
