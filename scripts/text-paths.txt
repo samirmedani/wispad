@@ -1,0 +1,49 @@
+# Chemins qui peuvent changer le texte final d'une dictée, établis en lisant le code le 31 octobre 2026.
+# scripts/release.sh exige un banc du texte vert (scripts/text-bench.sh, docs/BANC-TEXTE.md) dès que l'un d'eux a
+# changé depuis la dernière release. Un chemin par ligne, depuis la racine du dépôt ; ReleaseScriptTests vérifie que
+# chacun existe. Un nouveau fichier qui transforme le texte ou choisit entre deux textes s'ajoute ici.
+# Hors liste : la capture de l'audio et du contexte à l'écran, l'insertion, l'historique et l'apprentissage du
+# dictionnaire, qui ne changent pas le texte d'une dictée donnée.
+
+# Transcription : requêtes du flux et du fichier, fin du flux, correction, ses relais, délais et finitions.
+Sources/WispadCore/SpeechClient.swift
+# Modèles de voix par défaut et leur transcription de fichier.
+Sources/WispadCore/Catalog.swift
+# Lecture et assemblage du flux xAI, consigne de correction, dictées précédentes jointes, mots-clés.
+Sources/WispadCore/TextPipeline.swift
+# Jonction de deux segments finaux du flux (point devenu virgule, minuscule).
+Sources/WispadCore/PauseJoin.swift
+# Vocabulaire technique : mots-clés de la reconnaissance et référence de la correction.
+Sources/WispadCore/TechVocabulary.swift
+# Seconde écoute sur le Mac : passages qui départagent un mot dans la correction.
+Sources/WispadCore/LocalHearing.swift
+Sources/Wispad/LocalHearingSession.swift
+
+# Choix entre le flux et le fichier, et normalisations autour de la correction.
+Sources/WispadCore/TranscriptEquivalence.swift
+Sources/WispadCore/SpokenNumbers.swift
+Sources/WispadCore/SpokenOrdinals.swift
+Sources/WispadCore/FranglaisNormalizer.swift
+
+# Correction et finitions : garde-fou, mots qui sonnent pareil, report des mots du fichier, modèles et effort de
+# raisonnement, ton et consignes sur une sélection, langue, dates, nombres, listes, grammaire écrite.
+Sources/WispadCore/FidelityGuard.swift
+Sources/WispadCore/CorrectionLearner.swift
+Sources/WispadCore/PhoneticKey.swift
+Sources/WispadCore/CorrectionPatch.swift
+Sources/WispadCore/TextModels.swift
+Sources/WispadCore/DictationStyle.swift
+Sources/WispadCore/Language.swift
+Sources/WispadCore/DateTimeFormat.swift
+Sources/WispadCore/NumberFormat.swift
+Sources/WispadCore/DictationStructure.swift
+Sources/WispadCore/WrittenGrammar.swift
+
+# Orchestration de la dictée : texte retenu, correction préparée ou reportée, dernière normalisation, requête de voix
+# et services de correction, dictées précédentes, réglages par défaut du texte, branchement des fournisseurs.
+Sources/Wispad/DictationCoordinator.swift
+Sources/Wispad/DictationCoordinator+Transcription.swift
+Sources/Wispad/DictationCoordinator+EarlyCorrection.swift
+Sources/Wispad/AppModel.swift
+Sources/Wispad/AppSettings.swift
+Sources/Wispad/AppDependencies.swift

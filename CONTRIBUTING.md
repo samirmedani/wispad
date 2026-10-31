@@ -52,6 +52,9 @@ contient (gitleaks, types de fichiers interdits, chemins de machine). Un secret 
 ## Qualité attendue
 
 - Tests pour tout comportement nouveau ou corrigé ; `docs/COMPORTEMENT.md` mis à jour dans la même pull request.
+- Un changement du texte final (chemins de `scripts/text-paths.txt`) passe le banc du texte avant la release : le
+  mainteneur lance `scripts/text-bench.sh` sur ses dictées privées, et `scripts/release.sh` refuse un verdict absent
+  ou rouge ([docs/BANC-TEXTE.md](docs/BANC-TEXTE.md)). Un nouveau fichier qui transforme le texte s'ajoute à la liste.
 - Textes d'interface en français dans le code, traduits en anglais (`scripts/localize.sh`).
 - Confidentialité : ne jamais journaliser une transcription, le contexte autour du curseur ou une clé.
 
