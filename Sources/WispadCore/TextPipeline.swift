@@ -86,6 +86,9 @@ public struct CorrectionRequest: Equatable, Sendable {
     public var windowText: String?
     /// Autre transcription du même audio (le flux, quand le fichier a été retenu). Sert à départager un mot.
     public var alternativeTranscript: String?
+    /// Passages qu'une seconde écoute sur le Mac a entendus autrement (\`LocalHearing\`) : départagent un passage de la
+    /// transcription qui n'a pas de sens ; jamais une source de noms, de termes techniques ni de nombres.
+    public var localDivergences: [LocalDivergence] = []
     public var structureDictation: Bool
     /// Langue réglée pour la dictée ; en automatique, la consigne suit la langue de la transcription.
     public var language: DictationLanguage
@@ -316,7 +319,7 @@ public enum CorrectionPrompt {
 
     /// Libellés du message envoyé au modèle, dans la langue de la consigne.
     private struct Labels {
-        var application, selection, nearby, window, previous, dictionary, vocabulary, alternative, transcript: String
+        var application, selection, nearby, window, previous, dictionary, vocabulary, alternative, local, transcript: String
 
         static let french = Labels(
             application: "Application",
@@ -327,6 +330,7 @@ public enum CorrectionPrompt {
             dictionary: "Dictionnaire",
             vocabulary: "Vocabulaire technique (seulement pour orthographier un terme anglais effectivement prononcé, jamais pour remplacer un mot français qui a un sens dans la phrase)",
             alternative: "Autre écoute du même audio (transcription en direct, moins fiable ; la Transcription ci-dessous fait foi : n'en reprends un mot que s'il y est manifestement mal entendu, par exemple un terme technique, un nom, un nombre ou un mot qui rend la phrase illogique, et n'y prends jamais un passage absent de la Transcription)",
+            local: "Passages entendus autrement par une seconde écoute du même audio, sur le Mac (fiable sur les mots courants et les tournures orales, jamais sur les noms, marques, termes techniques ni nombres). Pour chaque passage : si celui de la Transcription n'a pas de sens dans la phrase et que la seconde écoute en donne un sensé, écris celui de la seconde écoute ; sinon garde la Transcription. Une ligne par passage : « Transcription » / « seconde écoute »",
             transcript: "Transcription"
         )
 
@@ -339,6 +343,7 @@ public enum CorrectionPrompt {
             dictionary: "Dictionary",
             vocabulary: "Technical vocabulary (only to spell a term that was actually spoken, never to replace another word)",
             alternative: "Other hearing of the same audio (live transcription, less reliable; the Transcription below is authoritative: only take a word from it when the Transcription clearly misheard it, for example a technical term, a name, a number or a word that makes the sentence illogical, and never take a passage that is absent from the Transcription)",
+            local: "Passages heard differently by a second hearing of the same audio, on the Mac (reliable on common words and spoken phrasing, never on names, brands, technical terms or numbers). For each passage: if the Transcription's passage makes no sense in the sentence and the second hearing gives a sensible one, write the second hearing's version; otherwise keep the Transcription. One line per passage: “Transcription” / “second hearing”",
             transcript: "Transcription"
         )
     }
@@ -374,6 +379,10 @@ public enum CorrectionPrompt {
         lines.append("\(label.vocabulary): \(TechVocabulary.correction.joined(separator: ", "))")
         if let other = request.alternativeTranscript?.trimmingCharacters(in: .whitespacesAndNewlines), !other.isEmpty {
             lines.append("\(label.alternative): \(other)")
+        }
+        if !request.localDivergences.isEmpty {
+            let passages = request.localDivergences.map { "- « \($0.heard) » / « \($0.local) »" }
+            lines.append("\(label.local):\n" + passages.joined(separator: "\n"))
         }
         lines.append("\(label.transcript): \(request.transcript)")
         return lines.joined(separator: "\n")
