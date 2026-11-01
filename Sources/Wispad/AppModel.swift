@@ -838,8 +838,6 @@ final class AppModel {
     var pendingConfigurationImport: ConfigurationImport?
     /// Recherche à la main en cours : la version trouvée s'ouvre dans sa fenêtre, pas dans la bulle.
     @ObservationIgnored private var checkingForUpdates = false
-    /// Fenêtre principale à l'écran (posé par le délégué de l'app) : la nouvelle version la rouvre après la relance.
-    @ObservationIgnored var isWindowVisible: () -> Bool = { false }
 
     /// Version plus récente trouvée par la vérification : rappelée une seule fois par version dans la bulle, quand
     /// elle se libère après une dictée ; jamais pendant la configuration guidée.
@@ -902,9 +900,9 @@ final class AppModel {
         if started { updateSheet = release }
     }
 
-    /// Arguments de la nouvelle version : elle confirme la mise à jour, et rouvre la fenêtre si elle était affichée.
+    /// Arguments de la nouvelle version : elle confirme la mise à jour par la bulle seule, sans rouvrir de fenêtre.
     func relaunchArguments() -> [String] {
-        isWindowVisible() ? ["--updated", "--section", selectedSection.rawValue] : ["--updated"]
+        ["--updated"]
     }
 
     /// Versions publiées avant celle qui tourne, proposées dans Réglages › Aide › Mises à jour ; nil tant que GitHub
