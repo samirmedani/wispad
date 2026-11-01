@@ -67,20 +67,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                 Task { await BuildStatus.shared.loadMissedReleases(for: release) }
             }
             BuildStatus.shared.start()
-            model.isWindowVisible = { [weak self] in self?.window?.isVisible == true }
             model.updater.removeLeftovers()
             // Relance technique ou diagnostic : aucune fenêtre, même si le coffre ne répond pas.
             let quiet = ["--status-diagnostic", "--window-context-probe", "--background", "--offscreen"]
                 .contains(where: CommandLine.arguments.contains)
-            // `--section usage` (ou autre) ouvre directement la fenêtre sur cette section, sans attendre les clés : la
-            // relance d'une mise à jour rouvre la fenêtre aussitôt.
-            let requested = CommandLine.arguments.firstIndex(of: "--section").flatMap { index in
-                CommandLine.arguments.indices.contains(index + 1) ? AppSection(rawValue: CommandLine.arguments[index + 1]) : nil
-            }
-            // Relancé par une mise à jour en un clic : la fenêtre de mise à jour finit son avancement si elle était
-            // ouverte, sinon la bulle le confirme, sans prendre le focus.
+            // `--section usage` (ou autre) ouvre directement la fenêtre sur cette section, sans attendre les clés.
+            let requested = Self.launchSection(CommandLine.arguments)
+            // Relancé par une mise à jour en un clic : seule la bulle le confirme. Ni fenêtre, ni notes, ni icône dans le
+            // Dock : relancé en arrière-plan, Wispad ne peut pas prendre le premier plan, et macOS faisait rebondir
+            // l'icône jusqu'à ce qu'on ouvre l'app (2 novembre 2026). Une dictée qui commence remplace la bulle.
             if CommandLine.arguments.contains("--updated") {
-                model.announceUpdated(showsWindow: !quiet && requested != nil,
+                model.announceUpdated(showsWindow: false,
                                       completion: UpdateCompletion.take(version: BuildStatus.shared.version))
             }
             if !quiet, let requested { show(section: requested) }
@@ -121,6 +118,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         model?.historyPlayer.close()
         model?.coordinator.cancel()
         OutputMuter.restore()
+    }
+
+    /// Section à ouvrir au lancement (« --section usage ») ; jamais après une mise à jour (« --updated »), même si
+    /// l'ancienne version, qui avait sa fenêtre ouverte, l'a demandée.
+    static func launchSection(_ arguments: [String]) -> AppSection? {
+        guard !arguments.contains("--updated"), let index = arguments.firstIndex(of: "--section"),
+              arguments.indices.contains(index + 1) else { return nil }
+        return AppSection(rawValue: arguments[index + 1])
     }
 
     /// Fichier ouvert avec Wispad (Finder, « open -a Wispad fichier.json », agent) : une configuration est montrée

@@ -1488,14 +1488,13 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
   6. relance : « Redémarrage » s'affiche, puis l'ancienne version (dans la copie cachée) est effacée, la fenêtre de
      mise à jour se ferme (affichée en feuille, elle fait refuser, sans rien dire, la fermeture de l'app par macOS),
      et Wispad quitte ; une petite aide attend la fin de cette instance (60 s au plus), puis ouvre la nouvelle
-     version. Fenêtre affichée avant la relance : la nouvelle version la rouvre aussitôt, sans attendre les clés,
-     sur la fenêtre de mise à jour là où elle s'était arrêtée (« Redémarrage » en cours) ; l'étape se coche, puis
-     « Wispad 0.1.2 est installé. », « Mise à jour depuis la 0.1.1 » (« Retour depuis… » après un retour en arrière)
-     et les notes de version, lues dans ce que l'ancienne version a noté juste avant sa relance
-     (`wispad.update.completion`, version et notes publiques, lu une seule fois, 10 min au plus), donc même hors
-     ligne. Installée par une version qui ne notait rien encore (avant la 0.7.7) : les notes sont lues sur GitHub,
-     sans la ligne « Mise à jour depuis… » ; sans réponse, la bulle seule. Fenêtre fermée : la bulle confirme
-     « Wispad 0.1.2 est installé ». Si macOS refuse quand même de fermer Wispad (trois demandes, par exemple une
+     version en arrière-plan. Elle n'ouvre ni fenêtre, ni notes, ni icône dans le Dock, même si la fenêtre était
+     affichée avant la relance : la bulle seule confirme « Wispad 0.1.2 est installé », et une dictée qui commence la
+     remplace. Les notes restent dans Réglages › Aide › « Nouveautés de cette version ». Avant le 2 novembre 2026,
+     la nouvelle version rouvrait sa fenêtre sur les notes ; relancée en arrière-plan, elle ne pouvait pas prendre le
+     premier plan, et macOS faisait rebondir son icône jusqu'à ce qu'on l'ouvre. La note laissée par l'ancienne
+     version (`wispad.update.completion`) est lue une seule fois et effacée. Si macOS refuse quand même de fermer
+     Wispad (trois demandes, par exemple une
      autre feuille ouverte), Wispad s'arrête de force après avoir rangé comme à une fermeture normale (son du Mac
      rétabli, réglages écrits) : une fois ses fichiers remplacés, l'ancienne instance n'a plus accès au micro ni à
      l'accessibilité et ne peut plus dicter. L'aide ouvre alors la nouvelle version.
