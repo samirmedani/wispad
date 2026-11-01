@@ -39,8 +39,7 @@ testée (`ReleaseScriptTests`), couverte par la signature de l'app, et indépend
   `UpdateInstallRules` (WispadCore).
   Fenêtre de mise à jour et notes de version (`ReleaseNotes` découpe le markdown simple) : `UpdateViews.swift`.
 - **Publier** : `scripts/release.sh` (en-tête : variables d'environnement, étapes). Rien de propre au mainteneur
-  (équipe, certificat, clé de notarisation) n'est dans le dépôt. Une version qui touche au texte n'y part qu'avec un
-  banc du texte vert ([BANC-TEXTE.md](BANC-TEXTE.md)).
+  (équipe, certificat, clé de notarisation) n'est dans le dépôt.
 
 « Aide et retours » : `HelpPage` (`HelpPages.swift`) donne les trois liens de Réglages (`HelpSection`, dans
 `HelpViews.swift` avec « Copier le diagnostic », `AppDiagnostics.clipboardText`, et le prompt `AgentHelpPrompt`), dont les

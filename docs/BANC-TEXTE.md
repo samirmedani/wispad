@@ -3,17 +3,14 @@
 Le texte final d'une dictée passe par une chaîne : assemblage du flux, choix entre le flux et le fichier,
 normalisations, correction (consigne, garde-fou, dates, nombres, listes). Un changement dans cette chaîne peut
 améliorer un cas et en abîmer d'autres. Le banc du texte mesure la version en cours (HEAD) contre la dernière release,
-sur les mêmes dictées réelles, gardées en privé sur le Mac du mainteneur. Il est **obligatoire avant chaque release
-qui touche au texte** : `scripts/release.sh` refuse de publier sans un verdict vert pour le commit exact à publier.
+sur les mêmes dictées réelles, gardées en privé sur le Mac du mainteneur. Il est **facultatif** depuis la 0.8.4 :
+`scripts/release.sh` ne l'exige plus, sur décision du mainteneur (1er novembre 2026).
 
 ## Quand le lancer
 
-`scripts/release.sh` compare la dernière release au commit à publier. Si un chemin de
-[scripts/text-paths.txt](../scripts/text-paths.txt) a changé (transcription, assemblage, correction, finitions, nombres,
-dates, normalisations, choix flux/fichier, orchestration de la dictée), il exige
-`~/Library/Application Support/Wispad/benchmarks/texte/<commit>/verdict.json` avec `pass: true`, pour ce commit et
-contre cette release. Le verdict est lié au commit : on lance donc le banc sur `main`, juste avant la release, une fois
-la dernière pull request fusionnée. Une pull request qui touche au texte peut le lancer avant, pour se faire une idée.
+Quand un chemin de [scripts/text-paths.txt](../scripts/text-paths.txt) change (transcription, assemblage, correction,
+finitions, nombres, dates, normalisations, choix flux/fichier, orchestration de la dictée) et qu'on veut mesurer
+l'effet sur le texte. Le banc écrit `~/Library/Application Support/Wispad/benchmarks/texte/<commit>/verdict.json`.
 
 ## Lancer
 
@@ -21,7 +18,7 @@ la dernière pull request fusionnée. Une pull request qui touche au texte peut 
 scripts/text-bench.sh                 # HEAD contre la dernière release atteignable depuis HEAD
 scripts/text-bench.sh --record        # enregistre d'abord l'étape flux (la première fois, ou paramètres changés)
 scripts/text-bench.sh --refresh       # reconstruit d'abord le corpus de l'étape correction
-scripts/text-bench.sh --base v0.8.0   # contre une autre release ; release.sh n'accepte que la dernière
+scripts/text-bench.sh --base v0.8.0   # contre une autre release
 WISPAD_TEXT_BENCH_MOTS=/private/tmp/essai/mots.json scripts/text-bench.sh   # étape mots sur un corpus d'essai
 ```
 
