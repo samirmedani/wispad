@@ -353,6 +353,9 @@ extension DictationCoordinator {
             language: model.settings.language
         )
         request.tone = model.tone(bundleID: context.bundleID, appName: context.appName)
+        // Ce qui précède le curseur décide de la majuscule et du raccord ; un champ illisible (Electron) prend le
+        // dernier collage de Wispad dans cette app, sans frappe depuis.
+        request.textBeforeCursor = context.beforeCursor ?? TextInserter.recentPaste(pid: context.pid)
         request.dateFormat = model.settings.dateFormat
         request.numberFormat = model.settings.numberFormat
         if let local, !local.isEmpty {

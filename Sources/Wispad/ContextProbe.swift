@@ -10,6 +10,8 @@ final class DictationContext: @unchecked Sendable {
     var pid: pid_t?
     var selectedText: String?
     var nearbyText: String?
+    /// Fin du texte juste avant le curseur au début de la dictée : vide en début de champ, nil si illisible.
+    var beforeCursor: String?
     var isSecure = false
     var element: AXUIElement?
     /// Le collage n'a pas été tenté : l'accessibilité n'est pas autorisée (retirée dans Réglages Système, ou jamais
@@ -34,6 +36,7 @@ final class DictationContext: @unchecked Sendable {
         isSecure = field.isSecure
         selectedText = field.selectedText
         nearbyText = field.nearbyText
+        beforeCursor = field.beforeCursor
         startedInTextField = field.isTextField
     }
 }
@@ -44,6 +47,7 @@ struct FieldSnapshot: @unchecked Sendable {
     var isSecure = false
     var selectedText: String?
     var nearbyText: String?
+    var beforeCursor: String?
     /// Rôle de texte ou curseur de texte : un vrai champ, pas la page ni un conteneur.
     var isTextField = false
 }
@@ -106,6 +110,7 @@ enum ContextProbe {
            let value = string(kAXValueAttribute, element) {
             field.nearbyText = nearby(value: value, element: element)
         }
+        if field.isTextField { field.beforeCursor = textBeforeCursor(element, length: 160) }
         return field
     }
 

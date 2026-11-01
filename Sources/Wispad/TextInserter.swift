@@ -11,6 +11,8 @@ struct InsertionField: @unchecked Sendable {
     var isSecure = false
     var value: String?
     var before: String?
+    /// Début du texte juste après le curseur (ou la sélection) : la phrase continue-t-elle ?
+    var after: String?
     var role: String?
     var subrole: String?
     var hasTextCursor = false
@@ -22,14 +24,18 @@ struct InsertionField: @unchecked Sendable {
         let selection = ContextProbe.selectedRange(element)
         let value = ContextProbe.valueForCheck(element)
         let before: String?
+        var after: String?
         if let value, let selection, selection.location <= (value as NSString).length {
             let start = max(0, selection.location - 32)
             before = (value as NSString).substring(with: NSRange(location: start, length: selection.location - start))
+            let ns = value as NSString
+            let end = min(ns.length, selection.location + max(0, selection.length))
+            after = ns.substring(with: NSRange(location: end, length: min(16, ns.length - end)))
         } else {
             before = ContextProbe.textBeforeCursor(element)
         }
         return InsertionField(
-            element: element, value: value, before: before,
+            element: element, value: value, before: before, after: after,
             role: ContextProbe.string(kAXRoleAttribute, element),
             subrole: ContextProbe.string(kAXSubroleAttribute, element),
             hasTextCursor: selection != nil, selection: selection
@@ -90,6 +96,8 @@ struct InsertionSystem {
     var pasteboard: NSPasteboard = .general
     /// Sur le fil principal : la touche V se cherche dans la disposition du clavier, que macOS n'autorise que là.
     var postPaste: @MainActor (pid_t) async -> Bool = { _ in TextInserter.postCommandV() }
+    /// Une touche Effacer, avant le collage qui prolonge la dictée précédente : retire son point final.
+    var deleteBackward: @MainActor (pid_t) async -> Bool = { _ in TextInserter.postDeleteBackward() }
     /// Zone de saisie lue après l'envoi, pour que les messages de la bulle ne la couvrent pas.
     var locate: (pid_t) async -> CGRect? = { pid in
         await ContextProbe.inputZone(pid: pid, within: TextInserter.fieldReadLimit)
@@ -207,9 +215,14 @@ enum TextInserter {
             return .noTarget
         }
         let memory = previousMemory(pid: pid, element: field.element)
-        let joined = SmartJoin.adjust(text, before: SmartJoin.textBefore(
-            read: field.before, previous: memory?.text, previousConfirmed: memory != nil
-        ))
+        var before = SmartJoin.textBefore(read: field.before, previous: memory?.text, previousConfirmed: memory != nil)
+        // La dictée précédente finit par un point que la correction prolonge : il part avant le collage.
+        if SmartJoin.continuesPreviousPaste(text, before: before, previous: memory?.text), let known = before,
+           shouldProceed(), !Task.isCancelled, system.frontmostPID() == pid, await system.deleteBackward(pid) {
+            before = String(known.dropLast())
+            try? await Task.sleep(nanoseconds: 40_000_000)
+        }
+        let joined = SmartJoin.adjust(SmartJoin.fit(text, before: before, after: field.after), before: before)
         let keystrokes = KeyboardTap.keystrokes
         guard let transaction = PasteboardTransaction(text: joined, pasteboard: system.pasteboard) else {
             log.notice("collage impossible : presse-papiers non modifiable")
@@ -323,6 +336,14 @@ enum TextInserter {
         return last
     }
 
+    /// Dernier collage de Wispad dans cette app, sans frappe depuis : la correction sait ce qui précède le curseur
+    /// quand l'app ne laisse pas lire son champ.
+    static func recentPaste(pid: pid_t?) -> String? {
+        guard let pid, let last, last.pid == pid, Date().timeIntervalSince(last.at) < 30,
+              last.keystrokes == KeyboardTap.keystrokes else { return nil }
+        return last.text
+    }
+
     /// ⌘V comme au clavier : ⌘ enfoncée, V, puis ⌘ relâchée, envoyés au système (l'app au premier plan, vérifiée
     /// juste avant). Chrome et les apps Electron ignorent parfois un ⌘V adressé à leur processus ou porté par la
     /// seule touche V (régression du 13 octobre 2026 : texte absent du champ).
@@ -348,6 +369,20 @@ enum TextInserter {
     @MainActor static func postCommandV() -> Bool {
         guard let events = pasteEvents() else { return false }
         for event in events { event.post(tap: .cghidEventTap) }
+        return true
+    }
+
+    /// Touche Effacer, marquée comme ⌘V : l'écoute du clavier ne la compte pas comme une frappe.
+    @MainActor static func postDeleteBackward() -> Bool {
+        let source = CGEventSource(stateID: .combinedSessionState)
+        source?.userData = KeyboardTap.syntheticMarker
+        let delete: CGKeyCode = 0x33
+        guard let down = CGEvent(keyboardEventSource: source, virtualKey: delete, keyDown: true),
+              let up = CGEvent(keyboardEventSource: source, virtualKey: delete, keyDown: false) else { return false }
+        down.flags = []
+        up.flags = []
+        down.post(tap: .cghidEventTap)
+        up.post(tap: .cghidEventTap)
         return true
     }
 

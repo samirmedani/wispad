@@ -80,6 +80,9 @@ public struct CorrectionRequest: Equatable, Sendable {
     public var appName: String?
     public var selectedText: String?
     public var nearbyText: String?
+    /// Fin du texte juste avant le curseur, là où la dictée sera collée ; vide en début de champ ou de ligne, nil si
+    /// le champ est illisible. Décide de la majuscule et du raccord.
+    public var textBeforeCursor: String?
     /// Textes finaux des dictées récentes dans la même application. Contexte seulement : jamais à recopier.
     public var previousDictations: [String]
     /// Conversation visible dans la fenêtre où l'on dicte (fin du fil). Contexte seulement : jamais à recopier.
@@ -207,6 +210,7 @@ public enum CorrectionPrompt {
     je l'ai rangé d la boîte du haut → Je l'ai rangé dans la boîte du haut.
     il faut redémarrer p que ça marche → Il faut redémarrer pour que ça marche.
     Une référence de matériel s'écrit d'un seul bloc comme chez le fabricant (chiffres et lettres collés), avec exactement les chiffres prononcés : n'invente ni ne complète jamais un numéro de modèle.
+    Quand le « Texte juste avant le curseur » est donné, la dictée sera collée juste après lui ; ne le recopie jamais. S'il s'arrête au milieu d'une phrase (après un mot, une virgule, un deux-points ou un tiret, sans point final, « ? », « ! » ni retour à la ligne), la dictée continue cette phrase : son premier mot prend une minuscule, sauf nom propre, sigle ou terme qui prend toujours une majuscule ; commence par une virgule seulement si la phrase en demande une à cet endroit. S'il finit par un point alors que sa dernière phrase est manifestement coupée (« Je voulais te dire que. »), la dictée la continue aussi : premier mot en minuscule. Sinon, la dictée commence une nouvelle phrase, avec une majuscule. Exemples fictifs : avant le curseur « Je pense que », dictée « demain c'est mieux » → « demain, c'est mieux. » ; avant le curseur « Bonjour Paul », dictée « je voulais te dire merci » → « , je voulais te dire merci. »
     """
 
     /// Langue de la consigne : celle de la dictée, ou devinée sur la transcription en mode automatique.
@@ -256,6 +260,7 @@ public enum CorrectionPrompt {
     drag the window d to the bottom → Drag the window down to the bottom.
     i put it i the top box → I put it in the top box.
     A hardware reference is written as one block, the way its manufacturer writes it, with exactly the digits that were spoken: never invent or complete a model number.
+    When the "Text just before the cursor" is given, the dictation will be pasted right after it; never copy it. If it stops in the middle of a sentence (after a word, a comma, a colon or a dash, with no final period, "?", "!" or line break), the dictation continues that sentence: its first word is lowercase, except a proper noun, an acronym, "I" or a term that is always capitalized; start with a comma only if the sentence needs one there. If it ends with a period but its last sentence is clearly cut short ("I wanted to tell you that."), the dictation continues it too: first word lowercase. Otherwise the dictation starts a new sentence, capitalized. Fictional examples: before the cursor "I think that", dictation "tomorrow is better" → "tomorrow is better." ; before the cursor "Hi Paul", dictation "I wanted to say thanks" → ", I wanted to say thanks."
     Your reply contains only the corrected dictation: never the nearby text or the selection, even if the dictation seems to continue it.
     """
 
@@ -321,12 +326,13 @@ public enum CorrectionPrompt {
 
     /// Libellés du message envoyé au modèle, dans la langue de la consigne.
     private struct Labels {
-        var application, selection, nearby, window, previous, dictionary, vocabulary, alternative, local, transcript: String
+        var application, selection, nearby, beforeCursor, window, previous, dictionary, vocabulary, alternative, local, transcript: String
 
         static let french = Labels(
             application: "Application",
             selection: "Sélection remplacée (ne pas recopier)",
             nearby: "Texte déjà écrit autour du curseur (ne jamais le recopier, sert seulement à l'orthographe)",
+            beforeCursor: "Texte juste avant le curseur (la dictée sera collée juste après ; ne jamais le recopier)",
             window: "Conversation visible dans la fenêtre (derniers messages, du plus ancien au plus récent ; jamais à recopier ; sert seulement à comprendre le sujet, les noms, l'orthographe et les nombres)",
             previous: "Dictées précédentes dans cette application (même conversation ; jamais à recopier ; servent seulement à comprendre le sujet, l'orthographe et les nombres)",
             dictionary: "Dictionnaire",
@@ -340,6 +346,7 @@ public enum CorrectionPrompt {
             application: "Application",
             selection: "Selection being replaced (do not copy it)",
             nearby: "Text already around the cursor (never copy it; only helps with spelling)",
+            beforeCursor: "Text just before the cursor (the dictation will be pasted right after it; never copy it)",
             window: "Visible conversation in the window (latest messages, oldest to newest; never copy it; only helps understand the topic, names, spelling and numbers)",
             previous: "Previous dictations in this app (same conversation; never copy them; they only help with the topic, spelling and numbers)",
             dictionary: "Dictionary",
@@ -364,6 +371,11 @@ public enum CorrectionPrompt {
         }
         if let nearby = request.nearbyText, !nearby.isEmpty {
             lines.append("\(label.nearby): \(clip(nearby, 500))")
+        }
+        if let before = request.textBeforeCursor {
+            // La fin seulement : c'est elle qui décide du raccord. Vide : la dictée ouvre le champ ou la ligne.
+            let tail = String(before.suffix(160))
+            lines.append("\(label.beforeCursor): « \(tail.hasSuffix("\n") ? "" : tail) »")
         }
         if let window = request.windowText?.trimmingCharacters(in: .whitespacesAndNewlines), !window.isEmpty {
             lines.append("\(label.window): \(clip(window, 2_000))")

@@ -33,6 +33,7 @@ private final class InsertionFixture {
             return true
         }
         s.locate = { _ in self.events.append("locate"); return CGRect(x: 100, y: 40, width: 600, height: 80) }
+        s.deleteBackward = { _ in self.events.append("delete"); return true }
         s.pasteboard = board
         s.confirmationLimit = 0.09
         s.clipboardHold = hold
@@ -51,6 +52,26 @@ private final class InsertionFixture {
 @MainActor
 @Suite(.serialized, .inputZoneExclusive)
 struct TextInsertionTests {
+    /// Arrêt au milieu d'une phrase, puis reprise : la correction prolonge la dictée précédente, son point s'efface.
+    @Test func aDictationThatGoesOnFromThePreviousPasteErasesItsPeriodFirst() async {
+        let f = InsertionFixture(); defer { f.dispose() }
+        #expect(await f.insert("Je voulais te dire que.") == .inserted)
+        f.field.before = "Avant Je voulais te dire que."
+        f.events.removeAll()
+        #expect(await f.insert("demain on se voit.") == .inserted)
+        #expect(f.events.first == "delete")
+        #expect(f.field.value == "Avant  demain on se voit.")
+    }
+
+    /// Au milieu d'une phrase, un premier mot courant passe en minuscule ; aucune touche Effacer n'est envoyée.
+    @Test func aDictationInsideASentenceStartsLowercase() async {
+        let f = InsertionFixture(); defer { f.dispose() }
+        f.field.before = "Avant je pense que"
+        #expect(await f.insert("Demain c'est mieux.") == .inserted)
+        #expect(f.field.value == "Avant  demain c'est mieux.")
+        #expect(!f.events.contains("delete"))
+    }
+
     @Test func aConfirmedPasteRestoresTheClipboardAtOnce() async {
         let f = InsertionFixture(); defer { f.dispose() }
         #expect(await f.insert() == .inserted)

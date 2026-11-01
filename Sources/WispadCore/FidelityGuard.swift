@@ -31,7 +31,9 @@ public enum FidelityGuard {
                   WrittenGrammar.matches(reference: grammarReference, corrected: corrected)
             else { return transcript }
         }
-        if copiesContext(written: written, heard: heard, context: context, additional: previousDictations) { return transcript }
+        if copiesContext(written: written, heard: heard, context: context, additional: previousDictations, alsoHeard: alsoHeard) {
+            return transcript
+        }
         if losesTheDictation(heard: heard, written: written, alsoHeard: alsoHeard) { return transcript }
         let repaired = restoreTranslatedWords(
             heard: heard,
@@ -636,19 +638,24 @@ public enum FidelityGuard {
         return false
     }
 
-    /// Huit mots de suite repris du texte voisin ou d'une dictée précédente, absents de la dictée :
-    /// le modèle a recopié le contexte.
-    static func copiesContext(written: [String], heard: [String], context: String?, additional: [String] = []) -> Bool {
+    /// Huit mots de suite repris du texte voisin, d'une dictée précédente ou de la conversation visible, dont au moins
+    /// deux n'ont été entendus par aucune écoute : le modèle a recopié le contexte. Un seul mot repris, ou un mot que
+    /// le direct a entendu (« le stand-up du dev », « du » perdu par le fichier seul), n'est pas une recopie : relire à
+    /// voix haute un texte affiché à l'écran faisait jeter toute la correction, mise en forme comprise (1er novembre 2026).
+    static func copiesContext(written: [String], heard: [String], context: String?, additional: [String] = [],
+                              alsoHeard: [String] = []) -> Bool {
         let sources = [context].compactMap { $0?.isEmpty == false ? $0 : nil } + additional.filter { !$0.isEmpty }
         // Ce qui est écrit et entendu ne dépend pas de la source : calculé une fois. Moins de huit mots écrits,
         // aucune copie possible : le contexte (jusqu'à 3 500 caractères) n'est pas découpé pour rien.
         let keys = written.map(CorrectionLearner.key).filter { !$0.isEmpty }
         guard keys.count >= copiedSpan, !sources.isEmpty else { return false }
-        let said = Set(heard.map(CorrectionLearner.key))
+        let said = Set((heard + alsoHeard).map(CorrectionLearner.key))
         return sources.contains { copiesOneContext(keys: keys, said: said, context: $0) }
     }
 
     private static let copiedSpan = 8
+    /// Mots jamais entendus dans un passage repris, à partir desquels c'est une recopie.
+    private static let copiedUnheard = 2
 
     private static func copiesOneContext(keys: [String], said: Set<String>, context: String) -> Bool {
         guard !context.isEmpty else { return false }
@@ -659,7 +666,9 @@ public enum FidelityGuard {
         let windows = Set((0...(around.count - span)).map { around[$0..<($0 + span)].joined(separator: " ") })
         for start in 0...(keys.count - span) {
             let slice = keys[start..<(start + span)]
-            if windows.contains(slice.joined(separator: " ")), slice.contains(where: { !said.contains($0) }) { return true }
+            if windows.contains(slice.joined(separator: " ")), slice.filter({ !said.contains($0) }).count >= copiedUnheard {
+                return true
+            }
         }
         return false
     }
