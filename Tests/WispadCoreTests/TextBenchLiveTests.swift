@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import os
 import XCTest
@@ -9,7 +10,8 @@ import XCTest
 /// sortie ne montre que des comptes et des coûts, jamais un texte dicté.
 ///
 /// Le script copie ce fichier, avec SpendLedger.swift, dans un arbre temporaire de la release de base : la même mesure
-/// s'applique aux deux versions. Il ne doit donc appeler que du code présent dans l'une et l'autre.
+/// s'applique aux deux versions. Il ne doit donc appeler que du code présent dans l'une et l'autre, sauf sous un
+/// drapeau de version que le script ne pose que sur un arbre qui a ce code (WISPAD_VOTE_DES_ECOUTES : ListeningVote).
 final class TextBenchLiveTests: XCTestCase {
     // MARK: - Fichiers privés
 
@@ -112,6 +114,56 @@ final class TextBenchLiveTests: XCTestCase {
         var costUSD: Double
         var correction: [CorrectionOutcome]
         var stream: [StreamOutcome]
+    }
+
+    /// Étape mots : ce que les écoutes ont entendu pour des dictées dont on sait ce qui a vraiment été dit (mots.json,
+    /// construit à la main, jamais par le script). Les contrôles du corpus restent à text-bench.py, qui les applique
+    /// au texte final.
+    struct WordsCorpus: Codable, Sendable {
+        var version: Int
+        var cases: [WordsCase]
+    }
+
+    struct WordsCase: Codable, Sendable {
+        var id: String
+        var group: String
+        /// Texte du flux xAI, du fichier xAI et de la seconde écoute d'Apple sur le Mac ; nil si absent.
+        var stream: String?
+        var file: String?
+        var local: String?
+        var app: String?
+        var previous: [String]
+        var dictionary: [String]
+    }
+
+    struct WordsOutcome: Codable, Sendable {
+        var id: String
+        var group: String
+        /// Texte retenu comme l'app : « flux », « fichier », « vote » (vote des écoutes), ou « vide » (aucune parole).
+        var source: String
+        /// Mots remplacés par le vote des écoutes ; nil si la version ne l'a pas ou s'il n'a rien eu à départager.
+        var voteReplacements: Int?
+        /// Passages de la seconde écoute joints à la correction (LocalHearing).
+        var localPassages: Int
+        var input: String
+        var correction: Correction?
+    }
+
+    /// Orthographe de macOS dans le processus de test, par langue : sans elle, les filtres de la seconde écoute sont
+    /// nil, comme dans l'app quand macOS n'a pas la langue.
+    struct Spelling: Codable, Sendable {
+        var french: Bool
+        var english: Bool
+    }
+
+    struct WordsReport: Codable, Sendable {
+        var run: String
+        /// Vote des écoutes compilé dans cette version (drapeau WISPAD_VOTE_DES_ECOUTES).
+        var vote: Bool
+        var spelling: Spelling
+        var reservedUSD: Double
+        var costUSD: Double
+        var cases: [WordsOutcome]
     }
 
     struct BenchError: Error, CustomStringConvertible {
@@ -312,6 +364,151 @@ final class TextBenchLiveTests: XCTestCase {
         }
         return try? await BatchTranscriber.transcribe(fileURL: URL(fileURLWithPath: "/dev/null"), request: speech,
                                                       transport: transport, readFile: { _ in Data() })
+    }
+
+    // MARK: - Étape mots
+
+    /// Vote des écoutes, compilé seulement dans un arbre qui a Sources/WispadCore/ListeningVote.swift : text-bench.sh
+    /// pose alors ce drapeau. Une base plus ancienne compile le même harnais sans lui.
+    #if WISPAD_VOTE_DES_ECOUTES
+    static let listeningVote = true
+    #else
+    static let listeningVote = false
+    #endif
+
+    /// Un passage de l'étape mots : pour chaque cas, le texte retenu comme dans l'app, les passages de la seconde
+    /// écoute, puis la correction de l'étape correction (même langue, même dernière normalisation). Seule la correction
+    /// appelle le réseau (DeepSeek, clé de test).
+    func testWordsPass() async throws {
+        let setup = try benchSetup(mode: "mots", key: "WISPAD_LIVE_DEEPSEEK_KEY")
+        let env = ProcessInfo.processInfo.environment
+        let run = env["WISPAD_TEXT_BENCH_RUN"] ?? "mots"
+        guard let out = env["WISPAD_TEXT_BENCH_OUT"], !out.isEmpty else { throw BenchError("WISPAD_TEXT_BENCH_OUT absent.") }
+        guard let path = env["WISPAD_TEXT_BENCH_MOTS"], !path.isEmpty else { throw BenchError("WISPAD_TEXT_BENCH_MOTS absent.") }
+        let corpus = try JSONDecoder().decode(WordsCorpus.self, from: Data(contentsOf: URL(fileURLWithPath: path)))
+        guard corpus.version == 1 else { throw BenchError("mots.json : version \(corpus.version) inconnue.") }
+        let spelling = await Self.spelling()
+        var outcomes: [WordsOutcome] = []
+        var requests: [CorrectionRequest?] = []
+        for item in corpus.cases {
+            let (outcome, request) = await Self.retainHeard(item, spelling: spelling)
+            outcomes.append(outcome)
+            requests.append(request)
+        }
+        let speech = SpeechRequest(provider: .xai, liveModel: "", fileModel: "", apiKey: "", language: .french,
+                                   keyterms: [], prompt: "", cleanupKey: setup.key)
+        // Même réservation que les autres étapes : un appel par cas au pire coût, puis le seul coût mesuré.
+        let reserved = requests.compactMap { $0 }.map(Self.worstCallUSD).reduce(0, +)
+        let ledger = SpendLedger.wispadDefault()
+        try ledger.reserve(reserved)
+        var budget = Budget(limit: reserved)
+        do {
+            for (index, request) in requests.enumerated() {
+                guard let request else { continue }
+                outcomes[index].correction = try await Self.correct(request, speech: speech, budget: &budget)
+            }
+        } catch {
+            try? ledger.settle(reserved: reserved, actual: budget.spent)
+            throw error
+        }
+        try ledger.settle(reserved: reserved, actual: budget.spent)
+        let report = WordsReport(run: run, vote: Self.listeningVote, spelling: spelling, reservedUSD: reserved,
+                                 costUSD: budget.spent, cases: outcomes)
+        try Self.writePrivate(report, to: URL(fileURLWithPath: out))
+        let corrected = outcomes.filter { $0.correction?.corrected == true }.count
+        let voted = outcomes.filter { $0.source == "vote" }.count
+        let passages = outcomes.map(\.localPassages).reduce(0, +)
+        let vote = Self.listeningVote ? "compilé" : "absent"
+        let languages = [spelling.french ? "fr" : nil, spelling.english ? "en" : nil].compactMap { $0 }.joined(separator: "+")
+        print("BANC-TEXTE \(run) : mots \(corrected)/\(outcomes.count) corrigées, \(voted) retenues par le vote (\(vote)), "
+              + "\(passages) passages de la seconde écoute, orthographe \(languages.isEmpty ? "absente" : languages) ; "
+              + "coût \(String(format: "%.4f", budget.spent)) $ (réservé \(String(format: "%.3f", reserved)) $)")
+    }
+
+    /// Le texte que l'app retient en fin de dictée, fichier arrivé (DictationCoordinator.verifyAgainstFile), puis sa
+    /// requête de correction (makeCorrectionRequest) avec les passages de la seconde écoute.
+    static func retainHeard(_ item: WordsCase, spelling: Spelling) async -> (WordsOutcome, CorrectionRequest?) {
+        let stream = (item.stream ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let file = (item.file ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let local = (item.local ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let heard = await choose(stream: stream, file: file, local: local.isEmpty ? nil : local, dictionary: item.dictionary,
+                                 spelling: spelling)
+        let input = FranglaisNormalizer.normalize(heard.raw.trimmingCharacters(in: .whitespacesAndNewlines))
+        var outcome = WordsOutcome(id: item.id, group: item.group, source: input.isEmpty ? "vide" : heard.source,
+                                   voteReplacements: heard.replacements, localPassages: 0, input: input, correction: nil)
+        guard !input.isEmpty else { return (outcome, nil) }
+        var request = correctionRequest(input, app: item.app, previous: item.previous, dictionary: item.dictionary,
+                                        alternative: heard.alternative.map { FranglaisNormalizer.normalize($0) })
+        if !local.isEmpty {
+            request.localDivergences = await localPassages(input, hearing: local, dictionary: item.dictionary, spelling: spelling)
+            outcome.localPassages = request.localDivergences.count
+        }
+        return (outcome, request)
+    }
+
+    /// Le fichier si le flux est vide ; le flux si le fichier est vide ou dit la même chose (TranscriptEquivalence) ;
+    /// sinon le fichier, avec le flux en autre écoute. Avec le vote des écoutes, ce dernier cas devient le texte voté :
+    /// le flux s'il dit la même chose que lui, sinon le texte voté, avec le flux en autre écoute. Termes anglais du
+    /// fichier protégés comme dans l'app (englishTerm), sur le fil principal.
+    @MainActor
+    static func choose(stream: String, file: String, local: String?, dictionary: [String], spelling: Spelling)
+        -> (raw: String, alternative: String?, source: String, replacements: Int?) {
+        if stream.isEmpty { return (file, nil, "fichier", nil) }
+        if TranscriptEquivalence.normalize(file).isEmpty || TranscriptEquivalence.equivalent(stream, file) {
+            return (stream, nil, "flux", nil)
+        }
+        #if WISPAD_VOTE_DES_ECOUTES
+        let vote = ListeningVote.resolve(file: file, stream: stream, local: local, protected: dictionary + TechVocabulary.correction,
+                                         isTerm: englishTerm(spelling))
+        if TranscriptEquivalence.equivalent(stream, vote.text) { return (stream, nil, "flux", vote.replacements) }
+        return (vote.text, stream, vote.replacements > 0 ? "vote" : "fichier", vote.replacements)
+        #else
+        return (file, stream, "fichier", nil)
+        #endif
+    }
+
+    /// Passages de la seconde écoute joints à la correction, comme makeCorrectionRequest pour une dictée en français :
+    /// mots connus (knownWord) et termes anglais (englishTerm) selon l'orthographe de macOS, appelée sur le fil
+    /// principal comme dans l'app.
+    @MainActor
+    static func localPassages(_ transcript: String, hearing: String, dictionary: [String], spelling: Spelling) -> [LocalDivergence] {
+        let checker = NSSpellChecker.shared
+        func known(_ word: String, _ code: String) -> Bool {
+            checker.checkSpelling(of: word, startingAt: 0, language: code, wrap: false, inSpellDocumentWithTag: 0,
+                                  wordCount: nil).location == NSNotFound
+        }
+        let terms = Set((dictionary + TechVocabulary.correction).flatMap { $0.split(whereSeparator: \.isWhitespace) }.map { $0.lowercased() })
+        let knownWord: ((String) -> Bool)? = spelling.french ? { terms.contains($0.lowercased()) || known($0, "fr") } : nil
+        return LocalHearing.divergences(transcript: transcript, hearing: hearing, knownWord: knownWord, isTerm: englishTerm(spelling),
+                                        protectedTerms: dictionary + TechVocabulary.correction)
+    }
+
+    /// Terme anglais d'une dictée française, comme DictationCoordinator.englishTerm : connu de l'orthographe anglaise,
+    /// inconnu de la française ; nil sans l'une des deux.
+    @MainActor
+    static func englishTerm(_ spelling: Spelling) -> ((String) -> Bool)? {
+        guard spelling.french, spelling.english else { return nil }
+        let checker = NSSpellChecker.shared
+        func known(_ word: String, _ code: String) -> Bool {
+            checker.checkSpelling(of: word, startingAt: 0, language: code, wrap: false, inSpellDocumentWithTag: 0,
+                                  wordCount: nil).location == NSNotFound
+        }
+        return { known($0, "en") && !known($0, "fr") }
+    }
+
+    /// L'orthographe de macOS dans ce processus : la langue doit y être, comme dans l'app, et distinguer un mot courant
+    /// d'un mot inventé. Sinon le banc passe nil, comme l'app sans cette langue, et le passage le note.
+    @MainActor
+    static func spelling() -> Spelling {
+        let checker = NSSpellChecker.shared
+        func works(_ code: String, common: String) -> Bool {
+            func known(_ word: String) -> Bool {
+                checker.checkSpelling(of: word, startingAt: 0, language: code, wrap: false, inSpellDocumentWithTag: 0,
+                                      wordCount: nil).location == NSNotFound
+            }
+            return checker.availableLanguages.contains { $0.hasPrefix(code) } && known(common) && !known("zqxvbwk")
+        }
+        return Spelling(french: works("fr", common: "maison"), english: works("en", common: "house"))
     }
 
     // MARK: - Enregistrement de l'étape flux (--record)

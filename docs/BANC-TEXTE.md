@@ -22,6 +22,7 @@ scripts/text-bench.sh                 # HEAD contre la dernière release atteign
 scripts/text-bench.sh --record        # enregistre d'abord l'étape flux (la première fois, ou paramètres changés)
 scripts/text-bench.sh --refresh       # reconstruit d'abord le corpus de l'étape correction
 scripts/text-bench.sh --base v0.8.0   # contre une autre release ; release.sh n'accepte que la dernière
+WISPAD_TEXT_BENCH_MOTS=/private/tmp/essai/mots.json scripts/text-bench.sh   # étape mots sur un corpus d'essai
 ```
 
 Clés de test seulement (`scripts/test-keys.sh`) : `WISPAD_TEST_DEEPSEEK_API_KEY` toujours, `WISPAD_TEST_XAI_API_KEY`
@@ -45,12 +46,16 @@ construit l'app (`LiveSpeechSession` : paramètres, langue, mots-clés), et le b
 ainsi que la réponse brute de la transcription du fichier. Ensuite, chaque version relit ces réponses sans réseau,
 avec son propre code : les événements passent dans sa `LiveSpeechSession` (assemblage par `TranscriptAssembler`, fin
 du flux), la réponse dans son `BatchTranscriber`. Puis le choix de l'app : le flux s'il dit la même chose que le
-fichier (`TranscriptEquivalence`), sinon le fichier, avec le flux en seconde écoute ; puis `FranglaisNormalizer` et
+fichier (`TranscriptEquivalence`), sinon le fichier, avec le flux en autre écoute ; puis `FranglaisNormalizer` et
 la correction. L'étape ne coûte rien chez xAI et son texte du flux est identique d'un passage à l'autre.
 
-**Passages.** base-0, head-0, base-1, head-1, en alternance : une dérive de DeepSeek pendant le banc touche les deux
-versions. La base tourne dans un arbre Git temporaire et détaché sous `/private/tmp`, retiré à la fin, où le script
-copie le harnais de HEAD (`TextBenchLiveTests.swift` et `SpendLedger.swift`) : la même mesure s'applique aux deux.
+**Étape mots.** Les mots mal entendus qui restent dans le texte collé, contre une référence privée de ce qui a
+vraiment été dit : voir [Étape mots](#étape-mots). Sans cette référence, l'étape est sautée.
+
+**Passages.** base-0, head-0, base-1, head-1, en alternance, chacun avec toutes les étapes : une dérive de DeepSeek
+pendant le banc touche les deux versions. La base tourne dans un arbre Git temporaire et détaché sous `/private/tmp`,
+retiré à la fin, où le script copie le harnais de HEAD (`TextBenchLiveTests.swift` et `SpendLedger.swift`) : la même
+mesure s'applique aux deux.
 
 | Mesure | Définition |
 | --- | --- |
@@ -64,22 +69,90 @@ copie le harnais de HEAD (`TextBenchLiveTests.swift` et `SpendLedger.swift`) : l
 | Jetons | Entrée (cache compris) et sortie, par correction. |
 | Coût pour 1 000 dictées | Au tarif de `Pricing`. |
 | Accord aux jonctions (flux) | À chaque jonction entre deux segments finaux du flux : fin de phrase ou suite. Part des jonctions où le texte du flux décide comme la transcription du fichier, prise comme référence. Donné aussi pour le texte final, à titre indicatif. |
+| Pièges réparés, témoins gardés (mots) | Contrôles de la référence qui passent sur le texte final, moyenne des deux passages. |
+| Artefacts | « v. » isolés devant un mot dans les textes finaux de toutes les étapes, moyenne des deux passages. |
+
+## Étape mots
+
+**Référence privée.** L'étape part de dictées dont on sait ce qui a vraiment été dit. Leur référence est faite à la
+main, dans `~/Library/Application Support/Wispad/benchmarks/texte/mots.json` : le script ne la crée ni ne la modifie
+jamais. Sans ce fichier, l'étape est sautée avec une note, et le banc reste valable sur les deux autres. Avec
+`WISPAD_TEXT_BENCH_MOTS=<fichier>`, il en prend un autre pour un essai, et le verdict le note (`corpusMots`). Chaque
+cas donne ce que les écoutes ont entendu (flux et fichier de xAI, seconde écoute d'Apple sur le Mac), son contexte et
+ses contrôles :
+
+```json
+{"version": 1, "cases": [{
+  "id": "UUID", "group": "piege|temoin|neutre|v",
+  "stream": "texte du flux xAI ou null", "file": "texte du fichier xAI ou null",
+  "local": "seconde écoute Apple ou null", "app": "nom d'app ou null",
+  "previous": ["dictées précédentes"], "dictionary": ["termes"],
+  "checks": [{"kind": "piege|temoin", "ok": "regex", "ko": "regex ou null", "note": "court"}]
+}]}
+```
+
+Le script vérifie ce format avant toute compilation ; une erreur donne le rang du cas, jamais son texte.
+
+**Ce que refait chaque version**, cas par cas, comme l'app (`DictationCoordinator`) :
+
+1. Texte retenu : le fichier si le flux est vide ; le flux si le fichier est vide ou dit la même chose
+   (`TranscriptEquivalence`) ; sinon le fichier, avec le flux en autre écoute. Une version qui a le vote des écoutes
+   confie ce dernier cas à `ListeningVote`, termes anglais du fichier protégés comme dans l'app : le flux si le texte
+   voté dit la même chose que lui, sinon le texte voté, avec le flux en autre écoute.
+2. `FranglaisNormalizer` sur le texte retenu et sur l'autre écoute.
+3. Passages de la seconde écoute (`LocalHearing.divergences`), protégés par le dictionnaire du cas et
+   `TechVocabulary`, avec l'orthographe de macOS comme `makeCorrectionRequest` : mot connu en français, terme anglais.
+   Elle répond dans `swift test` (vérifié le 31 octobre 2026). Si une langue y manque, ou ne distingue pas un mot
+   courant d'un mot inventé, son filtre vaut nil, comme dans l'app sans cette langue, et le verdict le note.
+4. La correction de l'étape correction : même langue, second essai, dernière normalisation.
+
+Le banc garde, par cas : la source retenue (flux, fichier ou vote), le texte final, la réussite, le délai, le coût et
+les jetons. Chaque passage de l'étape réserve d'abord le pire coût de ses cas, comme les autres.
+
+**Contrôles.** Un piège est un mot mal entendu que le texte final doit avoir réparé ; un témoin, un mot juste qu'il
+doit avoir gardé. Un contrôle passe si `ok` trouve une correspondance dans le texte final (expression régulière de
+Python, casse ignorée) et si `ko`, quand il existe, n'en trouve aucune. Exemple inventé : la dictée dit « les mots du
+jour », le fichier entend « les mottes du jour » ; ce piège passe quand le texte collé dit de nouveau « mots » :
+`{"kind": "piege", "ok": "\\bmots\\b", "ko": "\\bmottes\\b", "note": "mottes pour mots"}`.
+
+**Artefacts.** Un « v. » isolé devant un mot, `(?<![\w'’.])v\.\s+(?=\w)`, compté dans les textes finaux de toutes les
+étapes : une dictée ne l'écrit presque jamais.
+
+**Seuils.** Rouge si HEAD garde plus d'un témoin de moins que la base, répare plus d'un piège de moins, ou laisse plus
+d'artefacts qu'elle, en moyenne sur les deux passages ; ou si l'étape franchit les seuils habituels de dictées
+corrigées, de délai et de jetons. Sa fidélité est donnée à titre indicatif : réparer un mot en change un.
+
+**Rapport.** `rapport.md` liste chaque contrôle qui change entre la base et HEAD : son cas, sa note, sa réussite sur
+les deux passages de chaque version et le texte final des deux. La sortie standard n'en donne que le nombre.
+
+### Une fonction de version : le vote des écoutes
+
+Le harnais tourne dans les deux versions, et la base n'a pas toujours le code qu'il mesure. Une fonction de version
+s'appelle donc sous un drapeau de compilation, que `text-bench.sh` ne pose que sur un arbre qui a son fichier :
+`-Xswiftc -DWISPAD_VOTE_DES_ECOUTES` quand `Sources/WispadCore/ListeningVote.swift` existe. Une version qui a le vote
+le compile et l'applique ; une base plus ancienne, comme v0.8.2, compile le même harnais sans lui. Le script le dit à
+la compilation, et l'étape mots l'affiche (« vote des écoutes base absent, head compilé »). Une autre fonction de
+version suit le même chemin : un `#if` dans le harnais, un test de fichier dans `build()`. Si ce fichier change de
+nom, le drapeau tombe sans erreur : la ligne du vote le montre.
 
 ## Verdict
 
-Rouge si, pour l'une des deux étapes, HEAD fait moins bien que la base au-delà du bruit :
+Rouge si, pour l'une des étapes, HEAD fait moins bien que la base au-delà du bruit :
 
 - moins de dictées corrigées que la base, moins une ;
-- fidélité moins bonne de plus de max(0,5 mot, bruit) ;
-- plus de 2 phrases de 4 mots ou moins de plus ;
+- étapes correction et flux : fidélité moins bonne de plus de max(0,5 mot, bruit) ;
+- étapes correction et flux : plus de 2 phrases de 4 mots ou moins de plus ;
 - délai médian au-delà de la base × 1,15 + 50 ms ;
 - jetons d'entrée au-delà de la base × 1,25 ;
 - étape flux : accord aux jonctions du texte du flux inférieur de plus de 5 points (ce texte ne dépend pas de
-  DeepSeek : aucun bruit).
+  DeepSeek : aucun bruit) ;
+- étape mots : plus d'un témoin gardé, ou plus d'un piège réparé, de moins que la base ;
+- plus de « v. » isolés que la base dans les textes finaux de toutes les étapes.
 
-Sinon vert. Le script écrit `verdict.json` (`sha`, `base`, `date`, `pass`, métriques, raisons) et `rapport.md`, un
-rapport privé qui montre les dix dictées qui changent le plus, textes compris, pour une relecture humaine : un vert
-dit seulement qu'aucun seuil n'est franchi. Sur la sortie standard : des chiffres et le verdict, jamais un texte dicté.
+Sinon vert. Le script écrit `verdict.json` (`sha`, `base`, `date`, `pass`, métriques, raisons, `corpusMots`) et
+`rapport.md`, un rapport privé qui montre les contrôles de l'étape mots qui changent et les dix dictées qui changent
+le plus, textes compris, pour une relecture humaine : un vert dit seulement qu'aucun seuil n'est franchi. Sur la
+sortie standard : des chiffres et le verdict, jamais un texte dicté.
 
 ## Coût
 
@@ -88,7 +161,8 @@ banc coûte environ 0,04 $ de DeepSeek hors de ses heures pleines, le double pen
 corrections. Chaque passage réserve d'abord son pire coût dans le plafond des tests réseau (`SpendLedger`, 6 $ au
 total), environ 0,22 $ (toute l'entrée hors cache, sortie maximale, tarif plein), puis n'y garde que le coût mesuré ;
 un passage qui dépasserait sa réservation s'arrête. Le banc refuse donc de partir quand il reste moins de 0,22 $ sous
-le plafond. Le script affiche le cumul à la fin.
+le plafond. L'étape mots ajoute une correction par cas et par passage, environ 0,0001 $ chacune, et réserve à part
+environ 0,003 $ par cas, dans le même plafond. Le script affiche le cumul à la fin.
 
 ## Repères
 
@@ -102,9 +176,10 @@ de 1 041 à 1 162 ms selon le passage).
 ## Confidentialité
 
 Tout reste dans `~/Library/Application Support/Wispad/benchmarks/texte/` (dossier 0700, fichiers 0600), jamais dans
-le dépôt : le corpus (`correction.json`, `flux-entree.json`), l'enregistrement (`flux.json`) et, par commit, les
-passages, les journaux, `rapport.md` et `verdict.json`. L'historique (`wispad.sqlite`) est ouvert en lecture
-seule. Supprimer ce dossier efface tout ; le prochain banc reconstruit le corpus et demande `--record`.
+le dépôt : le corpus (`correction.json`, `flux-entree.json`), l'enregistrement (`flux.json`), la référence de l'étape
+mots (`mots.json`) et, par commit, les passages (`mots-*.json` pour l'étape mots), les journaux, `rapport.md` et
+`verdict.json`. L'historique (`wispad.sqlite`) est ouvert en lecture seule. Supprimer ce dossier efface tout ; le
+prochain banc reconstruit le corpus et demande `--record`, mais `mots.json`, fait à la main, ne se reconstruit pas.
 
 ## Réenregistrer l'étape flux
 
@@ -119,6 +194,7 @@ s'arrête si HEAD en a une autre. Un changement de l'ordre de fin du flux (`fina
 
 Le harnais (`Tests/WispadCoreTests/TextBenchLiveTests.swift`) reproduit l'orchestration de l'app
 (`DictationCoordinator` : fichier arrivé à temps, choix du texte, normalisations, correction) avec les réglages par
-défaut (français, listes, heures compactes, ton naturel), sans texte voisin, fenêtre, seconde écoute ni correction
-préparée pendant la dictée. Un changement de cette orchestration se reporte dans le harnais pour être mesuré. Le
-harnais tourne aussi dans la base : il n'appelle que du code présent dans les deux versions.
+défaut (français, listes, heures compactes, ton naturel), sans texte voisin, fenêtre ni correction préparée pendant
+la dictée. Seule l'étape mots a une seconde écoute, celle de sa référence, et donc le vote des écoutes. Un changement
+de cette orchestration se reporte dans le harnais pour être mesuré. Le harnais tourne aussi dans la base : il
+n'appelle que du code présent dans les deux versions, sauf sous un drapeau de version (voir [Étape mots](#étape-mots)).
