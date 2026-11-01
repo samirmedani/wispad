@@ -16,7 +16,17 @@ Raccourci par défaut : fn seule. Wispad intercepte la touche fn pour que macOS 
   au repos, il n'appartient qu'à l'app.
 - Moins de 0,3 s d'audio : rien n'est envoyé.
 - Une nouvelle dictée peut commencer pendant que la précédente se termine : les textes se collent dans l'ordre
-  où ils ont été dits, séparés par une espace, sans changer de majuscule.
+  où ils ont été dits, séparés par une espace.
+- Raccord avec le texte avant le curseur (lu au collage, ou dernier collage de Wispad dans ce champ, sans frappe
+  depuis) : au milieu d'une phrase (après un mot, « , », « : », « ; » ou un tiret), un premier mot courant (« Je »,
+  « Demain », « Et », « The »…) passe en minuscule ; en début de champ, de ligne ou après « . », « ! », « ? », « … »,
+  il prend une majuscule. Un nom propre, un sigle ou un terme garde la casse de la correction, qui reçoit aussi ce
+  texte (« Texte juste avant le curseur ») et choisit au besoin une virgule de raccord. Si la phrase continue juste
+  après le curseur (une minuscule suit), le point final de la dictée est retiré.
+- Dictée reprise après un arrêt au milieu d'une phrase : si la correction prolonge la dictée précédente de Wispad
+  (premier mot courant en minuscule, « Je voulais te dire que. » puis « demain on se voit »), le point final de la
+  précédente est effacé (une touche Effacer, curseur toujours juste après elle, aucune frappe depuis) avant le
+  collage : « Je voulais te dire que demain on se voit. »
 - Un double appui ou un maintien reconnu démarre toujours sa dictée, même quand Wispad, occupé, traite d'abord un
   Échap pressé juste après : Échap annule alors seulement ce qui se terminait. Aucun appui suivant ne se perd à
   arrêter une dictée jamais démarrée.
@@ -677,9 +687,10 @@ pour une nouvelle installation.
 
 Après la correction, `FidelityGuard` rejette ou répare :
 
-- une réponse nettement plus longue que la dictée, ou qui recopie huit mots de suite du contexte. Seuls les mots
-  comptent : les guillemets d'une citation, un deux-points ou un tiret isolés ne rallongent rien et ne cachent pas
-  une copie ;
+- une réponse nettement plus longue que la dictée, ou qui recopie huit mots de suite du contexte dont au moins deux
+  n'ont été entendus par aucune écoute (fichier, direct, seconde écoute du Mac). Lire à voix haute un texte affiché
+  ne fait donc plus jeter la mise en forme pour un mot repris. Seuls les mots comptent : les guillemets d'une
+  citation, un deux-points ou un tiret isolés ne rallongent rien et ne cachent pas une copie ;
 - une réponse qui perd la dictée : sur huit mots dits ou plus, elle n'en garde même pas un quart et se compose
   surtout de mots que personne n'a dits (texte de la fenêtre, réponse à la question dictée, traduction), ou d'aucun
   mot. La transcription est collée. Une correction courte faite de mots dits (« … non, oublie tout, écris juste
