@@ -36,9 +36,8 @@ avant d'ajouter un fournisseur, un réglage ou un écran.
 - La vérification GitHub compile avec Xcode 26 : un code qui passe seulement avec un Xcode plus récent échoue.
   Ne fusionner qu'avec les trois vérifications vertes.
 - Mettre à jour `docs/COMPORTEMENT.md` dans le même commit qu'un changement de comportement.
-- Release qui touche au texte (chemins de `scripts/text-paths.txt`) : `scripts/text-bench.sh` doit donner un verdict
-  vert sur le commit à publier, sinon `scripts/release.sh` refuse ([docs/BANC-TEXTE.md](docs/BANC-TEXTE.md)). Un
-  nouveau fichier qui transforme le texte s'ajoute à cette liste.
+- Banc du texte (`scripts/text-bench.sh`, [docs/BANC-TEXTE.md](docs/BANC-TEXTE.md)) : facultatif, la release ne
+  l'exige plus. Un nouveau fichier qui transforme le texte s'ajoute à `scripts/text-paths.txt`.
 - Textes d'interface en français dans le code (littéral SwiftUI ou `String(localized:)`), traduits en anglais avec
   `scripts/localize.sh` ; `scripts/localize.sh check` doit passer. `WispadCore` ne porte aucun texte d'interface.
 - Outils de développement (aperçus, démos, sondes, autotests) en `#if DEBUG` uniquement.

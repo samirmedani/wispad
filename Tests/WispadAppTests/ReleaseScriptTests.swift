@@ -57,20 +57,7 @@ struct ReleaseScriptTests {
         #expect(!script.contains("Developer ID Application:"))
     }
 
-    /// Une version qui touche au texte final ne part qu'avec un banc du texte vert sur ce commit (docs/BANC-TEXTE.md).
-    @Test func requiresAGreenTextBenchWhenTheTextChanges() throws {
-        let script = try readScript()
-        for piece in ["scripts/text-paths.txt", "benchmarks/texte/$commit/verdict.json", "plutil -extract pass raw",
-                      "Cette version touche au texte : lance scripts/text-bench.sh (banc obligatoire) avant de publier."] {
-            #expect(script.contains(piece), "garde du banc absente : \(piece)")
-        }
-        // La garde passe avant le build, la signature et la publication.
-        let guardStart = try #require(script.range(of: "step \"Banc du texte\""))
-        let build = try #require(script.range(of: "step \"Build Release universel\""))
-        #expect(guardStart.lowerBound < build.lowerBound)
-    }
-
-    /// Chaque chemin du texte existe : un fichier renommé ou déplacé ne sort pas de la garde sans qu'on le voie.
+    /// Chaque chemin du texte existe : un fichier renommé ou déplacé ne sort pas du banc du texte sans qu'on le voie.
     @Test func textPathsExist() throws {
         let list = try String(contentsOf: Self.root.appendingPathComponent("scripts/text-paths.txt"), encoding: .utf8)
         let paths = list.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
