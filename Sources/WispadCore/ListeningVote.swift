@@ -6,9 +6,11 @@ import Foundation
 /// « des vices dans la boîte » (fichier) contre « des vis dans la boîte » (flux et Apple) donne « des vis ». Mesuré
 /// sur 45 vraies dictées d'octobre 2026 où fichier et flux divergeaient, réécoutées aussi par Whisper : 3 passages
 /// tranchés, tous confirmés par Whisper, aucun à tort. Jamais pour un nom, une marque, un terme du dictionnaire ou du
-/// vocabulaire technique, un nombre, une élision (« t'as » / « tu as ») ni un mot outil seul : la seconde écoute y est
-/// peu fiable, ou l'écart n'est qu'une écriture. Seuls les remplacements comptent : un mot ajouté ou retiré par une
-/// écoute reste.
+/// vocabulaire technique, un terme anglais (« leak »), un nombre, une élision (« t'as » / « tu as ») ni un mot outil
+/// seul : la seconde écoute y est peu fiable, ou l'écart n'est qu'une écriture. Un terme anglais du fichier surtout :
+/// le flux et la seconde écoute, tous deux portés vers le français, peuvent l'entendre ensemble comme un mot français
+/// (exemple inventé : « le script leak des données » entendu « ligue » par les deux), et deux écoutes contre une
+/// remplaceraient alors le mot juste. Seuls les remplacements comptent : un mot ajouté ou retiré par une écoute reste.
 public enum ListeningVote {
     public struct Resolution: Equatable, Sendable {
         /// Le texte du fichier, avec les passages départagés écrits comme le flux.
@@ -26,8 +28,11 @@ public enum ListeningVote {
     static let maxWordsPerSide = 3
     static let maxWords = 400
 
-    /// `protected` : termes du dictionnaire et du vocabulaire technique, jamais remplacés.
-    public static func resolve(file: String, stream: String, local: String?, protected: [String]) -> Resolution {
+    /// `protected` : termes du dictionnaire et du vocabulaire technique, jamais remplacés. `isTerm` : terme anglais
+    /// d'une dictée française (orthographe de macOS, comme pour la seconde écoute), jamais remplacé ; nil sans
+    /// orthographe ou pour une dictée en anglais.
+    public static func resolve(file: String, stream: String, local: String?, protected: [String],
+                               isTerm: ((String) -> Bool)? = nil) -> Resolution {
         let unchanged = Resolution(text: file, replacements: 0)
         guard let local else { return unchanged }
         let fileWords = CorrectionPatch.words(in: file), streamWords = CorrectionPatch.words(in: stream)
@@ -47,6 +52,7 @@ public enum ListeningVote {
             if keys.contains(where: { key in key.contains(where: \.isNumber) || LocalHearing.numberWords.contains(key) }) { continue }
             if hunk.oldWords.contains(where: protectedKeys.contains) { continue }
             if fileSpan.contains(where: { distinctive(fileWords[$0], in: file) }) { continue }
+            if let isTerm, fileSpan.contains(where: { isTerm(String(file[fileWords[$0].range])) }) { continue }
             if touchesElision(fileSpan, of: fileWords, in: file) || touchesElision(streamSpan, of: streamWords, in: stream) {
                 continue
             }

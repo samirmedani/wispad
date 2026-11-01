@@ -4,8 +4,9 @@ import Testing
 /// Exemples inventés. Le fichier xAI se trompe sur un passage que le flux et la seconde écoute du Mac ont entendu
 /// pareil : deux écoutes contre une, le passage du flux est retenu.
 struct ListeningVoteTests {
-    private func vote(_ file: String, _ stream: String, _ local: String?, protected: [String] = []) -> ListeningVote.Resolution {
-        ListeningVote.resolve(file: file, stream: stream, local: local, protected: protected)
+    private func vote(_ file: String, _ stream: String, _ local: String?, protected: [String] = [],
+                      isTerm: ((String) -> Bool)? = nil) -> ListeningVote.Resolution {
+        ListeningVote.resolve(file: file, stream: stream, local: local, protected: protected, isTerm: isTerm)
     }
 
     @Test func twoHearingsAgainstOneReplaceTheFilePassage() {
@@ -44,6 +45,19 @@ struct ListeningVoteTests {
         #expect(vote("Il voit le chat.", "il voit la chat", "il voit la chat").replacements == 0)
         // Un mot ajouté ou retiré par une écoute n'est pas un remplacement.
         #expect(vote("On part demain matin.", "on part demain", "on part demain").replacements == 0)
+    }
+
+    @Test func anEnglishTermOfTheFileIsNeverVotedAway() {
+        // Le flux et la seconde écoute, portés vers le français, entendent ensemble « ligue » pour « leak ».
+        let file = "Attention, le script leak des données."
+        let french = "attention le script ligue des données"
+        let english: (String) -> Bool = { $0.lowercased() == "leak" }
+        #expect(vote(file, french, french, isTerm: english).text == file)
+        // Sans orthographe anglaise, rien ne le protège : c'est bien la protection qui joue.
+        #expect(vote(file, french, french).replacements == 1)
+        // Un mot français du fichier reste départagé.
+        #expect(vote("On range les vices dans la boîte.", "on range les vis dans la boîte", "on range les vis dans la boîte",
+                     isTerm: english).replacements == 1)
     }
 
     @Test func longDisagreementsStayToTheCorrection() {

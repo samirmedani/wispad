@@ -5,13 +5,13 @@ est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
 ## 0.8.3 — 1er novembre 2026
 
-Wispad 0.8.3 entend mieux certains mots, et colle plus vite quand ses deux transcriptions se contredisent.
+Wispad 0.8.3 tranche mieux quand ses deux transcriptions se contredisent sur un mot.
 
 **Corrigé**
 - **« v. » au lieu de « vers »** : la transcription de l’enregistrement complet abrégeait « vers » en « v. » (« aller v. la gare »), et l’abréviation arrivait parfois jusque dans le texte collé. Wispad écrit « vers ».
 
 **Amélioré**
-- **Vote des écoutes** : quand la transcription de l’enregistrement complet contredit celle en direct sur un mot, et que la seconde écoute sur ton Mac l’a entendu comme le direct, Wispad garde ce mot (« des vices dans la boîte » → « des vis dans la boîte »). Les noms, marques, termes techniques et nombres ne sont jamais touchés.
+- **Vote des écoutes** : quand la transcription de l’enregistrement complet contredit celle en direct sur un mot, et que la seconde écoute sur ton Mac l’a entendu comme le direct, Wispad garde ce mot (« des vices dans la boîte » → « des vis dans la boîte »). Avant, la correction faisait ce choix seule et se trompait parfois. Les noms, marques, termes techniques, mots anglais et nombres ne sont jamais touchés.
 - **Plus rapide dans ces cas-là** : la correction préparée pendant que tu parlais sert telle quelle.
 - **Qualité vérifiée** : le banc de dictées mesure aussi les mots mal entendus, sur une référence de ce qui a vraiment été dit.
 

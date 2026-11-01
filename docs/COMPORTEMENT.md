@@ -410,8 +410,10 @@ Toujours chez un fournisseur, au choix dans Fournisseurs › Modèles › Voix :
 - texte différent, mais la seconde écoute sur le Mac (plus bas) a entendu un passage court comme le flux, trois mots
   au plus de chaque côté : deux écoutes contre une, ce passage du flux remplace celui du fichier avant la suite
   (« vote des écoutes » ; exemple inventé : « des vices dans la boîte » → « des vis dans la boîte »). Jamais pour un
-  nom, une marque, un terme du dictionnaire ou du vocabulaire technique, un nombre, une élision (« t'as » / « tu as »)
-  ni un mot outil seul ; un mot ajouté ou retiré par une écoute reste. Si chaque désaccord est ainsi tranché pour le
+  nom, une marque, un terme du dictionnaire ou du vocabulaire technique, un terme anglais du fichier (connu de
+  l'orthographe anglaise de macOS, inconnu de la française : le flux et la seconde écoute, portés vers le français,
+  peuvent l'entendre ensemble comme un mot français, « leak » → « ligue »), un nombre, une élision (« t'as » /
+  « tu as ») ni un mot outil seul ; un mot ajouté ou retiré par une écoute reste. Si chaque désaccord est ainsi tranché pour le
   flux, le flux est gardé et sa correction déjà lancée est collée. La seconde écoute est attendue 0,25 s au plus ; la
   trace compte les passages départagés (« listeningVotes »), jamais leur texte ;
 - texte différent en un ou deux endroits courts : un remplacement (trois mots au plus, même nombre de mots à un près)

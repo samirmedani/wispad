@@ -160,7 +160,8 @@ extension DictationCoordinator {
         // est presque toujours finie à l'arrivée du fichier ; sinon, 0,25 s d'attente au plus, comme pour la correction.
         let local = await job.capture.localHearing?.finalText(within: Self.localHearingWait)
         let vote = ListeningVote.resolve(file: attempt.text, stream: streamText, local: local,
-                                         protected: model.dictionary.map(\.term) + TechVocabulary.correction)
+                                         protected: model.dictionary.map(\.term) + TechVocabulary.correction,
+                                         isTerm: Self.englishTerm(for: attempt.text, language: model.settings.language))
         if vote.replacements > 0 { run.trace.listeningVotes = vote.replacements }
         if vote.replacements > 0, TranscriptEquivalence.equivalent(streamText, vote.text) {
             // Chaque désaccord a été tranché pour le flux : sa correction, préparée pendant l'écoute, sert telle quelle.
