@@ -19,11 +19,22 @@ public enum DictationTone: String, Codable, CaseIterable, Sendable {
         case (.polished, false):
             return DictationTone.natural.instructions(english: false) + "\nTon soigné : développe aussi les contractions familières (« t'as » → « tu as », « t'es » → « tu es »). Ne change ni le vocabulaire ni le sens ; n'ajoute ni formule de politesse ni information."
         case (.casual, false):
-            return "Ton détendu : garde les tournures familières et la négation sans « ne » telles qu'elles ont été dites ; pas de point final pour un message court d'une seule phrase. Ne change ni le vocabulaire ni le sens."
+            return "Ton détendu, comme un message tapé par la personne elle-même : garde les tournures familières et la négation sans « ne » telles qu'elles ont été dites (« j'pense pas que t'as besoin » reste ainsi, « faut », « y a », « t'as », « t'es » restent), et les petits mots oraux qui donnent le ton quand ils ne sont pas répétés (« bah », « genre », « en vrai », « du coup », « ouais »). Pas de point final pour un message court d'une seule phrase. Ne change ni le vocabulaire ni le sens."
         case (.polished, true):
             return "Polished tone: complete sentences and careful punctuation; write casual forms in standard form (\"gonna\" → \"going to\", \"wanna\" → \"want to\", \"kinda\" → \"kind of\"). These grammatical expansions are allowed. Do not change the vocabulary or the meaning; add no greeting or information."
         case (.casual, true):
-            return "Casual tone: keep casual forms as they were spoken; no final period for a short single-sentence message. Do not change the vocabulary or the meaning."
+            return "Casual tone, like a message the person typed themselves: keep casual forms as they were spoken (\"gonna\", \"wanna\", \"yeah\", \"kinda\") and the small spoken words that set the tone when they are not repeated (\"well\", \"like\", \"honestly\"); no final period for a short single-sentence message. Do not change the vocabulary or the meaning."
+        }
+    }
+
+    /// Ton d'une catégorie que l'utilisateur n'a pas réglée : détendu pour les réseaux sociaux et les messageries,
+    /// soigné pour les e-mails, naturel ailleurs. Le 1er novembre 2026, des réponses sur X dictées au ton naturel
+    /// (« ne » rétabli, « t'as » développé, « ouais » devenu « oui ») ont été prises pour des textes d'IA.
+    public static func defaultTone(for kind: UsageKind) -> DictationTone {
+        switch kind {
+        case .social, .messaging: return .casual
+        case .email: return .polished
+        case .development, .writing, .browser, .notes, .other: return .natural
         }
     }
 }

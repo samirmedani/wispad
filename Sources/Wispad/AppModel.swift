@@ -1243,8 +1243,14 @@ final class AppModel {
     }
 
     /// Ton réglé pour la catégorie de l'app où l'on dicte.
-    func tone(bundleID: String?, appName: String?) -> DictationTone {
-        settings.tones[UsageClassifier.classify(bundleIdentifier: bundleID, appName: appName).rawValue] ?? .natural
+    /// Ton d'une catégorie : celui que l'utilisateur a choisi, sinon celui de la catégorie (DictationTone.defaultTone).
+    func tone(kind: UsageKind) -> DictationTone {
+        settings.tones[kind.rawValue] ?? DictationTone.defaultTone(for: kind)
+    }
+
+    /// Dans un navigateur, le titre de la fenêtre donne le site et donc la catégorie (X, Gmail, Discord…).
+    func tone(bundleID: String?, appName: String?, windowTitle: String? = nil) -> DictationTone {
+        tone(kind: UsageClassifier.classify(bundleIdentifier: bundleID, appName: appName, windowTitle: windowTitle))
     }
 
     /// Sélection entière à transformer, si la dictée est une consigne d'écriture et que le réglage le permet.

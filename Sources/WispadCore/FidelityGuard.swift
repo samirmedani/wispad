@@ -12,7 +12,8 @@ public enum FidelityGuard {
         previousDictations: [String] = [],
         alternative: String? = nil,
         otherHearings: [String] = [],
-        language: DictationLanguage = .french
+        language: DictationLanguage = .french,
+        keepRegister: Bool = true
     ) -> String {
         let heard = locatedWords(in: transcript).map(\.text)
         let grammarReference = language == .english ? transcript : WrittenGrammar.reference(transcript)
@@ -44,7 +45,9 @@ public enum FidelityGuard {
             previousDictations: previousDictations,
             alsoHeard: alsoHeard
         )
-        let restored = restoreUnspokenReferences(heard: heard, corrected: repaired, alsoHeard: alsoHeard)
+        // Le ton soigné peut rendre un mot familier plus soutenu ; les autres gardent les mots de la personne.
+        let register = keepRegister ? restoreRegisterWords(heard: heard, corrected: repaired) : repaired
+        let restored = restoreUnspokenReferences(heard: heard, corrected: register, alsoHeard: alsoHeard)
         // Une année que personne n'a dite (« le trois novembre » → « 03/11/2026 ») est retirée de la date.
         let dated = DateTimeWriter.removingUnspokenYears(from: restored, heard: heard + alsoHeard)
         if spoken <= shortDictationWords,
@@ -782,6 +785,43 @@ public enum FidelityGuard {
     private struct LocatedWord {
         var text: String
         var range: NSRange
+    }
+
+    /// Mots familiers dits, et les mots plus soutenus que la correction leur substitue parfois (clés sans accent ni
+    /// casse). Le 1er novembre 2026, « c'est grave dommage » est devenu « c'est vraiment dommage » et « Ouais » « Oui » :
+    /// des réponses sur X ont été prises pour des textes d'IA.
+    static let registerWords: [String: Set<String>] = [
+        "ouais": ["oui"], "ouai": ["oui"], "grave": ["vraiment", "tres", "super"], "chelou": ["bizarre", "louche", "etrange"],
+        "ouf": ["incroyable", "dingue", "fou"], "boulot": ["travail"], "truc": ["chose"], "trucs": ["choses"],
+        "mec": ["homme", "gars"], "mecs": ["hommes", "gars"], "nickel": ["parfait", "impeccable"],
+        "bouffer": ["manger"], "kiffe": ["aime", "adore"], "kiffer": ["aimer", "adorer"], "fringues": ["vetements"],
+        "yeah": ["yes"], "yep": ["yes"], "nope": ["no"], "stuff": ["things"], "guys": ["people", "everyone"],
+    ]
+
+    /// Remet le mot familier dit à la place du mot soutenu que la correction a mis, un mot pour un mot, casse et
+    /// ponctuation du mot écrit gardées : « Oui, mais » redevient « Ouais, mais ».
+    static func restoreRegisterWords(heard: [String], corrected: String) -> String {
+        let words = locatedWords(in: corrected)
+        let kept = words.indices.filter { !strip(words[$0].text).isEmpty }
+        let said = heard.map(strip).filter { !$0.isEmpty }
+        guard said.contains(where: { registerWords[CorrectionLearner.key($0)] != nil }) else { return corrected }
+        let hunks = CorrectionLearner.replacements(kept.map { strip(words[$0].text) }, said)
+        let output = NSMutableString(string: corrected)
+        for hunk in hunks.reversed() where hunk.oldWords.count == hunk.newWords.count {
+            for index in hunk.oldWords.indices.reversed() {
+                let spoken = strip(hunk.newWords[index])
+                guard let formal = registerWords[CorrectionLearner.key(spoken)],
+                      formal.contains(CorrectionLearner.key(strip(hunk.oldWords[index]))) else { continue }
+                let word = words[kept[hunk.oldStart + index]]
+                let written = strip(word.text)
+                var restored = spoken.lowercased()
+                if written.first?.isUppercase == true, let first = restored.first {
+                    restored = first.uppercased() + restored.dropFirst()
+                }
+                output.replaceCharacters(in: word.range, with: wrapped(restored, like: word.text))
+            }
+        }
+        return output as String
     }
 
     private static let wordPattern = try! NSRegularExpression(pattern: #"\S+"#)
