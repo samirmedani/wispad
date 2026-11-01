@@ -75,7 +75,8 @@ extension DictationCoordinator {
         if let attempt = ledger.completion.attempt, !attempt.failed,
            !TranscriptEquivalence.normalize(attempt.text).isEmpty {
             await ledger.account()
-            selectVerifiedTranscript(attempt, raw: raw, streamText: streamText, streamMs: streamMs, job: job, decision: &decision)
+            await selectVerifiedTranscript(attempt, raw: raw, streamText: streamText, streamMs: streamMs, job: job,
+                                           model: model, decision: &decision)
             if !job.cancelled, model.settings.cleanupEnabled,
                model.commandSelection(for: decision.raw, context: context) == nil {
                 decision.ledger = claimEarlyCorrection(
@@ -113,7 +114,8 @@ extension DictationCoordinator {
         // Un fichier sans aucun mot face à un flux qui en a ne gagne pas : la dictée serait perdue.
         if let attempt, !attempt.failed, !TranscriptEquivalence.normalize(attempt.text).isEmpty {
             await ledger.account()
-            selectVerifiedTranscript(attempt, raw: raw, streamText: streamText, streamMs: streamMs, job: job, decision: &decision)
+            await selectVerifiedTranscript(attempt, raw: raw, streamText: streamText, streamMs: streamMs, job: job,
+                                           model: model, decision: &decision)
             // Le fichier peut retrouver le texte de l'arrêt alors que le flux final s'en était écarté.
             if !job.cancelled, model.correctionReachable,
                model.commandSelection(for: decision.raw, context: context) == nil,
@@ -142,8 +144,8 @@ extension DictationCoordinator {
 
     private func selectVerifiedTranscript(
         _ attempt: FileAttempt, raw: String, streamText: String, streamMs: Int,
-        job: FinishJob, decision: inout FileDecision
-    ) {
+        job: FinishJob, model: AppModel, decision: inout FileDecision
+    ) async {
         let run = job.capture.run
         run.trace.streamWords = WordCount.count(streamText)
         run.trace.fileWords = WordCount.count(attempt.text)
@@ -151,10 +153,24 @@ extension DictationCoordinator {
             decision.raw = raw
             decision.usePrepared = decision.ledger != nil
             noteChoice(.stream, .equivalent, attempt.latencyMs, streamMs, job.duration, run)
+            return
+        }
+        run.trace.divergentWords = TranscriptEquivalence.differingWords(streamText, attempt.text)
+        // Le fichier contredit le flux : la seconde écoute du Mac départage chaque passage court (`ListeningVote`). Elle
+        // est presque toujours finie à l'arrivée du fichier ; sinon, 0,25 s d'attente au plus, comme pour la correction.
+        let local = await job.capture.localHearing?.finalText(within: Self.localHearingWait)
+        let vote = ListeningVote.resolve(file: attempt.text, stream: streamText, local: local,
+                                         protected: model.dictionary.map(\.term) + TechVocabulary.correction,
+                                         isTerm: Self.englishTerm(for: attempt.text, language: model.settings.language))
+        if vote.replacements > 0 { run.trace.listeningVotes = vote.replacements }
+        if vote.replacements > 0, TranscriptEquivalence.equivalent(streamText, vote.text) {
+            // Chaque désaccord a été tranché pour le flux : sa correction, préparée pendant l'écoute, sert telle quelle.
+            decision.raw = raw
+            decision.usePrepared = decision.ledger != nil
+            noteChoice(.stream, .voted, attempt.latencyMs, streamMs, job.duration, run)
         } else {
-            decision.raw = attempt.text
+            decision.raw = vote.text
             decision.alternative = streamText
-            run.trace.divergentWords = TranscriptEquivalence.differingWords(streamText, attempt.text)
             noteChoice(.file, .diverged, attempt.latencyMs, streamMs, job.duration, run)
         }
     }

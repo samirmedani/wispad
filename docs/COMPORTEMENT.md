@@ -407,6 +407,15 @@ Toujours chez un fournisseur, au choix dans Fournisseurs › Modèles › Voix :
   en français comme en anglais) : le flux est gardé, sa correction déjà lancée est collée ;
 - texte différent : celui du fichier est corrigé et collé, le flux sert d'« autre écoute » à la correction et reste
   avec la dictée dans l'historique local (pour comprendre le désaccord et pour le banc des erreurs signalées) ;
+- texte différent, mais la seconde écoute sur le Mac (plus bas) a entendu un passage court comme le flux, trois mots
+  au plus de chaque côté : deux écoutes contre une, ce passage du flux remplace celui du fichier avant la suite
+  (« vote des écoutes » ; exemple inventé : « des vices dans la boîte » → « des vis dans la boîte »). Jamais pour un
+  nom, une marque, un terme du dictionnaire ou du vocabulaire technique, un terme anglais du fichier (connu de
+  l'orthographe anglaise de macOS, inconnu de la française : le flux et la seconde écoute, portés vers le français,
+  peuvent l'entendre ensemble comme un mot français, « leak » → « ligue »), un nombre, une élision (« t'as » /
+  « tu as ») ni un mot outil seul ; un mot ajouté ou retiré par une écoute reste. Si chaque désaccord est ainsi tranché pour le
+  flux, le flux est gardé et sa correction déjà lancée est collée. La seconde écoute est attendue 0,25 s au plus ; la
+  trace compte les passages départagés (« listeningVotes »), jamais leur texte ;
 - texte différent en un ou deux endroits courts : un remplacement (trois mots au plus, même nombre de mots à un près)
   ou, au milieu d'une phrase, un mot ajouté ou retiré (un seul mot écrit, comme « ne » ou « peut-être », entre deux
   mots séparés par de simples espaces, jamais une répétition comme « le le ») ; l'endroit est retrouvé dans la
@@ -450,6 +459,11 @@ mot dit dès la réception, avant de le comparer au flux : « 60 images par 2ᵈ
 reste (« 21ᵉ siècle ») ; une date reprend son format (« le premier mai » → « le 1er mai »). Le même filet passe avant
 et après la correction.
 
+Abréviation « v. » : la mise en forme française du fichier xAI écrit « v. » pour « vers » (« aller v. la gare »).
+Wispad remet « vers » dès la réception, avant de comparer au flux, et la même retouche passe avant et après la
+correction. Seulement dans un texte français, en minuscule, devant un mot en minuscules ou un nombre, jamais après un
+article (« la v. 2 »).
+
 **Sans connexion** : rien n'est transcrit sur le Mac. Si la connexion manque ou se perd pendant la dictée (flux et
 fichier en échec, puis le relais de voix s'il a une clé et que la connexion est revenue), l'audio reste dans
 l'historique pour **Retranscrire** une fois la connexion revenue. Hors connexion, le relais n'est pas tenté : il
@@ -489,8 +503,8 @@ Le micro standard, réglage coupé, ne change pas.
 
 ### Seconde écoute sur le Mac
 
-Le fournisseur se trompe parfois sur des mots courants dits vite (« Faut voter développeur » pour « Si t'es
-développeur »), et sa réécoute du fichier, faite par le même modèle, répète l'erreur. Pendant l'écoute, le même son
+Le fournisseur se trompe parfois sur des mots courants dits vite (exemple inventé : « il fait voir » pour « il fait
+noir »), et sa réécoute du fichier, faite par le même modèle, répète l'erreur. Pendant l'écoute, le même son
 passe aussi par le moteur de dictée d'Apple, entièrement sur le Mac : rien ne part ailleurs, rien n'est demandé ni
 téléchargé. Il ne sert qu'avec macOS 26 ou plus récent, une langue réglée sur français ou anglais, la correction
 active et le modèle d'Apple déjà installé pour cette langue ; sinon Wispad dicte exactement comme avant.
@@ -505,14 +519,15 @@ active et le modèle d'Apple déjà installé pour cette langue ; sinon Wispad d
   hors début de phrase, capitale intérieure, chiffre, mot du dictionnaire ou du vocabulaire technique, mot anglais
   inconnu en français comme « repo »), un nombre ou une unité, un simple accord (« fonctionne » / « fonctionnent »),
   des petits mots seuls, ni une version écrite avec un mot que l'orthographe de macOS ne connaît pas quand la
-  transcription n'en a pas (« juriqueidique »). Au-delà de 8 passages, la seconde écoute a décroché : rien n'est
+  transcription n'en a pas (« juridicale »). Au-delà de 8 passages, la seconde écoute a décroché : rien n'est
   donné. Un mot repris de la seconde écoute n'est pas une invention pour le garde-fou.
+- Quand le fichier contredit le flux, elle départage aussi les passages courts avant la correction : voir le vote
+  des écoutes dans « Transcription ».
 - La trace compte les passages donnés (« localPassages »), jamais leur texte.
 
 Mesuré le 31 octobre 2026 sur de vraies dictées : sur 12 erreurs de sens du fournisseur, la correction en répare 7
-avec ces passages (« Frérot, t'es développeur, si t'as un problème, tu codes », « des bails de bijoux », « Elle est
-où la vidéo », « On regarde le rendu »), sans erreur ajoutée sur 32 dictées témoins ; même latence de correction,
-coût de correction à peine plus élevé sur les seules dictées concernées.
+avec ces passages, sans erreur ajoutée sur 32 dictées témoins ; même latence de correction, coût de correction à peine
+plus élevé sur les seules dictées concernées.
 
 ## Correction
 

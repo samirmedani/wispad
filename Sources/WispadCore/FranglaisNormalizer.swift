@@ -14,6 +14,8 @@ public enum FranglaisNormalizer {
         var result = text
         // Ordinaux en exposant (« 2ᵈᵉ », « 1ᵉʳ ») : le mot dit, avant comme après la correction.
         result = SpokenOrdinals.restore(result)
+        // « v. » de la mise en forme française d'xAI : « vers », avant comme après la correction.
+        result = SpokenAbbreviations.restore(result)
         result = joinHardwareReferences(result)
         result = restoreOAuth(result)
         result = keepEnglishPastParticiple(result)

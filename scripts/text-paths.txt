@@ -15,14 +15,17 @@ Sources/WispadCore/TextPipeline.swift
 Sources/WispadCore/PauseJoin.swift
 # Vocabulaire technique : mots-clés de la reconnaissance et référence de la correction.
 Sources/WispadCore/TechVocabulary.swift
-# Seconde écoute sur le Mac : passages qui départagent un mot dans la correction.
+# Seconde écoute sur le Mac : passages qui départagent un mot dans la correction, et vote des écoutes quand le
+# fichier contredit le flux.
 Sources/WispadCore/LocalHearing.swift
+Sources/WispadCore/ListeningVote.swift
 Sources/Wispad/LocalHearingSession.swift
 
 # Choix entre le flux et le fichier, et normalisations autour de la correction.
 Sources/WispadCore/TranscriptEquivalence.swift
 Sources/WispadCore/SpokenNumbers.swift
 Sources/WispadCore/SpokenOrdinals.swift
+Sources/WispadCore/SpokenAbbreviations.swift
 Sources/WispadCore/FranglaisNormalizer.swift
 
 # Correction et finitions : garde-fou, mots qui sonnent pareil, report des mots du fichier, modèles et effort de

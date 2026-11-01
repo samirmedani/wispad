@@ -228,13 +228,15 @@ private struct DictationTraceCard: View {
         switch reason {
         case .equivalent: because = String(localized: "même sens que l'enregistrement")
         case .diverged: because = String(localized: "l'enregistrement diffère")
+        case .voted: because = String(localized: "la seconde écoute a donné raison au flux")
         case .fileTimeout: because = String(localized: "enregistrement trop lent")
         case .fileFailed: because = String(localized: "enregistrement indisponible")
         case .streamEmpty: because = String(localized: "flux vide")
         case .settingOff: because = String(localized: "vérification coupée")
         }
         let delay = trace.fileLatencyMs.map { String(localized: " · fichier \(Self.duration($0))") } ?? ""
-        return String(localized: "Texte retenu : \(kept) (\(because))\(delay)")
+        let votes = reason == .diverged ? trace.listeningVotes.map { String(localized: " · passages départagés : \($0)") } ?? "" : ""
+        return String(localized: "Texte retenu : \(kept) (\(because))\(delay)\(votes)")
     }
 
     private func timing(_ title: String, _ value: Int?) -> some View {

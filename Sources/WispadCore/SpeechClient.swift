@@ -656,8 +656,8 @@ public enum BatchTranscriber {
         }
         let object = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         let text = (object?["text"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        // « 2ᵈᵉ » de la mise en forme française : rendu « seconde », comme dans le flux en direct.
-        return SpokenOrdinals.restore(text)
+        // « 2ᵈᵉ » et « v. » de la mise en forme française : rendus « seconde » et « vers », comme dans le flux en direct.
+        return SpokenAbbreviations.restore(SpokenOrdinals.restore(text))
     }
 
     private static func multipart(fields: [(String, String)], fileURL: URL,

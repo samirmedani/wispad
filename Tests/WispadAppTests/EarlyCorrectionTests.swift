@@ -200,9 +200,9 @@ struct EarlyCorrectionTests {
     @Test func theSecondHearingJoinsTheCorrectionAtRelease() async throws {
         let f = try EarlyFixture()
         defer { f.dispose() }
-        let local = EarlyLocalHearing("Si t'es développeur, si t'as un problème, tu codes.")
+        let local = EarlyLocalHearing("Il fait noir le matin, si t'as un souci, tu vois.")
         f.localHearing = local
-        f.fileText = "Faut voter développeur, c'est un problème, tu codes."
+        f.fileText = "Il fait voir le matin, c'est un souci, tu vois."
         await f.model.coordinator.begin(.pushToTalk)
         f.stream.onPartial?(f.fileText)
         f.stream.text = f.fileText
@@ -210,7 +210,7 @@ struct EarlyCorrectionTests {
         await f.model.coordinator.end()
 
         #expect(f.cleanTexts == [f.fileText])
-        #expect(f.cleanLocal.last?.map(\.local) == ["Si t'es développeur,", "développeur, si t'as un"])
+        #expect(f.cleanLocal.last?.map(\.local) == ["fait noir le", "matin, si t'as un"])
         #expect(try f.trace().localPassages == 2)
         #expect(local.finished)
     }

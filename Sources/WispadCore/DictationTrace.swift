@@ -141,6 +141,8 @@ public enum TranscriptSource: String, Codable, Equatable, Sendable {
 public enum TranscriptChoice: String, Codable, Equatable, Sendable {
     case equivalent
     case diverged
+    /// Le fichier différait, mais la seconde écoute du Mac a donné raison au flux sur chaque passage (`ListeningVote`).
+    case voted
     case fileTimeout
     case fileFailed
     case streamEmpty
@@ -178,6 +180,8 @@ public struct DictationTrace: Codable, Equatable, Identifiable, Sendable {
     public var selectionCommand: Bool?
     /// Fichier différent d'un ou deux mots : ils ont été reportés dans la correction du flux, sans nouvel appel.
     public var correctionPatched: Bool?
+    /// Passages où flux et seconde écoute du Mac, d'accord entre eux, ont remplacé le fichier. Absent : aucun.
+    public var listeningVotes: Int?
 
     public init(
         id: String = UUID().uuidString,

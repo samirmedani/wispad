@@ -85,8 +85,8 @@ private final class AppleLocalHearing: LocalHearingSession, @unchecked Sendable 
     init(locale: Locale) {
         let (stream, continuation) = AsyncStream<AnalyzerInput>.makeStream()
         input = continuation
-        // Résultats définitifs seulement : le préréglage progressif, plus réactif, entendait « Il faut des
-        // développeurs » là où celui-ci entend « Frérot, t'es développeur » (même audio, 31 octobre 2026).
+        // Résultats définitifs seulement : le préréglage progressif, plus réactif, se trompait sur des phrases que
+        // celui-ci entend juste (même audio, mesuré le 31 octobre 2026).
         let transcriber = SpeechTranscriber(locale: locale, preset: .transcription)
         let analyzer = SpeechAnalyzer(modules: [transcriber])
         let state = state
