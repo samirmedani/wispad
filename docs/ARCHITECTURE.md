@@ -424,3 +424,8 @@ ne réécrit jamais un fichier abîmé (les clés de sa partie intacte servent).
   inventée, passée directement à la correction, sans audio ni flux xAI ; `dateFormat` facultatif).
 - Erreurs signalées depuis l'historique (`ErrorReportArchive`) : `scripts/report-bench.sh <nom>` les rejoue et compte
   les mots faux avant et après un changement de consigne, de garde-fou ou de fournisseur.
+- Banc des modèles de correction (clés de test) : `scripts/model-bench.sh <nom> [compte:modèle:entrée:cache:sortie,...]`
+  corrige les dictées privées du banc du texte (étapes correction et mots) avec chaque modèle à tour de rôle, et
+  compare pièges réparés, témoins gardés, réécriture, délai et coût pour 1 000 dictées. Le 1er novembre 2026,
+  DeepSeek Flash restait le meilleur compromis : Grok 4.20 sans raisonnement répondait 0,4 s plus vite pour 30 fois
+  le prix et abîmait un témoin ; DeepSeek V4 Pro était plus lent sans réparer nettement plus.
