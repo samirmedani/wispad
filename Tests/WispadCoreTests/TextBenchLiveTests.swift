@@ -431,7 +431,8 @@ final class TextBenchLiveTests: XCTestCase {
         let stream = (item.stream ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let file = (item.file ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let local = (item.local ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        let heard = choose(stream: stream, file: file, local: local.isEmpty ? nil : local, dictionary: item.dictionary)
+        let heard = await choose(stream: stream, file: file, local: local.isEmpty ? nil : local, dictionary: item.dictionary,
+                                 spelling: spelling)
         let input = FranglaisNormalizer.normalize(heard.raw.trimmingCharacters(in: .whitespacesAndNewlines))
         var outcome = WordsOutcome(id: item.id, group: item.group, source: input.isEmpty ? "vide" : heard.source,
                                    voteReplacements: heard.replacements, localPassages: 0, input: input, correction: nil)
@@ -447,15 +448,18 @@ final class TextBenchLiveTests: XCTestCase {
 
     /// Le fichier si le flux est vide ; le flux si le fichier est vide ou dit la même chose (TranscriptEquivalence) ;
     /// sinon le fichier, avec le flux en autre écoute. Avec le vote des écoutes, ce dernier cas devient le texte voté :
-    /// le flux s'il dit la même chose que lui, sinon le texte voté, avec le flux en autre écoute.
-    static func choose(stream: String, file: String, local: String?, dictionary: [String])
+    /// le flux s'il dit la même chose que lui, sinon le texte voté, avec le flux en autre écoute. Termes anglais du
+    /// fichier protégés comme dans l'app (englishTerm), sur le fil principal.
+    @MainActor
+    static func choose(stream: String, file: String, local: String?, dictionary: [String], spelling: Spelling)
         -> (raw: String, alternative: String?, source: String, replacements: Int?) {
         if stream.isEmpty { return (file, nil, "fichier", nil) }
         if TranscriptEquivalence.normalize(file).isEmpty || TranscriptEquivalence.equivalent(stream, file) {
             return (stream, nil, "flux", nil)
         }
         #if WISPAD_VOTE_DES_ECOUTES
-        let vote = ListeningVote.resolve(file: file, stream: stream, local: local, protected: dictionary + TechVocabulary.correction)
+        let vote = ListeningVote.resolve(file: file, stream: stream, local: local, protected: dictionary + TechVocabulary.correction,
+                                         isTerm: englishTerm(spelling))
         if TranscriptEquivalence.equivalent(stream, vote.text) { return (stream, nil, "flux", vote.replacements) }
         return (vote.text, stream, vote.replacements > 0 ? "vote" : "fichier", vote.replacements)
         #else
@@ -475,9 +479,21 @@ final class TextBenchLiveTests: XCTestCase {
         }
         let terms = Set((dictionary + TechVocabulary.correction).flatMap { $0.split(whereSeparator: \.isWhitespace) }.map { $0.lowercased() })
         let knownWord: ((String) -> Bool)? = spelling.french ? { terms.contains($0.lowercased()) || known($0, "fr") } : nil
-        let isTerm: ((String) -> Bool)? = spelling.french && spelling.english ? { known($0, "en") && !known($0, "fr") } : nil
-        return LocalHearing.divergences(transcript: transcript, hearing: hearing, knownWord: knownWord, isTerm: isTerm,
+        return LocalHearing.divergences(transcript: transcript, hearing: hearing, knownWord: knownWord, isTerm: englishTerm(spelling),
                                         protectedTerms: dictionary + TechVocabulary.correction)
+    }
+
+    /// Terme anglais d'une dictée française, comme DictationCoordinator.englishTerm : connu de l'orthographe anglaise,
+    /// inconnu de la française ; nil sans l'une des deux.
+    @MainActor
+    static func englishTerm(_ spelling: Spelling) -> ((String) -> Bool)? {
+        guard spelling.french, spelling.english else { return nil }
+        let checker = NSSpellChecker.shared
+        func known(_ word: String, _ code: String) -> Bool {
+            checker.checkSpelling(of: word, startingAt: 0, language: code, wrap: false, inSpellDocumentWithTag: 0,
+                                  wordCount: nil).location == NSNotFound
+        }
+        return { known($0, "en") && !known($0, "fr") }
     }
 
     /// L'orthographe de macOS dans ce processus : la langue doit y être, comme dans l'app, et distinguer un mot courant

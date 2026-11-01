@@ -97,8 +97,8 @@ Le script vérifie ce format avant toute compilation ; une erreur donne le rang 
 
 1. Texte retenu : le fichier si le flux est vide ; le flux si le fichier est vide ou dit la même chose
    (`TranscriptEquivalence`) ; sinon le fichier, avec le flux en autre écoute. Une version qui a le vote des écoutes
-   confie ce dernier cas à `ListeningVote` : le flux si le texte voté dit la même chose que lui, sinon le texte voté,
-   avec le flux en autre écoute.
+   confie ce dernier cas à `ListeningVote`, termes anglais du fichier protégés comme dans l'app : le flux si le texte
+   voté dit la même chose que lui, sinon le texte voté, avec le flux en autre écoute.
 2. `FranglaisNormalizer` sur le texte retenu et sur l'autre écoute.
 3. Passages de la seconde écoute (`LocalHearing.divergences`), protégés par le dictionnaire du cas et
    `TechVocabulary`, avec l'orthographe de macOS comme `makeCorrectionRequest` : mot connu en français, terme anglais.
