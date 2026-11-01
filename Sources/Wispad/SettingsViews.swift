@@ -561,9 +561,9 @@ struct ToneSection: View {
         Section {
             ForEach(Self.kinds, id: \.self) { kind in
                 Picker(Self.label(kind), selection: Binding(
-                    get: { model.settings.tones[kind.rawValue] ?? .natural },
+                    get: { model.tone(kind: kind) },
                     set: { tone in
-                        model.settings.tones[kind.rawValue] = tone == .natural ? nil : tone
+                        model.settings.tones[kind.rawValue] = tone == DictationTone.defaultTone(for: kind) ? nil : tone
                         model.saveSettings()
                     }
                 )) {
@@ -578,12 +578,13 @@ struct ToneSection: View {
         .disabled(!model.settings.cleanupEnabled)
     }
 
-    static let kinds: [UsageKind] = [.email, .messaging, .writing, .notes, .development, .browser, .other]
+    static let kinds: [UsageKind] = [.email, .messaging, .social, .writing, .notes, .development, .browser, .other]
 
     static func label(_ kind: UsageKind) -> String {
         switch kind {
         case .email: return String(localized: "E-mails")
         case .messaging: return String(localized: "Messageries")
+        case .social: return String(localized: "Réseaux sociaux")
         case .writing: return String(localized: "Documents")
         case .notes: return String(localized: "Notes")
         case .development: return String(localized: "Code et terminal")

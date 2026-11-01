@@ -12,6 +12,8 @@ final class DictationContext: @unchecked Sendable {
     var nearbyText: String?
     /// Fin du texte juste avant le curseur au début de la dictée : vide en début de champ, nil si illisible.
     var beforeCursor: String?
+    /// Titre de la fenêtre active : dans un navigateur, il donne le site, donc le ton. Jamais enregistré ni journalisé.
+    var windowTitle: String?
     var isSecure = false
     var element: AXUIElement?
     /// Le collage n'a pas été tenté : l'accessibilité n'est pas autorisée (retirée dans Réglages Système, ou jamais
@@ -37,6 +39,7 @@ final class DictationContext: @unchecked Sendable {
         selectedText = field.selectedText
         nearbyText = field.nearbyText
         beforeCursor = field.beforeCursor
+        windowTitle = field.windowTitle
         startedInTextField = field.isTextField
     }
 }
@@ -48,6 +51,7 @@ struct FieldSnapshot: @unchecked Sendable {
     var selectedText: String?
     var nearbyText: String?
     var beforeCursor: String?
+    var windowTitle: String?
     /// Rôle de texte ou curseur de texte : un vrai champ, pas la page ni un conteneur.
     var isTextField = false
 }
@@ -101,6 +105,7 @@ enum ContextProbe {
     static func readField(pid: pid_t?) -> FieldSnapshot? {
         guard let element = focusedElement(pid: pid) else { return nil }
         var field = FieldSnapshot(element: element)
+        field.windowTitle = windowTitle(pid: pid)
         field.isSecure = isSecure(element)
         guard !field.isSecure else { return field }
         field.isTextField = FocusedField.kind(role: string(kAXRoleAttribute, element), subrole: string(kAXSubroleAttribute, element),
@@ -269,6 +274,17 @@ enum ContextProbe {
             location.window = frame(of: window as! AXUIElement).map(flip)
         }
         return location
+    }
+
+    /// Titre de la fenêtre active de l'app (« Accueil / X », « Boîte de réception - Gmail »), nil s'il est illisible.
+    static func windowTitle(pid: pid_t?) -> String? {
+        guard let pid, !isOwnProcess(pid) else { return nil }
+        let app = AXUIElementCreateApplication(pid)
+        AXUIElementSetMessagingTimeout(app, 0.3)
+        var window: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(app, kAXFocusedWindowAttribute as CFString, &window) == .success,
+              let window, CFGetTypeID(window) == AXUIElementGetTypeID() else { return nil }
+        return string(kAXTitleAttribute, window as! AXUIElement)
     }
 
     static func frame(of element: AXUIElement) -> CGRect? {

@@ -81,6 +81,16 @@
         }
       }
     },
+    "Réseaux sociaux" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Social media"
+          }
+        }
+      }
+    },
     "Texte retenu : %@ (%@)%@%@" : {
       "localizations" : {
         "en" : {

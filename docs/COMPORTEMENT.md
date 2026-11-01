@@ -843,9 +843,21 @@ Réglages › Mise en forme : **Montants et unités** (symboles, par défaut, ou
 ## Ton et consignes
 
 - **Ton selon l'app** (Réglages › Mise en forme › Ton selon l'app) : par catégorie (e-mails, messageries, documents,
-  notes, code et terminal, navigateur, autres apps), « Naturel » (par défaut : français écrit fluide, négations certaines
-  rétablies et sujets impersonnels complétés), « Soigné » (développe aussi les contractions familières) ou « Détendu »
-  (tournures orales et négation sans « ne » gardées, pas de point final pour un message court).
+  réseaux sociaux, notes, code et terminal, navigateur, autres apps), « Naturel » (français écrit fluide, négations
+  certaines rétablies et sujets impersonnels complétés), « Soigné » (développe aussi les contractions familières) ou
+  « Détendu » (tournures orales, « t'as », négation sans « ne » et petits mots oraux comme « bah » ou « genre »
+  gardés, pas de point final pour un message court). Sans choix de l'utilisateur : Détendu pour les réseaux sociaux
+  et les messageries, Soigné pour les e-mails, Naturel ailleurs.
+- Dans un navigateur, le titre de la fenêtre donne le site, donc la catégorie : X (titres « … / X »), LinkedIn,
+  Reddit, Bluesky, Instagram, Facebook, TikTok, Mastodon → réseaux sociaux ; Discord, WhatsApp, Messenger, Telegram,
+  Slack, Teams, Google Chat → messageries ; Gmail, Outlook, Proton Mail → e-mails ; un autre site reste
+  « navigateur ». Le titre n'est ni enregistré ni journalisé ; l'historique garde la catégorie.
+- Registre et ponctuation, dans tous les tons : un mot familier n'est jamais remplacé par un mot plus soutenu
+  (« ouais », « grave », « boulot », « j'en sais rien » restent) ; hors ton Soigné, le garde-fou remet le mot dit si la
+  correction l'a fait (« grave dommage » → « vraiment dommage » redevient « grave dommage »). Ponctuation sobre : pas
+  de virgule après « Du coup », « Franchement », « En vrai » en tête d'une phrase dite d'un trait, jamais de
+  point-virgule, pas de deux-points pour découper une phrase ; « mdr » et « ptdr » en minuscules. Le 1er novembre
+  2026, des réponses sur X dictées au ton Naturel ont été prises pour des textes d'IA.
   L'ancien choix « Comme dicté » porte désormais le libellé « Naturel », sans changer les catégories réglées.
   Le ton ne change que le registre, jamais le vocabulaire ni le sens ; le garde-fou de fidélité s'applique toujours.
   Il utilise le même appel de correction, sans nouvelle passe ni attente supplémentaire.

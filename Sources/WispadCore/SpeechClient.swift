@@ -1026,7 +1026,8 @@ public enum TextCleaner {
                     previousDictations: request.previousDictations + [request.windowText].compactMap { $0 },
                     alternative: request.alternativeTranscript,
                     otherHearings: request.localDivergences.map(\.local),
-                    language: CorrectionPrompt.language(for: request)
+                    language: CorrectionPrompt.language(for: request),
+                    keepRegister: request.tone != .polished
                 )
                 var failed = requests.events
                 let usage = failed.popLast()

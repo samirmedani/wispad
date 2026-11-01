@@ -352,7 +352,7 @@ extension DictationCoordinator {
             structureDictation: model.settings.structureDictation,
             language: model.settings.language
         )
-        request.tone = model.tone(bundleID: context.bundleID, appName: context.appName)
+        request.tone = model.tone(bundleID: context.bundleID, appName: context.appName, windowTitle: context.windowTitle)
         // Ce qui précède le curseur décide de la majuscule et du raccord ; un champ illisible (Electron) prend le
         // dernier collage de Wispad dans cette app, sans frappe depuis.
         request.textBeforeCursor = context.beforeCursor ?? TextInserter.recentPaste(pid: context.pid)

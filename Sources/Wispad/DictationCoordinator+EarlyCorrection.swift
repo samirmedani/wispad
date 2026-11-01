@@ -184,7 +184,8 @@ extension DictationCoordinator {
         let dated = DateTimeWriter.apply(text, format: model.settings.dateFormat, english: english)
         let numbered = NumberWriter.apply(dated, format: model.settings.numberFormat, english: english)
         patched.outcome.text = TextCleaner.completeWrittenGrammar(numbered, language: model.settings.language,
-            tone: model.tone(bundleID: current.context.bundleID, appName: current.context.appName))
+            tone: model.tone(bundleID: current.context.bundleID, appName: current.context.appName,
+                             windowTitle: current.context.windowTitle))
         return patched
     }
 }

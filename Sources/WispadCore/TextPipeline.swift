@@ -4,6 +4,7 @@ public enum UsageKind: String, Sendable, CaseIterable {
     case development = "développement"
     case email
     case messaging = "messagerie"
+    case social = "réseaux sociaux"
     case writing = "rédaction"
     case browser = "navigateur"
     case notes
@@ -11,7 +12,15 @@ public enum UsageKind: String, Sendable, CaseIterable {
 }
 
 public enum UsageClassifier {
-    public static func classify(bundleIdentifier: String?, appName: String?) -> UsageKind {
+    /// Dans un navigateur, le titre de la fenêtre donne le site (« … / X », « Boîte de réception - Gmail ») : sa
+    /// catégorie remplace « navigateur ». Le titre n'est ni enregistré ni journalisé.
+    public static func classify(bundleIdentifier: String?, appName: String?, windowTitle: String? = nil) -> UsageKind {
+        let kind = classifyApp(bundleIdentifier: bundleIdentifier, appName: appName)
+        guard kind == .browser, let windowTitle else { return kind }
+        return site(windowTitle) ?? kind
+    }
+
+    static func classifyApp(bundleIdentifier: String?, appName: String?) -> UsageKind {
         let blob = "\((bundleIdentifier ?? "").lowercased()) \((appName ?? "").lowercased())"
         if matches(blob, ["mail", "outlook", "spark", "thunderbird", "mimestream"]) { return .email }
         if matches(blob, ["slack", "whatsapp", "messages", "telegram", "discord", "signal", "imessage"]) { return .messaging }
@@ -20,6 +29,24 @@ public enum UsageClassifier {
         if matches(blob, ["safari", "chrome", "firefox", "arc", "edge", "brave", "orion", "dia"]) { return .browser }
         if matches(blob, ["pages", "word", "ulysses", "typora", "docs"]) { return .writing }
         return .other
+    }
+
+    /// Catégorie d'un site d'après le titre de la page ; nil pour un site inconnu.
+    static func site(_ title: String) -> UsageKind? {
+        let lower = " " + title.lowercased() + " "
+        // X ne se reconnaît qu'à la fin de ses titres (« Accueil / X », « Mohand sur X : « … » / X »).
+        let onX = lower.range(of: #"/ x(\s+[-–—|].*)?\s$"#, options: .regularExpression) != nil
+            || lower.range(of: #"\s(on|sur) x\s?:"#, options: .regularExpression) != nil
+            || matches(lower, ["x.com", "twitter"])
+        // Seulement des noms propres aux sites : « Threads » ou « Signal » sont aussi des mots courants dans un titre.
+        if onX || matches(lower, ["linkedin", "reddit", "bluesky", "instagram", "facebook", "tiktok", "mastodon"]) {
+            return .social
+        }
+        if matches(lower, ["discord", "whatsapp", "messenger", "telegram", "slack", "microsoft teams", "google chat"]) {
+            return .messaging
+        }
+        if matches(lower, ["gmail", "outlook", "proton mail", "yahoo mail", "icloud mail", " - mail "]) { return .email }
+        return nil
     }
 
     private static func matches(_ blob: String, _ needles: [String]) -> Bool {
@@ -209,6 +236,8 @@ public enum CorrectionPrompt {
     tire la fenêtre v le bas → Tire la fenêtre vers le bas.
     je l'ai rangé d la boîte du haut → Je l'ai rangé dans la boîte du haut.
     il faut redémarrer p que ça marche → Il faut redémarrer pour que ça marche.
+    Garde le registre de la personne : ne remplace jamais un mot familier par un mot plus soutenu (« ouais » reste « ouais », « grave dommage » reste ainsi, « j'en sais rien » ne devient pas « je ne sais quoi », « boulot » ne devient pas « travail »). Seul le ton demandé plus bas peut rétablir le « ne » ou développer « t'as ».
+    Ponctue sobrement, comme quelqu'un qui écrit lui-même : pas de virgule après un mot d'enchaînement oral en tête de phrase (« Du coup », « Franchement », « Bon », « En vrai ») quand la phrase se dit d'un trait ; jamais de point-virgule ; pas de deux-points pour découper une phrase dite d'un seul trait. « mdr » et « ptdr » s'écrivent en minuscules.
     Une référence de matériel s'écrit d'un seul bloc comme chez le fabricant (chiffres et lettres collés), avec exactement les chiffres prononcés : n'invente ni ne complète jamais un numéro de modèle.
     Quand le « Texte juste avant le curseur » est donné, la dictée sera collée juste après lui ; ne le recopie jamais. S'il s'arrête au milieu d'une phrase (après un mot, une virgule, un deux-points ou un tiret, sans point final, « ? », « ! » ni retour à la ligne), la dictée continue cette phrase : son premier mot prend une minuscule, sauf nom propre, sigle ou terme qui prend toujours une majuscule ; commence par une virgule seulement si la phrase en demande une à cet endroit. S'il finit par un point alors que sa dernière phrase est manifestement coupée (« Je voulais te dire que. »), la dictée la continue aussi : premier mot en minuscule. Sinon, la dictée commence une nouvelle phrase, avec une majuscule. Exemples fictifs : avant le curseur « Je pense que », dictée « demain c'est mieux » → « demain, c'est mieux. » ; avant le curseur « Bonjour Paul », dictée « je voulais te dire merci » → « , je voulais te dire merci. »
     """
@@ -259,6 +288,8 @@ public enum CorrectionPrompt {
     Outside spelling, a lone letter in the middle of a sentence is most often a word cut short by fast speech: the transcription kept only its start. Restore the word that starts with that letter and that the sentence needs; do not drop the letter by rearranging the sentence. Fictional examples:
     drag the window d to the bottom → Drag the window down to the bottom.
     i put it i the top box → I put it in the top box.
+    Keep the speaker's register: never replace a casual word with a more formal one ("yeah" stays "yeah", "stuff" stays "stuff", "I dunno" does not become "I do not know"). Only the tone below may expand casual forms.
+    Punctuate sparingly, like someone typing it themselves: no comma after a spoken connector at the start of a sentence ("So", "Honestly", "Anyway") when the sentence is said in one go; never a semicolon; no colon to split a sentence spoken in one go. "lol" and "lmao" stay lowercase.
     A hardware reference is written as one block, the way its manufacturer writes it, with exactly the digits that were spoken: never invent or complete a model number.
     When the "Text just before the cursor" is given, the dictation will be pasted right after it; never copy it. If it stops in the middle of a sentence (after a word, a comma, a colon or a dash, with no final period, "?", "!" or line break), the dictation continues that sentence: its first word is lowercase, except a proper noun, an acronym, "I" or a term that is always capitalized; start with a comma only if the sentence needs one there. If it ends with a period but its last sentence is clearly cut short ("I wanted to tell you that."), the dictation continues it too: first word lowercase. Otherwise the dictation starts a new sentence, capitalized. Fictional examples: before the cursor "I think that", dictation "tomorrow is better" → "tomorrow is better." ; before the cursor "Hi Paul", dictation "I wanted to say thanks" → ", I wanted to say thanks."
     Your reply contains only the corrected dictation: never the nearby text or the selection, even if the dictation seems to continue it.

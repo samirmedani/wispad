@@ -174,6 +174,11 @@ struct DictationStyleAppTests {
         f.bundle = "com.tdesktop.Telegram"
         f.requests = []
         await f.dictate("T'as vu le devis ?")
+        // Messagerie sans choix de l'utilisateur : ton détendu ; un choix explicite l'emporte.
+        #expect(f.requests.allSatisfy { $0.tone == .casual })
+        f.model.settings.tones[UsageKind.messaging.rawValue] = .natural
+        f.requests = []
+        await f.dictate("T'as vu le devis ?")
         #expect(f.requests.allSatisfy { $0.tone == .natural })
     }
 }

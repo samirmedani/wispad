@@ -934,7 +934,8 @@ final class DictationCoordinator {
             model: speech.liveModel,
             targetApp: context.appName,
             targetBundle: context.bundleID,
-            usageCategory: UsageClassifier.classify(bundleIdentifier: context.bundleID, appName: context.appName).rawValue,
+            usageCategory: UsageClassifier.classify(bundleIdentifier: context.bundleID, appName: context.appName,
+                                                    windowTitle: context.windowTitle).rawValue,
             insertionStatus: InsertionStatus.pending.rawValue,
             audioPath: url?.path,
             alternativeText: alternative
@@ -980,7 +981,8 @@ final class DictationCoordinator {
             try model.store.updateDelivery(
                 id: record.id, status: status.rawValue,
                 targetApp: context.appName, targetBundle: context.bundleID,
-                usageCategory: UsageClassifier.classify(bundleIdentifier: context.bundleID, appName: context.appName).rawValue,
+                usageCategory: UsageClassifier.classify(bundleIdentifier: context.bundleID, appName: context.appName,
+                                                        windowTitle: context.windowTitle).rawValue,
                 preserveUnknownTarget: false
             )
         }
@@ -1310,7 +1312,9 @@ final class DictationCoordinator {
             let correctionBegan = KeyboardTap.now()
             var request = CorrectionRequest(transcript: raw, dictionary: model.dictionary.map(\.term), appName: record.targetApp,
                                             structureDictation: model.settings.structureDictation, language: model.settings.language)
-            request.tone = model.tone(bundleID: record.targetBundle, appName: record.targetApp)
+            // La catégorie enregistrée garde le site d'origine (X dans Chrome) : le ton de la retranscription aussi.
+            request.tone = record.usageCategory.flatMap(UsageKind.init(rawValue:)).map(model.tone(kind:))
+                ?? model.tone(bundleID: record.targetBundle, appName: record.targetApp)
             request.dateFormat = model.settings.dateFormat
             request.numberFormat = model.settings.numberFormat
             let cleaned = await model.dependencies.clean(
