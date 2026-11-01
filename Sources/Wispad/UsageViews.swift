@@ -98,8 +98,8 @@ struct UsageView: View {
                     HStack(spacing: 10) {
                         if account.blocked {
                             StatusChip(text: String(localized: "Bloqué : crédit épuisé ou plafond atteint"), tint: .red)
-                        } else if let balance = model.xaiBalance {
-                            Text(balance)
+                        } else if let billing = model.xaiBilling {
+                            Text(MoneyFormat.usd(billing.remainingUSD))
                         } else {
                             StatusChip(text: String(localized: "Actif"), tint: .green)
                         }
@@ -112,7 +112,10 @@ struct UsageView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            if model.xaiAccount != nil, model.xaiBalance == nil {
+            if let billing = model.xaiBilling, model.xaiAccount?.blocked != true {
+                XAIBillingDetail(billing: billing)
+            }
+            if model.xaiAccount != nil, model.xaiBilling == nil {
                 Text("xAI ne donne son solde qu'à une clé de gestion. Crée-la dans la console xAI (Settings → Management Keys) et ajoute-la dans Fournisseurs, parmi les clés facultatives.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -736,6 +739,52 @@ struct BalanceLine<Value: View>: View {
             Spacer()
             value.font(.system(size: 13))
         }
+    }
+}
+
+/// Détail du compte xAI sous son solde : autonomie, mois en cours, 30 derniers jours par clé et par service,
+/// dernière recharge. Montants de la facturation xAI, pas des estimations de l'app.
+struct XAIBillingDetail: View {
+    var billing: XAIBilling
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let days = billing.daysLeft {
+                Text(String(localized: "Environ \(days) jours de crédit au rythme des 30 derniers jours."))
+                    .foregroundStyle(days < 7 ? Color.orange : Color.secondary)
+            }
+            Text(String(localized: "Mois en cours : \(MoneyFormat.usd(billing.cycleSpentUSD)) consommés, retirés du crédit à la facture mensuelle."))
+                .foregroundStyle(.secondary)
+            if !billing.recentByKey.isEmpty {
+                HStack(alignment: .top, spacing: 24) {
+                    shares(String(localized: "30 jours par clé API"), billing.recentByKey)
+                    shares(String(localized: "30 jours par service"), billing.recentByService)
+                }
+            }
+            if let topUp = billing.lastTopUp {
+                let date = topUp.date.formatted(date: .abbreviated, time: .omitted)
+                Text(topUp.automatic
+                    ? String(localized: "Dernière recharge : \(MoneyFormat.usd(topUp.usd)) le \(date), automatique.")
+                    : String(localized: "Dernière recharge : \(MoneyFormat.usd(topUp.usd)) le \(date), manuelle."))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .font(.system(size: 12))
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func shares(_ title: String, _ shares: [XAIBilling.Share]) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title).font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary)
+            ForEach(shares) { share in
+                HStack {
+                    Text(share.name)
+                    Spacer(minLength: 12)
+                    Text(MoneyFormat.usd(share.usd)).monospacedDigit()
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

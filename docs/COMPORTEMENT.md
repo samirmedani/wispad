@@ -1142,6 +1142,10 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
   d'entrée, de cache et de sortie lus dans la réponse). Une dictée annulée compte l'audio déjà envoyé.
 - Coûts estimés d'après les tarifs publiés (`Pricing` dans `Usage.swift`) ; la facture du fournisseur fait foi.
 - Soldes réels DeepSeek et xAI (clé de gestion facultative), relus au plus toutes les 5 minutes.
+- Avec la clé de gestion xAI, le crédit affiché déduit la consommation du mois en cours, que xAI ne retire du
+  crédit qu'à la facture mensuelle (aperçu `postpaid/invoice/preview`). Dessous : jours de crédit au rythme des 30
+  derniers jours, consommation du mois, dépense des 30 derniers jours par clé API et par service (une clé de test
+  apparaît à part), dernière recharge et si elle était automatique. Montants de la facturation xAI.
 - Une seule vue : tous les appels enregistrés comptent, filtrés seulement par la période (Aujourd'hui, 7 jours,
   30 jours, Tout). Les cartes, la liste des derniers appels et le menu de la barre partagent ces mêmes appels.
 - En tête, la dépense de la période en grand (« Dépensé aujourd'hui », « Dépensé ces 7 derniers jours »…), le

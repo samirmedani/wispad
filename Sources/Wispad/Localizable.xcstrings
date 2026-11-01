@@ -21,6 +21,66 @@
         }
       }
     },
+    "30 jours par clé API" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "30 days by API key"
+          }
+        }
+      }
+    },
+    "30 jours par service" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "30 days by service"
+          }
+        }
+      }
+    },
+    "Dernière recharge : %@ le %@, automatique." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last top-up: %1$@ on %2$@, automatic."
+          }
+        }
+      }
+    },
+    "Dernière recharge : %@ le %@, manuelle." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last top-up: %1$@ on %2$@, manual."
+          }
+        }
+      }
+    },
+    "Environ %lld jours de crédit au rythme des 30 derniers jours." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "About %lld days of credit at the pace of the last 30 days."
+          }
+        }
+      }
+    },
+    "Mois en cours : %@ consommés, retirés du crédit à la facture mensuelle." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This month: %@ used, taken from the credit on the monthly invoice."
+          }
+        }
+      }
+    },
     "Texte retenu : %@ (%@)%@%@" : {
       "localizations" : {
         "en" : {

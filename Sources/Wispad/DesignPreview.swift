@@ -23,6 +23,7 @@ import SwiftUI
 /// `--hover-preview` montre les accents de survol ; `--reduce-motion` vérifie le mode sans mouvement.
 /// `--privacy-text-preview` rend aussi le composant de texte visible/masqué, sans limite du cache AppKit.
 /// `--customer-preview` : clés enregistrées dans le fichier local, une clé xAI fictive.
+/// `--balance-preview` : soldes fictifs, avec le détail du compte xAI (clé de gestion), et ouvre Consommation.
 /// `--report-preview` : rend aussi le détail de la première dictée, saisie « Signaler une erreur » ouverte.
 /// `--onboarding-step <étape> [--onboarding-state done|failed|progress]` : une étape du premier lancement guidé
 /// avec un état fictif (réussi, problème, en cours), sans aucune demande d'autorisation.
@@ -247,6 +248,20 @@ enum DesignPreview {
         }
         if arguments.contains("--banner") {
             model.statusBanner = "Ajouté au dictionnaire : Seedance."
+        }
+        if arguments.contains("--balance-preview") {
+            model.previewBalances(
+                deepSeek: MoneyFormat.usd(4.12),
+                account: XAIAccountStatus(teamID: "team-preview", keyName: "wispad", blocked: false),
+                billing: XAIBilling(
+                    remainingUSD: 8.43, cycleSpentUSD: 0.0018,
+                    recentByKey: [.init(name: "wispad", usd: 4.69), .init(name: "wispad-test", usd: 1.98)],
+                    recentByService: [.init(name: "Speech-to-Text (WebSocket)", usd: 3.42), .init(name: "Speech-to-Text", usd: 1.60),
+                                      .init(name: "grok-4.7", usd: 1.34), .init(name: "grok-4.20-0309-non-reasoning", usd: 0.28)],
+                    lastTopUp: .init(date: Date().addingTimeInterval(-6 * 86_400), usd: 5, automatic: true)
+                )
+            )
+            model.selectedSection = .usage
         }
         if let index = arguments.firstIndex(of: "--shortcut-preview"), arguments.indices.contains(index + 1) {
             previewShortcuts(model, state: arguments[index + 1])

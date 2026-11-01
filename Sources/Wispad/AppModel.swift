@@ -56,7 +56,8 @@ final class AppModel {
     var traceRevision = 0
     var deepSeekBalance: String?
     var xaiAccount: XAIAccountStatus?
-    var xaiBalance: String?
+    /// Crédit réel et consommation récente chez xAI, lus avec la clé de gestion facultative.
+    var xaiBilling: XAIBilling?
     /// Dernière lecture des clés : sert aussi à rafraîchir l'interface quand elles changent.
     /// Clés relues, ajoutées ou supprimées : un relais pas encore choisi prend le premier possible.
     var keysLoadedAt: Date? {
@@ -655,6 +656,16 @@ final class AppModel {
         await refreshBalances()
     }
 
+    #if DEBUG
+    /// Aperçu : soldes fictifs, tenus pour frais afin que l'écran Consommation ne les relise pas.
+    func previewBalances(deepSeek: String?, account: XAIAccountStatus?, billing: XAIBilling?) {
+        deepSeekBalance = deepSeek
+        xaiAccount = account
+        xaiBilling = billing
+        balancesLoadedAt = Date()
+    }
+    #endif
+
     /// Soldes réels chez les fournisseurs (appels gratuits, jamais journalisés). Une lecture interrompue (écran
     /// quitté entre-temps) ne remplace rien.
     func refreshBalances() async {
@@ -662,14 +673,14 @@ final class AppModel {
         let xaiKey = key(ProviderID.xai.rawValue) ?? ""
         let deepSeek = deepSeekKey.isEmpty ? nil : await BalanceProbe.deepSeek(key: deepSeekKey)
         let account = xaiKey.isEmpty ? nil : await BalanceProbe.xai(key: xaiKey)
-        var prepaid: String?
+        var billing: XAIBilling?
         if let account, let management = key(APIKeys.xaiManagement) {
-            prepaid = await BalanceProbe.xaiPrepaid(managementKey: management, teamID: account.teamID)
+            billing = await BalanceProbe.xaiBilling(managementKey: management, teamID: account.teamID)
         }
         guard !Task.isCancelled else { return }
         deepSeekBalance = deepSeek
         xaiAccount = account
-        xaiBalance = prepaid
+        xaiBilling = billing
         balancesLoadedAt = Date()
     }
 
