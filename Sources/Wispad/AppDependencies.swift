@@ -27,6 +27,8 @@ protocol AudioRecording: AnyObject, Sendable {
     /// Démarrage ou redémarrage trop long : la dictée ne l'attend plus. Ce qu'il a ouvert pour elle se referme
     /// seul dès qu'il rend la main, sans `stop()` à attendre sur le fil principal.
     func abandonStart()
+    /// Après l'arrêt du micro demandé par stop() (qui rend la main avant lui) : le travail attend que macOS l'ait rendu.
+    func afterStop(_ work: @escaping @Sendable () -> Void)
 }
 
 extension AudioRecording {
@@ -35,6 +37,8 @@ extension AudioRecording {
     /// Un enregistreur sans moteur à relancer (tests) : rien à faire.
     func restart() async throws {}
     func abandonStart() {}
+    /// Un enregistreur sans moteur à arrêter (tests) : le travail se fait tout de suite.
+    func afterStop(_ work: @escaping @Sendable () -> Void) { work() }
 
     /// Un enregistreur qui ne s'interrompt jamais seul (tests) : rien à signaler.
     var onInterruption: (@Sendable () -> Void)? {

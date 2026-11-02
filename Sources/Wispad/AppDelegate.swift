@@ -80,6 +80,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                 model.announceUpdated(showsWindow: false,
                                       completion: UpdateCompletion.take(version: BuildStatus.shared.version))
             }
+            // Après une fermeture inattendue (plantage) : la dictée en cours est retrouvée et rangée dans l'historique,
+            // la bulle le dit, sans fenêtre. La veille relance ensuite Wispad si ce lancement-ci plante à son tour.
+            let toolMode = ["--status-diagnostic", "--window-context-probe", "--offscreen"].contains(where: CommandLine.arguments.contains)
+            if !toolMode {
+                if model.coordinator.recoverInterruptedDictation() {
+                    model.coordinator.announce(String(localized: "Wispad s'est fermé pendant une dictée : elle t'attend dans l'historique."),
+                                               relay: false, seconds: 6)
+                } else if CommandLine.arguments.contains("--recovered") {
+                    model.coordinator.announce(String(localized: "Wispad a redémarré après une fermeture inattendue."), relay: false)
+                }
+                CrashWatch.start()
+            }
             if !quiet, let requested { show(section: requested) }
             retentionTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak model] _ in
                 Task { @MainActor in

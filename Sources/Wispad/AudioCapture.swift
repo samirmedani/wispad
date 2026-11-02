@@ -89,6 +89,13 @@ final class AudioCapture: @unchecked Sendable {
     }
     var isRunning: Bool { control.sync { engine?.isRunning == true } }
 
+    /// Une écoute écrit dans son fichier. Le fichier se ferme hors de la file `control` (`stop()`), d'où le verrou.
+    private var isRecording: Bool {
+        processingLock.lock()
+        defer { processingLock.unlock() }
+        return wav != nil
+    }
+
     /// Lancement de Wispad : charge la liste des composants audio de macOS, sans créer de moteur ni toucher au micro.
     ///
     /// Le service système qui la fournit (`AudioComponentRegistrar`) s'arrête seul au repos ; relancé, il refait sa
@@ -152,7 +159,7 @@ final class AudioCapture: @unchecked Sendable {
     func abandonStart() {
         tickets.withLock { $0.abandoned = $0.issued }
         control.async {
-            guard self.wav != nil else { return }
+            guard self.isRecording else { return }
             let stopped = self.stopAudio()
             if let url = stopped.url { try? FileManager.default.removeItem(at: url) }
         }
@@ -179,7 +186,9 @@ final class AudioCapture: @unchecked Sendable {
     private func startAudio(directory: URL) throws -> URL {
         let url = directory.appendingPathComponent("\(UUID().uuidString).wav")
         let writer = try WAVStream(url: url, sampleRate: 16_000)
+        processingLock.lock()
         wav = writer
+        processingLock.unlock()
         reconfigurations = 0
         interruptionSignaled = false
         analyzer = SpectrumAnalyzer()
@@ -196,7 +205,7 @@ final class AudioCapture: @unchecked Sendable {
 
     /// File `control` : redémarre l'écoute en cours sur un moteur neuf.
     private func restartEngine() throws {
-        guard wav != nil else { return }
+        guard isRecording else { return }
         do {
             try runEngine(fresh: true)
         } catch {
@@ -306,7 +315,7 @@ final class AudioCapture: @unchecked Sendable {
     func prepareVoiceIsolation() {
         guard voiceIsolation, AVCaptureDevice.authorizationStatus(for: .audio) == .authorized else { return }
         control.async {
-            guard self.wav == nil, self.engine == nil else { return }
+            guard !self.isRecording, self.engine == nil else { return }
             let wanted = self.inputDeviceUID.flatMap {
                 InputDeviceChoice.effectiveUID(saved: $0, available: AudioInputDevices.all().map(\.uid))
             }
@@ -364,7 +373,7 @@ final class AudioCapture: @unchecked Sendable {
     /// File `control`.
     private func engineReconfigured(_ observed: ObjectIdentifier) {
         guard let engine, ObjectIdentifier(engine) == observed else { return }
-        guard wav != nil else {
+        guard isRecording else {
             // Au repos, un moteur du traitement de la voix reste prêt : il se reconfigure au prochain démarrage, et
             // le refaire coûterait son activation au début de la dictée suivante.
             if appliedIsolation { return }
@@ -393,7 +402,7 @@ final class AudioCapture: @unchecked Sendable {
     /// File `control` : l'écoute en cours ne reçoit plus rien et ne repartira pas (micro disparu sans autre
     /// micro, moteur refusé). Signalé une fois par écoute : la dictée s'arrête avec l'audio déjà reçu.
     private func signalInterruption() {
-        guard wav != nil, !interruptionSignaled else { return }
+        guard isRecording, !interruptionSignaled else { return }
         interruptionSignaled = true
         onInterruption?()
     }
@@ -412,13 +421,31 @@ final class AudioCapture: @unchecked Sendable {
         }
     }
 
+    /// Fin d'écoute : le fichier se ferme tout de suite et la dictée repart avec lui ; le moteur s'arrête ensuite, sur sa
+    /// file. Le 2 novembre 2026, AVAudioEngine.stop() a bloqué 9 s le fil principal (qui l'attendait), puis le fil audio
+    /// de macOS a planté pendant que la reconnaissance vocale d'Apple reconfigurait le micro intégré : Wispad restait
+    /// figé, puis se fermait en perdant la dictée.
     func stop() -> (url: URL?, duration: Double) {
-        control.sync { stopAudio() }
+        let recorded = closeRecording()
+        control.async { self.stopEngineIfIdle() }
+        return recorded
     }
 
+    /// Après l'arrêt du moteur demandé par `stop()` (sur la même file, donc après lui) : la seconde écoute ne clôt sa
+    /// dernière phrase qu'une fois le micro rendu, pour ne pas reconfigurer l'audio pendant son arrêt.
+    func afterStop(_ work: @escaping @Sendable () -> Void) {
+        control.async(execute: work)
+    }
+
+    /// File `control` : ferme l'écoute et arrête le moteur, dans cet ordre (redémarrage refusé, échec du démarrage).
     private func stopAudio() -> (url: URL?, duration: Double) {
-        engine?.inputNode.removeTap(onBus: 0)
-        engine?.stop()
+        let recorded = closeRecording()
+        stopEngine()
+        return recorded
+    }
+
+    /// Ferme le fichier de l'écoute : plus aucun paquet n'y est écrit ni converti. Sans attendre le moteur.
+    private func closeRecording() -> (url: URL?, duration: Double) {
         processingLock.lock()
         defer { processingLock.unlock() }
         let duration = wav?.durationSeconds ?? 0
@@ -427,6 +454,20 @@ final class AudioCapture: @unchecked Sendable {
         wav = nil
         converter = nil
         return (url, duration)
+    }
+
+    /// File `control` : arrête le moteur, sauf si une nouvelle écoute l'a déjà repris. Un arrêt lent est noté.
+    private func stopEngineIfIdle() {
+        guard !isRecording else { return }
+        stopEngine()
+    }
+
+    private func stopEngine() {
+        let started = CACurrentMediaTime()
+        engine?.inputNode.removeTap(onBus: 0)
+        engine?.stop()
+        let elapsed = Int((CACurrentMediaTime() - started) * 1_000)
+        if elapsed > 500 { Self.log.error("arrêt du micro lent : \(elapsed, privacy: .public) ms") }
     }
 
     private func consume(_ buffer: AVAudioPCMBuffer) {

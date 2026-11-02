@@ -304,6 +304,9 @@ final class DictationCoordinator {
         case .success(let url):
             current.audio = audio
             current.audioURL = url
+            // Notée dès maintenant : si Wispad se ferme sans prévenir, son audio sera retrouvé au lancement suivant.
+            InterruptedDictation(path: url.path, provider: model.settings.provider.rawValue, model: model.settings.liveModel,
+                                 appName: current.context.appName, bundleID: current.context.bundleID).save()
             current.marks.firstAudio = firstPacket.withLock { $0 }
         case .failure(let error):
             Self.audioLog.error("démarrage du micro impossible")
@@ -561,11 +564,15 @@ final class DictationCoordinator {
         current.earlyPauseTask?.cancel()
         current.earlyPauseTask = nil
         stopMeter()
+        let microphone = current.audio
         let stopped = closeMicrophone(current)
         current.releaseFinished.resolve(.success(()))
         current.pcm.close()
-        // La seconde écoute clôt sa dernière phrase pendant que la correction lit le contexte.
-        current.localHearing?.finish()
+        // La seconde écoute clôt sa dernière phrase pendant que la correction lit le contexte, une fois le micro rendu :
+        // la reconnaissance vocale d'Apple reconfigurait le micro intégré pendant son arrêt (plantage du 2 novembre 2026).
+        if let local = current.localHearing {
+            if let microphone { microphone.afterStop { local.finish() } } else { local.finish() }
+        }
         let url = stopped?.url ?? current.audioURL
         let duration = max(0, stopped?.duration ?? 0)
         if let local = current.localHearing {
@@ -1457,6 +1464,39 @@ final class DictationCoordinator {
     func delete(_ url: URL?) {
         guard let url else { return }
         try? FileManager.default.removeItem(at: url)
+    }
+
+    /// Au lancement : la dernière dictée commencée avant une fermeture inattendue (plantage), si son audio est encore
+    /// là et qu'aucune dictée de l'historique ne le porte. Son fichier est réparé, puis rangé dans l'historique comme
+    /// une transcription à refaire (« Réessayer »). Rend vrai si une dictée a été retrouvée.
+    @discardableResult
+    func recoverInterruptedDictation() -> Bool {
+        guard let model, let lost = InterruptedDictation.take() else { return false }
+        let url = URL(fileURLWithPath: lost.path)
+        guard FileManager.default.fileExists(atPath: url.path) else { return false }
+        let known = (try? model.store.dictations().contains { $0.audioPath == lost.path }) ?? true
+        guard !known else { return false }
+        guard let duration = WAVStream.repair(url: url), duration >= Self.minimumDuration else {
+            delete(url)
+            return false
+        }
+        let record = DictationRecord(
+            finalText: "", rawText: "", durationSeconds: duration, wordCount: 0,
+            provider: lost.provider, model: lost.model,
+            targetApp: lost.appName, targetBundle: lost.bundleID,
+            insertionStatus: InsertionStatus.transcriptionFailed.rawValue,
+            audioPath: url.path
+        )
+        do {
+            try model.store.insert(record)
+        } catch {
+            Self.audioLog.error("dictée interrompue retrouvée mais historique indisponible")
+            return false
+        }
+        applyRetention(recordID: record.id, url: url, status: .transcriptionFailed, model: model)
+        model.reloadHistory()
+        Self.audioLog.notice("dictée interrompue retrouvée : rangée dans l'historique")
+        return true
     }
 
     private func startMeter() {
