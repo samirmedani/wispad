@@ -44,8 +44,6 @@ final class Capture {
     var latestHeard = ""
     /// Dernier segment annoncé final par le flux, même si le créneau d'anticipation était déjà utilisé.
     var latestSettledHeard = ""
-    /// Une préparation réservée au relâchement occupe le créneau final ; aucun troisième texte spéculatif.
-    var preparedAtRelease = false
     /// Attente d'une pause stable, annulée par un nouveau mot, l'arrêt ou Échap.
     var earlyPauseTask: Task<Void, Never>?
     /// Une préparation à une pause et, si nécessaire, une autre à l'arrêt. Jamais à chaque pause.
