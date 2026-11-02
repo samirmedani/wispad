@@ -662,7 +662,9 @@ plus élevé sur les seules dictées concernées.
   audio, un segment déjà annoncé final ou un texte terminé par « . », « ! » ou « ? » garde sa préparation immédiate.
   Sinon, Wispad attend le texte final du flux avant de préparer la correction, en parallèle du fichier encore
   attendu : le dernier partiel peut être tronqué. Si le fichier est déjà revenu, seul le texte retenu est corrigé.
-  Une préparation réservée au relâchement empêche une autre préparation spéculative sur le flux final.
+  Si le texte final du flux diffère de celui préparé au relâchement (derniers mots arrivés après), il est préparé
+  aussitôt, sans attendre le fichier (trois préparations au plus) ; un texte déjà préparé ne l'est jamais deux fois.
+  Le 2 novembre 2026, la correction partait sinon après le fichier, en série : 2,2 s pour 15 s de parole.
   Sans vérification audio, la préparation du dernier texte entendu au relâchement reste inchangée.
   Chaque préparation garde son texte source ; le fichier peut retrouver celle de la première pause même si une
   autre préparation tourne déjà sur le texte de fin. Ces indices ne contournent jamais le fichier ni les garde-fous.
@@ -869,8 +871,10 @@ Réglages › Mise en forme : **Montants et unités** (symboles, par défaut, ou
   (« ouais », « grave », « boulot », « j'en sais rien » restent) ; hors ton Soigné, le garde-fou remet le mot dit si la
   correction l'a fait (« grave dommage » → « vraiment dommage » redevient « grave dommage »). Ponctuation sobre : pas
   de virgule après « Du coup », « Franchement », « En vrai » en tête d'une phrase dite d'un trait, jamais de
-  point-virgule, pas de deux-points pour découper une phrase ; « mdr » et « ptdr » en minuscules. Le 1er novembre
-  2026, des réponses sur X dictées au ton Naturel ont été prises pour des textes d'IA.
+  point-virgule, pas de deux-points pour découper une phrase ; « mdr » et « ptdr » en minuscules. Les virgules qui
+  isolent une interjection, une apostrophe ou un « quoi » de fin restent (« Ah putain, la dinguerie, frère »,
+  « pour rien, quoi »). Le 1er novembre 2026, des réponses sur X dictées au ton Naturel ont été prises pour des
+  textes d'IA.
   L'ancien choix « Comme dicté » porte désormais le libellé « Naturel », sans changer les catégories réglées.
   Le ton ne change que le registre, jamais le vocabulaire ni le sens ; le garde-fou de fidélité s'applique toujours.
   Il utilise le même appel de correction, sans nouvelle passe ni attente supplémentaire.

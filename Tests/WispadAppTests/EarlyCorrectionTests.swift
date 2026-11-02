@@ -348,7 +348,9 @@ struct CorrectionBudgetTests {
         #expect(f.cleanupCount() == 2)
     }
 
-    @Test func aPunctuatedPreparationDoesNotAddAnotherFinalStreamSpeculation() async throws {
+    /// Depuis le 2 novembre 2026, la vitesse passe avant l'économie d'un appel : un flux final différent du texte préparé
+    /// au relâchement est préparé lui aussi, puis le fichier, s'il dit encore autre chose, est corrigé à son tour.
+    @Test func aFinalStreamDifferentFromTheReleasePreparationIsPreparedToo() async throws {
         let f = try EarlyFixture()
         defer { f.dispose() }
         f.fileText = "Le colis rouge partira samedi."
@@ -358,9 +360,11 @@ struct CorrectionBudgetTests {
         f.stream.text = "La navette bleue arrive lundi."
         try await Task.sleep(for: .milliseconds(20))
         await f.model.coordinator.end()
-        #expect(f.cleanTexts == ["Le train arrive demain.", f.fileText])
+        #expect(f.cleanTexts == ["Le train arrive demain.", "La navette bleue arrive lundi.", f.fileText])
         #expect(f.inserted == [f.fileText.uppercased()])
-        #expect(f.cleanupCount() == 2)
+        let accounted = Date().addingTimeInterval(3)
+        while f.cleanupCount() < 3, Date() < accounted { try await Task.sleep(for: .milliseconds(10)) }
+        #expect(f.cleanupCount() == 3)
     }
 
     @Test(.timeLimit(.minutes(1))) func finalizedStreamOverlapsFileDespiteAnObsoletePausePreparation() async throws {
@@ -380,6 +384,29 @@ struct CorrectionBudgetTests {
         #expect(f.cleanStartedBeforeFile == [true, true])
         #expect(f.inserted == [f.fileText.uppercased()])
         #expect(f.cleanupCount() == 2)
+    }
+
+    /// Le 2 novembre 2026 : texte ponctué préparé au relâchement, puis derniers mots arrivés dans le flux final. Le texte
+    /// final se prépare aussitôt, avant le fichier, et c'est lui qui est collé, sans correction en série.
+    @Test func wordsArrivingAfterTheReleasePreparationArePreparedBeforeTheFile() async throws {
+        let f = try EarlyFixture()
+        defer { f.dispose() }
+        f.fileDelay = 0.3
+        f.fileText = "Le colis part. Demain matin."
+        f.fileWaitsForCleanText = f.fileText
+        await f.model.coordinator.begin(.toggle)
+        f.stream.onPartial?("Le colis part.")
+        f.stream.text = f.fileText
+        f.stream.finishDelay = 0.08
+        try await Task.sleep(for: .milliseconds(20))
+        await f.model.coordinator.end()
+        #expect(f.cleanTexts == ["Le colis part.", f.fileText])
+        #expect(f.cleanStartedBeforeFile == [true, true])
+        #expect(f.inserted == [f.fileText.uppercased()])
+        let accounted = Date().addingTimeInterval(3)
+        while f.cleanupCount() < 2, Date() < accounted { try await Task.sleep(for: .milliseconds(10)) }
+        #expect(f.cleanupCount() == 2)
+        #expect(try f.trace().earlyCorrectionUsed == true)
     }
 
     @Test func finalizedStreamStartsCorrectionWhileFileIsPendingDespiteStalePartial() async throws {

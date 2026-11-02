@@ -47,6 +47,7 @@ struct ToneAndRegisterTests {
         let french = CorrectionPrompt.system(for: CorrectionRequest(transcript: "x"))
         #expect(french.contains("Garde le registre de la personne"))
         #expect(french.contains("jamais de point-virgule"))
+        #expect(french.contains("« pour rien quoi » → « pour rien, quoi »"))
         let english = CorrectionPrompt.system(for: CorrectionRequest(transcript: "x", language: .english))
         #expect(english.contains("Keep the speaker's register"))
         #expect(DictationTone.casual.instructions(english: false).contains("« t'as »"))

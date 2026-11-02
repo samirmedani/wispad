@@ -48,9 +48,12 @@ extension DictationCoordinator {
 
     /// Une seule anticipation à une pause ; une autre au relâchement uniquement si le texte a changé.
     /// Chaque créneau est réservé avant toute lecture asynchrone du contexte.
-    private func prepareCorrection(_ current: Capture, heard: String, atRelease: Bool = false) {
+    /// `finalStream` : le texte final du flux, qui peut encore différer de celui préparé au relâchement (une troisième
+    /// préparation au plus).
+    private func prepareCorrection(_ current: Capture, heard: String, atRelease: Bool = false, finalStream: Bool = false) {
+        let limit = finalStream ? 3 : (atRelease ? 2 : 1)
         guard let model, model.correctionReachable, !current.cancelled, !current.correctionClaimed,
-              current.earlyCorrections.count < (atRelease ? 2 : 1), let speech = current.speech else { return }
+              current.earlyCorrections.count < limit, let speech = current.speech else { return }
         let text = FranglaisNormalizer.normalize(heard.trimmingCharacters(in: .whitespacesAndNewlines))
         guard !text.isEmpty, model.commandSelection(for: text, context: current.context) == nil,
               !current.earlyCorrections.contains(where: { TranscriptEquivalence.equivalent($0.text, text) }) else { return }
@@ -88,16 +91,16 @@ extension DictationCoordinator {
             // Simple indice de préparation, jamais une raison de contourner la vérification audio.
             guard finalized || punctuated else { return }
         }
-        let previous = current.earlyCorrections.count
         prepareCorrection(current, heard: current.latestHeard, atRelease: true)
-        current.preparedAtRelease = current.earlyCorrections.count > previous
     }
 
     /// Le flux a fini son écoute ; le fichier est encore en cours de vérification. Préparer ce texte complet
     /// permet de chevaucher les deux appels, même si une pause avait préparé un ancien fragment.
+    /// Une préparation faite au relâchement sur un autre texte ne l'empêche plus : le 2 novembre 2026, les derniers mots
+    /// d'une dictée sont arrivés 276 ms après le relâchement, et la correction n'est partie qu'après le fichier, en série
+    /// (2,2 s pour 15 s de parole). Un texte déjà préparé n'est jamais préparé deux fois.
     func prepareFinalStreamCorrection(_ current: Capture, text: String) {
-        guard !current.preparedAtRelease else { return }
-        prepareCorrection(current, heard: text, atRelease: true)
+        prepareCorrection(current, heard: text, atRelease: true, finalStream: true)
     }
 
     /// La fin de dictée prend la préparation si son texte correspond au texte retenu, au sens de
