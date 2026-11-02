@@ -74,4 +74,14 @@ struct DivergenceMeasureTests {
         #expect(TranscriptEquivalence.differingWords("Bonjour", "Bonjour à tous") == 2)
         #expect(TranscriptEquivalence.differingWords("", "Bonjour") == 1)
     }
+
+    @Test func listeningsWithoutCommonWordsDoNotOverlap() {
+        // Cas réel du 2 novembre 2026 : 0,6 s de voix, le flux a inventé une phrase entière.
+        #expect(!TranscriptEquivalence.overlaps("Je suis un peu fatigué.", "Both."))
+        #expect(TranscriptEquivalence.overlaps("des vis dans la boîte", "des vices dans la boîte"))
+        #expect(TranscriptEquivalence.overlaps("Et si tu commences ?", "Et si je commence."))
+        // Fichier coupé : ses mots se retrouvent dans le flux.
+        #expect(TranscriptEquivalence.overlaps("Je t'ai donné deux liens, si tu peux faire le test", "deux liens"))
+        #expect(!TranscriptEquivalence.overlaps("", "Bonjour"))
+    }
 }
