@@ -20,6 +20,22 @@ public enum TranscriptEquivalence {
     public static func differingWords(_ left: String, _ right: String) -> Int {
         let a = normalize(left).split(separator: " "), b = normalize(right).split(separator: " ")
         guard !a.isEmpty, !b.isEmpty, a.count * b.count <= 250_000 else { return max(a.count, b.count) }
+        return max(a.count, b.count) - commonWords(a, b)
+    }
+
+    /// Deux écoutes du même audio qui se recoupent : au moins la moitié des mots du plus court des deux textes se
+    /// retrouvent, dans l'ordre, dans l'autre. Sinon l'une des deux a entendu autre chose, ou inventé une phrase sur un
+    /// audio presque vide (2 novembre 2026 : « Both. » au fichier contre « Je suis un peu fatigué. » en direct, pour
+    /// 0,6 s de voix) ; elle ne sert alors pas d'autre écoute à la correction, qui la recopierait.
+    public static func overlaps(_ left: String, _ right: String) -> Bool {
+        let a = normalize(left).split(separator: " "), b = normalize(right).split(separator: " ")
+        guard !a.isEmpty, !b.isEmpty else { return false }
+        guard a.count * b.count <= 250_000 else { return true }
+        return commonWords(a, b) * 2 >= min(a.count, b.count)
+    }
+
+    /// Longueur de la plus longue sous-suite commune.
+    private static func commonWords(_ a: [Substring], _ b: [Substring]) -> Int {
         var previous = Array(repeating: 0, count: b.count + 1)
         for word in a {
             var row = Array(repeating: 0, count: b.count + 1)
@@ -28,7 +44,7 @@ public enum TranscriptEquivalence {
             }
             previous = row
         }
-        return max(a.count, b.count) - previous[b.count]
+        return previous[b.count]
     }
 
     public static func normalize(_ text: String) -> String {

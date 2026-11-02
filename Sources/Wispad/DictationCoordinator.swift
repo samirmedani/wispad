@@ -787,6 +787,9 @@ final class DictationCoordinator {
         }
         var correctionLedger: CorrectionLedger?
         var usePrepared = false
+        /// Flux qui contredit le fichier, gardé avec la dictée dans l'historique.
+        var heardAlternative: String?
+        /// Le même, donné à la correction comme autre écoute seulement s'il recoupe le fichier.
         var alternative: String?
         if let fileLedger {
             let decision = await verifyAgainstFile(
@@ -796,7 +799,10 @@ final class DictationCoordinator {
             )
             if decision.stop { return }
             raw = decision.raw
-            alternative = decision.alternative
+            heardAlternative = decision.alternative
+            // Écoutes sans recoupement (« Both. » au fichier, « Je suis un peu fatigué. » inventé par le flux sur 0,6 s
+            // de voix, 2 novembre 2026) : la correction recopiait la phrase du flux. Elle ne reçoit alors que le fichier.
+            alternative = decision.alternative.flatMap { TranscriptEquivalence.overlaps($0, raw) ? $0 : nil }
             speech = decision.speech
             correctionLedger = decision.ledger
             usePrepared = decision.usePrepared
@@ -945,7 +951,7 @@ final class DictationCoordinator {
                                                     windowTitle: context.windowTitle).rawValue,
             insertionStatus: InsertionStatus.pending.rawValue,
             audioPath: url?.path,
-            alternativeText: alternative
+            alternativeText: heardAlternative
         )
         do {
             try model.store.insert(record)

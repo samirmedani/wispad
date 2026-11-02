@@ -430,6 +430,10 @@ Toujours chez un fournisseur, au choix dans Fournisseurs › Modèles › Voix :
   en français comme en anglais) : le flux est gardé, sa correction déjà lancée est collée ;
 - texte différent : celui du fichier est corrigé et collé, le flux sert d'« autre écoute » à la correction et reste
   avec la dictée dans l'historique local (pour comprendre le désaccord et pour le banc des erreurs signalées) ;
+- texte sans recoupement (moins de la moitié des mots du plus court des deux se retrouvent dans l'autre) : l'une des
+  écoutes a entendu autre chose ou inventé une phrase sur un audio presque vide. Le flux reste dans l'historique mais
+  n'est pas donné à la correction, qui le recopierait (cas réel : « Both. » au fichier, « Je suis un peu fatigué. »
+  inventé par le flux pour 0,6 s de voix) ;
 - texte différent, mais la seconde écoute sur le Mac (plus bas) a entendu un passage court comme le flux, trois mots
   au plus de chaque côté : deux écoutes contre une, ce passage du flux remplace celui du fichier avant la suite
   (« vote des écoutes » ; exemple inventé : « des vices dans la boîte » → « des vis dans la boîte »). Jamais pour un

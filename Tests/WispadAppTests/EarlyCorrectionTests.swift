@@ -508,7 +508,8 @@ struct CorrectionBudgetTests {
         f.fileText = "Le colis rouge partira samedi matin"
         await f.model.coordinator.begin(.toggle)
         f.stream.onPartial?(f.fileText)
-        f.stream.text = "Le train arrive demain matin en gare"
+        // Les deux écoutes se recoupent : le flux final sert d'autre écoute.
+        f.stream.text = "Le colis rouge partira demain matin en gare"
         f.fileWaitsForCleanText = f.stream.text
         try await Task.sleep(for: .milliseconds(20))
         await f.model.coordinator.end()
