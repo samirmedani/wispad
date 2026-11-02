@@ -17,6 +17,19 @@ Raccourci par défaut : fn seule. Wispad intercepte la touche fn pour que macOS 
 - Moins de 0,3 s d'audio : rien n'est envoyé.
 - Une nouvelle dictée peut commencer pendant que la précédente se termine : les textes se collent dans l'ordre
   où ils ont été dits, séparés par une espace.
+- Fin d'écoute : le fichier audio se ferme tout de suite et la dictée part avec lui ; le micro s'arrête ensuite en
+  arrière-plan. Un arrêt lent de macOS ne fige plus Wispad (noté « arrêt du micro lent » au-delà de 0,5 s). La
+  seconde écoute du Mac ne clôt sa dernière phrase qu'une fois le micro rendu. Le 2 novembre 2026, l'arrêt du micro
+  avait figé Wispad 9 s, puis le fil audio de macOS avait planté pendant que la reconnaissance vocale d'Apple
+  reconfigurait le micro intégré.
+- Fermeture inattendue : chaque dictée est notée dès que le micro s'ouvre (chemin de l'audio, fournisseur, app ;
+  aucun texte). Au lancement suivant, si son audio est encore là sans dictée de l'historique pour le porter, son
+  fichier est réparé et rangé dans l'historique comme une transcription à refaire ; la bulle dit « Wispad s'est fermé
+  pendant une dictée : elle t'attend dans l'historique. »
+- Relance après plantage (version publiée seulement) : une petite veille attend la fin de Wispad. Si macOS écrit un
+  rapport de plantage de Wispad, elle le relance en arrière-plan, sans fenêtre (« Wispad a redémarré après une
+  fermeture inattendue. »). Une fermeture normale, forcée ou une mise à jour ne relancent rien ; deux plantages en
+  moins de deux minutes non plus, pour ne jamais boucler.
 - Raccord avec le texte avant le curseur (lu au collage, ou dernier collage de Wispad dans ce champ, sans frappe
   depuis) : au milieu d'une phrase (après un mot, « , », « : », « ; » ou un tiret), un premier mot courant (« Je »,
   « Demain », « Et », « The »…) passe en minuscule ; en début de champ, de ligne ou après « . », « ! », « ? », « … »,

@@ -111,6 +111,26 @@
         }
       }
     },
+    "Wispad a redémarré après une fermeture inattendue." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wispad restarted after closing unexpectedly."
+          }
+        }
+      }
+    },
+    "Wispad s'est fermé pendant une dictée : elle t'attend dans l'historique." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wispad closed during a dictation: it is waiting for you in History."
+          }
+        }
+      }
+    },
     "·" : {
       "localizations" : {
         "en" : {
