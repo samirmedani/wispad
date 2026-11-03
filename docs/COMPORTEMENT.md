@@ -612,7 +612,9 @@ plus élevé sur les seules dictées concernées.
 - **Français écrit naturel** : par défaut, la correction rétablit les négations certaines, y compris dans les
   subordonnées et avec les pronoms compléments, et complète les sujets impersonnels omis. Le vocabulaire, le sens,
   les nuances et les incertitudes restent ceux de la dictée. Un mot ambigu comme « plus » ne justifie jamais à lui
-  seul l'ajout d'une négation. Les mots cités, le code et les adresses restent tels quels. Le ton « Soigné » développe
+  seul l'ajout d'une négation. La tournure de la personne reste : une question garde sa forme (« pourquoi on n'arrive
+  pas ? » ne devient pas « pourquoi n'arrive-t-on pas ? »), « on » ne devient pas « nous », « c'est les » ne devient
+  pas « ce sont les ». Les mots cités, le code et les adresses restent tels quels. Le ton « Soigné » développe
   aussi les contractions familières ; « Détendu » conserve les tournures orales et la négation sans « ne ».
   Ces règles partagent l'appel de correction existant : aucun appel ni délai d'attente supplémentaire.
   Le garde-fou admet les petits mots grammaticaux nécessaires dans les constructions reconnues ; il ne donne pas
@@ -634,8 +636,9 @@ plus élevé sur les seules dictées concernées.
   pareil ou presque lui donne un sens évident (vu la phrase, le contexte, les dictées précédentes et l'autre écoute),
   la correction écrit ce mot à sa place : « hier j'écris le train » → « Hier, j'ai pris le train. », « il c'est
   trompé » → « Il s'est trompé. », « un vers d'eau » → « un verre d'eau ». Une phrase qui a déjà un sens n'est pas réécrite, aucune idée
-  n'est ajoutée et un mot plausible reste (« J'écris un mail » ne change pas). Un nombre devant une unité garde sa
-  règle : il faut que le contexte le confirme.
+  n'est ajoutée et un mot plausible reste (« J'écris un mail » ne change pas), même si un mot proche à l'oreille
+  aurait aussi un sens (« Tu parles de quoi en disant déséquilibre ? » ne devient pas « en lisant », cas réel du
+  3 novembre 2026). Un nombre devant une unité garde sa règle : il faut que le contexte le confirme.
   Un terme technique anglais dit avec l'accent français ressort souvent en mots français qui ne veulent rien dire
   ensemble : quand le sujet (la phrase, la conversation visible, les dictées précédentes) appelle un terme anglais qui
   se prononce presque pareil, la correction l'écrit, même hors du vocabulaire intégré : « habilitée RAID » → « abliterated »
