@@ -986,11 +986,14 @@ public enum TextCleaner {
     }
 
     /// Finition locale d'une correction réussie (complète ou reportée depuis le flux), sans nouvelle requête.
-    /// Le ton détendu, l'anglais et le repli brut gardent leur comportement.
+    /// L'anglais et le repli brut gardent leur comportement ; le ton détendu ne reçoit que les élisions orales écrites en entier.
     public static func completeWrittenGrammar(_ text: String, language: DictationLanguage, tone: DictationTone) -> String {
         let resolved = language == .auto ? TranscriptLanguage.guess(text) : language
-        guard resolved == .french, tone != .casual else { return text }
-        return WrittenGrammar.joinAlternativeFragments(WrittenGrammar.completeImpersonalSubjects(text))
+        guard resolved == .french else { return text }
+        // Toujours, ton détendu compris : « m'créer » s'écrit « me créer ».
+        let expanded = WrittenGrammar.expandOralElisions(text)
+        guard tone != .casual else { return expanded }
+        return WrittenGrammar.joinAlternativeFragments(WrittenGrammar.completeImpersonalSubjects(expanded))
     }
 
     static func clean(transcript: String, request: CorrectionRequest, speech: SpeechRequest, enabled: Bool, transport: @escaping HTTPTransport) async -> CleanupOutcome {

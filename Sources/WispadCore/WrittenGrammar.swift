@@ -46,6 +46,31 @@ enum WrittenGrammar {
         }
     }
 
+    /// Élision purement orale, devant une consonne : « m'créer » → « me créer », « j'pense » → « je pense »,
+    /// « d'faire » → « de faire », « qu'tu » → « que tu ». Le français écrit n'élide que devant une voyelle ou un h
+    /// muet ; ces formes viennent de la transcription mot pour mot de l'oral et gênaient même en ton détendu
+    /// (3 novembre 2026). « t' » reste : il peut valoir « tu » ou « te » (« t'sais », « t'dire »), et « t'as »,
+    /// « t'es » sont des formes familières écrites. Jamais devant une majuscule (« N'Golo »), ni dans une citation,
+    /// du code ou une adresse.
+    static func expandOralElisions(_ text: String) -> String {
+        transformingUnprotected(text) { fragment in
+            let source = fragment as NSString
+            let result = NSMutableString(string: fragment)
+            for match in oralElisionPattern.matches(in: fragment, range: NSRange(location: 0, length: source.length)).reversed() {
+                let letter = source.substring(with: match.range(at: 1))
+                guard let full = elidedWords[letter.lowercased()] else { continue }
+                let written = letter.first?.isUppercase == true ? full.prefix(1).uppercased() + full.dropFirst() : full
+                result.replaceCharacters(in: match.range, with: written + " ")
+            }
+            return result as String
+        }
+    }
+
+    private static let elidedWords = ["j": "je", "m": "me", "s": "se", "d": "de", "l": "le", "c": "ce", "n": "ne", "qu": "que"]
+    private static let oralElisionPattern = try! NSRegularExpression(
+        pattern: #"(?<![\p{L}\p{N}'’])([JjMmSsDdLlCcNn]|[Qq]u)['’](?=[bcdfgjklmnpqrstvwxzç])"#
+    )
+
     /// Finition locale d'une correction déjà retenue : seul le sujet impersonnel certain est ajouté.
     /// Un fragment isolé, une interrogation introduite par « que » ou un sujet déjà présent restent tels quels.
     static func completeImpersonalSubjects(_ text: String) -> String {

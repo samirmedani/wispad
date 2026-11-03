@@ -596,7 +596,11 @@ plus élevé sur les seules dictées concernées.
 - Hésitations, bégaiements, faux départs et **autocorrections orales** retirés : « mardi, ah non, mercredi »
   devient « mercredi ». Un « non » qui fait partie du message reste.
 - Nombres écrits en chiffres quand ils comptent vraiment quelque chose ; élisions purement orales écrites en entier
-  (« j'sais » → « je sais »).
+  (« j'sais » → « je sais »). Après la correction, la finition locale l'impose aussi, dans tous les tons, ton détendu
+  compris : « j' », « m' », « s' », « d' », « l' », « c' », « n' » et « qu' » devant une consonne minuscule deviennent
+  « je », « me », « se », « de », « le », « ce », « ne » et « que » (« m'créer » → « me créer »). « t' » reste (« tu » ou
+  « te » ?), comme « t'as » et « t'es » ; jamais devant une majuscule (« N'Golo »), dans une citation, du code ou une
+  adresse.
 - **Ponctuation selon le sens** : la transcription pose souvent un point à chaque pause de la voix. La correction
   rattache à sa phrase, sans changer les mots, un morceau qui ne tient pas seul (« ou non », « ou pas », « quand… »,
   « où… », un complément) et corrige « ou » / « où » selon le sens (« un écran où on choisit la langue »). Une phrase
