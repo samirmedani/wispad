@@ -51,5 +51,9 @@ struct ToneAndRegisterTests {
         let english = CorrectionPrompt.system(for: CorrectionRequest(transcript: "x", language: .english))
         #expect(english.contains("Keep the speaker's register"))
         #expect(DictationTone.casual.instructions(english: false).contains("« t'as »"))
+        // 3 novembre 2026 : « en disant » devenu « en lisant », « pourquoi on n'arrive pas » mis à l'inversion.
+        #expect(french.contains("même si un mot proche à l'oreille en aurait un aussi"))
+        #expect(english.contains("even when a word that sounds close would make sense too"))
+        #expect(DictationTone.natural.instructions(english: false).contains("jamais d'inversion"))
     }
 }
