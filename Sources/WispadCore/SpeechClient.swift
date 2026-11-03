@@ -986,12 +986,17 @@ public enum TextCleaner {
     }
 
     /// Finition locale d'une correction réussie (complète ou reportée depuis le flux), sans nouvelle requête.
-    /// L'anglais et le repli brut gardent leur comportement ; le ton détendu ne reçoit que les élisions orales écrites en entier.
+    /// L'anglais et le repli brut gardent leur comportement ; le ton détendu ne reçoit que le nettoyage de l'oral
+    /// (élisions, « s'te plaît », « y'a », mots répétés).
     public static func completeWrittenGrammar(_ text: String, language: DictationLanguage, tone: DictationTone) -> String {
         let resolved = language == .auto ? TranscriptLanguage.guess(text) : language
         guard resolved == .french else { return text }
-        // Toujours, ton détendu compris : « m'créer » s'écrit « me créer ».
-        let expanded = WrittenGrammar.expandOralElisions(text)
+        // Toujours, ton détendu compris : « m'créer » → « me créer », « s'te plaît » → « s'il te plaît », « y'a » →
+        // « y a », mots répétés retirés.
+        // « s'te plaît » d'abord : l'élision écrirait sinon « se te plaît ».
+        let expanded = WrittenGrammar.removeRepeatedWords(
+            WrittenGrammar.expandOralElisions(WrittenGrammar.expandOralSpellings(text))
+        )
         guard tone != .casual else { return expanded }
         return WrittenGrammar.joinAlternativeFragments(WrittenGrammar.completeImpersonalSubjects(expanded))
     }
