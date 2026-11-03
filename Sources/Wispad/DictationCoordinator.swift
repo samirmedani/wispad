@@ -83,6 +83,9 @@ final class DictationCoordinator {
     @ObservationIgnored private var dismissing: UUID?
     /// Départ automatique du message d'erreur, en pause au survol.
     let failureTimer = MessageTimer()
+    /// Attente d'un champ derrière la carte « Texte prêt » (`awaitField`).
+    private var fieldWatch: Task<Void, Never>?
+    static var fieldWatchNanoseconds: UInt64 = 250_000_000
     /// Le pointeur survole un message de la bulle : son décompte attend.
     @ObservationIgnored private(set) var messagesHeld = false
     /// Nouvelle transcription demandée depuis l'historique.
@@ -618,6 +621,8 @@ final class DictationCoordinator {
     }
 
     func dismissFailure() {
+        fieldWatch?.cancel()
+        fieldWatch = nil
         guard shownFailure != nil || phase.isFailure else { return }
         shownFailure = nil
         failureTimer.cancel()
@@ -1027,8 +1032,14 @@ final class DictationCoordinator {
             job.delivered = true
             if let note = job.announcement { pendingAnnouncement = note.message }
         } else {
+            // Dictée commencée sans champ et finie avant que l'utilisateur ait cliqué dans l'un d'eux : la carte attend
+            // qu'il le fasse.
+            let waitsForField = status == .noTarget && !context.startedInTextField && !context.leftTextField
+                && !context.accessibilityRefused
+                && context.selectedText?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false
             offerReadyText(finalText, status: status, recordID: record.id, accessibilityRefused: context.accessibilityRefused,
-                           heldModifiers: context.heldModifiers, leftTextField: context.leftTextField)
+                           heldModifiers: context.heldModifiers, leftTextField: context.leftTextField,
+                           waitsForField: waitsForField)
         }
         // La bulle part d'abord ; le ménage des vieux audios vient après.
         settle(job)
@@ -1077,8 +1088,9 @@ final class DictationCoordinator {
     /// refusé faute d'accessibilité : laquelle manque, plutôt qu'un texte « pas arrivé » jamais envoyé. Collage
     /// retenu parce qu'une touche modificatrice est restée tenue : laquelle.
     static func readyReason(for status: InsertionStatus, accessibilityRefused: Bool = false, heldModifiers: UInt64 = 0,
-                            leftTextField: Bool = false) -> String {
+                            leftTextField: Bool = false, waitsForField: Bool = false) -> String {
         if accessibilityRefused { return String(localized: "Accessibilité non autorisée") }
+        if status == .noTarget, waitsForField { return String(localized: "Clique dans un champ : le texte s'y écrira") }
         if status == .noTarget, leftTextField { return String(localized: "Le curseur a quitté le champ") }
         if status == .failed, heldModifiers != 0 {
             let keys = TextInserter.modifierNames(heldModifiers)
@@ -1107,16 +1119,40 @@ final class DictationCoordinator {
     /// Échec avéré : le texte reste récupérable sans voler le focus. Il est copié, sauf vers un champ sécurisé
     /// où il ne doit pas traîner dans le presse-papiers.
     private func offerReadyText(_ text: String, status: InsertionStatus, recordID: String?, accessibilityRefused: Bool = false,
-                                heldModifiers: UInt64 = 0, leftTextField: Bool = false) {
+                                heldModifiers: UInt64 = 0, leftTextField: Bool = false, waitsForField: Bool = false) {
         guard let model else { return }
         if status != .refusedSecure { model.dependencies.copyText(text) }
         Self.insertionLog.notice("récupération du collage : \(status.rawValue, privacy: .public)")
         let message = Self.readyMessage(for: status, accessibilityRefused: accessibilityRefused, heldModifiers: heldModifiers,
                                         leftTextField: leftTextField)
         let reason = Self.readyReason(for: status, accessibilityRefused: accessibilityRefused, heldModifiers: heldModifiers,
-                                      leftTextField: leftTextField)
+                                      leftTextField: leftTextField, waitsForField: waitsForField)
         model.statusBanner = message
         showFailure(message, text: text, recordID: recordID, detail: reason)
+        if waitsForField, let shown = shownFailure { awaitField(for: shown.id) }
+    }
+
+    /// Carte « Texte prêt » d'une dictée commencée sans champ : tant qu'elle est là (12 s, en pause au survol), le
+    /// curseur est relu toutes les 0,25 s ; dès qu'il entre dans un champ de texte reconnu, le texte s'y colle comme
+    /// avec Coller. Fermée, copiée, remplacée ou une nouvelle dictée lancée : l'attente s'arrête.
+    private func awaitField(for failure: UUID) {
+        fieldWatch?.cancel()
+        fieldWatch = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: Self.fieldWatchNanoseconds)
+                guard let self, self.awaitsField(failure) else { return }
+                guard let model = self.model, await model.dependencies.focusTakesText() else { continue }
+                guard !Task.isCancelled, self.awaitsField(failure) else { return }
+                Self.insertionLog.notice("champ choisi après la dictée : collage")
+                self.pasteReadyText()
+                return
+            }
+        }
+    }
+
+    private func awaitsField(_ failure: UUID) -> Bool {
+        guard let shown = shownFailure else { return false }
+        return shown.id == failure && shown.text != nil && !shown.copied && capture == nil && !pastingAgain
     }
 
     /// Copier, dans la bulle : le texte part dans le presse-papiers et la bulle confirme « Copié ».
