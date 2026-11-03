@@ -601,6 +601,14 @@ plus élevé sur les seules dictées concernées.
   « je », « me », « se », « de », « le », « ce », « ne » et « que » (« m'créer » → « me créer »). « t' » reste (« tu » ou
   « te » ?), comme « t'as » et « t'es » ; jamais devant une majuscule (« N'Golo »), dans une citation, du code ou une
   adresse.
+  La même finition écrit « s'te plaît » / « s'vous plaît » en « s'il te plaît » / « s'il vous plaît » et « y'a »,
+  « y'avait », « y'en a » en « y a », « y avait », « y en a » ; elle retire un mot ou une paire de mots dits deux fois
+  de suite (« tu tu peux » → « tu peux », « la même la même » → « la même »). Après une virgule, seul un petit mot
+  hésitant est retiré (« c'est, c'est une offre », « Il, il coûterait », « en, en local ») : une paire répétée après
+  une virgule est souvent voulue (« si c'est demain, c'est demain », « je veux, je veux pas »). Les répétitions
+  voulues restent : « nous nous voyons », « non non », « très très », « vas-y, vas-y », « du tout, du tout », « ça,
+  ça sent », « c'est qui qui », « faire faire », « elle, elle », les nombres, un nom propre doublé (« Bora Bora »),
+  une citation ou du code. Règle vérifiée sur 4 116 dictées réelles.
 - **Ponctuation selon le sens** : la transcription pose souvent un point à chaque pause de la voix. La correction
   rattache à sa phrase, sans changer les mots, un morceau qui ne tient pas seul (« ou non », « ou pas », « quand… »,
   « où… », un complément) et corrige « ou » / « où » selon le sens (« un écran où on choisit la langue »). Une phrase

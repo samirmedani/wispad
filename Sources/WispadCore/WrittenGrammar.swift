@@ -71,6 +71,88 @@ enum WrittenGrammar {
         pattern: #"(?<![\p{L}\p{N}'’])([JjMmSsDdLlCcNn]|[Qq]u)['’](?=[bcdfgjklmnpqrstvwxzç])"#
     )
 
+    /// Formes orales que la transcription écrit mot pour mot et qu'aucun ton n'écrit ainsi : « s'te plaît » →
+    /// « s'il te plaît », « s'vous plaît » → « s'il vous plaît », « y'a » → « y a » (« y'avait », « y'en a » aussi).
+    /// Mesuré le 3 novembre 2026 : xAI les écrit ainsi, OpenAI en français standard ; c'était l'essentiel de l'écart.
+    static func expandOralSpellings(_ text: String) -> String {
+        transformingUnprotected(text) { fragment in
+            let range = { (s: String) in NSRange(location: 0, length: (s as NSString).length) }
+            let pleased = pleasePattern.stringByReplacingMatches(in: fragment, range: range(fragment),
+                                                                 withTemplate: "$1$2il $3 plaît")
+            return thereIsPattern.stringByReplacingMatches(in: pleased, range: range(pleased), withTemplate: "$1 $2")
+        }
+    }
+
+    private static let pleasePattern = try! NSRegularExpression(
+        pattern: #"(?<![\p{L}\p{N}])([Ss])(['’])(te|vous) pla[iî]t(?![\p{L}\p{N}])"#
+    )
+    private static let thereIsPattern = try! NSRegularExpression(
+        pattern: #"(?<![\p{L}\p{N}'’])([Yy])['’](a|avait|aura|aurait|en)(?![\p{L}\p{N}'’])"#
+    )
+
+    /// Mot ou paire de mots dits deux fois de suite (bégaiement, faux départ) : « tu tu peux » → « tu peux »,
+    /// « la même la même » → « la même ». Séparés par une virgule, seul un petit mot grammatical hésitant est retiré
+    /// (« c'est, c'est une offre », « Il, il coûterait », « en, en local ») : une paire répétée après une virgule est
+    /// souvent voulue (« si c'est demain, c'est demain », « je veux, je veux pas »). La première occurrence reste,
+    /// casse comprise. Les répétitions voulues restent : verbes pronominaux (« nous nous voyons »), insistance (« non
+    /// non », « très très », « vas-y, vas-y », « du tout, du tout »), mise en relief (« ça, ça sent », « elle, elle »),
+    /// « c'est qui qui », « faire faire », nombres, nom propre doublé (« Bora Bora »), citations et code. Vérifié sur
+    /// 4 116 dictées réelles le 3 novembre 2026.
+    static func removeRepeatedWords(_ text: String) -> String {
+        transformingUnprotected(text) { fragment in
+            var current = fragment
+            for pattern in [repeatedPairPattern, repeatedWordPattern] {
+                for _ in 0..<4 {
+                    let source = current as NSString
+                    let result = NSMutableString(string: current)
+                    var changed = false
+                    for match in pattern.matches(in: current, range: NSRange(location: 0, length: source.length)).reversed() {
+                        let first = source.substring(with: match.range(at: 1))
+                        let whole = source.substring(with: match.range) as NSString
+                        let second = whole.substring(from: whole.length - (first as NSString).length)
+                        let words = first.lowercased().split(whereSeparator: \.isWhitespace).map(String.init)
+                        if first.contains(where: \.isNumber) || words.contains(where: intendedRepeats.contains) { continue }
+                        if whole.range(of: ",").location != NSNotFound {
+                            guard pattern === repeatedWordPattern,
+                                  let word = words.first, hesitantWords.contains(word.replacingOccurrences(of: "’", with: "'"))
+                            else { continue }
+                        }
+                        // Nom propre doublé (« Bora Bora ») : les deux avec une majuscule.
+                        if first.first?.isUppercase == true, second.first?.isUppercase == true { continue }
+                        result.replaceCharacters(in: match.range, with: first)
+                        changed = true
+                    }
+                    current = result as String
+                    if !changed { break }
+                }
+            }
+            return current
+        }
+    }
+
+    private static let repeatedWordPattern = try! NSRegularExpression(
+        pattern: #"(?<![\p{L}\p{N}'’-])([\p{L}\p{N}'’-]+)(?:[ \t]*,[ \t]*|[ \t]+)\1(?![\p{L}\p{N}'’-])"#,
+        options: [.caseInsensitive]
+    )
+    private static let repeatedPairPattern = try! NSRegularExpression(
+        pattern: #"(?<![\p{L}\p{N}'’-])([\p{L}\p{N}'’-]+[ \t]+[\p{L}\p{N}'’-]+)(?:[ \t]*,[ \t]*|[ \t]+)\1(?![\p{L}\p{N}'’-])"#,
+        options: [.caseInsensitive]
+    )
+    private static let intendedRepeats: Set<String> = [
+        "nous", "vous", "elle", "elles", "lui", "eux", "si", "non", "oui", "ouais", "très", "trop", "bien", "bon",
+        "vite", "encore", "doucement", "allez", "bye", "ciao", "ah", "ha", "oh", "eh", "hé", "hein", "ok", "okay",
+        "hop", "bla", "toc", "tic", "tac", "coucou", "chut", "pareil", "petit", "nan", "ça", "là", "qui", "tout",
+        "beaucoup", "méga", "super", "hyper", "machin", "truc", "voilà", "vas-y", "cetera", "d'accord", "d’accord",
+        "plus", "faire",
+    ]
+    /// Petits mots qu'une hésitation répète avant une virgule (« c'est, c'est », « il, il », « le, le fader »).
+    private static let hesitantWords: Set<String> = [
+        "je", "tu", "il", "ils", "on", "le", "la", "les", "un", "une", "des", "de", "du", "en", "à", "au", "aux",
+        "dans", "pour", "par", "sur", "avec", "et", "mais", "ou", "que", "ce", "cette", "ces", "y", "ne", "se",
+        "sa", "son", "ses", "mon", "ma", "mes", "ton", "ta", "tes", "leur", "leurs", "est", "a",
+        "c'est", "j'ai", "t'as", "t'es", "qu'il", "qu'on", "l'a", "n'est",
+    ]
+
     /// Finition locale d'une correction déjà retenue : seul le sujet impersonnel certain est ajouté.
     /// Un fragment isolé, une interrogation introduite par « que » ou un sujet déjà présent restent tels quels.
     static func completeImpersonalSubjects(_ text: String) -> String {
