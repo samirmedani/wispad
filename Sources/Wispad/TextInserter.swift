@@ -16,6 +16,8 @@ struct InsertionField: @unchecked Sendable {
     var role: String?
     var subrole: String?
     var hasTextCursor = false
+    /// Page web qui se déclare modifiable (document en mode édition) : son curseur est celui d'un champ.
+    var editable = false
     var selection: NSRange?
 
     static func read(pid: pid_t) -> InsertionField {
@@ -34,17 +36,20 @@ struct InsertionField: @unchecked Sendable {
         } else {
             before = ContextProbe.textBeforeCursor(element)
         }
+        let role = ContextProbe.string(kAXRoleAttribute, element)
         return InsertionField(
             element: element, value: value, before: before, after: after,
-            role: ContextProbe.string(kAXRoleAttribute, element),
+            role: role,
             subrole: ContextProbe.string(kAXSubroleAttribute, element),
-            hasTextCursor: selection != nil, selection: selection
+            hasTextCursor: selection != nil,
+            editable: role == FocusedField.pageRole && ContextProbe.isEditable(element), selection: selection
         )
     }
 
     func kind(bundleID: String?) -> FocusedFieldKind {
         if isSecure { return .text }
-        return FocusedField.kind(role: role, subrole: subrole, hasTextCursor: hasTextCursor, bundleID: bundleID)
+        return FocusedField.kind(role: role, subrole: subrole, hasTextCursor: hasTextCursor, editable: editable,
+                                 bundleID: bundleID)
     }
 
     /// Un nouveau nœud AX n'est accepté que s'il contient l'édition attendue, typographie normalisée.

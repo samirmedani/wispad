@@ -293,6 +293,19 @@ struct PasteShortcutTests {
         #expect(FocusedField.kind(role: "AXTextField", subrole: "AXSearchField", hasTextCursor: true, bundleID: "com.apple.finder") == .text)
     }
 
+    /// Chrome prête un curseur de texte à la page elle-même, hors de tout champ (mesuré le 5 novembre 2026) : la dictée
+    /// commencée sur une page passait pour commencée dans un champ, et le texte n'allait pas dans l'app cliquée ensuite.
+    @Test func aWebPageCursorAloneIsNotAField() {
+        #expect(FocusedField.kind(role: "AXWebArea", hasTextCursor: true, bundleID: "com.google.Chrome") == .notText)
+        // Document en mode édition ou page qui se déclare modifiable : un vrai champ.
+        #expect(FocusedField.kind(role: "AXWebArea", hasTextCursor: true, editable: true, bundleID: "com.google.Chrome") == .text)
+        // Sans curseur, l'arbre de la page n'est peut-être pas ouvert : on ne conclut pas.
+        #expect(FocusedField.kind(role: "AXWebArea", hasTextCursor: false, bundleID: "com.google.Chrome") == .unknown)
+        // Les vrais champs web gardent leur rôle de texte, et un groupe avec curseur (mode édition) reste un champ.
+        #expect(FocusedField.kind(role: "AXTextArea", hasTextCursor: true, bundleID: "com.google.Chrome") == .text)
+        #expect(FocusedField.kind(role: "AXGroup", hasTextCursor: true, bundleID: "com.google.Chrome") == .text)
+    }
+
     @Test func pasteStatusNeedsTextlessFocusBeforeAndAfter() {
         #expect(FocusedField.status(confirmed: true, kinds: [.notText]) == .inserted)
         #expect(FocusedField.status(confirmed: false, kinds: [.notText]) == .noTarget)

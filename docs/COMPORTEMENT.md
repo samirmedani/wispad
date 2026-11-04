@@ -1053,7 +1053,7 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
 - Texte qui n'a pas pu être écrit : jamais en silence. La bulle le dit dans une carte « Texte prêt à copier »
   (titre de 14 points), avec sous le titre la seule raison (12 points) et des boutons de 30 points sur une ligne
   séparée, **Copier** en évidence et **Coller** : « Pas de champ où écrire » (focus sur une liste, un bouton, un
-  menu, ou le bureau et les fenêtres du Finder, avant l'envoi), « Le texte n'est pas arrivé dans le champ » (champ
+  menu, une page web hors de ses champs, ou le bureau et les fenêtres du Finder, avant l'envoi), « Le texte n'est pas arrivé dans le champ » (champ
   lisible resté identique 1 s après ⌘V), « Le curseur a quitté le champ » (voir ci-dessous), « Accessibilité non
   autorisée » (accessibilité retirée dans Réglages
   Système, ou jamais donnée : ni ⌘V ni lecture du champ), « Collage impossible » (app cible fermée ou qui a perdu le
@@ -1071,6 +1071,13 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
   **Coller**. Un conteneur illisible ne déclenche rien. Carte fermée, Copier, nouvelle dictée ou carte remplacée :
   l'attente s'arrête. Une dictée commencée dans un champ ne se colle jamais ainsi ailleurs : l'utilisateur écrit
   peut-être dans l'autre app.
+- Page web hors de ses champs (Chrome, apps Electron comme Codex) : le focus est la page elle-même (`AXWebArea`),
+  à laquelle Chrome prête un curseur de texte même quand rien n'y est modifiable. Ce curseur seul ne fait pas un
+  champ : il faut que la page se déclare modifiable (valeur modifiable ou ancêtre modifiable, comme un document en
+  mode édition). Une dictée lancée en lisant une page commence donc hors d'un champ : le texte va dans le champ où
+  l'utilisateur clique ensuite, même dans une autre app, au lieu de rester prêt avec « Collage impossible »
+  (4 dictées le 4 novembre 2026). Finie sur la page, elle n'envoie aucun ⌘V dans le vide : la carte attend un clic
+  dans un champ. Une page sans curseur reste indécise (arbre d'accessibilité pas encore ouvert) : le collage part.
 - Curseur sorti du champ pendant la dictée : elle a commencé dans un champ de texte reconnu (rôle de texte ou curseur
   de texte), et au moment de coller, le focus de la même app est sur un autre élément lisible qui n'en est pas un (la
   page, la conversation, un groupe). L'app expose ses champs, puisque celui du début a été lu : ce n'est pas un

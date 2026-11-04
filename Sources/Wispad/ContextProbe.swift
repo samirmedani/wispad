@@ -108,8 +108,11 @@ enum ContextProbe {
         field.windowTitle = windowTitle(pid: pid)
         field.isSecure = isSecure(element)
         guard !field.isSecure else { return field }
-        field.isTextField = FocusedField.kind(role: string(kAXRoleAttribute, element), subrole: string(kAXSubroleAttribute, element),
-                                              hasTextCursor: selectedRange(element) != nil, bundleID: nil) == .text
+        let role = string(kAXRoleAttribute, element)
+        field.isTextField = FocusedField.kind(role: role, subrole: string(kAXSubroleAttribute, element),
+                                              hasTextCursor: selectedRange(element) != nil,
+                                              editable: role == FocusedField.pageRole && isEditable(element),
+                                              bundleID: nil) == .text
         field.selectedText = string(kAXSelectedTextAttribute, element)
         if let count = number(kAXNumberOfCharactersAttribute, element), count <= 4_000,
            let value = string(kAXValueAttribute, element) {
@@ -218,6 +221,17 @@ enum ContextProbe {
 
     static func isSecure(_ element: AXUIElement) -> Bool {
         string(kAXSubroleAttribute, element) == "AXSecureTextField"
+    }
+
+    /// L'élément se déclare modifiable : valeur modifiable, ou ancêtre modifiable annoncé. Dans Chrome, un textarea, un
+    /// contenteditable et un document en mode édition le disent ; la page seule, non.
+    static func isEditable(_ element: AXUIElement) -> Bool {
+        var settable: DarwinBoolean = false
+        if AXUIElementIsAttributeSettable(element, kAXValueAttribute as CFString, &settable) == .success, settable.boolValue {
+            return true
+        }
+        var ancestor: CFTypeRef?
+        return AXUIElementCopyAttributeValue(element, "AXEditableAncestor" as CFString, &ancestor) == .success && ancestor != nil
     }
 
     /// L'élément expose un curseur ou une sélection de texte : on peut y écrire.
