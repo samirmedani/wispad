@@ -41,6 +41,16 @@
         }
       }
     },
+    "Clique dans un champ : le texte s'y écrira" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Click in a field: the text goes there"
+          }
+        }
+      }
+    },
     "Dernière recharge : %@ le %@, automatique." : {
       "localizations" : {
         "en" : {

@@ -229,6 +229,7 @@ private final class Fixture {
         directory = FileManager.default.temporaryDirectory.appendingPathComponent("wispad-tests-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         var deps = AppDependencies()
+        deps.focusTakesText = { false }
         deps.copyText = { _ in }
         deps.loadKey = { "fixture-" + $0 }
         deps.saveKey = { _, _ in true }
@@ -707,6 +708,7 @@ struct AppRegressionTests {
         let f = try Fixture {
             $0.insert = { _, _, _, _ in .noTarget }
             $0.copyText = { box.texts.append($0) }
+            $0.focusTakesText = { false }
         }
         defer { f.dispose() }
         f.model.overlay.displaysPanel = false
@@ -714,8 +716,8 @@ struct AppRegressionTests {
         await f.model.coordinator.end()
         // Le texte n'est allé nulle part : il est déjà copié, la bulle le dit et propose Copier assez longtemps.
         #expect(f.model.coordinator.phase == .failure("Pas de champ où écrire : le texte est prêt"))
-        // Sous le titre « Texte prêt à copier », la carte ne donne que la raison.
-        #expect(f.model.coordinator.failureDetail == "Pas de champ où écrire")
+        // Sous le titre « Texte prêt à copier », la carte dit quoi faire : la dictée a commencé sans champ.
+        #expect(f.model.coordinator.failureDetail == "Clique dans un champ : le texte s'y écrira")
         #expect(f.model.coordinator.failureText == "Phrase de test.")
         #expect(box.texts == ["Phrase de test."])
         #expect(DictationCoordinator.failureSeconds >= 10)

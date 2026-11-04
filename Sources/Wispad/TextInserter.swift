@@ -148,6 +148,16 @@ enum TextInserter {
     /// Après la lecture du collage, le temps de ses lectures groupées (texte, puis autres formats demandés).
     static let readGrace = 0.15
 
+    /// Le curseur de l'app au premier plan est dans un champ de texte reconnu (rôle de texte ou curseur de texte), ni
+    /// sécurisé ni dans Wispad. Un conteneur illisible ne compte pas : rien ne prouve qu'on y écrit.
+    @MainActor static func frontmostFocusTakesText(system: InsertionSystem = InsertionSystem()) async -> Bool {
+        guard system.trusted(), let pid = system.frontmostPID(), pid != ProcessInfo.processInfo.processIdentifier
+        else { return false }
+        let field = await system.read(pid)
+        guard !field.isSecure, system.frontmostPID() == pid else { return false }
+        return field.kind(bundleID: system.bundleID(pid)) == .text
+    }
+
     static func insert(
         _ text: String, context: DictationContext,
         shouldProceed: @escaping @MainActor () -> Bool = { true },

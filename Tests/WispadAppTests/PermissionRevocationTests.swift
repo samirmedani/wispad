@@ -365,6 +365,9 @@ private final class DictationFixture {
     /// Ce que dit l'insertion ; `accessibilityRefused` : macOS refuse l'accessibilité au moment du collage.
     var status: InsertionStatus = .inserted
     var accessibilityRefused = false
+    /// Le curseur est dans un champ de texte au premier plan ; `startsInField` : la dictée commence dans un champ.
+    var focusText = false
+    var startsInField = false
     var model: AppModel!
 
     init() throws {
@@ -379,7 +382,13 @@ private final class DictationFixture {
             access.reads += 1
             return access.granted
         }
-        deps.captureContext = { let context = DictationContext(); context.pid = 4242; return (context, Task { nil }) }
+        deps.captureContext = { [weak self] in
+            let context = DictationContext()
+            context.pid = 4242
+            context.startedInTextField = self?.startsInField ?? false
+            return (context, Task { nil })
+        }
+        deps.focusTakesText = { [weak self] in self?.focusText ?? false }
         deps.frontmostApp = { let context = DictationContext(); context.pid = 5151; return context }
         deps.makeCapture = { [audio] in audio }
         deps.makeSession = { _ in FakeStream() }
@@ -531,6 +540,47 @@ struct DictationPermissionTests {
         try await Task.sleep(nanoseconds: 150_000_000)
         #expect(f.access.reads == unwatched)
         #expect(coordinator.phase == .listening(.toggle))
+    }
+
+    @Test func aFieldChosenAfterADictationStartedWithoutOneGetsTheText() async throws {
+        let f = try DictationFixture()
+        defer { f.dispose() }
+        DictationCoordinator.fieldWatchNanoseconds = 20_000_000
+        defer { DictationCoordinator.fieldWatchNanoseconds = 250_000_000 }
+        f.status = .noTarget
+        let coordinator = f.model.coordinator
+        await coordinator.begin(.toggle)
+        await coordinator.end()
+        // Dictée lancée sans champ, finie avant le clic : la carte attend qu'on choisisse où écrire.
+        #expect(coordinator.failureDetail == "Clique dans un champ : le texte s'y écrira")
+        #expect(f.inserted.count == 1)
+        try await Task.sleep(nanoseconds: 100_000_000)
+        #expect(f.inserted.count == 1)
+        // Clic dans un champ : le texte s'y colle sans toucher à la carte.
+        f.status = .inserted
+        f.focusText = true
+        let pasted = await waitFor { f.inserted.count == 2 && f.model.history.first?.insertionStatus == InsertionStatus.inserted.rawValue }
+        #expect(pasted)
+        #expect(f.inserted.last == "Phrase de test.")
+        try await Task.sleep(nanoseconds: 100_000_000)
+        #expect(f.inserted.count == 2)
+    }
+
+    @Test func aDictationStartedInAFieldNeverPastesItselfIntoAnotherOne() async throws {
+        let f = try DictationFixture()
+        defer { f.dispose() }
+        DictationCoordinator.fieldWatchNanoseconds = 20_000_000
+        defer { DictationCoordinator.fieldWatchNanoseconds = 250_000_000 }
+        f.status = .noTarget
+        f.startsInField = true
+        f.focusText = true
+        let coordinator = f.model.coordinator
+        await coordinator.begin(.toggle)
+        await coordinator.end()
+        // Commencée dans un champ (l'utilisateur écrit peut-être ailleurs) : la carte attend Copier ou Coller.
+        #expect(coordinator.failureDetail == "Pas de champ où écrire")
+        try await Task.sleep(nanoseconds: 150_000_000)
+        #expect(f.inserted.count == 1)
     }
 
     @Test func accessibilityRefusedAtThePasteSaysWhyAndKeepsTheText() async throws {

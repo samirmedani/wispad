@@ -160,6 +160,9 @@ struct AppDependencies {
     var insert: (String, DictationContext, @escaping @MainActor () -> Bool, @escaping @MainActor () -> Void) async -> InsertionStatus = {
         await TextInserter.insert($0, context: $1, shouldProceed: $2, didSendPaste: $3)
     }
+    /// Le curseur de l'app au premier plan est dans un vrai champ de texte (ni sécurisé, ni Wispad) : la carte
+    /// « Texte prêt » d'une dictée commencée sans champ y colle alors le texte d'elle-même.
+    var focusTakesText: () async -> Bool = { await TextInserter.frontmostFocusTakesText() }
     /// « Coller la dernière dictée » : attend que les touches du raccourci soient relâchées avant ⌘V.
     /// Raccourcis déclarés par macOS (Réglages Système › Clavier › Raccourcis), pour refuser une combinaison prise.
     var systemShortcuts: () -> [PasteShortcut] = { SystemShortcuts.enabled() }

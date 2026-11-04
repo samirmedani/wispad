@@ -1064,6 +1064,13 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
   presse-papiers et confirme « Copié » (1,5 s), **Coller** le colle dans le champ de l'app active (même collage que
   « Coller la dernière dictée »). Le collage garde tous les formats du presse-papiers précédent et refuse les champs
   sécurisés.
+- Dictée commencée hors d'un champ (ni champ de texte reconnu ni sélection au départ) et finie avant que
+  l'utilisateur ait cliqué dans l'un d'eux : la carte dit « Clique dans un champ : le texte s'y écrira ». Tant
+  qu'elle est affichée (12 s, en pause au survol), le curseur de l'app au premier plan est relu toutes les 0,25 s ;
+  dès qu'il entre dans un champ de texte reconnu (ni sécurisé, ni dans Wispad), le texte s'y colle comme avec
+  **Coller**. Un conteneur illisible ne déclenche rien. Carte fermée, Copier, nouvelle dictée ou carte remplacée :
+  l'attente s'arrête. Une dictée commencée dans un champ ne se colle jamais ainsi ailleurs : l'utilisateur écrit
+  peut-être dans l'autre app.
 - Curseur sorti du champ pendant la dictée : elle a commencé dans un champ de texte reconnu (rôle de texte ou curseur
   de texte), et au moment de coller, le focus de la même app est sur un autre élément lisible qui n'en est pas un (la
   page, la conversation, un groupe). L'app expose ses champs, puisque celui du début a été lu : ce n'est pas un

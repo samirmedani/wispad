@@ -972,6 +972,8 @@ private final class ModelWorld {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let hardware = self.hardware
         var deps = AppDependencies()
+        // Jamais le vrai curseur du Mac : la carte « Texte prêt » collerait d'elle-même pendant le tirage.
+        deps.focusTakesText = { false }
         if let keys {
             deps.loadKey = { keys.isLoaded ? "fixture-" + $0 : nil }
             deps.refreshKeys = {
