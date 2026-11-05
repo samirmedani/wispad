@@ -1071,6 +1071,15 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
   **Coller**. Un conteneur illisible ne déclenche rien. Carte fermée, Copier, nouvelle dictée ou carte remplacée :
   l'attente s'arrête. Une dictée commencée dans un champ ne se colle jamais ainsi ailleurs : l'utilisateur écrit
   peut-être dans l'autre app.
+- Champ qui ignore ⌘V : le collage est envoyé dans un champ de texte reconnu, lisible et modifiable, et ce champ est
+  resté identique pendant la seconde de confirmation (page qui intercepte le collage ou le raccourci, ⌘V perdu ; deux
+  dictées dans Chrome le 5 novembre 2026). Wispad écrit alors le texte une seule fois dans ce même champ, autrement :
+  d'abord en remplaçant la sélection par l'accessibilité, puis, si rien n'a changé en 0,3 s, en tapant les caractères
+  (un retour à la ligne part en ⇧↩, qui ne fait pas envoyer un message). Juste avant chaque écriture, il vérifie que
+  la même app est au premier plan, que le focus est sur le même champ, toujours identique, et qu'aucune touche n'a
+  été tapée depuis ⌘V. Sinon, ou si le champ ne se déclare pas modifiable, est sécurisé ou reste identique après
+  la frappe, la carte « Le texte n'est pas arrivé dans le champ » s'affiche comme avant. Le journal note quel moyen a
+  écrit et si l'app avait lu le presse-papiers, jamais le texte.
 - Page web hors de ses champs (Chrome, apps Electron comme Codex) : le focus est la page elle-même (`AXWebArea`),
   à laquelle Chrome prête un curseur de texte même quand rien n'y est modifiable. Ce curseur seul ne fait pas un
   champ : il faut que la page se déclare modifiable (valeur modifiable ou ancêtre modifiable, comme un document en
