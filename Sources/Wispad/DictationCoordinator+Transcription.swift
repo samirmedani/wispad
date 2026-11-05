@@ -358,6 +358,7 @@ extension DictationCoordinator {
         request.textBeforeCursor = context.beforeCursor ?? TextInserter.recentPaste(pid: context.pid)
         request.dateFormat = model.settings.dateFormat
         request.numberFormat = model.settings.numberFormat
+        request.speakerAgreement = model.settings.speakerAgreement
         if let local, !local.isEmpty {
             let terms = request.dictionary
             request.localDivergences = LocalHearing.divergences(

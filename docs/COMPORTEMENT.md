@@ -931,6 +931,21 @@ Réglages › Mise en forme : **Montants et unités** (symboles, par défaut, ou
   la sélection comme d'habitude. Sans réponse (ou hors connexion), rien n'est collé et la sélection reste intacte.
   Aucune correction n'est préparée pendant l'écoute pour une consigne ; rien n'est appris d'une sélection réécrite.
 
+## Accord quand on parle de soi
+
+Réglage « Quand tu parles de toi » (Réglages › Mise en forme) : Comme entendu (par défaut, comportement d'origine), Au
+féminin ou Au masculin. Rien n'est analysé dans la voix : seul ce choix compte.
+
+- Seuls les participes et adjectifs qui se rapportent à « je », « me » ou « moi » s'accordent, et seulement quand masculin
+  et féminin se prononcent pareil : « je suis allé » → « je suis allée », « je me suis trompé » → « je me suis trompée »,
+  « je suis seul » → « je suis seule ». « prêt », « content » ou « heureux » s'entendent déjà : ils restent tels quels.
+- Une phrase sur quelqu'un d'autre (« tu », « il », « elle », « on », « nous », « vous ») ne change jamais, ni un
+  participe suivi de son complément (« je me suis lavé les mains »), ni un nom propre, ni le reste de la phrase.
+- Avec la correction, la consigne lui est donnée ; une règle locale (`SpeakerAgreementRule`) repasse ensuite, et
+  suffit seule quand la correction est coupée (« je suis… », « je me suis… », « j'étais… », « je me sens… »).
+- Français seulement ; jamais pour une sélection réécrite sur consigne. La retranscription depuis l'historique suit le
+  même réglage.
+
 ## Dictionnaire et apprentissage
 
 - Les termes du dictionnaire partent à la transcription (mots attendus) et à la correction.
