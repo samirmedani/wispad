@@ -37,7 +37,7 @@ struct ProvidersView: View {
         }) { kind in
             ModelPickerSheet(kind: kind, snapshot: snapshot, keyEntry: $keyEntry, openAdvanced: { advanced = true })
                 .environment(model)
-                .tint(Theme.brand)
+                .tint(Theme.accent)
         }
         // Liste des modèles de chaque clé de correction, relue au plus une fois par jour.
         .task(id: model.cleanupKeys.keys.sorted()) {
@@ -126,10 +126,8 @@ private struct OverviewSection: View {
             Spacer(minLength: 8)
             if gap.stored {
                 Button(String(localized: "Rallumer")) { perform(.enableKey(gap.account)) }
-                    .hoverFeedback()
             } else if !snapshot.readOnlyKeys, keyEntry != .overview(gap.account) {
                 Button(String(localized: "Ajouter la clé")) { perform(.addKey(gap.account)) }
-                    .hoverFeedback()
             }
         }
         .padding(.leading, 48)
@@ -157,9 +155,9 @@ private struct OverviewSection: View {
         let button = Button(label(action)) { perform(action) }
             .disabled(busy(action))
         if prominent {
-            button.buttonStyle(.borderedProminent).hoverFeedback()
+            button.buttonStyle(.borderedProminent)
         } else {
-            button.hoverFeedback()
+            button
         }
     }
 
@@ -248,7 +246,7 @@ private struct OverviewGlyph: View {
         case .ready: return .green
         case .relay: return OverlayStyle.relay
         case .attention: return .orange
-        case .blocked: return Theme.brand
+        case .blocked: return Theme.accent
         }
     }
 }
@@ -373,11 +371,11 @@ struct ModelSummaryButton: View {
             .frame(width: 280, alignment: .leading)
             .background {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(highlighted ? Theme.brand.opacity(0.06) : Theme.subtleFill)
+                    .fill(highlighted ? Theme.accent.opacity(0.06) : Theme.subtleFill)
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .strokeBorder(highlighted ? Theme.brand.opacity(0.35) : Theme.cardBorder, lineWidth: 1)
+                    .strokeBorder(highlighted ? Theme.accent.opacity(0.35) : Theme.cardBorder, lineWidth: 1)
             }
             .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         }
@@ -492,7 +490,6 @@ private struct APIKeysSection: View {
                     Label(snapshot.readOnlyKeys ? String(localized: "Recharger depuis la source") : String(localized: "Recharger depuis le coffre"),
                           systemImage: "arrow.clockwise")
                 }
-                .hoverFeedback()
             }
         } header: {
             Text("Clés API")
@@ -555,7 +552,6 @@ struct APIKeyListRow: View {
                     Image(systemName: "trash").foregroundStyle(.secondary)
                 }
                 .buttonStyle(.borderless)
-                .hoverFeedback()
                 .help(String(localized: "Supprimer la clé"))
                 .accessibilityLabel(String(localized: "Supprimer la clé \(title)"))
                 .confirmationDialog(String(localized: "Supprimer la clé \(title) ?"), isPresented: $confirmsDeletion) {
@@ -584,7 +580,6 @@ private struct AddKeyRow: View {
             } label: {
                 Label("Ajouter une clé", systemImage: "plus")
             }
-            .hoverFeedback()
         }
     }
 }
@@ -610,10 +605,8 @@ struct KeyEntryForm: View {
                 .focused($focused)
                 .onSubmit(add)
                 Button("Annuler", action: close)
-                    .hoverFeedback()
                 Button(model.addingKey ? String(localized: "Vérification…") : String(localized: "Ajouter"), action: add)
                     .buttonStyle(.borderedProminent)
-                    .hoverFeedback()
                     .disabled(!canAdd)
             }
             recognition
@@ -693,7 +686,6 @@ struct KeyEntryForm: View {
                         Label(pages.count == 1 ? String(localized: "Créer une clé \(APIKeys.title(account))") : APIKeys.title(account),
                               systemImage: "arrow.up.right.square")
                     }
-                    .hoverFeedback()
                 }
             }
             .font(.callout)
@@ -846,7 +838,6 @@ private struct LearningSection: View {
                         model.keysMessage = nil
                         keyEntry = .learning
                     }
-                    .hoverFeedback()
                 }
             } label: {
                 Text("Qui choisit les mots")
@@ -1044,7 +1035,6 @@ struct ServiceStatusSection: View {
                         checking = false
                     }
                 }
-                .hoverFeedback()
                 .disabled(checking)
             }
         } header: {

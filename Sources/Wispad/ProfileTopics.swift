@@ -347,7 +347,7 @@ private struct TopicsResult: View {
                     HStack(alignment: .top, spacing: 10) {
                         Image(systemName: "quote.opening")
                             .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(Theme.brand)
+                            .foregroundStyle(Theme.accent)
                         Text(text)
                             .font(.system(size: 13))
                             .fixedSize(horizontal: false, vertical: true)
@@ -355,7 +355,7 @@ private struct TopicsResult: View {
                     }
                     .padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Theme.brand.opacity(0.08)))
+                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Theme.accent.opacity(0.08)))
                 }
                 HStack(spacing: 6) {
                     TopicChip(symbol: "calendar", text: analysis.analyzedAt.formatted(.dateTime.day().month(.abbreviated).locale(appLocale)))
@@ -501,7 +501,7 @@ private struct ChipToggleStyle: ToggleStyle {
         } label: {
             HStack(spacing: 5) {
                 Image(systemName: configuration.isOn ? "checkmark.circle.fill" : symbol)
-                    .foregroundStyle(configuration.isOn ? Theme.brand : Color.secondary)
+                    .foregroundStyle(configuration.isOn ? Theme.accent : Color.secondary)
                 configuration.label
                     .foregroundStyle(.primary)
                 if let detail {
@@ -513,7 +513,7 @@ private struct ChipToggleStyle: ToggleStyle {
             .font(.system(size: 11.5, weight: .medium))
             .padding(.horizontal, 9)
             .frame(height: 24)
-            .background(Capsule().fill(configuration.isOn ? Theme.brand.opacity(0.12) : Theme.subtleFill))
+            .background(Capsule().fill(configuration.isOn ? Theme.accent.opacity(0.12) : Theme.subtleFill))
             .contentShape(Capsule())
         }
         .buttonStyle(HoverButtonStyle())

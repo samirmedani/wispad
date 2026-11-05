@@ -39,7 +39,6 @@ struct HelpSection: View {
             Label(page.title, systemImage: page.symbol)
         }
         .buttonStyle(.link)
-        .hoverFeedback()
     }
 
     private func copyButton(_ kind: HelpCopy) -> some View {
@@ -49,7 +48,6 @@ struct HelpSection: View {
             Label(preparing == kind ? String(localized: "Préparation…") : kind.title, systemImage: "doc.on.doc")
         }
         .disabled(preparing != nil)
-        .hoverFeedback()
         .help(kind.help)
     }
 

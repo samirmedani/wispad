@@ -219,15 +219,15 @@ struct ShortcutRecordingField: View {
         }
         .padding(.horizontal, size.padding)
         .frame(height: size.height)
-        .background(Theme.brand.opacity(0.07), in: shape)
-        .overlay { shape.strokeBorder(Theme.brand.opacity(0.5), lineWidth: 1) }
+        .background(Theme.accent.opacity(0.07), in: shape)
+        .overlay { shape.strokeBorder(Theme.accent.opacity(0.5), lineWidth: 1) }
         .onAppear { if !reduceMotion { dimmed = true } }
         .accessibilityElement(children: .combine)
     }
 
     private var dot: some View {
         Circle()
-            .fill(Theme.brand)
+            .fill(Theme.accent)
             .frame(width: size.gap * 2, height: size.gap * 2)
             .opacity(dimmed ? 0.3 : 1)
             .animation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true), value: dimmed)
@@ -351,7 +351,7 @@ private struct DiagramKey: View {
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: unit * 0.16, style: .continuous)
         shape
-            .fill(lit ? Theme.brand : Theme.raised)
+            .fill(lit ? Theme.accent : Theme.raised)
             .shadow(color: .black.opacity(lit ? 0 : 0.12), radius: 0, y: 1)
             .overlay {
                 shape.strokeBorder(lit ? Color.clear : Theme.cardBorder, lineWidth: 0.5)

@@ -310,7 +310,7 @@ private struct AppearanceTile: View {
                     .padding(3)
                     .overlay {
                         RoundedRectangle(cornerRadius: radius + 3, style: .continuous)
-                            .strokeBorder(selected ? Theme.brand : .clear, lineWidth: 2.5)
+                            .strokeBorder(selected ? Theme.accent : .clear, lineWidth: 2.5)
                     }
                 Text(option.title)
                     .font(.system(size: 11.5, weight: selected ? .semibold : .regular))

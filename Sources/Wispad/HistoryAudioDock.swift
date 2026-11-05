@@ -31,7 +31,7 @@ private struct HistoryAudioControls: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
                 Image(systemName: "waveform")
-                    .foregroundStyle(Theme.brand)
+                    .foregroundStyle(Theme.accent)
                 Text(title)
                     .font(.system(size: 12, weight: .medium))
                     .lineLimit(1)
@@ -45,7 +45,7 @@ private struct HistoryAudioControls: View {
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.white)
                         .frame(width: 32, height: 32)
-                        .background(Circle().fill(Theme.brand))
+                        .background(Circle().fill(Theme.accent))
                         .contentShape(Circle())
                 }
                 .buttonStyle(HoverButtonStyle(treatment: .icon))

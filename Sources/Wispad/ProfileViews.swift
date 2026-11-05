@@ -195,7 +195,7 @@ private struct ProfileHeadline: View {
 
     var body: some View {
         MetricGrid {
-            MetricTile(symbol: "text.word.spacing", tint: Theme.brand, title: String(localized: "Mots dictés"),
+            MetricTile(symbol: "text.word.spacing", tint: Theme.accent, title: String(localized: "Mots dictés"),
                        value: profile.words.formatted(.number.locale(appLocale)))
             MetricTile(symbol: "book.closed", tint: .orange, title: String(localized: "Soit"), value: equivalent)
             MetricTile(symbol: "bolt", tint: .green, title: String(localized: "Temps économisé"),
@@ -317,7 +317,7 @@ private struct DaysCard: View {
                         Text(value == 0 ? String(localized: "Aucune dictée") : value == 1 ? String(localized: "1 mot")
                              : String(localized: "\(value.formatted(.number.locale(appLocale))) mots"))
                             .monospacedDigit()
-                            .foregroundStyle(value == 0 ? Color.secondary : Theme.brand)
+                            .foregroundStyle(value == 0 ? Color.secondary : Theme.accent)
                     }
                 } else {
                     Text("Mots dictés par jour, sur les 18 dernières semaines. Survole une case pour voir son jour.")
@@ -333,7 +333,7 @@ private struct DaysCard: View {
                         ForEach(start..<min(start + 7, count), id: \.self) { index in
                             let value = profile.daily[index]
                             RoundedRectangle(cornerRadius: 2.5, style: .continuous)
-                                .fill(value == 0 ? Theme.subtleFill : Theme.brand.opacity(0.25 + 0.75 * Double(value) / Double(maximum)))
+                                .fill(value == 0 ? Theme.subtleFill : Theme.accent.opacity(0.25 + 0.75 * Double(value) / Double(maximum)))
                                 .overlay {
                                     if hovered == index {
                                         RoundedRectangle(cornerRadius: 2.5, style: .continuous)
@@ -356,7 +356,7 @@ private struct DaysCard: View {
                 Text("Moins").font(.system(size: 10)).foregroundStyle(.tertiary)
                 ForEach([0.0, 0.25, 0.5, 0.75, 1], id: \.self) { level in
                     RoundedRectangle(cornerRadius: 2, style: .continuous)
-                        .fill(level == 0 ? Theme.subtleFill : Theme.brand.opacity(0.25 + 0.75 * level))
+                        .fill(level == 0 ? Theme.subtleFill : Theme.accent.opacity(0.25 + 0.75 * level))
                         .frame(width: 9, height: 9)
                 }
                 Text("Plus").font(.system(size: 10)).foregroundStyle(.tertiary)
@@ -402,7 +402,7 @@ private struct WordsCard: View {
                         }
                         .padding(.horizontal, 10)
                         .padding(.vertical, 5)
-                        .background(Capsule().fill(Theme.brand.opacity(0.06 + 0.16 * weight)))
+                        .background(Capsule().fill(Theme.accent.opacity(0.06 + 0.16 * weight)))
                         .contextMenu {
                             Button(String(localized: "Masquer « \(word.label) »")) { hide(word.label) }
                         }

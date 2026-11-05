@@ -611,7 +611,7 @@ enum DesignPreview {
                                      previewHeight: kind.isCorrection ? (expanded ? 1_640 : 1_120) : nil)
         let window = NSWindow(contentRect: NSRect(x: -20_000, y: -20_000, width: 640, height: 600),
                               styleMask: [.borderless], backing: .buffered, defer: false)
-        window.contentView = NSHostingView(rootView: sheet.environment(model).tint(Theme.brand))
+        window.contentView = NSHostingView(rootView: sheet.environment(model).tint(Theme.accent))
         window.orderFrontRegardless()
         guard !NSScreen.screens.contains(where: { $0.frame.intersects(window.frame) }) else {
             window.orderOut(nil)
@@ -636,7 +636,7 @@ enum DesignPreview {
     private static func profileCardsSnapshot(model: AppModel, to url: URL) {
         let window = NSWindow(contentRect: NSRect(x: -20_000, y: -20_000, width: 340, height: 480),
                               styleMask: [.borderless], backing: .buffered, defer: false)
-        window.contentView = NSHostingView(rootView: ProfileCardsPanel().environment(model).tint(Theme.brand)
+        window.contentView = NSHostingView(rootView: ProfileCardsPanel().environment(model).tint(Theme.accent)
             .background(Color(nsColor: .windowBackgroundColor)))
         window.orderFrontRegardless()
         guard !NSScreen.screens.contains(where: { $0.frame.intersects(window.frame) }) else {
@@ -674,7 +674,7 @@ enum DesignPreview {
             .background(scheme == .dark ? Color(white: 0.16) : Color(white: 0.95))
             .environment(model)
             .environment(\.colorScheme, scheme)
-            .tint(Theme.brand)
+            .tint(Theme.accent)
             let renderer = ImageRenderer(content: board)
             renderer.scale = 2
             guard let image = renderer.nsImage, let tiff = image.tiffRepresentation,
@@ -702,7 +702,7 @@ enum DesignPreview {
         let window = NSWindow(contentRect: NSRect(x: -20_000, y: -20_000, width: 520, height: 420),
                               styleMask: [.borderless], backing: .buffered, defer: false)
         window.contentView = NSHostingView(rootView: ConfigurationImportSheet(pending: model.prepareImport(file))
-            .environment(model).tint(Theme.brand)
+            .environment(model).tint(Theme.accent)
             .background(Color(nsColor: .windowBackgroundColor)))
         window.orderFrontRegardless()
         guard !NSScreen.screens.contains(where: { $0.frame.intersects(window.frame) }) else {
@@ -751,7 +751,7 @@ enum DesignPreview {
         let window = NSWindow(contentRect: NSRect(x: -20_000, y: -20_000, width: 600, height: 600),
                               styleMask: [.borderless], backing: .buffered, defer: false)
         window.contentView = NSHostingView(rootView: UpdateSheet(release: latest, releases: installed ? [latest] : [latest, older])
-            .environment(model).tint(Theme.brand)
+            .environment(model).tint(Theme.accent)
             .background(Color(nsColor: .windowBackgroundColor)))
         window.orderFrontRegardless()
         guard !NSScreen.screens.contains(where: { $0.frame.intersects(window.frame) }) else {

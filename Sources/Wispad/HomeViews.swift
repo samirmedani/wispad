@@ -182,7 +182,7 @@ struct ActivityChart: View {
                         x: .value("Période", point.date, unit: axis.unit),
                         y: .value("Mots", point.words)
                     )
-                    .foregroundStyle(Theme.brand.gradient)
+                    .foregroundStyle(Theme.accent.gradient)
                     .cornerRadius(3)
                 }
                 .chartYAxis {
@@ -242,7 +242,7 @@ struct AppsCard: View {
                                     .fill(Theme.subtleFill)
                                     .overlay(alignment: .leading) {
                                         Capsule()
-                                            .fill(Theme.brand.opacity(0.8))
+                                            .fill(Theme.accent.opacity(0.8))
                                             .frame(width: max(4, proxy.size.width * CGFloat(app.count) / CGFloat(maximum)))
                                     }
                             }
@@ -293,7 +293,7 @@ struct RecentCard: View {
                 }
                 .labelStyle(.iconOnly)
                 .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(blurred ? Theme.brand : Color.secondary)
+                .foregroundStyle(blurred ? Theme.accent : Color.secondary)
                 .buttonStyle(HoverButtonStyle(treatment: .icon))
                 .help(blurred ? String(localized: "Afficher le texte") : String(localized: "Flouter le texte"))
                 .accessibilityLabel(blurred ? String(localized: "Afficher les dernières dictées") : String(localized: "Flouter les dernières dictées"))
@@ -303,7 +303,7 @@ struct RecentCard: View {
                 } label: {
                     Text("Tout voir")
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(Theme.brand)
+                        .foregroundStyle(Theme.accent)
                 }
                 .buttonStyle(HoverButtonStyle())
                 .disabled(recent.isEmpty)

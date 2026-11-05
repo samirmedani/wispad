@@ -60,7 +60,7 @@ struct DictionaryView: View {
         .frame(minHeight: 46)
         .card(radius: 12)
         .overlay(RoundedRectangle(cornerRadius: 12)
-            .strokeBorder(Theme.brand.opacity(focused ? 0.55 : 0), lineWidth: 1.5))
+            .strokeBorder(Theme.accent.opacity(focused ? 0.55 : 0), lineWidth: 1.5))
     }
 
     private var dictionaryTable: some View {
@@ -327,7 +327,7 @@ private struct DictionaryRow: View {
                 Button(action: onDelete) {
                     Image(systemName: "trash")
                         .font(.system(size: 12))
-                        .foregroundStyle(hovering ? Theme.brand : .secondary)
+                        .foregroundStyle(hovering ? Theme.accent : .secondary)
                         .frame(width: DictionaryColumns.action, height: 30)
                         .contentShape(Rectangle())
                 }
@@ -403,7 +403,7 @@ private struct RenameTermPopover: View {
             if let problem {
                 Text(problem)
                     .font(.system(size: 11))
-                    .foregroundStyle(Theme.brand)
+                    .foregroundStyle(Theme.accent)
             }
             HStack {
                 Spacer()

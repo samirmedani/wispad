@@ -105,7 +105,6 @@ struct UsageView: View {
                         }
                         Link("Facturation", destination: account.billingURL)
                             .font(.system(size: 12))
-                            .hoverFeedback()
                     }
                 } else {
                     Text(model.hasKey(.xai) ? String(localized: "Indisponible") : String(localized: "Aucune clé"))

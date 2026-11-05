@@ -246,7 +246,6 @@ private struct ComparisonBar: View {
                 if let url {
                     Link(name, destination: url)
                         .foregroundStyle(.primary)
-                        .hoverFeedback()
                         .help(url.absoluteString)
                 } else {
                     Text(name).fontWeight(.semibold)

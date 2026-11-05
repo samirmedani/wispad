@@ -113,7 +113,7 @@ struct UpdateSheet: View {
                     .font(.system(size: 22, weight: .bold))
                 HStack(spacing: 8) {
                     StatusChip(text: installed ? String(localized: "Installée") : String(localized: "Nouvelle version"),
-                               tint: installed ? .green : Theme.brand)
+                               tint: installed ? .green : Theme.accent)
                     Text(subtitle)
                         .font(.callout)
                         .foregroundStyle(.secondary)
@@ -152,12 +152,10 @@ struct UpdateSheet: View {
         } else if installed {
             HStack(spacing: 10) {
                 Button("Voir sur GitHub") { NSWorkspace.shared.open(release.pageURL) }
-                    .hoverFeedback()
                 Spacer()
                 Button("Fermer") { dismiss() }
                     .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.defaultAction)
-                    .hoverFeedback()
             }
         } else {
             switch updater.phase {
@@ -182,16 +180,14 @@ struct UpdateSheet: View {
                         .contentTransition(.opacity)
                 } icon: {
                     Image(systemName: finished ? "checkmark.seal.fill" : "arrow.clockwise")
-                        .foregroundStyle(finished ? Color.green : Theme.brand)
+                        .foregroundStyle(finished ? Color.green : Theme.accent)
                 }
                 .font(.callout)
                 Spacer()
                 Button("Voir sur GitHub") { NSWorkspace.shared.open(release.pageURL) }
-                    .hoverFeedback()
                 Button("Fermer") { dismiss() }
                     .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.defaultAction)
-                    .hoverFeedback()
             }
         }
         .onAppear {
@@ -226,16 +222,13 @@ struct UpdateSheet: View {
             }
             HStack(spacing: 10) {
                 Button("Voir sur GitHub") { NSWorkspace.shared.open(release.pageURL) }
-                    .hoverFeedback()
                 Spacer()
                 Button("Plus tard") { dismiss() }
-                    .hoverFeedback()
                 Button(obstacle == nil ? String(localized: "Mettre à jour") : String(localized: "Ouvrir la page de la release")) {
                     model.installUpdate(release)
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
-                .hoverFeedback()
             }
         }
     }
@@ -268,7 +261,6 @@ struct UpdateSheet: View {
                 Spacer(minLength: 12)
                 if updater.canCancel {
                     Button("Annuler") { updater.cancel() }
-                        .hoverFeedback()
                 }
             }
         }
@@ -282,14 +274,11 @@ struct UpdateSheet: View {
                 .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 10) {
                 Button("Ouvrir la page de la release") { NSWorkspace.shared.open(release.pageURL) }
-                    .hoverFeedback()
                 Spacer()
                 Button("Fermer") { dismiss() }
-                    .hoverFeedback()
                 Button("Réessayer") { model.installUpdate(release) }
                     .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.defaultAction)
-                    .hoverFeedback()
             }
         }
     }
@@ -309,10 +298,10 @@ struct ReleaseCard: View {
                 Text(verbatim: release.version.description)
                     .font(.system(size: 12, weight: .bold, design: .rounded))
                     .monospacedDigit()
-                    .foregroundStyle(Theme.brand)
+                    .foregroundStyle(Theme.accent)
                     .padding(.horizontal, 9)
                     .frame(height: 22)
-                    .background(Capsule().fill(Theme.brand.opacity(0.13)))
+                    .background(Capsule().fill(Theme.accent.opacity(0.13)))
                 if let date = release.publishedAt {
                     Text(date, format: .dateTime.day().month(.wide))
                         .font(.callout)
@@ -395,7 +384,7 @@ extension ReleaseDigest.Kind {
 
     var tint: Color {
         switch self {
-        case .new: return Theme.brand
+        case .new: return Theme.accent
         case .fixed: return .orange
         case .improved: return .blue
         case .other: return .secondary
@@ -418,7 +407,7 @@ struct UpdateSteps: View {
                 VStack(spacing: 6) {
                     ZStack {
                         Circle()
-                            .fill(index < current ? Color.green : index == current ? Theme.brand : Theme.card)
+                            .fill(index < current ? Color.green : index == current ? Theme.accent : Theme.card)
                             .overlay(Circle().strokeBorder(index > current ? Theme.cardBorder : .clear, lineWidth: 1.5))
                             .frame(width: 22, height: 22)
                         if index < current {

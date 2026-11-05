@@ -23,13 +23,12 @@ struct HistoryView: View {
                     } label: {
                         Label("Tout supprimer", systemImage: "trash")
                     }
-                    .hoverFeedback(tint: .red)
                     .disabled(model.history.isEmpty)
                 }
                 SearchField(text: $query, prompt: String(localized: "Rechercher dans les dictées"))
                 if let filter = model.historyFilter {
                     HStack(spacing: 8) {
-                        Image(systemName: "brain.head.profile").foregroundStyle(Theme.brand)
+                        Image(systemName: "brain.head.profile").foregroundStyle(Theme.accent)
                         Text("Dictées de « \(filter.title) »").fontWeight(.medium)
                         Text(filter.dictations.count == 1 ? String(localized: "1 dictée") : String(localized: "\(filter.dictations.count) dictées"))
                             .foregroundStyle(.secondary)
@@ -44,7 +43,7 @@ struct HistoryView: View {
                     .font(.system(size: 12))
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .background(Capsule().fill(Theme.brand.opacity(0.1)))
+                    .background(Capsule().fill(Theme.accent.opacity(0.1)))
                 }
             }
             .padding(.horizontal, 32)
@@ -315,7 +314,7 @@ struct HistoryRow: View {
                         }
                         .buttonStyle(.plain)
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(Theme.brand)
+                        .foregroundStyle(Theme.accent)
                         .accessibilityIdentifier("dictation-expand-\(record.id)")
                     }
                 }
@@ -351,7 +350,7 @@ struct HistoryRow: View {
                                 HoverIconButton(
                                     symbol: selected && model.historyPlayer.isPlaying ? "pause.fill" : "play.fill",
                                     help: selected && model.historyPlayer.isPlaying ? String(localized: "Mettre en pause") : String(localized: "Écouter"),
-                                    tint: selected ? Theme.brand : .secondary
+                                    tint: selected ? Theme.accent : .secondary
                                 ) { model.play(record) }
                                 .accessibilityLabel(selected && model.historyPlayer.isPlaying ? String(localized: "Mettre en pause") : String(localized: "Écouter l'audio"))
                             }
@@ -433,7 +432,7 @@ struct SearchField: View {
         .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Theme.card))
         .overlay(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .strokeBorder(focused ? Theme.brand.opacity(0.55) : Theme.cardBorder, lineWidth: focused ? 1.5 : 1)
+                .strokeBorder(focused ? Theme.accent.opacity(0.55) : Theme.cardBorder, lineWidth: focused ? 1.5 : 1)
         )
         .animation(reduceMotion ? nil : Theme.quick, value: focused)
     }

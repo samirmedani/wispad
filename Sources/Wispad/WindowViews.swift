@@ -14,6 +14,19 @@ extension AppSection {
         case .settings: return "gearshape"
         }
     }
+
+    /// Couleur de la pastille dans la barre latérale.
+    var color: Color {
+        switch self {
+        case .home: return Theme.brand
+        case .history: return .blue
+        case .profile: return .purple
+        case .usage: return .green
+        case .dictionary: return .orange
+        case .providers: return .indigo
+        case .settings: return .gray
+        }
+    }
 }
 
 extension AppModel {
@@ -41,7 +54,7 @@ struct RootView: View {
             if let onboarding = model.onboarding {
                 OnboardingView(controller: onboarding)
                     .frame(minWidth: 820, minHeight: 540)
-                    .tint(Theme.brand)
+                    .tint(Theme.accent)
             } else {
                 main
             }
@@ -52,27 +65,23 @@ struct RootView: View {
         .sheet(item: Binding(get: { model.pendingConfigurationImport }, set: { model.pendingConfigurationImport = $0 })) { pending in
             ConfigurationImportSheet(pending: pending)
                 .environment(model)
-                .tint(Theme.brand)
+                .tint(Theme.accent)
         }
     }
 
     private var main: some View {
+        // Barre latérale native de macOS : sélection, matériau et largeur gérés par le système, comme dans Finder
+        // ou Réglages Système. Elle reste toujours visible : l'app n'a qu'une colonne de contenu.
         HStack(spacing: 0) {
             Sidebar()
-                .animation(reduceMotion ? nil : Theme.quick, value: model.selectedSection)
-            Rectangle()
-                .fill(Theme.cardBorder)
-                .frame(width: 1)
-                .ignoresSafeArea()
-            ZStack {
-                Theme.canvas.ignoresSafeArea()
-                SectionScreen(section: model.selectedSection)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-            .overlay(alignment: .bottom) { BannerToast() }
+                .frame(width: Theme.sidebarWidth)
+            Divider().ignoresSafeArea()
+            SectionScreen(section: model.selectedSection)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Theme.canvas.ignoresSafeArea())
+                .overlay(alignment: .bottom) { BannerToast() }
         }
         .frame(minWidth: 820, minHeight: 540)
-        .tint(Theme.brand)
         // Alerte de la barre latérale : relue hors du fil principal, qui dessine la fenêtre qui s'ouvre.
         // Le Profil se calcule aussi en arrière-plan : il s'ouvre ensuite sans attente.
         .onAppear {
@@ -86,7 +95,7 @@ struct RootView: View {
                }) { release in
             UpdateSheet(release: release)
                 .environment(model)
-                .tint(Theme.brand)
+                .tint(Theme.accent)
         }
     }
 }
@@ -109,89 +118,69 @@ struct SectionScreen: View {
 
 struct Sidebar: View {
     @Environment(AppModel.self) private var model
-    @Namespace private var selection
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            BrandHeader()
-                .padding(.horizontal, 8)
-                .padding(.top, 48)
-                .padding(.bottom, 20)
-            VStack(spacing: 2) {
-                ForEach(AppSection.allCases) { section in
-                    SidebarRow(
-                        section: section,
-                        selected: model.selectedSection == section,
-                        alert: section == .settings && model.missingPermissions,
-                        namespace: selection
-                    ) {
-                        model.selectedSection = section
-                    }
+        List(selection: Binding(
+            get: { model.selectedSection },
+            set: { section in if let section { model.selectedSection = section } }
+        )) {
+            ForEach(AppSection.allCases) { section in
+                SidebarRow(section: section, alert: section == .settings && model.missingPermissions)
+                    .tag(section)
                     .help("\(section.title) (⌘\((AppSection.allCases.firstIndex(of: section) ?? 0) + 1))")
-                }
             }
-            Spacer(minLength: 16)
-            ProjectFooter()
-                .padding(.horizontal, 6)
-                .padding(.bottom, 10)
-            ShortcutCard()
         }
-        .padding(.horizontal, 10)
-        .padding(.bottom, 12)
-        .frame(width: Theme.sidebarWidth)
-        .frame(maxHeight: .infinity, alignment: .top)
-        .background(VisualEffectBackground(material: .sidebar).ignoresSafeArea())
-        .ignoresSafeArea(.container, edges: .top)
+        .listStyle(.sidebar)
+        .safeAreaInset(edge: .top, spacing: 6) {
+            BrandHeader()
+                .padding(.horizontal, 16)
+                .padding(.top, 4)
+        }
+        .safeAreaInset(edge: .bottom, spacing: 8) {
+            VStack(alignment: .leading, spacing: 10) {
+                ProjectFooter()
+                    .padding(.horizontal, 6)
+                ShortcutCard()
+            }
+            .padding(.horizontal, 10)
+            .padding(.bottom, 12)
+        }
     }
 }
 
+/// Rangée de la barre latérale : pastille de couleur et symbole blanc, comme dans Réglages Système.
 struct SidebarRow: View {
-    @Environment(\.interactionReduceMotion) private var reduceMotion
-    @Environment(\.interactionPreviewHover) private var previewHover
-    @Environment(\.isEnabled) private var isEnabled
     var section: AppSection
-    var selected: Bool
     var alert: Bool
-    var namespace: Namespace.ID
-    var action: () -> Void
-    @State private var hovering = false
-
-    private var hovered: Bool { isEnabled && (hovering || previewHover) }
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 10) {
-                Image(systemName: section.symbol)
-                    .symbolVariant(selected ? .fill : .none)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(selected ? Theme.brand : Color.secondary)
-                    .frame(width: 20)
+        HStack(spacing: 0) {
+            Label {
                 Text(section.title)
-                    .font(.system(size: 13, weight: selected ? .semibold : .regular))
-                    .foregroundStyle(.primary)
-                Spacer(minLength: 0)
-                if alert {
-                    Circle().fill(Color.orange).frame(width: 7, height: 7)
-                        .help("Une autorisation manque")
-                }
+            } icon: {
+                SidebarIcon(section: section)
             }
-            .padding(.horizontal, 10)
-            .frame(height: 32)
-            .background {
-                if selected {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(Theme.brand.opacity(0.13))
-                        .matchedGeometryEffect(id: "selection", in: namespace)
-                } else if hovered {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(Theme.subtleFill)
-                }
+            Spacer(minLength: 4)
+            if alert {
+                Circle().fill(Color.orange).frame(width: 7, height: 7)
+                    .help("Une autorisation manque")
             }
-            .contentShape(Rectangle())
         }
-        .buttonStyle(HoverButtonStyle(treatment: .row))
-        .onHover { hovering = $0 }
-        .animation(reduceMotion ? nil : Theme.hover, value: hovered)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+struct SidebarIcon: View {
+    var section: AppSection
+
+    var body: some View {
+        Image(systemName: section.symbol)
+            .symbolVariant(.fill)
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(.white)
+            .frame(width: 20, height: 20)
+            .background(section.color.gradient, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+            .accessibilityHidden(true)
     }
 }
 
@@ -329,7 +318,6 @@ struct ProjectFooter: View {
             Button("Mettre à jour") { model.showUpdate(release) }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
-                .hoverFeedback()
                 .help("Voir les notes de version, puis confirmer")
                 .padding(.top, 2)
                 .transition(.opacity)
@@ -371,7 +359,7 @@ struct VersionChip: View {
         switch status.display {
         case .available(let release):
             Button { model.showUpdate(release) } label: { label }
-                .buttonStyle(HoverButtonStyle(treatment: .quiet, tint: Theme.brand))
+                .buttonStyle(HoverButtonStyle(treatment: .quiet, tint: Theme.accent))
         case .development(.behind):
             Button { NSWorkspace.shared.open(BuildFreshnessCheck.commitsURL) } label: { label }
                 .buttonStyle(HoverButtonStyle(treatment: .quiet, tint: .orange))
@@ -396,7 +384,7 @@ struct VersionChip: View {
             if full, let state = stateText {
                 Text(state)
                     .font(.system(size: 10.5, weight: isAvailable ? .semibold : .regular).monospacedDigit())
-                    .foregroundStyle(isAvailable ? Theme.brand : Color.secondary)
+                    .foregroundStyle(isAvailable ? Theme.accent : Color.secondary)
             }
         }
         .lineLimit(1)
@@ -430,7 +418,7 @@ struct VersionChip: View {
     private var tint: Color {
         switch status.display {
         case .upToDate: return .green
-        case .available: return Theme.brand
+        case .available: return Theme.accent
         case .development(.behind): return .orange
         case .development(.upToDate): return .green
         case .development, .unknown: return .secondary
