@@ -73,6 +73,8 @@ struct SpeakerAgreementAppTests {
         settings.soundsEnabled = false
         settings.muteWhileDictating = false
         settings.speakerAgreement = agreement
+        // Langue fixée : par défaut elle suit celle du Mac (anglais sur la machine de vérification).
+        settings.language = .french
         let model = try AppModel(supportDirectory: directory, settings: settings, dependencies: dependencies)
         model.overlay.displaysPanel = false
         defer { model.coordinator.cancel() }
