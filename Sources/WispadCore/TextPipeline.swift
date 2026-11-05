@@ -130,6 +130,8 @@ public struct CorrectionRequest: Equatable, Sendable {
     public var numberFormat = DictationNumberFormat()
     /// Sélection entière à transformer : la dictée est alors une consigne sur ce texte (`SelectionCommand`).
     public var commandSelection: String?
+    /// Accord de ce qui se rapporte à la personne qui dicte (Réglages › Mise en forme).
+    public var speakerAgreement: SpeakerAgreement = .asHeard
 
     public init(
         transcript: String,
@@ -256,8 +258,10 @@ public enum CorrectionPrompt {
         let base = english
             ? englishSystem + "\n" + (request.structureDictation ? englishStructureInstructions : englishPlainInstructions)
             : system + "\n" + (request.structureDictation ? structureInstructions : plainInstructions)
-        let dated = base + "\n" + request.dateFormat.instructions(english: english)
+        var dated = base + "\n" + request.dateFormat.instructions(english: english)
             + "\n" + request.numberFormat.instructions(english: english)
+        let agreement = request.speakerAgreement.instructions(english: english)
+        if !agreement.isEmpty { dated += "\n" + agreement }
         return tone.isEmpty ? dated : dated + "\n" + tone
     }
 

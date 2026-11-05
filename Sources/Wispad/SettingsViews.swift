@@ -66,6 +66,7 @@ struct SettingsView: View {
             case .dictation: dictation
             case .formatting:
                 FormattingSection()
+                SpeakerAgreementSection()
                 ToneSection()
             case .bubble: OverlayPlacementSection()
             case .privacy: privacy
@@ -557,6 +558,38 @@ struct FormattingSection: View {
 }
 
 /// Ton par catégorie d'apps.
+/// « Quand tu parles de toi » : actif même sans correction, une règle locale accorde les cas simples.
+struct SpeakerAgreementSection: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        Section {
+            SettingRow(text: SettingsPresentation.speakerAgreement) {
+                Picker(SettingsPresentation.speakerAgreement.title, selection: Binding(
+                    get: { model.settings.speakerAgreement },
+                    set: { model.settings.speakerAgreement = $0; model.saveSettings() }
+                )) {
+                    ForEach(SpeakerAgreement.allCases, id: \.self) { agreement in
+                        Text(Self.label(agreement)).tag(agreement)
+                    }
+                }
+                .labelsHidden()
+                .fixedSize()
+            }
+        } header: {
+            SectionTitle(title: SettingsPresentation.agreementTitle, summary: SettingsPresentation.agreementSummary)
+        }
+    }
+
+    static func label(_ agreement: SpeakerAgreement) -> String {
+        switch agreement {
+        case .asHeard: return String(localized: "Comme entendu")
+        case .feminine: return String(localized: "Au féminin")
+        case .masculine: return String(localized: "Au masculin")
+        }
+    }
+}
+
 struct ToneSection: View {
     @Environment(AppModel.self) private var model
 

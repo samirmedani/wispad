@@ -16276,6 +16276,106 @@
           }
         }
       }
+    },
+    "Comme entendu" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "As heard"
+          }
+        }
+      }
+    },
+    "Au féminin" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feminine"
+          }
+        }
+      }
+    },
+    "Au masculin" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Masculine"
+          }
+        }
+      }
+    },
+    "Accord" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agreement"
+          }
+        }
+      }
+    },
+    "Pour les mots que l'oreille ne distingue pas : « je suis allé » ou « je suis allée »." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "For French words that sound the same either way: “je suis allé” or “je suis allée”."
+          }
+        }
+      }
+    },
+    "Quand tu parles de toi" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When you talk about yourself"
+          }
+        }
+      }
+    },
+    "Accorde ce qui te concerne au féminin ou au masculin." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Writes what refers to you in the feminine or the masculine."
+          }
+        }
+      }
+    },
+    "Seulement ce qui se rapporte à « je », « me » ou « moi », et seulement quand masculin et féminin se prononcent pareil (fatigué, partie, seule)." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only what refers to “je”, “me” or “moi”, and only when the masculine and feminine sound the same (fatigué, partie, seule)."
+          }
+        }
+      }
+    },
+    "Une phrase sur quelqu'un d'autre (« tu », « il », « elle », « nous ») ne change jamais, ni le reste de la phrase." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A sentence about someone else (“tu”, “il”, “elle”, “nous”) never changes, nor does the rest of the sentence."
+          }
+        }
+      }
+    },
+    "Rien n'est analysé dans ta voix : seul ce choix compte." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing is analyzed in your voice: only this choice counts."
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

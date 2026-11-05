@@ -940,9 +940,11 @@ final class DictationCoordinator {
             showFailure(message, text: nil)
             return
         }
+        // Une sélection réécrite sur consigne n'est pas la parole de la personne : aucun accord après coup.
         let finalText = commandSelection != nil
             ? cleaned.text
-            : FranglaisNormalizer.normalize(cleaned.text)
+            : SpeakerAgreementRule.apply(FranglaisNormalizer.normalize(cleaned.text),
+                                         agreement: model.settings.speakerAgreement, language: model.settings.language)
         // Les dictées se collent dans l'ordre où elles ont été dites.
         await waitForTurn(job)
         guard !job.cancelled else {
@@ -1388,6 +1390,7 @@ final class DictationCoordinator {
                 ?? model.tone(bundleID: record.targetBundle, appName: record.targetApp)
             request.dateFormat = model.settings.dateFormat
             request.numberFormat = model.settings.numberFormat
+            request.speakerAgreement = model.settings.speakerAgreement
             let cleaned = await model.dependencies.clean(
                 raw,
                 request,
@@ -1400,7 +1403,9 @@ final class DictationCoordinator {
             for usage in cleaned.failedUsages { run.record(usage) }
             if let usage = cleaned.usage { run.record(usage) }
             model.recordCleanup(cleaned)
-            let finalText = FranglaisNormalizer.normalize(cleaned.text)
+            let finalText = SpeakerAgreementRule.apply(FranglaisNormalizer.normalize(cleaned.text),
+                                                       agreement: model.settings.speakerAgreement,
+                                                       language: model.settings.language)
             guard generation == token, !Task.isCancelled else { return }
             guard !finalText.isEmpty else {
                 run.trace.outcome = .noSpeech

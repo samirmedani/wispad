@@ -105,6 +105,21 @@ enum SettingsPresentation {
     static let toneTitle = String(localized: "Ton selon l'app")
     static let toneSummary = String(localized: "Change le registre (tournures familières, ponctuation), jamais les mots ni le sens.")
 
+    // MARK: Accord
+
+    static let agreementTitle = String(localized: "Accord")
+    static let agreementSummary = String(localized: "Pour les mots que l'oreille ne distingue pas : « je suis allé » ou « je suis allée ».")
+
+    static let speakerAgreement = SettingText(
+        title: String(localized: "Quand tu parles de toi"),
+        summary: String(localized: "Accorde ce qui te concerne au féminin ou au masculin."),
+        details: [
+            String(localized: "Seulement ce qui se rapporte à « je », « me » ou « moi », et seulement quand masculin et féminin se prononcent pareil (fatigué, partie, seule)."),
+            String(localized: "Une phrase sur quelqu'un d'autre (« tu », « il », « elle », « nous ») ne change jamais, ni le reste de la phrase."),
+            String(localized: "Rien n'est analysé dans ta voix : seul ce choix compte."),
+        ]
+    )
+
     // MARK: Mise en forme
 
     static let formattingTitle = String(localized: "Mise en forme")

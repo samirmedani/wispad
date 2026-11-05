@@ -113,6 +113,8 @@ struct AppSettings: Codable, Equatable {
     var pasteLastShortcut = PasteShortcut.standard
     var typingWPM = 40.0
     var soundsEnabled = true
+    /// Accord de ce qui se rapporte à la personne qui dicte : comme entendu (d'origine), au féminin ou au masculin.
+    var speakerAgreement: SpeakerAgreement = .asHeard
     /// Maj tenue à l'arrêt de la dictée : Entrée suit le collage (message envoyé).
     var sendWithShift = true
     /// Volume des sons de dictée, de 0 à 100 % : général, puis début et fin (l'annulation suit la fin). Le son joué
@@ -222,6 +224,7 @@ struct AppSettings: Codable, Equatable {
         pasteLastShortcut = PasteShortcut.restored(try? container.decodeIfPresent(PasteShortcut.self, forKey: .pasteLastShortcut))
         typingWPM = number(.typingWPM, defaults.typingWPM, in: 1...1_000)
         soundsEnabled = value(.soundsEnabled, defaults.soundsEnabled)
+        speakerAgreement = value(.speakerAgreement, defaults.speakerAgreement)
         sendWithShift = value(.sendWithShift, defaults.sendWithShift)
         soundsVolume = number(.soundsVolume, defaults.soundsVolume, in: Self.soundVolumeRange)
         startSoundVolume = number(.startSoundVolume, defaults.startSoundVolume, in: Self.soundVolumeRange)
