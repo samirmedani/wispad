@@ -408,6 +408,10 @@ ne réécrit jamais un fichier abîmé (les clés de sa partie intacte servent).
   section deux fois (première ouverture, puis retour), temps du fil principal jusqu'à l'affichage. Les longs écrans
   (`ScreenScroll` : Accueil, Profil, Consommation, Dictionnaire) sont des piles paresseuses : seules les cartes
   visibles sont construites à l'ouverture.
+- Écrans gardés (`SectionStack`) : `--sections-probe` finit par une fin de dictée simulée, deux fois Wispad au
+  premier plan puis deux fois en arrière-plan (lignes `PERFORMANCE reload` : temps processeur du fil principal pendant
+  la demi-seconde qui suit). `--no-section-cache` rend le comportement d'avant (écran reconstruit à chaque visite),
+  pour comparer.
 - Ouverture du Profil, hors écran : `Wispad --design-preview --offscreen --profile-count 3300 --profile-probe
   [--profile-brain]` avec le build Debug. Lignes `PERFORMANCE` : le calcul seul (`compute_ms`), puis trois ouvertures
   du Profil séparées par l'Accueil (temps jusqu'au contenu, écran d'attente vu ou non). Aperçus du Profil :

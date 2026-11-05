@@ -78,7 +78,7 @@ struct SettingsView: View {
         }
         // Autorisations relues hors du fil principal, qui anime l'écran qui s'ouvre ; un clic sur une rangée les relit,
         // lui, sur place.
-        .onAppear { model.refreshPermissionsInBackground() }
+        .task(id: model.settingsVisits) { model.refreshPermissionsInBackground() }
     }
 
     @ViewBuilder private var general: some View {

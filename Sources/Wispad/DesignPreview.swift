@@ -429,6 +429,13 @@ enum DesignPreview {
                 exit(0)
             }
             guard index < sections.count else {
+                if allSections {
+                    reloadProbe(model: model) {
+                        try? FileManager.default.removeItem(at: directory)
+                        exit(0)
+                    }
+                    return
+                }
                 runScrollProbe(model: model, view: view, renderedRows: renderedRows, steps: allSections ? 0 : scrollSteps) {
                     try? FileManager.default.removeItem(at: directory)
                     exit(0)
@@ -450,6 +457,30 @@ enum DesignPreview {
             }
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) { measure(0) }
+    }
+
+    /// Fin de dictée simulée, fenêtre ouverte sur Réglages : une dictée et un appel ajoutés, historique et consommation
+    /// relus. Mesure le temps processeur du fil principal pendant la demi-seconde qui suit (mises à jour SwiftUI des
+    /// écrans gardés comprises) : deux fois Wispad au premier plan, deux fois après son passage en arrière-plan
+    /// (on dicte dans une autre app : seul l'écran affiché reste construit).
+    private static func reloadProbe(model: AppModel, completion: @escaping @MainActor @Sendable () -> Void) {
+        func cpu() -> Double { Double(clock_gettime_nsec_np(CLOCK_THREAD_CPUTIME_ID)) / 1e6 }
+        func round(_ index: Int) {
+            guard index < 4 else { completion(); return }
+            if index == 2 { NotificationCenter.default.post(name: NSApplication.didResignActiveNotification, object: NSApp) }
+            let start = cpu()
+            try? model.store.insert(DictationRecord(finalText: "Dictée fictive de la sonde.", rawText: "Dictée fictive de la sonde.",
+                                                    durationSeconds: 2, wordCount: 5, provider: ProviderID.xai.rawValue, model: "fixture",
+                                                    targetApp: "Slack", insertionStatus: InsertionStatus.inserted.rawValue))
+            try? model.store.insertUsage(UsageEvent(api: .xaiStreaming, model: "fixture", costUSD: 0.0001, succeeded: true))
+            model.reload()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                print("PERFORMANCE reload=\(index + 1) app=\(index < 2 ? "active" : "background") section=\(model.selectedSection.rawValue) main_cpu_ms=\(String(format: "%.1f", cpu() - start))")
+                fflush(stdout)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { round(index + 1) }
+            }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { round(0) }
     }
 
     /// Trois ouvertures du Profil, séparées par l'Accueil. Chaque ouverture mesure, sur le fil principal, le temps entre

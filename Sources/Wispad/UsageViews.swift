@@ -17,7 +17,7 @@ struct UsageView: View {
     var body: some View {
         let now = Date()
         let events = model.usageEvents(for: period, now: now)
-        let summary = UsageSummary.make(events: events, period: .all, now: now)
+        let summary = model.usageSummary(for: period, now: now)
         let incomplete = summary.hasUnpricedCalls || model.usageLoadFailed
         let span = model.usage.last.map { UsageSpan.make(firstUse: $0.createdAt, now: now) }
         ScreenScroll {
@@ -66,7 +66,7 @@ struct UsageView: View {
                 .font(.footnote)
                 .foregroundStyle(.tertiary)
         }
-        .task {
+        .task(id: model.usageVisits) {
             refreshing = true
             await model.refreshBalancesIfStale()
             refreshing = false
