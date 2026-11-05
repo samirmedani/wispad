@@ -534,8 +534,12 @@ final class DictationCoordinator {
     /// Fin de l'écoute : une syllabe encore active dispose d'une fin bornée ; une pause ferme aussitôt le micro.
     /// La prochaine écoute attend seulement cette fermeture, jamais la transcription ni la correction.
     @discardableResult
-    func endCapture(allowVoiceTail: Bool = true) -> Task<Void, Never>? {
+    func endCapture(allowVoiceTail: Bool = true, sendAfterPaste: Bool = false) -> Task<Void, Never>? {
         guard let current = capture, current.listening else { return nil }
+        if sendAfterPaste, !current.sendAfterPaste {
+            current.sendAfterPaste = true
+            current.keystrokesAtEnd = KeyboardTap.keystrokes
+        }
         if let pending = current.releaseTask { return pending }
         if current.marks.released == nil { current.marks.released = KeyboardTap.now() }
         if allowVoiceTail, !current.restarting.withLock({ $0 }), let audio = current.audio, audio.needsVoiceTail {
@@ -1033,6 +1037,13 @@ final class DictationCoordinator {
             model.statusBanner = nil
             job.delivered = true
             deliveredAt = Date()
+            if let pid = context.pid, !job.cancelled, Self.sendsAfterPaste(
+                requested: current.sendAfterPaste, enabled: model.settings.sendWithShift, status: status,
+                keystrokesAtEnd: current.keystrokesAtEnd, keystrokesNow: KeyboardTap.keystrokes,
+                selectionCommand: commandSelection != nil, trial: trial != nil
+            ) {
+                _ = await model.dependencies.pressReturn(pid)
+            }
             if let note = job.announcement { pendingAnnouncement = note.message }
         } else {
             // Dictée commencée sans champ et finie avant que l'utilisateur ait cliqué dans l'un d'eux : la carte attend
@@ -1047,6 +1058,13 @@ final class DictationCoordinator {
         // La bulle part d'abord ; le ménage des vieux audios vient après.
         settle(job)
         model.purgeAudio()
+    }
+
+    /// Maj pour envoyer : Entrée suit un texte arrivé dans son champ, si le réglage est actif et que rien n'a été tapé
+    /// ni cliqué depuis l'arrêt. Jamais pour une sélection réécrite sur consigne ni pour l'essai du premier lancement.
+    static func sendsAfterPaste(requested: Bool, enabled: Bool, status: InsertionStatus, keystrokesAtEnd: Int,
+                                keystrokesNow: Int, selectionCommand: Bool, trial: Bool) -> Bool {
+        requested && enabled && status.delivered && keystrokesNow == keystrokesAtEnd && !selectionCommand && !trial
     }
 
     /// Texte livré : le champ est surveillé pour apprendre les mots corrigés à la main (`CorrectionWatch.shouldStart`).

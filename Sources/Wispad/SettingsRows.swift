@@ -320,6 +320,16 @@ enum SettingsPresentation {
 
     // MARK: Général
 
+    static let sendWithShift = SettingText(
+        title: String(localized: "Maj pour envoyer"),
+        summary: String(localized: "Appuie sur Maj pour finir la dictée : le texte est collé, puis envoyé."),
+        details: [
+            String(localized: "En maintien : appuie sur Maj pendant que tu tiens le raccourci, ou relâche-le en tenant Maj."),
+            String(localized: "En mains libres : Maj et le raccourci ensemble arrêtent la dictée."),
+            String(localized: "Entrée part une fois Maj relâchée, seulement si le texte est arrivé dans le champ et que rien n'a été tapé ni cliqué entre-temps."),
+        ]
+    )
+
     static let mute = SettingText(
         title: String(localized: "Couper le son du Mac pendant la dictée"),
         summary: String(localized: "Le son revient dès que tu arrêtes de parler.")

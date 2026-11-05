@@ -459,7 +459,8 @@ struct OverlayCluster: View {
                 .transition(.opacity)
                 OverlayOrbButton(symbol: "stop.fill", tint: OverlayStyle.red, help: String(localized: "Terminer"), glassID: "stop", namespace: glass, revealed: handsFree) {
                     model.hotkeys?.sessionEnded()
-                    coordinator.enqueue { coordinator.endCapture() }
+                    let send = NSEvent.modifierFlags.contains(.shift)
+                    coordinator.enqueue { coordinator.endCapture(sendAfterPaste: send) }
                 }
                 .scaleEffect(orbScale)
                 .offset(x: reach)

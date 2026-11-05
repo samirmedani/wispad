@@ -157,6 +157,8 @@ struct AppDependencies {
     }
     /// Le dernier callback signale l'envoi de ⌘V, avant la confirmation d'accessibilité.
     /// L'insertion peut actualiser l'identité de `DictationContext` si aucun champ ne fixait l'app au départ.
+    /// Maj pour envoyer : Entrée dans l'app qui vient de recevoir le texte, une fois Maj relâchée.
+    var pressReturn: @MainActor (pid_t) async -> Bool = { await TextInserter.pressReturn(pid: $0) }
     var insert: (String, DictationContext, @escaping @MainActor () -> Bool, @escaping @MainActor () -> Void) async -> InsertionStatus = {
         await TextInserter.insert($0, context: $1, shouldProceed: $2, didSendPaste: $3)
     }

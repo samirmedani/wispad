@@ -21,6 +21,9 @@ final class Capture {
     let releaseFinished = AsyncResult<Void>()
     var cancelled = false
     var didSignalReady = false
+    /// Maj pour envoyer : demandé à l'arrêt, avec le compte des frappes à cet instant (une frappe depuis l'annule).
+    var sendAfterPaste = false
+    var keystrokesAtEnd = 0
     var audio: (any AudioRecording)?
     var audioURL: URL?
     var speech: SpeechRequest?

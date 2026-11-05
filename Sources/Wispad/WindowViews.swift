@@ -524,6 +524,10 @@ struct ShortcutCard: View {
                 .foregroundStyle(.secondary)
             row(keys: [key, key], label: String(localized: "Mains libres"))
             row(keys: [key], label: String(localized: "Parler (maintenu)"))
+            if model.settings.sendWithShift {
+                row(keys: [key, "⇧"], label: String(localized: "Finir et envoyer"))
+                    .help(String(localized: "Maj pour envoyer : le texte est collé, puis envoyé"))
+            }
             row(keys: ["esc"], label: String(localized: "Annuler"))
             let paste = model.settings.pasteLastShortcut
             if paste.enabled {
