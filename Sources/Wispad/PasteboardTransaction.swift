@@ -61,6 +61,9 @@ struct PasteboardTransaction {
 
     var stillOwnsContents: Bool { pasteboard.changeCount == ownedChangeCount }
 
+    /// L'app a lu la dictée après ⌘V.
+    var wasRead: Bool { provider.wasRead }
+
     /// À appeler juste avant ⌘V : une lecture antérieure (service système, presse-papiers universel) ne compte pas.
     func expectPaste() { provider.expectPaste() }
 
@@ -90,6 +93,8 @@ private final class DictationProvider: NSObject, NSPasteboardItemDataProvider, @
     init(text: String) { self.text = text }
 
     func expectPaste() { state.withLock { $0.pasteSent = true } }
+
+    var wasRead: Bool { state.withLock { $0.read } }
 
     func pasteboard(_ pasteboard: NSPasteboard?, item: NSPasteboardItem, provideDataForType type: NSPasteboard.PasteboardType) {
         item.setString(text, forType: type)

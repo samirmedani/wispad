@@ -107,6 +107,16 @@ struct InsertionSystem {
     var locate: (pid_t) async -> CGRect? = { pid in
         await ContextProbe.inputZone(pid: pid, within: TextInserter.fieldReadLimit)
     }
+    /// Écriture de secours, quand le champ a ignoré ⌘V : le champ se déclare-t-il modifiable ?
+    var editable: (AXUIElement) async -> Bool = { element in
+        await TextInserter.axCall(UncheckedSendable(element)) { ContextProbe.isEditable($0) } ?? false
+    }
+    /// Remplace la sélection (ou insère au curseur) par l'accessibilité. Faux si le champ ne l'accepte pas.
+    var replaceSelection: (AXUIElement, String) async -> Bool = { element, text in
+        await TextInserter.axCall(UncheckedSendable(element)) { TextInserter.replaceSelectedText($0, with: text) } ?? false
+    }
+    /// Tape le texte comme au clavier, dans l'app au premier plan.
+    var typeText: @MainActor (String) async -> Bool = { await TextInserter.typeCharacters($0) }
     var confirmationLimit: Double = TextInserter.confirmationLimit
     var clipboardHold: Double = TextInserter.clipboardHold
 }
@@ -284,9 +294,15 @@ enum TextInserter {
         } while Date() < deadline
         // Même champ, toujours lisible et inchangé une seconde après ⌘V : le texte n'est pas arrivé.
         // Un champ illisible (apps Electron, éditeurs dessinés) ne prouve rien : collage envoyé, sans alerte.
-        let status: InsertionStatus = confirmed ? .inserted : unchangedTarget ? .failed : .pasteSent
+        var status: InsertionStatus = confirmed ? .inserted : unchangedTarget ? .failed : .pasteSent
         if !confirmed {
             log.notice("collage non confirmé : champ_inchangé=\(unchangedTarget, privacy: .public) statut=\(status.rawValue, privacy: .public)")
+        }
+        if !confirmed, unchangedTarget, kind == .text, shouldProceed(), !Task.isCancelled,
+           await writeDirectly(joined, into: field, pid: pid, keystrokes: keystrokes, pasteRead: transaction.wasRead,
+                               shouldProceed: shouldProceed, system: system) {
+            confirmed = true
+            status = .inserted
         }
         // Un texte non confirmé ne doit jamais servir à inventer une espace à la dictée suivante.
         last = confirmed ? Memory(pid: pid, element: field.element, text: joined, keystrokes: keystrokes, at: Date()) : nil
@@ -306,6 +322,120 @@ enum TextInserter {
     private static func finishTurn(_ done: AsyncResult<Void>) {
         done.resolve(.success(()))
         if tail === done { tail = nil }
+    }
+
+    /// ⌘V envoyé, et le champ lisible est resté identique : l'app n'a pas pris le collage (page qui intercepte le
+    /// collage ou le raccourci, ⌘V perdu). Le 5 novembre 2026, deux dictées dans un champ de Chrome finissaient ainsi en
+    /// « Texte prêt ». Le texte est écrit une seule fois dans ce même champ, autrement : remplacement de la sélection
+    /// par l'accessibilité si le champ l'accepte, sinon frappe des caractères. Jamais si l'utilisateur a tapé depuis, si
+    /// le focus ou l'app a changé, si le champ a bougé, est sécurisé ou ne se déclare pas modifiable.
+    static func writeDirectly(_ text: String, into field: InsertionField, pid: pid_t, keystrokes: Int, pasteRead: Bool,
+                              shouldProceed: @MainActor () -> Bool, system: InsertionSystem) async -> Bool {
+        guard let element = field.element, !field.isSecure, !text.isEmpty else { return false }
+        guard await system.editable(element) else { return false }
+        // Dernière vérification juste avant d'écrire : même app, même champ, toujours identique, aucune frappe.
+        func untouched() async -> Bool {
+            guard shouldProceed(), !Task.isCancelled, KeyboardTap.keystrokes == keystrokes,
+                  system.frontmostPID() == pid else { return false }
+            let now = await system.read(pid)
+            return !now.isSecure && field.sameElement(as: now) && now.value == field.value
+        }
+        guard await untouched() else { return false }
+        if await system.replaceSelection(element, text), await confirmsWrite(text, in: field, pid: pid, within: 0.3, system: system) {
+            log.notice("collage ignoré par l'app (presse-papiers lu : \(pasteRead, privacy: .public)) : écrit par l'accessibilité")
+            return true
+        }
+        // L'accessibilité n'a rien changé (ou le champ la refuse) : frappe, si rien n'a bougé entre-temps.
+        guard await untouched(), await system.typeText(text),
+              await confirmsWrite(text, in: field, pid: pid, within: system.confirmationLimit, system: system) else {
+            log.notice("collage ignoré par l'app (presse-papiers lu : \(pasteRead, privacy: .public)) : écriture de secours sans effet")
+            return false
+        }
+        log.notice("collage ignoré par l'app (presse-papiers lu : \(pasteRead, privacy: .public)) : écrit par la frappe")
+        return true
+    }
+
+    private static func confirmsWrite(_ text: String, in field: InsertionField, pid: pid_t, within seconds: Double,
+                                      system: InsertionSystem) async -> Bool {
+        let deadline = Date().addingTimeInterval(seconds)
+        repeat {
+            guard system.frontmostPID() == pid else { return false }
+            let after = await system.read(pid)
+            guard !after.isSecure else { return false }
+            if field.confirmsReplacement(in: after, inserted: text) ||
+                (field.sameElement(as: after) && InsertionCheck.confirms(before: field.value, after: after.value, inserted: text)) {
+                return true
+            }
+            try? await Task.sleep(nanoseconds: 40_000_000)
+        } while Date() < deadline
+        return false
+    }
+
+    /// Appel d'accessibilité sur sa file, borné comme les lectures du champ : une app figée ne bloque rien.
+    static func axCall<Value: Sendable>(_ element: UncheckedSendable<AXUIElement>,
+                                        _ body: @escaping @Sendable (AXUIElement) -> Value) async -> Value? {
+        let task = Task.detached(priority: .userInitiated) {
+            await BlockingQueue.run(label: "wispad.insertion") { body(element.value) }
+        }
+        return await DictationCoordinator.value(of: task, within: fieldReadLimit)
+    }
+
+    nonisolated static func replaceSelectedText(_ element: AXUIElement, with text: String) -> Bool {
+        var settable: DarwinBoolean = false
+        guard AXUIElementIsAttributeSettable(element, kAXSelectedTextAttribute as CFString, &settable) == .success,
+              settable.boolValue else { return false }
+        return AXUIElementSetAttributeValue(element, kAXSelectedTextAttribute as CFString, text as CFString) == .success
+    }
+
+    /// Le texte tapé comme au clavier, par morceaux de quelques caractères, marqués : l'écoute du clavier ne les compte
+    /// pas comme des frappes. Un retour à la ligne part en ⇧↩, qui va à la ligne sans envoyer un message.
+    @MainActor static func typeCharacters(_ text: String) async -> Bool {
+        let source = CGEventSource(stateID: .combinedSessionState)
+        source?.userData = KeyboardTap.syntheticMarker
+        func post(_ units: [UniChar]) -> Bool {
+            guard let down = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: true),
+                  let up = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: false) else { return false }
+            down.flags = []
+            up.flags = []
+            down.keyboardSetUnicodeString(stringLength: units.count, unicodeString: units)
+            up.keyboardSetUnicodeString(stringLength: units.count, unicodeString: units)
+            down.post(tap: .cghidEventTap)
+            up.post(tap: .cghidEventTap)
+            return true
+        }
+        func newline() -> Bool {
+            let returnKey: CGKeyCode = 0x24
+            guard let down = CGEvent(keyboardEventSource: source, virtualKey: returnKey, keyDown: true),
+                  let up = CGEvent(keyboardEventSource: source, virtualKey: returnKey, keyDown: false) else { return false }
+            down.flags = .maskShift
+            up.flags = .maskShift
+            down.post(tap: .cghidEventTap)
+            up.post(tap: .cghidEventTap)
+            return true
+        }
+        for chunk in typingChunks(text) {
+            guard !Task.isCancelled else { return false }
+            guard chunk == "\n" ? newline() : post(Array(chunk.utf16)) else { return false }
+            try? await Task.sleep(nanoseconds: 3_000_000)
+        }
+        return true
+    }
+
+    /// Morceaux de 16 unités UTF-16 au plus, sans couper un caractère ; chaque retour à la ligne est seul.
+    nonisolated static func typingChunks(_ text: String) -> [String] {
+        var chunks: [String] = []
+        var current = ""
+        for character in text {
+            if character == "\n" || character == "\r\n" {
+                if !current.isEmpty { chunks.append(current); current = "" }
+                chunks.append("\n")
+                continue
+            }
+            if current.utf16.count + String(character).utf16.count > 16 { chunks.append(current); current = "" }
+            current.append(character)
+        }
+        if !current.isEmpty { chunks.append(current) }
+        return chunks
     }
 
     /// Le curseur a quitté le champ pendant la dictée : elle a commencé dans un champ de texte de cette app, et le focus

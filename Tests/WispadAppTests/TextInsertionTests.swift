@@ -17,6 +17,12 @@ private final class InsertionFixture {
     var modifiers = true
     var hold = 0.0
     var events: [String] = []
+    /// Écriture de secours (champ qui ignore ⌘V) : jamais la vraie accessibilité ni le vrai clavier.
+    var editable = true
+    var axWorks = false
+    var typingWorks = false
+    var axWrites: [String] = []
+    var typed: [String] = []
     var system: InsertionSystem {
         var s = InsertionSystem()
         s.trusted = { true }
@@ -34,6 +40,18 @@ private final class InsertionFixture {
         }
         s.locate = { _ in self.events.append("locate"); return CGRect(x: 100, y: 40, width: 600, height: 80) }
         s.deleteBackward = { _ in self.events.append("delete"); return true }
+        s.editable = { _ in self.editable }
+        s.replaceSelection = { _, text in
+            self.axWrites.append(text)
+            guard self.axWorks else { return true }
+            self.field.value = (self.field.value ?? "") + text
+            return true
+        }
+        s.typeText = { text in
+            self.typed.append(text)
+            if self.typingWorks { self.field.value = (self.field.value ?? "") + text }
+            return true
+        }
         s.pasteboard = board
         s.confirmationLimit = 0.09
         s.clipboardHold = hold
@@ -164,6 +182,58 @@ struct TextInsertionTests {
         f.deliver = false
         #expect(await f.insert() == .failed)
         #expect(f.keys == 1)
+        // Les deux écritures de secours ont été tentées, une fois chacune, sans effet.
+        #expect(f.axWrites == ["Bonjour."] && f.typed == ["Bonjour."])
+    }
+
+    /// Champ de Chrome qui ignore ⌘V (5 novembre 2026, page NodeBot) : le texte s'écrit par l'accessibilité, une seule
+    /// fois, sans second ⌘V ni frappe.
+    @Test func aFieldThatIgnoresThePasteGetsTheTextThroughAccessibility() async {
+        let f = InsertionFixture(); defer { f.dispose() }
+        f.deliver = false
+        f.axWorks = true
+        #expect(await f.insert() == .inserted)
+        #expect(f.keys == 1 && f.axWrites == ["Bonjour."] && f.typed.isEmpty)
+        #expect(f.field.value == "Avant Bonjour.")
+    }
+
+    /// L'accessibilité ne change rien : le texte est tapé, une fois.
+    @Test func aFieldThatRefusesAccessibilityGetsTheTextTyped() async {
+        let f = InsertionFixture(); defer { f.dispose() }
+        f.deliver = false
+        f.typingWorks = true
+        #expect(await f.insert() == .inserted)
+        #expect(f.keys == 1 && f.axWrites.count == 1 && f.typed == ["Bonjour."])
+        #expect(f.field.value == "Avant Bonjour.")
+    }
+
+    /// Champ qui ne se déclare pas modifiable, ou focus parti dans une autre app : aucune écriture de secours.
+    @Test func noBackupWriteWithoutAnEditableFieldStillInFront() async {
+        let f = InsertionFixture(); defer { f.dispose() }
+        f.deliver = false
+        f.axWorks = true
+        f.typingWorks = true
+        f.editable = false
+        #expect(await f.insert() == .failed)
+        #expect(f.axWrites.isEmpty && f.typed.isEmpty)
+
+        f.editable = true
+        var system = f.system
+        var reads = 0
+        // Après ⌘V, l'utilisateur passe dans une autre app : rien n'est écrit nulle part.
+        system.frontmostPID = { reads > 1 ? 7_777 : 42_424 }
+        system.read = { _ in reads += 1; return f.field }
+        #expect(await f.insert(system: system) != .inserted)
+        #expect(f.axWrites.isEmpty && f.typed.isEmpty)
+    }
+
+    @Test func typedTextKeepsCharactersWholeAndNewlinesApart() {
+        #expect(TextInserter.typingChunks("Bonjour") == ["Bonjour"])
+        #expect(TextInserter.typingChunks("Ligne une\nLigne deux") == ["Ligne une", "\n", "Ligne deux"])
+        let long = String(repeating: "é", count: 20) + "👍🏽"
+        let chunks = TextInserter.typingChunks(long)
+        #expect(chunks.joined() == long)
+        #expect(chunks.allSatisfy { $0.utf16.count <= 16 })
     }
 
     /// Codex et les apps Electron n'exposent pas leur champ : le collage est envoyé, sans alerte à chaque dictée.
