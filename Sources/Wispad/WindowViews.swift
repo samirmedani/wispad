@@ -47,6 +47,10 @@ let appLocale = Locale.autoupdatingCurrent
 
 struct RootView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.historyRowDidRender) private var historyRowDidRender
+    @Environment(\.interactionPreviewHover) private var previewHover
+    @Environment(\.interactionPreviewReduceMotion) private var previewReduceMotion
+    @Environment(\.overlayGlass) private var overlayGlass
     @Environment(\.interactionReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -76,9 +80,11 @@ struct RootView: View {
             Sidebar()
                 .frame(width: Theme.sidebarWidth)
             Divider().ignoresSafeArea()
-            SectionScreen(section: model.selectedSection)
+            SectionStack(section: model.selectedSection, make: section, onShow: { [weak model] in model?.noteSectionShown($0) },
+                         canWarmUp: { [weak model] in model?.coordinator.phase == .idle })
+                // Jusque sous la barre de titre transparente ; chaque écran garde ses marges (zone sûre d'AppKit).
+                .ignoresSafeArea()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Theme.canvas.ignoresSafeArea())
                 .overlay(alignment: .bottom) { BannerToast() }
         }
         .frame(minWidth: 820, minHeight: 540)
@@ -97,6 +103,20 @@ struct RootView: View {
                 .environment(model)
                 .tint(Theme.accent)
         }
+    }
+}
+
+extension RootView {
+    /// Écran d'une section, avec l'environnement de la fenêtre : chaque section vit dans sa propre vue (`SectionStack`).
+    fileprivate func section(_ section: AppSection) -> AnyView {
+        AnyView(SectionScreen(section: section)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Theme.canvas.ignoresSafeArea())
+            .environment(model)
+            .environment(\.historyRowDidRender, historyRowDidRender)
+            .environment(\.interactionPreviewHover, previewHover)
+            .environment(\.interactionPreviewReduceMotion, previewReduceMotion)
+            .environment(\.overlayGlass, overlayGlass))
     }
 }
 

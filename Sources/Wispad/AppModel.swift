@@ -38,7 +38,11 @@ final class AppModel {
     /// Noms réparés que le juge a écartés depuis le lancement : ils ne lui sont pas resoumis à chaque dictée.
     @ObservationIgnored private var judgedOut: Set<String> = []
     /// Appels API, du plus récent au plus ancien.
-    var usage: [UsageEvent] = []
+    var usage: [UsageEvent] = [] {
+        didSet { usageDerived.removeAll() }
+    }
+    /// Calculs de Consommation déjà faits pour ces appels (période et minute) : l'écran se redessine sans tout refaire.
+    @ObservationIgnored private var usageDerived: [String: Any] = [:]
     /// Appels déjà comptés à l'écran mais dont l'écriture SQLite doit être réessayée.
     private var pendingUsage: [String: UsageEvent] = [:]
     private(set) var usageLoadFailed = false
@@ -76,9 +80,34 @@ final class AppModel {
                 // Le filtre d'un sujet ne vaut que pour l'ouverture depuis le cerveau.
                 historyFilter = nil
             }
-            setDisplayChoice(\.lastSection, selectedSection)
+            rememberLastSection(selectedSection)
         }
     }
+
+    /// Dernière section ouverte, pour le prochain lancement seulement : écrite sans prévenir les écrans. Passer par
+    /// `settings` réveillait tout écran qui lit un réglage, à chaque changement de section (environ 45 ms).
+    private func rememberLastSection(_ section: AppSection) {
+        guard _settings.lastSection != section else { return }
+        _settings.lastSection = section
+        saveSettings()
+    }
+    /// Arrivées sur Réglages et Consommation : ces écrans, gardés en vie, relancent ce qu'ils faisaient à leur
+    /// apparition (autorisations, soldes). Un compteur par écran : arriver ailleurs ne les recalcule pas.
+    private(set) var settingsVisits = 0
+    private(set) var usageVisits = 0
+
+    func noteSectionShown(_ section: AppSection) {
+        // Hors de la mise à jour de la vue qui l'annonce.
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            switch section {
+            case .settings: settingsVisits += 1
+            case .usage: usageVisits += 1
+            default: break
+            }
+        }
+    }
+
     var isRecordingShortcut = false {
         didSet { hotkeys?.refreshConfig() }
     }
@@ -529,20 +558,39 @@ final class AppModel {
     }
 
     func usageEvents(for period: StatsPeriod, now: Date = Date(), calendar: Calendar = .current) -> [UsageEvent] {
-        UsagePresentation.events(usage, for: period, now: now, calendar: calendar)
+        derivedUsage("events", period: period, now: now, calendar: calendar) {
+            UsagePresentation.events(usage, for: period, now: now, calendar: calendar)
+        }
+    }
+
+    /// Résultat gardé pour cette liste d'appels, cette période et cette minute. Lire `usage` d'abord : l'écran
+    /// reste abonné aux appels même quand le résultat vient du cache.
+    private func derivedUsage<T>(_ name: String, period: StatsPeriod, now: Date, calendar: Calendar, _ compute: () -> T) -> T {
+        _ = usage
+        let key = "\(name)|\(period)|\(Int(now.timeIntervalSinceReferenceDate / 60))|\(calendar.identifier)|\(calendar.timeZone.identifier)"
+        if let cached = usageDerived[key] as? T { return cached }
+        let value = compute()
+        usageDerived[key] = value
+        return value
     }
 
     func usageSummary(for period: StatsPeriod, now: Date = Date(), calendar: Calendar = .current) -> UsageSummary {
-        UsageSummary.make(events: usageEvents(for: period, now: now, calendar: calendar), period: .all, now: now, calendar: calendar)
+        derivedUsage("summary", period: period, now: now, calendar: calendar) {
+            UsageSummary.make(events: usageEvents(for: period, now: now, calendar: calendar), period: .all, now: now, calendar: calendar)
+        }
     }
 
     func fallbackSummary(for period: StatsPeriod, now: Date = Date(), calendar: Calendar = .current) -> FallbackSummary {
-        FallbackSummary.make(events: usageEvents(for: period, now: now, calendar: calendar), period: .all, now: now, calendar: calendar)
+        derivedUsage("fallbacks", period: period, now: now, calendar: calendar) {
+            FallbackSummary.make(events: usageEvents(for: period, now: now, calendar: calendar), period: .all, now: now, calendar: calendar)
+        }
     }
 
     /// Appels ratés de la période, par fournisseur et par cause : la connexion du Mac, le fournisseur, ou une clé.
     func failureBreakdown(for period: StatsPeriod, now: Date = Date(), calendar: Calendar = .current) -> FailureBreakdown {
-        FailureBreakdown.make(events: usageEvents(for: period, now: now, calendar: calendar), period: .all, now: now, calendar: calendar)
+        derivedUsage("failures", period: period, now: now, calendar: calendar) {
+            FailureBreakdown.make(events: usageEvents(for: period, now: now, calendar: calendar), period: .all, now: now, calendar: calendar)
+        }
     }
 
     /// Relecture des clés en cours : une dictée qui attend sa clé la rejoint au lieu d'en relancer une.

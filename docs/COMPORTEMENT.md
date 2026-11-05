@@ -288,6 +288,12 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   onglets et boutons prennent la couleur d'accent choisie dans Réglages Système ; le rouge de Wispad reste à la marque
   (icône, pastille de l'Accueil, Voix) et à l'écoute. Au survol, un bouton reçoit un fond discret : il ne grossit pas
   et ne projette pas d'ombre.
+- **Changer de section** : chaque écran est construit une fois et gardé ; y revenir ne le reconstruit pas et retrouve
+  sa place (défilement, recherche). Les sections jamais ouvertes sont préparées une à une, au repos, pendant que Wispad
+  est au premier plan (jamais pendant une dictée). Quand Wispad passe en arrière-plan, seul l'écran affiché reste
+  construit : une fin de dictée dans une autre app ne recalcule pas les autres écrans. Réglages relit les autorisations
+  et Consommation les soldes à chaque arrivée, comme avant. Changer de section ne réveille plus les écrans qui lisent
+  un réglage (la dernière section ouverte est enregistrée sans les prévenir).
 - **Icône de la barre des menus** : tête pleine en rouge pendant l'écoute ; sinon un point en bas à droite, jaune au
   démarrage, bleu pendant la transcription, vert 1,6 s quand le texte est arrivé dans un champ, orange tant qu'un
   message d'erreur est montré. Rien au repos. Le point ne capte pas le clic : le menu s'ouvre comme avant.
