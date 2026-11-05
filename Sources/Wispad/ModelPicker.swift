@@ -442,13 +442,11 @@ private struct ProviderGroup<Content: View>: View {
             EmptyView()
         } else if snapshot.stored.contains(account) {
             Button(String(localized: "Rallumer")) { model.setKeyEnabled(account, true) }
-                .hoverFeedback()
         } else if isLocal {
             Button(String(localized: "Régler le modèle local")) {
                 dismiss()
                 openAdvanced()
             }
-            .hoverFeedback()
         } else if snapshot.readOnlyKeys {
             Text("À ajouter dans ta source de clés")
                 .font(.callout)
@@ -459,7 +457,6 @@ private struct ProviderGroup<Content: View>: View {
                 keyEntry = .picker(account)
             }
             .buttonStyle(.borderedProminent)
-            .hoverFeedback()
         }
     }
 }
@@ -500,7 +497,7 @@ enum CardBadge: Hashable {
 
     var tint: Color {
         switch self {
-        case .recommended: return Theme.brand
+        case .recommended: return Theme.accent
         case .economical: return .green
         }
     }
@@ -542,7 +539,7 @@ struct ModelCard: View {
                 if let symbol {
                     Image(systemName: symbol)
                         .font(.system(size: 17, weight: .medium))
-                        .foregroundStyle(selected ? Theme.brand : Color.secondary)
+                        .foregroundStyle(selected ? Theme.accent : Color.secondary)
                         .frame(width: 24)
                         .padding(.top, 1)
                 }
@@ -585,13 +582,13 @@ struct ModelCard: View {
                 Spacer(minLength: 4)
                 Image(systemName: selected ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 16))
-                    .foregroundStyle(selected ? Theme.brand : Color.secondary.opacity(0.35))
+                    .foregroundStyle(selected ? Theme.accent : Color.secondary.opacity(0.35))
             }
             .padding(12)
             .frame(maxWidth: .infinity, minHeight: minHeight, maxHeight: .infinity, alignment: .topLeading)
             .background {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(selected ? Theme.brand.opacity(0.07) : Theme.card)
+                    .fill(selected ? Theme.accent.opacity(0.07) : Theme.card)
                     .shadow(color: Theme.cardShadow, radius: 4, y: 1)
             }
             .overlay {
@@ -609,8 +606,8 @@ struct ModelCard: View {
     }
 
     private var border: Color {
-        if selected { return Theme.brand }
-        return hovering && enabled ? Theme.brand.opacity(0.4) : Theme.cardBorder
+        if selected { return Theme.accent }
+        return hovering && enabled ? Theme.accent.opacity(0.4) : Theme.cardBorder
     }
 }
 
@@ -660,7 +657,7 @@ struct ModelListRow: View {
             HStack(spacing: 8) {
                 Image(systemName: selected ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 13))
-                    .foregroundStyle(selected ? Theme.brand : Color.secondary.opacity(0.35))
+                    .foregroundStyle(selected ? Theme.accent : Color.secondary.opacity(0.35))
                 Text(verbatim: model)
                     .font(.system(size: 12.5, design: .monospaced))
                     .lineLimit(1)
@@ -679,7 +676,7 @@ struct ModelListRow: View {
             .padding(.vertical, 6)
             .background {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(selected ? Theme.brand.opacity(0.08) : hovering && enabled ? Theme.subtleFill : .clear)
+                    .fill(selected ? Theme.accent.opacity(0.08) : hovering && enabled ? Theme.subtleFill : .clear)
             }
             .contentShape(Rectangle())
         }

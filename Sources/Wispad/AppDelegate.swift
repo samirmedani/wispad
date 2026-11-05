@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     private var model: AppModel?
     private var hotkeys: HotkeyMonitor?
     private var statusItem: NSStatusItem?
+    private let statusDot = StatusDotView()
     private var window: NSWindow?
     private var retentionTimer: Timer?
     private var pendingReopen = false
@@ -231,6 +232,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         // Image modèle dans les deux états : la teinte rouge s'applique en écoute.
         statusItem?.button?.image = BrandIcon.menuBarImage(listening: listening)
         statusItem?.button?.contentTintColor = listening ? .systemRed : nil
+        guard let model, let button = statusItem?.button else { return }
+        let now = Date()
+        let indicator = MenuBarIndicator.state(phase: model.coordinator.phase, deliveredAt: model.coordinator.deliveredAt, now: now)
+        statusDot.attach(to: button)
+        statusDot.indicator = indicator
+        // Point vert : effacé seul, sans attendre un autre changement de la dictée.
+        if indicator == .delivered, let delivered = model.coordinator.deliveredAt {
+            let remaining = MenuBarIndicator.deliveredDuration - now.timeIntervalSince(delivered)
+            DispatchQueue.main.asyncAfter(deadline: .now() + max(0.05, remaining)) { [weak self] in self?.updateIcon() }
+        }
     }
 
     private func rebuildMenu() {

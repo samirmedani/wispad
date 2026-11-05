@@ -278,6 +278,14 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 
 ## Fenêtre
 
+- Aspect d'une app Mac : barre latérale native de macOS (liste de la barre latérale, sélection du système), chaque
+  section avec sa pastille de couleur et son symbole blanc, comme dans Réglages Système. Sélection, liens, graphiques,
+  onglets et boutons prennent la couleur d'accent choisie dans Réglages Système ; le rouge de Wispad reste à la marque
+  (icône, pastille de l'Accueil, Voix) et à l'écoute. Au survol, un bouton reçoit un fond discret : il ne grossit pas
+  et ne projette pas d'ombre.
+- **Icône de la barre des menus** : tête pleine en rouge pendant l'écoute ; sinon un point en bas à droite, jaune au
+  démarrage, bleu pendant la transcription, vert 1,6 s quand le texte est arrivé dans un champ, orange tant qu'un
+  message d'erreur est montré. Rien au repos. Le point ne capte pas le clic : le menu s'ouvre comme avant.
 - Ouverte depuis le menu de la barre des menus, le Dock ou un raccourci de section, elle vient sur le bureau où
   l'on se trouve, même par-dessus une app en plein écran ; déjà visible sur ce bureau, elle ne bouge pas.
 - Une fois affichée, c'est une fenêtre ordinaire : passer à une autre app, cliquer sur le bureau ou changer de

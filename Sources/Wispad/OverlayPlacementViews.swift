@@ -117,15 +117,15 @@ struct BubbleLookCard: View {
                     Spacer(minLength: 4)
                     Image(systemName: selected ? "checkmark.circle.fill" : "circle")
                         .font(.system(size: 16))
-                        .foregroundStyle(selected ? Theme.brand : Color.secondary.opacity(0.45))
+                        .foregroundStyle(selected ? Theme.accent : Color.secondary.opacity(0.45))
                         .contentTransition(.symbolEffect(.replace))
                 }
                 .padding(.horizontal, 4)
                 .padding(.bottom, 2)
             }
             .padding(7)
-            .background(shape.fill(selected ? Theme.brand.opacity(0.08) : Theme.subtleFill))
-            .overlay(shape.strokeBorder(selected ? Theme.brand : hovered ? Theme.brand.opacity(0.35) : Theme.cardBorder,
+            .background(shape.fill(selected ? Theme.accent.opacity(0.08) : Theme.subtleFill))
+            .overlay(shape.strokeBorder(selected ? Theme.accent : hovered ? Theme.accent.opacity(0.35) : Theme.cardBorder,
                                         lineWidth: selected ? 2 : 1))
             .contentShape(shape)
         }
@@ -313,15 +313,12 @@ struct OverlayLayoutEditor: View {
                     .foregroundStyle(.secondary)
                 Spacer()
                 Button("Aperçu à l'écran") { model.coordinator.previewPlacement(selected) }
-                    .hoverFeedback()
                 Button("Par défaut") { setAnchor(nil, for: selected) }
                     .disabled(placement.anchor(for: selected) == nil)
-                    .hoverFeedback()
                 Button("Tout réinitialiser") {
                     OverlayRole.allCases.forEach { setAnchor(nil, for: $0) }
                 }
                 .disabled(placement.anchors.isEmpty)
-                .hoverFeedback()
             }
             .controlSize(.small)
         }
@@ -388,7 +385,7 @@ struct OverlayLayoutEditor: View {
         .frame(width: frame.width, height: frame.height)
         .background(RoundedRectangle(cornerRadius: min(frame.height / 2, 8), style: .continuous).fill(Color.black.opacity(0.88)))
         .overlay(RoundedRectangle(cornerRadius: min(frame.height / 2, 8), style: .continuous)
-            .strokeBorder(isSelected ? Theme.brand : Color.white.opacity(0.28), lineWidth: isSelected ? 2 : 1))
+            .strokeBorder(isSelected ? Theme.accent : Color.white.opacity(0.28), lineWidth: isSelected ? 2 : 1))
         .shadow(color: .black.opacity(0.4), radius: 4, y: 2)
         .position(x: frame.midX, y: frame.midY)
         .gesture(

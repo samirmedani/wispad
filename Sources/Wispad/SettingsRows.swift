@@ -529,7 +529,6 @@ struct ShortcutEditButton: View {
             HoverIconButton(symbol: recording ? "xmark" : "pencil", help: title, action: action)
         } else {
             Button(title, action: action)
-                .hoverFeedback()
         }
     }
 }

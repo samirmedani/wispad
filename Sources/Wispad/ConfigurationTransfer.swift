@@ -190,17 +190,14 @@ struct ConfigurationSection: View {
             SettingRow(text: SettingText(title: String(localized: "Exporter"),
                                          summary: String(localized: "Un fichier lisible : sa date, son contenu, tes réglages et ton dictionnaire."))) {
                 Button(String(localized: "Exporter…")) { export() }
-                    .hoverFeedback()
             }
             SettingRow(text: SettingText(title: String(localized: "Importer"),
                                          summary: String(localized: "Montre ce que contient le fichier avant de changer quoi que ce soit."))) {
                 Button(String(localized: "Importer…")) { importFile() }
-                    .hoverFeedback()
             }
             SettingRow(text: SettingText(title: String(localized: "Configurer avec ton agent"),
                                          summary: String(localized: "Un prompt pour Codex, Claude Code ou un autre agent : il installe Wispad sur l'autre appareil et applique ta configuration."))) {
                 Button(String(localized: "Copier le prompt")) { copyPrompt() }
-                    .hoverFeedback()
             }
         } header: {
             SectionTitle(title: String(localized: "Configuration"),
@@ -257,7 +254,7 @@ struct ConfigurationImportSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(spacing: 14) {
-                IconBadge(symbol: "square.and.arrow.down", tint: Theme.brand, size: 44)
+                IconBadge(symbol: "square.and.arrow.down", tint: Theme.accent, size: 44)
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Importer une configuration").font(.system(size: 20, weight: .bold))
                     Text(ConfigurationText.originLine(pending.file.origin, exportedAt: pending.file.exportedAt))
@@ -320,7 +317,7 @@ struct ConfigurationImportSheet: View {
 
     private func choice(isOn: Binding<Bool>, symbol: String, title: String, detail: String, enabled: Bool) -> some View {
         HStack(spacing: 12) {
-            IconBadge(symbol: symbol, tint: enabled ? Theme.brand : .secondary, size: 28)
+            IconBadge(symbol: symbol, tint: enabled ? Theme.accent : .secondary, size: 28)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.system(size: 13, weight: .semibold))
                 Text(detail).font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(2)

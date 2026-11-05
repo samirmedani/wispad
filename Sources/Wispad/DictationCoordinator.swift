@@ -58,6 +58,8 @@ final class DictationCoordinator {
     /// Relais qui travaille sur cette dictée (« OpenAI ») : la bulle change de couleur.
     private(set) var relay: String?
     @ObservationIgnored var onChange: (() -> Void)?
+    /// Dernier texte livré dans un champ : l'icône de la barre des menus montre un point vert juste après.
+    @ObservationIgnored private(set) var deliveredAt: Date?
     /// Bascules déjà annoncées : un seul message par panne, jusqu'au retour du service principal.
     @ObservationIgnored private var announcedRelays: Set<String> = []
     @ObservationIgnored private var pendingAnnouncement: String?
@@ -1030,6 +1032,7 @@ final class DictationCoordinator {
             // « Coller la dernière dictée » et l'historique restent là si le texte manque.
             model.statusBanner = nil
             job.delivered = true
+            deliveredAt = Date()
             if let note = job.announcement { pendingAnnouncement = note.message }
         } else {
             // Dictée commencée sans champ et finie avant que l'utilisateur ait cliqué dans l'un d'eux : la carte attend
@@ -1226,6 +1229,7 @@ final class DictationCoordinator {
                     writtenByWispad: false, speech: model.speechRequest(context: target), traceID: traces?.first?.id
                 )
             }
+            deliveredAt = Date()
             announce(String(localized: "Collé"), relay: false)
         case .cancelled: break
         default: offerReadyText(text, status: status, recordID: record?.id, accessibilityRefused: target.accessibilityRefused,

@@ -4,8 +4,10 @@ import WispadCore
 
 /// Jetons de design de la fenêtre principale : une seule source pour les couleurs, rayons et animations.
 enum Theme {
-    /// Même rouge que la bulle de dictée.
+    /// Même rouge que la bulle de dictée : réservé à l'écoute et à la marque (icône, bulle).
     static let brand = Color(red: 1, green: 0.23, blue: 0.21)
+    /// Couleur d'accent choisie dans Réglages Système : sélection, liens, graphiques et boutons de la fenêtre.
+    static let accent = Color.accentColor
     static let canvas = Color.adaptive(light: NSColor(white: 0.965, alpha: 1), dark: NSColor(white: 0.105, alpha: 1))
     static let card = Color.adaptive(light: .white, dark: NSColor(white: 0.15, alpha: 1))
     static let cardBorder = Color.adaptive(light: NSColor(white: 0, alpha: 0.07), dark: NSColor(white: 1, alpha: 0.075))
@@ -54,22 +56,14 @@ enum HoverTreatment {
     case quiet, icon, filled, row
 
     fileprivate var radius: CGFloat { self == .icon ? 9 : 10 }
-    fileprivate var hoverScale: CGFloat {
-        switch self {
-        case .quiet: 1.025
-        case .icon: 1.06
-        case .filled: 1.025
-        case .row: 1.006
-        }
-    }
 }
 
-/// Les transformations restent visuelles : la taille et la zone du bouton ne changent pas au survol.
+/// Comme une app Mac : au survol, un fond discret apparaît ; le bouton ne grossit pas et ne projette aucune ombre.
 struct HoverButtonStyle: ButtonStyle {
     var treatment: HoverTreatment
     var tint: Color
 
-    init(treatment: HoverTreatment = .quiet, tint: Color = Theme.brand) {
+    init(treatment: HoverTreatment = .quiet, tint: Color = Theme.accent) {
         self.treatment = treatment
         self.tint = tint
     }
@@ -90,12 +84,6 @@ private struct HoverButtonBody: View {
 
     private var highlighted: Bool { isEnabled && (hovering || previewHover) }
     private var pressed: Bool { isEnabled && configuration.isPressed }
-    private var scale: CGFloat {
-        guard isEnabled, !reduceMotion else { return 1 }
-        if pressed { return treatment == .row ? 0.985 : 0.96 }
-        return highlighted ? treatment.hoverScale : 1
-    }
-
     private var fill: Color {
         if treatment == .filled { return tint.opacity(pressed ? 0.78 : highlighted ? 0.9 : 1) }
         if treatment == .row { return .clear }
@@ -118,38 +106,13 @@ private struct HoverButtonBody: View {
                 if treatment != .row {
                     RoundedRectangle(cornerRadius: treatment.radius, style: .continuous)
                         .fill(fill)
-                        .shadow(color: highlighted ? tint.opacity(0.12) : .clear, radius: 7, y: 1)
                 }
             }
-            .scaleEffect(scale)
             .contentShape(RoundedRectangle(cornerRadius: treatment.radius, style: .continuous))
             .opacity(isEnabled ? 1 : 0.5)
             .onHover { hovering = $0 }
             .animation(reduceMotion ? nil : Theme.hover, value: highlighted)
             .animation(reduceMotion ? nil : Theme.hover, value: pressed)
-    }
-}
-
-private struct HoverFeedback: ViewModifier {
-    var tint: Color
-    var scale: CGFloat
-    @Environment(\.isEnabled) private var isEnabled
-    @Environment(\.interactionReduceMotion) private var reduceMotion
-    @Environment(\.interactionPreviewHover) private var previewHover
-    @State private var hovering = false
-
-    private var highlighted: Bool { isEnabled && (hovering || previewHover) }
-
-    func body(content: Content) -> some View {
-        content
-            .background {
-                RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .fill(tint.opacity(highlighted ? 0.045 : 0))
-                    .shadow(color: highlighted ? tint.opacity(0.12) : .clear, radius: 7)
-            }
-            .scaleEffect(highlighted && !reduceMotion ? scale : 1)
-            .onHover { hovering = $0 }
-            .animation(reduceMotion ? nil : Theme.hover, value: highlighted)
     }
 }
 
@@ -162,11 +125,6 @@ extension Color {
 }
 
 extension View {
-    /// Réaction légère pour les liens et contrôles natifs, sans remplacer leur style de bouton.
-    func hoverFeedback(tint: Color = Theme.brand, scale: CGFloat = 1.015) -> some View {
-        modifier(HoverFeedback(tint: tint, scale: scale))
-    }
-
     /// Surface de carte : fond, filet et ombre légère en mode clair.
     func card(radius: CGFloat = Theme.radius) -> some View {
         background {

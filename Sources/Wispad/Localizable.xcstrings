@@ -71,6 +71,16 @@
         }
       }
     },
+    "Démarrage" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starting"
+          }
+        }
+      }
+    },
     "Environ %lld jours de crédit au rythme des 30 derniers jours." : {
       "localizations" : {
         "en" : {
@@ -107,6 +117,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Text kept: %1$@ (%2$@)%3$@%4$@"
+          }
+        }
+      }
+    },
+    "Texte écrit" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text written"
           }
         }
       }

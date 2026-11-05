@@ -43,7 +43,7 @@ enum ProfileCard: String, CaseIterable, Identifiable {
     var tint: Color {
         switch self {
         case .rhythm: .blue
-        case .days: Theme.brand
+        case .days: Theme.accent
         case .brain: .pink
         case .words: .orange
         case .tics: .yellow

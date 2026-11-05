@@ -121,7 +121,6 @@ struct SettingsView: View {
             ))
             LabeledContent("Configuration guidée") {
                 Button("Revoir la configuration") { model.replayOnboarding() }
-                    .hoverFeedback()
             }
         }
         ConfigurationSection()
@@ -320,7 +319,7 @@ private struct SettingsTabButton: View {
                 Image(systemName: tab.symbol)
                     .symbolVariant(selected ? .fill : .none)
                     .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(selected ? Theme.brand : Color.secondary)
+                    .foregroundStyle(selected ? Theme.accent : Color.secondary)
                     .frame(height: 19)
                     .overlay(alignment: .topTrailing) {
                         if alert {
@@ -343,7 +342,7 @@ private struct SettingsTabButton: View {
             .background {
                 if selected {
                     RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .fill(Theme.brand.opacity(0.13))
+                        .fill(Theme.accent.opacity(0.13))
                         .matchedGeometryEffect(id: "tab", in: namespace)
                 }
             }
@@ -614,7 +613,6 @@ struct DiagnosticsSection: View {
                 Button(exporting ? "Export en cours…" : "Exporter le diagnostic…", systemImage: "square.and.arrow.up") {
                     chooseDestination()
                 }
-                .hoverFeedback()
                 .disabled(exporting)
             }
             if let result {
@@ -670,13 +668,11 @@ struct UpdatesSection: View {
                 if case .available(let release) = status.display {
                     Button("Mettre à jour") { model.showUpdate(release) }
                         .buttonStyle(.borderedProminent)
-                        .hoverFeedback()
                 } else {
                     Button(status.manualPhase == .checking ? "Recherche…" : "Rechercher une mise à jour") {
                         model.checkForUpdates()
                     }
                     .disabled(status.manualPhase == .checking || status.coolingDown)
-                    .hoverFeedback()
                 }
             }
             if let version = status.version {
@@ -690,7 +686,6 @@ struct UpdatesSection: View {
                         }
                     }
                     .disabled(loadingNotes)
-                    .hoverFeedback()
                 }
             }
             // Version publiée ; ou versions déjà fournies (aperçu hors écran).
@@ -729,13 +724,11 @@ struct PreviousVersionRow: View {
             if reverting, updater.isBusy {
                 if updater.canCancel {
                     Button("Annuler") { updater.cancel() }
-                        .hoverFeedback()
                 } else {
                     ProgressView().controlSize(.small)
                 }
             } else if reverting, case .failed = updater.phase {
                 Button("Fermer") { updater.dismissFailure() }
-                    .hoverFeedback()
             } else if let releases = model.previousReleases, !releases.isEmpty {
                 Menu("Choisir une version") {
                     ForEach(releases) { release in
@@ -747,7 +740,6 @@ struct PreviousVersionRow: View {
             } else if unavailable {
                 Button("Réessayer") { Task { await load() } }
                     .disabled(loading)
-                    .hoverFeedback()
             } else if loading {
                 ProgressView().controlSize(.small)
             }
@@ -838,7 +830,6 @@ struct PermissionRow: View {
                     .foregroundStyle(.green)
             } else {
                 Button("Autoriser", action: request)
-                    .hoverFeedback()
             }
         }
     }

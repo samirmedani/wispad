@@ -289,7 +289,7 @@ enum ManualCheckOutcome: Equatable {
     var tint: Color {
         switch self {
         case .upToDate: return .green
-        case .available, .behind: return Theme.brand
+        case .available, .behind: return Theme.accent
         case .failed, .rateLimited: return .orange
         }
     }

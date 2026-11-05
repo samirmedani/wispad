@@ -256,7 +256,7 @@ struct OnboardingView: View {
                 BubbleDemo()
                     .padding(.bottom, 10)
             } else {
-                IconBadge(symbol: controller.step.symbol, tint: Theme.brand, size: 40)
+                IconBadge(symbol: controller.step.symbol, tint: Theme.accent, size: 40)
             }
             Text(controller.step.title)
                 .font(.system(size: 26, weight: .bold))
@@ -286,33 +286,27 @@ struct OnboardingView: View {
         HStack(spacing: 10) {
             if controller.step.previous != nil, controller.step != .finish {
                 Button("Retour") { controller.back() }
-                    .hoverFeedback()
             }
             if controller.replay {
                 Button("Quitter la configuration") { model.completeOnboarding() }
-                    .hoverFeedback()
             }
             Spacer()
             if controller.step.allowsLater, !controller.canContinue {
                 Button("Plus tard") { controller.later() }
-                    .hoverFeedback()
             }
             switch controller.step {
             case .welcome:
                 Button("Commencer") { controller.advance() }
                     .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.defaultAction)
-                    .hoverFeedback()
             case .finish:
                 Button("Terminer") { controller.finish() }
                     .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.defaultAction)
-                    .hoverFeedback()
             default:
                 Button("Continuer") { controller.advance() }
                     .buttonStyle(.borderedProminent)
                     .disabled(!controller.canContinue)
-                    .hoverFeedback()
             }
         }
     }
@@ -354,7 +348,7 @@ private struct OnboardingProgress: View {
                 .accessibilityLabel(accessibility(step, state))
                 if step != OnboardingStep.allCases.last {
                     Capsule()
-                        .fill(step.index < controller.step.index ? Theme.brand.opacity(0.55) : Theme.subtleFill)
+                        .fill(step.index < controller.step.index ? Theme.accent.opacity(0.55) : Theme.subtleFill)
                         .frame(height: 2)
                         .frame(maxWidth: .infinity)
                         .padding(.bottom, 18)
@@ -373,7 +367,7 @@ private struct OnboardingProgress: View {
                 Circle().fill(Color.green)
                 Image(systemName: "checkmark").font(.system(size: 10, weight: .bold)).foregroundStyle(.white)
             case .current:
-                Circle().fill(Theme.brand)
+                Circle().fill(Theme.accent)
                 Text("\(step.index + 1)").font(.system(size: 11, weight: .bold, design: .rounded)).foregroundStyle(.white)
             case .problem:
                 Circle().fill(Color.red)
@@ -410,7 +404,7 @@ private struct StepBanner<Actions: View>: View {
         var tint: Color {
             switch self {
             case .waiting: return .secondary
-            case .working: return Theme.brand
+            case .working: return Theme.accent
             case .success: return .green
             case .problem: return .red
             }
@@ -477,7 +471,6 @@ private struct FixStepButton: View {
     var body: some View {
         if let target = OnboardingFlow.stepToFix(issue), target != controller.step {
             Button(String(localized: "Revoir l'étape « \(target.label) »")) { controller.go(to: target) }
-                .hoverFeedback()
         }
     }
 }
@@ -536,7 +529,7 @@ private struct WelcomeLine: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            IconBadge(symbol: symbol, tint: Theme.brand, size: 26)
+            IconBadge(symbol: symbol, tint: Theme.accent, size: 26)
             Text(text)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -567,7 +560,6 @@ private struct PermissionsStep: View {
                     if PermissionsCheck.needsRelaunch(controller.permissions) {
                         Button("Relancer Wispad") { controller.relaunch() }
                             .buttonStyle(.borderedProminent)
-                            .hoverFeedback()
                     }
                 }
             case .inProgress:
@@ -633,13 +625,10 @@ private struct OnboardingPermissionRow: View {
         case .notRequested:
             Button("Autoriser") { controller.request(kind) }
                 .buttonStyle(.borderedProminent)
-                .hoverFeedback()
         case .waiting, .denied:
             Button("Ouvrir Réglages Système") { controller.openSettings(kind) }
-                .hoverFeedback()
         case .needsRelaunch:
             Button("Relancer Wispad") { controller.relaunch() }
-                .hoverFeedback()
         }
     }
 }
@@ -664,7 +653,7 @@ private struct MicrophoneStep: View {
                 LevelMeter(fraction: SignalLevel.meterFraction(controller.level), voiced: controller.detector.detected)
                 HStack(spacing: 8) {
                     ProgressView(value: controller.detector.progress)
-                        .tint(controller.detector.detected ? .green : Theme.brand)
+                        .tint(controller.detector.detected ? .green : Theme.accent)
                         .frame(maxWidth: 160)
                     Text(controller.detector.detected ? String(localized: "Voix détectée") : String(localized: "Voix à détecter"))
                         .font(.system(size: 11))
@@ -684,7 +673,6 @@ private struct MicrophoneStep: View {
                 let text = OnboardingCopy.issue(issue, provider: model.settings.provider, keyStore: model.dependencies.keyStore)
                 StepBanner(tone: .problem, title: text.title, detail: text.detail) {
                     Button("Réessayer") { controller.startMicrophoneTest() }
-                        .hoverFeedback()
                     FixStepButton(controller: controller, issue: issue)
                 }
             case .inProgress, .todo:
@@ -725,7 +713,7 @@ private struct LevelMeter: View {
     private func color(_ index: Int) -> Color {
         if index >= Self.segments - 3 { return .red }
         if index >= Self.segments - 8 { return .orange }
-        return voiced ? .green : Theme.brand
+        return voiced ? .green : Theme.accent
     }
 }
 
@@ -771,7 +759,6 @@ private struct ProviderStep: View {
                     // Clé déjà enregistrée, champ vide : sans ce bouton, il faudrait la recoller pour la revérifier.
                     if controller.retriesStoredVoiceKey {
                         Button("Réessayer") { controller.retryVoiceKey() }
-                            .hoverFeedback()
                     }
                 }
             case .inProgress:
@@ -861,13 +848,11 @@ private struct OnboardingKeyField: View {
                         Label("Créer une clé", systemImage: "arrow.up.right.square")
                             .font(.system(size: 12))
                     }
-                    .hoverFeedback()
                 }
             }
             if check == .valid, !replacing {
                 Button("Remplacer la clé") { replacing = true }
                     .font(.system(size: 12))
-                    .hoverFeedback()
             } else {
                 HStack {
                     SecureField(title, text: Binding(
@@ -878,7 +863,6 @@ private struct OnboardingKeyField: View {
                     .onSubmit { verify() }
                     Button(verifying ? String(localized: "Vérification…") : String(localized: "Vérifier")) { verify() }
                         .buttonStyle(.borderedProminent)
-                        .hoverFeedback()
                         .disabled(verifying || (model.keyDrafts[account] ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
@@ -954,16 +938,13 @@ private struct ShortcutStep: View {
                 StepBanner(tone: .problem, title: text.title, detail: detail) {
                     if controller.fnSettingMatters {
                         Button("Ouvrir Réglages Clavier") { controller.openKeyboardSettings() }
-                            .hoverFeedback()
                     }
                     // Rien reçu alors que l'autorisation est accordée : le texte conseille son panneau et une relance.
                     if issue == .noKeyEvent {
                         Button("Ouvrir Réglages Système") { controller.openSettings(.inputMonitoring) }
-                            .hoverFeedback()
                     }
                     if issue == .noKeyEvent || PermissionsCheck.needsRelaunch(controller.permissions) {
                         Button("Relancer Wispad") { controller.relaunch() }
-                            .hoverFeedback()
                     }
                     FixStepButton(controller: controller, issue: issue)
                 }
@@ -1029,7 +1010,7 @@ private struct TrialStep: View {
                 Text("« Salut, je teste Wispad, euh non, je dicte mon premier message. »")
                     .font(.system(size: 15, weight: .medium, design: .serif))
                     .italic()
-                    .foregroundStyle(Theme.brand)
+                    .foregroundStyle(Theme.accent)
                     .fixedSize(horizontal: false, vertical: true)
                 TextEditor(text: $controller.trialText)
                     .font(.system(size: 15))
@@ -1040,7 +1021,7 @@ private struct TrialStep: View {
                     .background(Theme.canvas, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                     .overlay {
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .strokeBorder(focused ? Theme.brand.opacity(0.6) : Theme.cardBorder, lineWidth: focused ? 2 : 1)
+                            .strokeBorder(focused ? Theme.accent.opacity(0.6) : Theme.cardBorder, lineWidth: focused ? 2 : 1)
                     }
                     .accessibilityLabel(Text("Champ d'essai"))
             }
@@ -1050,14 +1031,12 @@ private struct TrialStep: View {
             case .succeeded:
                 StepBanner(tone: .success, title: String(localized: "Bravo, tout marche !"), detail: summary) {
                     Button("Dicter encore") { retry() }
-                        .hoverFeedback()
                 }
             case .failed(let issue):
                 let text = OnboardingCopy.issue(issue, provider: model.settings.provider, keyStore: model.dependencies.keyStore)
                 StepBanner(tone: .problem, title: text.title, detail: text.detail) {
                     Button("Réessayer") { retry() }
                         .buttonStyle(.borderedProminent)
-                        .hoverFeedback()
                     FixStepButton(controller: controller, issue: issue)
                 }
             case .inProgress:
@@ -1117,7 +1096,6 @@ private struct FinishStep: View {
             }
             HStack {
                 Button("Ouvrir les Réglages") { controller.finish(openSettings: true) }
-                    .hoverFeedback()
                 Spacer()
             }
         }
