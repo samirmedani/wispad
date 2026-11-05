@@ -134,6 +134,11 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 - Une dictée par ligne, groupées par jour (Aujourd'hui, Hier, puis la date), de la plus récente à la plus ancienne.
 - Un texte coupé à quatre lignes montre « Afficher tout » ; le bouton n'apparaît que si la coupure est réelle à la
   largeur de la fenêtre.
+- Survol d'un texte coupé : la ligne s'ouvre en entier si la souris s'y arrête 0,5 s ; un passage rapide n'ouvre
+  rien. Elle se referme quand la souris s'en va, sauf si elle a été ouverte par « Afficher tout » (« Réduire » la
+  referme). À l'ouverture, le texte complet est mis en page une fois et seule sa hauteur visible s'agrandit (fondu en
+  bas tant qu'il est coupé) : les mots ne bougent jamais. Le survol n'anime que le fond de la ligne. Le texte se
+  sélectionne une fois ouvert. Sans animation avec « Réduire les animations ».
 - Au survol : détails, copier, retranscrire et écouter (si l'audio est gardé), supprimer.
 - La recherche filtre dès que l'on cesse de taper (150 ms) ; l'effacer réaffiche tout aussitôt. Elle porte sur le
   texte collé et sur ce qui a été entendu : une dictée dont la correction est partie à côté se retrouve par ses mots.

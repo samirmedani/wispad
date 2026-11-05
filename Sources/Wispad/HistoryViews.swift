@@ -224,6 +224,7 @@ struct HistoryRow: View {
     @Environment(\.historyRowDidRender) private var didRender
     @Environment(\.interactionReduceMotion) private var reduceMotion
     @Environment(\.interactionPreviewHover) private var previewHover
+    @Environment(\.historyPreviewExpand) private var previewExpand
     @Environment(\.isEnabled) private var isEnabled
     var record: DictationRecord
     /// Place dans la carte du jour : le fond de survol suit ses coins arrondis.
@@ -231,7 +232,16 @@ struct HistoryRow: View {
     var last = true
     var onDetails: (() -> Void)? = nil
     @State private var hovering = false
+    /// Hauteur pleine visible (animée) ; le texte complet est dans la vue dès que `showsFull`.
     @State private var expanded = false
+    /// Texte complet mis en page une seule fois : seule la hauteur visible s'anime, les mots ne bougent jamais.
+    @State private var showsFull = false
+    /// Ouvert par « Afficher tout » : reste ouvert quand la souris s'en va.
+    @State private var pinned = false
+    @State private var collapsedHeight: CGFloat = 0
+    @State private var fullHeight: CGFloat = 0
+    /// Survol en attente : la ligne ne s'ouvre qu'après un arrêt de la souris (`HoverDwell`).
+    @State private var dwell: Task<Void, Never>?
     @State private var textWidth: CGFloat = 0
     /// Dernière mesure de cette ligne : la changer redessine la ligne, qui relit alors le cache.
     @State private var lastMeasure: HistoryRowCache.Overflow?
@@ -258,9 +268,9 @@ struct HistoryRow: View {
             ? cache.overflows(id: item.id, text: item.text, width: textWidth)
                 ?? lastMeasure?.overflows(text: item.text, width: textWidth)
             : false
-        let measuring = item.mayOverflow && !expanded && overflows == nil
+        let measuring = item.mayOverflow && !showsFull && overflows == nil
         // Le bouton n'apparaît que si la limite coupe vraiment le texte à la largeur actuelle.
-        let canExpand = expanded || overflows == true
+        let canExpand = showsFull || overflows == true
         HStack(alignment: .top, spacing: 14) {
             Text(item.time)
                 .font(.system(size: 12, weight: .medium))
@@ -278,39 +288,51 @@ struct HistoryRow: View {
                         .italic()
                         .foregroundStyle(.secondary)
                 } else {
-                    Text(item.text)
-                        .font(.system(size: 13))
-                        .lineLimit(expanded ? nil : Self.collapsedLines)
-                        .textSelection(.enabled)
-                        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { textWidth = $0 }
-                        .background(alignment: .topLeading) {
-                            if measuring {
-                                // Même texte sans limite, à la même largeur, jamais affiché.
-                                Text(item.text)
-                                    .font(.system(size: 13))
-                                    .fixedSize(horizontal: false, vertical: true)
-                                    .hidden()
-                                    .accessibilityHidden(true)
-                                    .onGeometryChange(for: HistoryTextMeasure.self) { proxy in
-                                        HistoryTextMeasure(
-                                            full: proxy.size,
-                                            shown: proxy.bounds(of: .named(historyRowTextSpace))?.size ?? .zero
-                                        )
-                                    } action: { measure in
-                                        guard measure.shown.width > 0 else { return }
-                                        let result = HistoryRowCache.Overflow(
-                                            text: item.text, width: measure.shown.width, overflows: measure.overflows
-                                        )
-                                        cache.store(result, id: item.id)
-                                        // La ligne relit le résultat et retire la mesure cachée.
-                                        lastMeasure = result
-                                    }
+                    if showsFull {
+                        fullText(item.text)
+                    } else {
+                        Text(item.text)
+                            .font(.system(size: 13))
+                            .lineLimit(Self.collapsedLines)
+                            .onGeometryChange(for: CGSize.self) { $0.size } action: {
+                                textWidth = $0.width
+                                collapsedHeight = $0.height
                             }
-                        }
-                        .coordinateSpace(.named(historyRowTextSpace))
+                            .background(alignment: .topLeading) {
+                                if measuring {
+                                    // Même texte sans limite, à la même largeur, jamais affiché.
+                                    Text(item.text)
+                                        .font(.system(size: 13))
+                                        .fixedSize(horizontal: false, vertical: true)
+                                        .hidden()
+                                        .accessibilityHidden(true)
+                                        .onGeometryChange(for: HistoryTextMeasure.self) { proxy in
+                                            HistoryTextMeasure(
+                                                full: proxy.size,
+                                                shown: proxy.bounds(of: .named(historyRowTextSpace))?.size ?? .zero
+                                            )
+                                        } action: { measure in
+                                            guard measure.shown.width > 0 else { return }
+                                            let result = HistoryRowCache.Overflow(
+                                                text: item.text, width: measure.shown.width, overflows: measure.overflows
+                                            )
+                                            cache.store(result, id: item.id)
+                                            // La ligne relit le résultat et retire la mesure cachée.
+                                            lastMeasure = result
+                                        }
+                                }
+                            }
+                            .coordinateSpace(.named(historyRowTextSpace))
+                    }
                     if canExpand {
                         Button(expanded ? String(localized: "Réduire") : String(localized: "Afficher tout")) {
-                            withAnimation(reduceMotion ? nil : Theme.spring) { expanded.toggle() }
+                            if expanded {
+                                pinned = false
+                                collapse()
+                            } else {
+                                pinned = true
+                                expand()
+                            }
                         }
                         .buttonStyle(.plain)
                         .font(.system(size: 12, weight: .medium))
@@ -365,11 +387,109 @@ struct HistoryRow: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(HistoryCardShape.make(first: first, last: last).fill(hovered ? Theme.subtleFill.opacity(0.5) : Color.clear))
+        // L'animation du survol ne porte que sur le fond : posée sur toute la ligne, elle animait aussi le passage du
+        // texte de quatre lignes au texte complet, et les mots glissaient les uns sur les autres.
+        .background(HistoryCardShape.make(first: first, last: last)
+            .fill(hovered ? Theme.subtleFill.opacity(0.5) : Color.clear)
+            .animation(reduceMotion ? nil : Theme.hover, value: hovered))
         .contentShape(Rectangle())
-        .onHover { hovering = $0 }
-        .animation(reduceMotion ? nil : Theme.hover, value: hovered)
+        .onHover { inside in
+            hovering = inside
+            hoverChanged(inside, canExpand: canExpand)
+        }
+        .onDisappear {
+            dwell?.cancel()
+            dwell = nil
+        }
+        // Aperçu hors écran (`--history-expand-preview`) : les lignes longues s'ouvrent comme après un arrêt du survol.
+        .onChange(of: canExpand && previewExpand, initial: true) { _, open in
+            if open { pinned = true; expand() }
+        }
     }
+
+    /// Texte complet, mis en page une fois à sa hauteur naturelle et découpé à la hauteur visible : pendant
+    /// l'ouverture et la fermeture, seule cette hauteur change. Fondu en bas tant que la ligne n'est pas ouverte.
+    private func fullText(_ text: String) -> some View {
+        let visible = expanded ? max(fullHeight, collapsedHeight) : collapsedHeight
+        return Text(text)
+            .font(.system(size: 13))
+            .textSelection(.enabled)
+            .fixedSize(horizontal: false, vertical: true)
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { fullHeight = $0 }
+            .frame(height: visible > 0 ? visible : nil, alignment: .top)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .clipped()
+            .mask {
+                LinearGradient(stops: [.init(color: .black, location: 0),
+                                       .init(color: .black, location: expanded ? 1 : 0.7),
+                                       .init(color: expanded ? .black : .clear, location: 1)],
+                               startPoint: .top, endPoint: .bottom)
+            }
+    }
+
+    private func hoverChanged(_ inside: Bool, canExpand: Bool) {
+        dwell?.cancel()
+        dwell = nil
+        guard !previewHover else { return }
+        if inside {
+            guard canExpand, !showsFull else { return }
+            // Un passage rapide de la souris n'ouvre rien : il faut s'arrêter sur la ligne.
+            dwell = Task { @MainActor in
+                try? await Task.sleep(for: HoverDwell.delay)
+                guard !Task.isCancelled, hovering else { return }
+                expand()
+            }
+        } else if showsFull, !pinned {
+            collapse()
+        }
+    }
+
+    private func expand() {
+        guard !expanded else { return }
+        // Texte complet d'abord, à la hauteur des quatre lignes, sans animation ; puis la hauteur visible s'ouvre.
+        var still = Transaction(animation: nil)
+        still.disablesAnimations = true
+        withTransaction(still) { showsFull = true }
+        Task { @MainActor in
+            await Task.yield()
+            guard showsFull else { return }
+            withAnimation(reduceMotion ? nil : HoverDwell.open) { expanded = true }
+        }
+    }
+
+    private func collapse() {
+        guard showsFull else { return }
+        if reduceMotion {
+            expanded = false
+            showsFull = false
+            return
+        }
+        withAnimation(HoverDwell.close, completionCriteria: .logicallyComplete) {
+            expanded = false
+        } completion: {
+            // Rouvert entre-temps : le texte complet reste.
+            if !expanded { showsFull = false }
+        }
+    }
+}
+
+extension EnvironmentValues {
+    /// Aperçu hors écran : ouvre les lignes longues de l'historique, sans souris.
+    @Entry var historyPreviewExpand = historyExpandPreview
+}
+
+#if DEBUG
+private let historyExpandPreview = CommandLine.arguments.contains("--history-expand-preview")
+#else
+private let historyExpandPreview = false
+#endif
+
+/// Ouverture d'une ligne de l'historique au survol.
+enum HoverDwell {
+    /// Temps d'arrêt de la souris avant d'ouvrir : un passage rapide ne déplace rien.
+    static let delay: Duration = .milliseconds(500)
+    static let open = Animation.smooth(duration: 0.28)
+    static let close = Animation.smooth(duration: 0.22)
 }
 
 /// Espace de coordonnées du texte affiché : la mesure cachée y lit sa taille dans la même passe.
