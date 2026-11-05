@@ -16206,6 +16206,76 @@
           }
         }
       }
+    },
+    "Maj pour envoyer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shift to send"
+          }
+        }
+      }
+    },
+    "Appuie sur Maj pour finir la dictée : le texte est collé, puis envoyé." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Press Shift to finish dictating: the text is pasted, then sent."
+          }
+        }
+      }
+    },
+    "En maintien : appuie sur Maj pendant que tu tiens le raccourci, ou relâche-le en tenant Maj." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "While holding: press Shift while you hold the shortcut, or release it while holding Shift."
+          }
+        }
+      }
+    },
+    "En mains libres : Maj et le raccourci ensemble arrêtent la dictée." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hands-free: Shift and the shortcut together stop dictation."
+          }
+        }
+      }
+    },
+    "Entrée part une fois Maj relâchée, seulement si le texte est arrivé dans le champ et que rien n'a été tapé ni cliqué entre-temps." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Return is sent once Shift is released, only if the text reached the field and nothing was typed or clicked in between."
+          }
+        }
+      }
+    },
+    "Finir et envoyer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finish and send"
+          }
+        }
+      }
+    },
+    "Maj pour envoyer : le texte est collé, puis envoyé" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shift to send: the text is pasted, then sent"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

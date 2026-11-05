@@ -11,6 +11,11 @@ Raccourci par défaut : fn seule. Wispad intercepte la touche fn pour que macOS 
 - Maintien : dictée tant que la touche est tenue. Le micro démarre après 170 ms, pas avant, pour ignorer un appui simple.
 - Double appui rapide : dictée mains libres dès le deuxième enfoncement, sans attendre son relâchement. Un appui suivant l'arrête.
 - Appui simple au repos : aucune action, ni micro, ni bulle.
+- **Maj pour envoyer** (Réglages › Général, actif par défaut) : Maj enfoncée pendant un maintien arrête la dictée,
+  comme relâcher le raccourci ; en mains libres, Maj + raccourci l'arrête. Le texte se colle une fois Maj relâchée,
+  puis Entrée part seule (sans Maj), dans la même app toujours au premier plan, seulement si le texte est arrivé dans
+  le champ et que rien n'a été tapé ni cliqué depuis l'arrêt. Jamais après une sélection réécrite sur consigne. ■ de la
+  bulle ou « Terminer la dictée » du menu avec Maj tenue font de même. Au repos, Maj + fn ne démarre rien (sélection ⇧ fn ←).
 - Échap pendant l'écoute, ✕ ou Annuler : abandon sans rien insérer. Échap est alors avalé et n'atteint pas l'app.
   Pendant la transcription ou un message d'erreur, Échap annule aussi (rien n'est collé) mais reste à l'app ;
   au repos, il n'appartient qu'à l'app.

@@ -261,7 +261,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         switch model.coordinator.phase {
         case .listening:
             model.hotkeys?.sessionEnded()
-            model.coordinator.enqueue { model.coordinator.endCapture() }
+            let send = NSEvent.modifierFlags.contains(.shift)
+            model.coordinator.enqueue { model.coordinator.endCapture(sendAfterPaste: send) }
         case .starting:
             return
         case .idle, .finishing, .failure:

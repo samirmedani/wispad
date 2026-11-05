@@ -75,6 +75,7 @@ struct SettingsUpgradeTests {
         settings.pasteLastShortcut = PasteShortcut(keyCode: 11, modifiers: ModifierMask.control | ModifierMask.option, enabled: false)
         settings.typingWPM = 52.5
         settings.soundsEnabled = false
+        settings.sendWithShift = false
         settings.soundsVolume = 0.6
         settings.startSoundVolume = 0.3
         settings.endSoundVolume = 0

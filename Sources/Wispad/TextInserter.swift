@@ -517,6 +517,33 @@ enum TextInserter {
         return true
     }
 
+    /// Maj pour envoyer : Entrée seule, sans modificateur, dans l'app qui vient de recevoir le texte et toujours au
+    /// premier plan. Maj encore tenue après une seconde : rien n'est envoyé (⇧↩ ferait un retour à la ligne).
+    @MainActor static func pressReturn(pid: pid_t) async -> Bool {
+        // Le collage passe d'abord dans la file de l'app (page web, Electron).
+        try? await Task.sleep(nanoseconds: 60_000_000)
+        guard NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else {
+            log.notice("Entrée retenue : l'app du collage n'est plus au premier plan")
+            return false
+        }
+        let held = await waitForModifierRelease(limit: 1)
+        guard held == 0, NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else {
+            log.notice("Entrée retenue : touches encore maintenues ou app changée")
+            return false
+        }
+        let source = CGEventSource(stateID: .combinedSessionState)
+        source?.userData = KeyboardTap.syntheticMarker
+        let returnKey: CGKeyCode = 0x24
+        guard let down = CGEvent(keyboardEventSource: source, virtualKey: returnKey, keyDown: true),
+              let up = CGEvent(keyboardEventSource: source, virtualKey: returnKey, keyDown: false) else { return false }
+        down.flags = []
+        up.flags = []
+        down.post(tap: .cghidEventTap)
+        up.post(tap: .cghidEventTap)
+        log.notice("Entrée envoyée après le collage (Maj pour envoyer)")
+        return true
+    }
+
     /// Touche Effacer, marquée comme ⌘V : l'écoute du clavier ne la compte pas comme une frappe.
     @MainActor static func postDeleteBackward() -> Bool {
         let source = CGEventSource(stateID: .combinedSessionState)

@@ -85,6 +85,10 @@ struct SettingsView: View {
         Section("Raccourci") {
             DictationShortcutRow()
             PasteShortcutRow()
+            SettingToggle(text: SettingsPresentation.sendWithShift, isOn: Binding(
+                get: { model.settings.sendWithShift },
+                set: { model.settings.sendWithShift = $0; model.saveSettings() }
+            ))
         }
         Section("Général") {
             Toggle("Sons de début et de fin", isOn: Binding(

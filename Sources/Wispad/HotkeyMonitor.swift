@@ -138,7 +138,8 @@ final class HotkeyMonitor: HotkeyControl {
             case .startToggle:
                 coordinator.enqueue { await coordinator.begin(.toggle, pressedAt: pressed) }
             case .stopPushToTalk, .stopToggle:
-                coordinator.enqueue { coordinator.endCapture() }
+                let send = output.sendAfterPaste
+                coordinator.enqueue { coordinator.endCapture(sendAfterPaste: send) }
             }
         }
     }

@@ -62,6 +62,8 @@ public struct HotkeyOutput: Equatable, Sendable {
     public var pressedAt: Int?
     /// « Coller la dernière dictée » demandé.
     public var pasteLast = false
+    /// Maj tenue à l'arrêt de la dictée : le texte collé sera envoyé (Entrée).
+    public var sendAfterPaste = false
 
     public init() {}
 
@@ -104,7 +106,7 @@ public struct HotkeyLogic: Equatable, Sendable {
         let transition = ChordMatcher.step(
             phase: event.phase,
             keyCode: event.keyCode,
-            flags: event.flags,
+            flags: Self.shortcutFlags(event, config: config),
             configuredKey: config.keyCode,
             configuredFlags: config.modifierFlags,
             autorepeat: event.autorepeat,
@@ -129,7 +131,22 @@ public struct HotkeyLogic: Equatable, Sendable {
         case nil:
             break
         }
+        // Maj pour envoyer : Maj enfoncée pendant un maintien (qui l'arrête), raccourci relâché avec Maj, ou ⇧ + raccourci
+        // en mains libres.
+        if event.flags & ModifierMask.shift != 0,
+           output.effects.contains(where: { $0 == .stopPushToTalk || $0 == .stopToggle }) {
+            output.sendAfterPaste = true
+        }
         return output
+    }
+
+    /// Pendant une dictée seulement, ⇧ avec le raccourci compte comme le raccourci seul : en mains libres, ⇧ + fn arrête
+    /// la dictée. Au repos, ⇧ + fn reste à l'app (sélection ⇧ fn ←) et ne démarre jamais rien.
+    static func shortcutFlags(_ event: KeyEvent, config: HotkeyConfig) -> UInt64 {
+        let required = config.modifierFlags & ModifierMask.relevant
+        guard config.capturing, !config.recording, required & ModifierMask.shift == 0, event.keyCode == config.keyCode,
+              event.flags & ModifierMask.relevant == required | ModifierMask.shift else { return event.flags }
+        return event.flags & ~ModifierMask.shift
     }
 
     /// Réveil prévu par le geste (seuil de maintien, fin de l'intervalle du double appui).
