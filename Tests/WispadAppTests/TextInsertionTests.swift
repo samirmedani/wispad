@@ -211,6 +211,37 @@ struct TextInsertionTests {
         #expect(!f.context.leftTextField)
     }
 
+    /// Page Chrome hors de tout champ : elle annonce un curseur sans être modifiable. Aucun ⌘V dans la page, le texte
+    /// reste prêt et la carte attend un clic dans un champ. Une page qui se déclare modifiable reçoit le texte.
+    @Test func aWebPageWithOnlyACursorDoesNotTakeThePaste() async {
+        let f = InsertionFixture(); defer { f.dispose() }
+        f.field = InsertionField(element: AXUIElementCreateApplication(61_616), role: "AXWebArea", hasTextCursor: true,
+                                 selection: NSRange(location: 0, length: 0))
+        #expect(await f.insert() == .noTarget)
+        #expect(f.keys == 0 && f.sent == 0)
+        #expect(!f.context.leftTextField)
+
+        f.field.editable = true
+        f.deliver = false
+        #expect(await f.insert() == .pasteSent)
+        #expect(f.keys == 1)
+    }
+
+    /// Carte « Texte prêt » qui attend un champ : la page seule ne déclenche rien, un vrai champ si.
+    @Test func onlyARealFieldEndsTheWaitForAField() async {
+        var field = InsertionField(element: AXUIElementCreateApplication(61_616), role: "AXWebArea", hasTextCursor: true,
+                                   selection: NSRange(location: 0, length: 0))
+        var system = InsertionSystem()
+        system.trusted = { true }
+        system.frontmostPID = { 61_616 }
+        system.bundleID = { _ in "com.google.Chrome" }
+        system.read = { _ in field }
+        #expect(await !TextInserter.frontmostFocusTakesText(system: system))
+        field = InsertionField(element: AXUIElementCreateApplication(61_616), role: "AXTextArea", hasTextCursor: true,
+                               selection: NSRange(location: 0, length: 0))
+        #expect(await TextInserter.frontmostFocusTakesText(system: system))
+    }
+
     /// Une app occupée lit le presse-papiers tard : sans confirmation, la dictée y reste le temps prévu.
     @Test func aSlowAppStillFindsTheDictationOnTheClipboard() async throws {
         let f = InsertionFixture(); defer { f.dispose() }

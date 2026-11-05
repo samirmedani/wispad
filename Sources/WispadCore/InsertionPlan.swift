@@ -96,9 +96,17 @@ public enum FocusedField {
     ]
     /// Apps sans saisie de texte hors de leurs champs (renommer, rechercher) : le bureau et les fenêtres du Finder.
     static let textlessApps: Set<String> = ["com.apple.finder"]
+    /// Page web elle-même (Chrome, apps Electron), hors de tout champ. Chrome lui prête un curseur de texte même quand
+    /// rien n'y est modifiable (mesuré le 5 novembre 2026) : ce curseur seul ne fait pas un champ.
+    public static let pageRole = "AXWebArea"
 
     /// `role` : nil quand aucun élément n'a le focus (ou qu'il n'a pas pu être lu).
-    public static func kind(role: String?, subrole: String? = nil, hasTextCursor: Bool, bundleID: String?) -> FocusedFieldKind {
+    /// `editable` : l'élément se déclare modifiable (valeur modifiable ou ancêtre modifiable) ; lu seulement pour une
+    /// page web. Une page lisible qui annonce un curseur sans être modifiable n'est pas un champ : on n'y écrit pas.
+    /// Une page sans curseur reste indécise : son arbre d'accessibilité n'est peut-être pas encore ouvert.
+    public static func kind(role: String?, subrole: String? = nil, hasTextCursor: Bool, editable: Bool = false,
+                            bundleID: String?) -> FocusedFieldKind {
+        if role == pageRole, !editable { return hasTextCursor ? .notText : .unknown }
         if hasTextCursor { return .text }
         if let role, textRoles.contains(role) { return .text }
         if let subrole, textRoles.contains(subrole) { return .text }
