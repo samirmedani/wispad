@@ -46,6 +46,7 @@ struct HomeView: View {
                 RecentCard()
             }
             .fixedSize(horizontal: false, vertical: true)
+            ShortcutCard()
             Text("Le temps économisé compare la dictée à une frappe à \(Int(model.settings.typingWPM)) mots par minute.")
                 .font(.footnote)
                 .foregroundStyle(.tertiary)

@@ -88,7 +88,7 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   raccourci de dictée, les combinaisons connues de macOS et des apps (⌘⇧V, ⌥⌘V, ⌘Espace, captures d'écran…) et
   celles déclarées dans Réglages Système › Clavier › Raccourcis. Le raccourci actuel est suspendu pendant
   l'enregistrement.
-- Affiché dans la carte « Raccourcis » de la barre latérale quand il est activé.
+- Affiché dans la carte « Raccourcis » de l'Accueil quand il est activé.
 
 ## Réactivité
 
@@ -293,6 +293,10 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   onglets et boutons prennent la couleur d'accent choisie dans Réglages Système ; le rouge de Wispad reste à la marque
   (icône, pastille de l'Accueil, Voix) et à l'écoute. Au survol, un bouton reçoit un fond discret : il ne grossit pas
   et ne projette pas d'ombre.
+- **Légère, comme Superwhisper** : la barre latérale ne montre que les sections et, en bas, un pied discret (étoile,
+  version, liens) ; les raccourcis de la dictée sont une rangée de touches dessinées en bas de l'Accueil (carte
+  « Raccourcis »). Titres d'écran de 22 points semi-gras, sous-titre de 12,5 points ; cartes posées à plat, filet très
+  léger et sans ombre.
 - **Changer de section** : chaque écran est construit une fois et gardé ; y revenir ne le reconstruit pas et retrouve
   sa place (défilement, recherche). Les sections jamais ouvertes sont préparées une à une, au repos, pendant que Wispad
   est au premier plan (jamais pendant une dictée). Quand Wispad passe en arrière-plan, seul l'écran affiché reste
@@ -1486,7 +1490,7 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
 
 ## Version et mises à jour
 
-- Bas de la barre latérale, au-dessus des raccourcis : un petit bandeau jaune « Une étoile sur GitHub »
+- Bas de la barre latérale : un lien discret « Une étoile sur GitHub » (texte secondaire, seule l'étoile en jaune)
   (« Star on GitHub » en anglais), sur une seule ligne et sans troncature à la largeur fixe de la barre, entièrement
   cliquable. Un clic ouvre la page du dépôt dans le navigateur, affiche « Merci ! » 1,6 s, puis le bandeau
   disparaît pour de bon (réglage `githubStarClicked`, enregistré dès le clic). Wispad ne peut pas savoir si

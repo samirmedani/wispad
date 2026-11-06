@@ -10,10 +10,11 @@ enum Theme {
     static let accent = Color.accentColor
     static let canvas = Color.adaptive(light: NSColor(white: 0.965, alpha: 1), dark: NSColor(white: 0.105, alpha: 1))
     static let card = Color.adaptive(light: .white, dark: NSColor(white: 0.15, alpha: 1))
-    static let cardBorder = Color.adaptive(light: NSColor(white: 0, alpha: 0.07), dark: NSColor(white: 1, alpha: 0.075))
+    static let cardBorder = Color.adaptive(light: NSColor(white: 0, alpha: 0.05), dark: NSColor(white: 1, alpha: 0.045))
     static let subtleFill = Color.adaptive(light: NSColor(white: 0, alpha: 0.05), dark: NSColor(white: 1, alpha: 0.07))
     static let raised = Color.adaptive(light: .white, dark: NSColor(white: 0.28, alpha: 1))
-    static let cardShadow = Color.adaptive(light: NSColor(white: 0, alpha: 0.05), dark: .clear)
+    /// Cartes posées à plat : un filet très léger suffit, sans ombre.
+    static let cardShadow = Color.clear
     /// Touches dessinées : face à peine dégradée, contour fin et lèvre plus sombre en bas, pour un léger relief.
     static let keyTop = Color.adaptive(light: .white, dark: NSColor(white: 0.31, alpha: 1))
     static let keyBottom = Color.adaptive(light: NSColor(white: 0.955, alpha: 1), dark: NSColor(white: 0.255, alpha: 1))
@@ -229,11 +230,12 @@ struct ScreenHeader<Trailing: View>: View {
     var body: some View {
         HStack(alignment: .center, spacing: 16) {
             VStack(alignment: .leading, spacing: 4) {
+                // Titre d'écran à la manière de Réglages Système et de Superwhisper : net, sans être une affiche.
                 Text(title)
-                    .font(.system(size: 26, weight: .bold))
+                    .font(.system(size: 22, weight: .semibold))
                 if let subtitle {
                     Text(subtitle)
-                        .font(.system(size: 13))
+                        .font(.system(size: 12.5))
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
                 }

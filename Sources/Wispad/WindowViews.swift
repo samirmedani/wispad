@@ -157,11 +157,9 @@ struct Sidebar: View {
                 .padding(.top, 4)
         }
         .safeAreaInset(edge: .bottom, spacing: 8) {
-            VStack(alignment: .leading, spacing: 10) {
-                ProjectFooter()
-                    .padding(.horizontal, 6)
-                ShortcutCard()
-            }
+            // Comme Réglages Système et Superwhisper : les sections, puis un pied discret. Les raccourcis sont sur l'Accueil.
+            ProjectFooter()
+                .padding(.horizontal, 6)
             .padding(.horizontal, 10)
             .padding(.bottom, 12)
         }
@@ -499,10 +497,6 @@ private struct StarBannerButton: View {
     var thanking: Bool
     var action: () -> Void
 
-    private static let fill = Color.adaptive(
-        light: NSColor(red: 1, green: 0.84, blue: 0.2, alpha: 0.2),
-        dark: NSColor(red: 1, green: 0.8, blue: 0.2, alpha: 0.14)
-    )
     private static let ink = Color.adaptive(
         light: NSColor(red: 0.55, green: 0.38, blue: 0, alpha: 1),
         dark: NSColor(red: 1, green: 0.84, blue: 0.4, alpha: 1)
@@ -513,6 +507,7 @@ private struct StarBannerButton: View {
             HStack(spacing: 7) {
                 Image(systemName: thanking ? "star.fill" : "star")
                     .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Self.ink)
                     .contentTransition(.symbolEffect(.replace))
                 Group {
                     if thanking { Text("Merci !") } else { Text("Une étoile sur GitHub") }
@@ -522,26 +517,27 @@ private struct StarBannerButton: View {
                 .minimumScaleFactor(0.85)
                 .contentTransition(.opacity)
             }
-            .foregroundStyle(Self.ink)
-            .padding(.horizontal, 10)
-            .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Self.fill))
-            .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            // Un lien discret, pas un bandeau : seule l'étoile garde sa couleur.
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 4)
+            .frame(maxWidth: .infinity, minHeight: 24, alignment: .leading)
+            .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
-        .buttonStyle(HoverButtonStyle(treatment: .quiet, tint: Self.ink))
+        .buttonStyle(HoverButtonStyle(treatment: .quiet, tint: .primary))
         .help(BuildFreshnessCheck.repositoryURL.absoluteString)
     }
 }
 
+/// Raccourcis de la dictée, en bas de l'Accueil : une rangée de touches dessinées, comme la fenêtre d'enregistrement
+/// de Superwhisper (« Stop ⌥ Space · Cancel esc »).
 struct ShortcutCard: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
         let key = KeyLabels.describe(keyCode: model.settings.keyCode, modifiers: model.settings.modifierFlags)
-        VStack(alignment: .leading, spacing: 9) {
-            Text("Raccourcis")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 10) {
+            CardTitle(String(localized: "Raccourcis"))
+            FlowLayout(spacing: 18) {
             row(keys: [key, key], label: String(localized: "Mains libres"))
             row(keys: [key], label: String(localized: "Parler (maintenu)"))
             if model.settings.sendWithShift {
@@ -554,22 +550,22 @@ struct ShortcutCard: View {
                 row(keys: [KeyLabels.describe(paste, compact: true)], label: String(localized: "Coller la dernière"))
                     .help(String(localized: "Coller la dernière dictée"))
             }
+            }
         }
-        .padding(12)
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.subtleFill))
+        .card()
     }
 
     private func row(keys: [String], label: String) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 7) {
             HStack(spacing: 3) {
                 ForEach(Array(keys.enumerated()), id: \.offset) { _, key in
                     KeyCap(label: key)
                 }
             }
-            .frame(width: 50, alignment: .leading)
             Text(label)
-                .font(.system(size: 11.5))
+                .font(.system(size: 12))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         }
