@@ -27,6 +27,10 @@ enum DevTools {
             MainActor.assumeIsolated { PasteProbe.run(pid: pid) }
             return true
         }
+        if arguments.contains("--insertion-bench") {
+            MainActor.assumeIsolated { InsertionBench.run(arguments: arguments) }
+            return true
+        }
         if arguments.contains("--bubble-probe") {
             MainActor.assumeIsolated { BubbleProbe.run(arguments: arguments) }
             return true

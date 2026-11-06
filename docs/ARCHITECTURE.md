@@ -408,6 +408,11 @@ ne réécrit jamais un fichier abîmé (les clés de sa partie intacte servent).
   section deux fois (première ouverture, puis retour), temps du fil principal jusqu'à l'affichage. Les longs écrans
   (`ScreenScroll` : Accueil, Profil, Consommation, Dictionnaire) sont des piles paresseuses : seules les cartes
   visibles sont construites à l'ouverture.
+- Banc d'insertion, avec une vraie app au premier plan : `Wispad --insertion-bench --text "…" [--listen-ms 1200]
+  [--settle-ms 3000]` (build Debug signé comme Wispad, pour ses autorisations) joue une dictée complète, transcription
+  simulée, tout le reste réel : contexte lu au départ dans l'app au premier plan, collage, attente d'un champ, carte.
+  Il ne passe jamais au premier plan ; réglages et historique dans un dossier temporaire ; ligne `BENCH status=…`.
+  L'app de test (champs natifs, champ illisible, saisie sécurisée tenue, page web) change elle-même de champ.
 - Ligne d'historique ouverte, hors écran : `--history-expand-preview` (avec `--section history`) ouvre les lignes
   longues comme après un arrêt du survol.
 - Écrans gardés (`SectionStack`) : `--sections-probe` finit par une fin de dictée simulée, deux fois Wispad au

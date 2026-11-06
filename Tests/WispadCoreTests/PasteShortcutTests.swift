@@ -284,7 +284,9 @@ struct PasteShortcutTests {
         #expect(FocusedField.kind(role: "AXButton", hasTextCursor: false, bundleID: nil) == .notText)
         // Conteneurs et cas illisibles : on ne conclut pas (Electron, terminaux GPU, tableurs).
         #expect(FocusedField.kind(role: "AXGroup", hasTextCursor: false, bundleID: nil) == .unknown)
-        #expect(FocusedField.kind(role: "AXWindow", hasTextCursor: false, bundleID: nil) == .unknown)
+        // Une fenêtre lue comme telle : aucun champ n'a le focus (app native). Rien de lisible : indécis (Electron).
+        #expect(FocusedField.kind(role: "AXWindow", hasTextCursor: false, bundleID: nil) == .notText)
+        #expect(FocusedField.kind(role: nil, hasTextCursor: false, bundleID: nil) == .unknown)
         #expect(FocusedField.kind(role: "AXTable", hasTextCursor: false, bundleID: nil) == .unknown)
         #expect(FocusedField.kind(role: nil, hasTextCursor: false, bundleID: nil) == .unknown)
         // Le Finder n'a pas de saisie hors de ses champs : bureau ou fenêtre sans champ = aucun champ.

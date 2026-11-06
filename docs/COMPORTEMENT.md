@@ -1108,8 +1108,15 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
   qu'elle est affichée (12 s, en pause au survol), le curseur de l'app au premier plan est relu toutes les 0,25 s ;
   dès qu'il entre dans un champ de texte reconnu (ni sécurisé, ni dans Wispad), le texte s'y colle comme avec
   **Coller**. Un conteneur illisible ne déclenche rien. Carte fermée, Copier, nouvelle dictée ou carte remplacée :
-  l'attente s'arrête. Une dictée commencée dans un champ ne se colle jamais ainsi ailleurs : l'utilisateur écrit
-  peut-être dans l'autre app.
+  l'attente s'arrête. Même attente pour une dictée commencée dans un champ dont le curseur est sorti, si rien n'a été
+  tapé à la main depuis son début (voir « Le texte suit le curseur »).
+- **Le texte suit le curseur** : il va dans le champ où est le curseur à la fin de la dictée, même dans une autre app
+  (dictée commencée dans Codex, clic dans un champ de Chrome avant la fin). Seule exception : une dictée commencée dans
+  un champ, suivie de frappe à la main (ni raccourci ⌘ ou ⌃, ni modificateur seul) avant la fin, reste liée à son app :
+  l'utilisateur écrit peut-être dans l'autre app. Une sélection à remplacer reste toujours liée à son app.
+- **Fenêtre sans champ** : une app native dont aucun champ n'a le focus annonce sa fenêtre (`AXWindow`). Wispad n'y
+  envoie plus de ⌘V dans le vide (le clic suivant dans un champ ne recevait rien) : la carte attend un clic dans un
+  champ. Une app Electron illisible (Codex), qui n'annonce rien, reçoit le collage comme avant.
 - Champ qui ignore ⌘V : le collage est envoyé dans un champ de texte reconnu, lisible et modifiable, et ce champ est
   resté identique pendant la seconde de confirmation (page qui intercepte le collage ou le raccourci, ⌘V perdu ; deux
   dictées dans Chrome le 5 novembre 2026). Wispad écrit alors le texte une seule fois dans ce même champ, autrement :
@@ -1133,13 +1140,13 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
   à copier » dit « Le curseur a quitté le champ » ; **Coller** l'écrit là où le curseur est revenu. Un focus illisible
   (apps Electron qui n'exposent rien), une dictée commencée hors d'un champ ou le même élément qu'au début : le
   collage part comme avant.
-- Champ sécurisé : un champ de mot de passe lu comme tel par l'accessibilité, ou la saisie sécurisée de macOS tenue
-  par l'app où l'on dicte (sauf dans un champ lu, non sécurisé, avec curseur de texte), ou tenue par une app que macOS
-  ne nomme pas. Tenue par une autre app (un champ de mot de passe resté actif dans Chrome, un gestionnaire de mots de
-  passe), elle ne bloque pas le collage ailleurs : le 17 octobre 2026, Chrome la tenait et Wispad refusait de coller
-  dans Codex. L'app qui la tient vient de macOS (`kCGSSessionSecureInputPID`) ; demandée par un outil en ligne de
-  commande, elle est attribuée à l'app au premier plan, donc toujours refusée. Le champ est lu avant ce test : sans
-  champ où écrire, la carte le dit au lieu de parler de champ sécurisé.
+- Champ sécurisé : seulement un champ de mot de passe lu comme tel par l'accessibilité au moment du collage, ou, si
+  le champ ne se lit plus, celui du début de la dictée. La saisie sécurisée de macOS ne suffit plus à refuser, quelle
+  que soit l'app qui la tient : Chrome et les apps Electron la gardent après un champ de mot de passe, et une commande
+  du terminal qui la demande est attribuée à l'app au premier plan. Le 6 novembre 2026, Codex (champ illisible) la
+  tenait et 234 mots ont été refusés ; le 17 octobre, Chrome la tenait et Wispad refusait de coller dans Codex. Le
+  journal note la raison d'un refus (champ lu ou non, qui tient la saisie sécurisée), jamais le texte. Le champ est lu
+  avant ce test : sans champ où écrire, la carte le dit au lieu de parler de champ sécurisé.
 - Champ illisible (Codex, apps Electron, éditeurs dessinés) ou remplacé par un autre pendant la relecture : rien ne
   prouve un échec. Le statut reste « Collage envoyé », sans carte ni copie : la bulle ne revient pas à chaque dictée.
   Si le texte manque, « Coller la dernière dictée » et l'historique le gardent. Aucun apprentissage sur une

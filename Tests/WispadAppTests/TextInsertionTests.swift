@@ -430,11 +430,24 @@ struct TextInsertionTests {
     @Test func changingAppsOrEnteringASecureFieldNeverWrites() async {
         let f = InsertionFixture(); defer { f.dispose() }
         f.context.startedInTextField = true
+        // Frappe à la main depuis le début de la dictée : on écrit peut-être dans l'autre app.
+        f.context.typingKeysAtStart = KeyboardTap.typingKeys &- 1
         f.pid = 42_425
         #expect(await f.insert() == .noTarget)
         f.pid = 42_424; f.field.isSecure = true
         #expect(await f.insert() == .refusedSecure)
         #expect(f.keys == 0)
+    }
+
+    /// Commencée dans un champ, puis un clic dans un champ d'une autre app, sans rien taper : le texte suit le curseur,
+    /// comme on l'attend d'une dictée (scénario du banc du 6 novembre 2026, rien n'était collé nulle part).
+    @Test func withoutTypingTheTextFollowsTheCursorToAnotherApp() async {
+        let f = InsertionFixture(); defer { f.dispose() }
+        f.context.startedInTextField = true
+        f.pid = 42_425
+        #expect(await f.insert() == .inserted)
+        #expect(f.context.pid == 42_425)
+        #expect(f.keys == 1)
     }
 
     /// La saisie sécurisée tenue par une autre app (Chrome et un champ de mot de passe) ne bloque pas le collage ici.
@@ -447,21 +460,36 @@ struct TextInsertionTests {
         #expect(f.keys == 1)
     }
 
-    /// Tenue par l'app visée, ou par une app que macOS ne nomme pas : un champ illisible peut être un mot de passe,
-    /// rien n'est collé ; un champ lu, non sécurisé, avec curseur, reçoit le texte.
-    @Test func secureInputHeldByTheTargetOrAnUnknownAppStillProtects() async {
+    /// Tenue par l'app visée ou par une app que macOS ne nomme pas, la saisie sécurisée ne suffit pas à refuser : Codex,
+    /// champ illisible, la tenait le 6 novembre 2026 (234 mots perdus). Seul un champ lu comme un mot de passe refuse.
+    @Test(arguments: [nil, 42_424] as [pid_t?])
+    func secureInputAloneNeverRefusesThePaste(holder: pid_t?) async {
         let f = InsertionFixture(); defer { f.dispose() }
         var system = f.system
         system.secureInput = { true }
-        system.secureInputHolder = { nil }
-        #expect(await f.insert(system: system) == .refusedSecure)
-        system.secureInputHolder = { 42_424 }
-        let readable = f.field
-        f.field = InsertionField()
-        #expect(await f.insert(system: system) == .refusedSecure)
-        #expect(f.keys == 0)
-        f.field = readable
+        system.secureInputHolder = { holder }
         #expect(await f.insert(system: system) == .inserted)
+        #expect(f.keys == 1)
+    }
+
+    @Test func secureInputHeldByTheTargetStillPastesInAnUnreadableField() async {
+        let f = InsertionFixture(); defer { f.dispose() }
+        var system = f.system
+        system.secureInput = { true }
+        system.secureInputHolder = { 42_424 }
+        f.field = InsertionField(); f.deliver = false
+        #expect(await f.insert(system: system) == .pasteSent)
+        #expect(f.keys == 1)
+    }
+
+    /// Un mot de passe au début de la dictée, puis un champ illisible : dans le doute, rien n'est collé. Un champ lu, non
+    /// sécurisé, prouve que le curseur a quitté le mot de passe : le texte y va.
+    @Test func aPasswordAtTheStartOnlyRefusesWhenNothingSaysOtherwise() async {
+        let f = InsertionFixture(); defer { f.dispose() }
+        f.context.isSecure = true
+        #expect(await f.insert() == .inserted)
+        f.field = InsertionField()
+        #expect(await f.insert() == .refusedSecure)
         #expect(f.keys == 1)
     }
 

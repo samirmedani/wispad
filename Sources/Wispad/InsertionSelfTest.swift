@@ -4,14 +4,15 @@ import WispadCore
 // Outil de développement : absent de la version Release.
 #if DEBUG
 
-/// Récepteur de collage dont l'accessibilité n'expose ni champ ni texte, comme certains éditeurs web.
+/// Récepteur de collage dont l'accessibilité n'expose ni champ ni texte, comme certains éditeurs web (un groupe : un
+/// bouton, lui, ne reçoit jamais de collage).
 @MainActor
 private final class PasteOnlyView: NSView {
     var pastedText = ""
     override var acceptsFirstResponder: Bool { true }
     // AppKit peut lire ces attributs depuis le fil de l'appel AX : aucun état UI n'est consulté ici.
     nonisolated override func isAccessibilityElement() -> Bool { true }
-    nonisolated override func accessibilityRole() -> NSAccessibility.Role? { .button }
+    nonisolated override func accessibilityRole() -> NSAccessibility.Role? { .group }
 
     @objc func paste(_ sender: Any?) {
         pastedText = NSPasteboard.general.string(forType: .string) ?? ""
@@ -85,7 +86,7 @@ enum InsertionSelfTest {
             let refused = await TextInserter.insert("ne-pas-inserer", context: secret)
             let passed = (inserted == .inserted || inserted == .pasteSent)
                 && field.stringValue == "Réunion mercredi."
-                && opaqueRole == "AXButton"
+                && opaqueRole == "AXGroup"
                 && opaqueValue == nil
                 && sent == .pasteSent
                 && pasteOnly.pastedText == "Collage sans valeur accessible."
