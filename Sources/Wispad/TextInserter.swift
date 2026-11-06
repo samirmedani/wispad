@@ -186,8 +186,7 @@ enum TextInserter {
         var releasesLater = false
         defer { if !releasesLater { finishTurn(done) } }
         guard shouldProceed(), !Task.isCancelled else { return .cancelled }
-        // Saisie sécurisée active : jugée plus bas, une fois l'app et son champ connus.
-        if context.isSecure { return .refusedSecure }
+        // Champ de mot de passe : jugé plus bas, sur le champ lu au moment du collage (le curseur a pu le quitter).
         guard system.trusted() else {
             // Accessibilité retirée (ou jamais donnée) : ni ⌘V ni lecture du champ, le texte reste à copier.
             log.notice("collage retenu : accessibilité non autorisée")
@@ -195,10 +194,10 @@ enum TextInserter {
             return .failed
         }
         let frontmost = system.frontmostPID()
-        // Sans champ au départ, l'utilisateur peut choisir sa destination pendant la dictée ou sa finition.
-        // Un champ reconnu ou une sélection reste lié à son app : jamais de réécriture envoyée ailleurs.
-        let followsFocus = !context.startedInTextField
-            && context.selectedText?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false
+        // Le texte va là où est le curseur à la fin, comme on l'attend d'une dictée : sans champ au départ, ou sans rien
+        // tapé à la main depuis (un clic dans un champ d'une autre app pendant la dictée). Un champ de départ suivi de
+        // frappe reste lié à son app (on écrit peut-être ailleurs), une sélection aussi (jamais de réécriture ailleurs).
+        let followsFocus = Self.followsFocus(context)
         let target = followsFocus ? frontmost : context.pid ?? frontmost
         guard let pid = target, frontmost == pid else {
             // Ne pas réactiver une ancienne app pendant que l'utilisateur écrit ailleurs.
@@ -229,7 +228,10 @@ enum TextInserter {
             context.bundleID = bundle
             context.appName = system.appName(pid)
         }
-        guard !field.isSecure, !Self.secureInputBlocks(target: pid, field: field, system: system) else { return .refusedSecure }
+        if Self.refusesSecure(context: context, field: field) {
+            Self.logSecureRefusal(field: field, system: system, target: pid)
+            return .refusedSecure
+        }
         let kind = field.kind(bundleID: bundle)
         guard kind != .notText else { return .noTarget }
         if Self.leftTextField(context: context, field: field, kind: kind, pid: pid) {
@@ -442,6 +444,11 @@ enum TextInserter {
     /// est maintenant sur un autre élément lisible qui n'en est pas un (la page, la conversation, un groupe). Cette app
     /// expose ses champs (celui du début a été lu) : ce n'est pas un éditeur caché, et un ⌘V partirait dans le vide,
     /// sans que rien ne puisse le prouver ensuite. Un focus illisible ne prouve rien : le collage reste envoyé.
+    static func followsFocus(_ context: DictationContext) -> Bool {
+        let noSelection = context.selectedText?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false
+        return noSelection && (!context.startedInTextField || !context.typedSinceStart)
+    }
+
     static func leftTextField(context: DictationContext, field: InsertionField, kind: FocusedFieldKind, pid: pid_t) -> Bool {
         guard context.startedInTextField, context.pid == pid, kind != .text, field.role != nil,
               let now = field.element else { return false }
@@ -492,16 +499,20 @@ enum TextInserter {
     /// ⌘V comme au clavier : ⌘ enfoncée, V, puis ⌘ relâchée, envoyés au système (l'app au premier plan, vérifiée
     /// juste avant). Chrome et les apps Electron ignorent parfois un ⌘V adressé à leur processus ou porté par la
     /// seule touche V (régression du 13 octobre 2026 : texte absent du champ).
-    /// La saisie sécurisée de macOS s'allume pour tout le Mac dès qu'une app l'active (un champ de mot de passe dans
-    /// Chrome, un gestionnaire de mots de passe). Elle ne concerne le collage que si l'app visée la tient, ou si
-    /// macOS ne dit pas qui la tient. Le 17 octobre 2026, Chrome la tenait encore et Wispad refusait de coller dans
-    /// Codex. L'app visée qui la tient laisse coller seulement dans un champ lu, non sécurisé, avec un curseur de texte :
-    /// un champ illisible (Electron) peut être un mot de passe.
-    static func secureInputBlocks(target pid: pid_t, field: InsertionField, system: InsertionSystem) -> Bool {
-        guard system.secureInput() else { return false }
-        guard let holder = system.secureInputHolder() else { return true }
-        guard holder == pid else { return false }
-        return field.element == nil || field.isSecure || !field.hasTextCursor
+    /// Refus de coller : seulement un champ de mot de passe lu comme tel au moment du collage, ou, quand le champ ne se
+    /// lit plus, celui d'un mot de passe au début de la dictée. La saisie sécurisée de macOS ne suffit plus : Chrome et
+    /// les apps Electron la gardent après un champ de mot de passe, et une commande du terminal qui la demande est
+    /// attribuée à l'app au premier plan. Le 6 novembre 2026, Codex (champ illisible) la tenait : 234 mots refusés.
+    static func refusesSecure(context: DictationContext, field: InsertionField) -> Bool {
+        field.isSecure || (context.isSecure && field.element == nil)
+    }
+
+    /// Raison du refus, pour le diagnostic : jamais de texte, seulement le rôle et l'app qui tient la saisie sécurisée.
+    private static func logSecureRefusal(field: InsertionField, system: InsertionSystem, target pid: pid_t) {
+        let held = system.secureInput()
+        let holder = held ? system.secureInputHolder() : nil
+        let by = holder.map { $0 == pid ? "app visée" : "autre app" } ?? (held ? "inconnue" : "aucune")
+        log.notice("collage refusé : champ de mot de passe (lu=\(field.isSecure, privacy: .public)) saisie sécurisée=\(by, privacy: .public)")
     }
 
     /// PID annoncé par macOS pour la saisie sécurisée, nil sans saisie sécurisée ou sans réponse.

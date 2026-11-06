@@ -87,12 +87,14 @@ public enum FocusedFieldKind: Equatable, Sendable {
 
 public enum FocusedField {
     static let textRoles: Set<String> = ["AXTextField", "AXTextArea", "AXComboBox", "AXSearchField"]
-    /// Rôles qui ne reçoivent jamais de texte collé. Pas de tableau ni de cellule (tableurs), pas de groupe ni de
-    /// fenêtre (éditeurs dessinés, terminaux GPU, champs web) : dans le doute, le collage reste « envoyé ».
+    /// Rôles qui ne reçoivent jamais de texte collé. Pas de tableau ni de cellule (tableurs), pas de groupe (éditeurs
+    /// dessinés, champs web) : dans le doute, le collage reste « envoyé ». Une fenêtre lue comme telle, si : c'est ce
+    /// qu'une app native annonce quand aucun champ n'a le focus (mesuré le 6 novembre 2026 ; ⌘V partait dans le vide,
+    /// et le clic suivant dans un champ ne recevait rien). Une app Electron illisible, elle, n'annonce rien.
     static let nonTextRoles: Set<String> = [
         "AXList", "AXOutline", "AXBrowser", "AXButton", "AXImage", "AXLink", "AXMenu", "AXMenuBar", "AXMenuItem",
         "AXMenuBarItem", "AXMenuButton", "AXCheckBox", "AXRadioButton", "AXPopUpButton", "AXSlider", "AXTabGroup",
-        "AXToolbar", "AXDisclosureTriangle", "AXIncrementor", "AXColorWell", "AXDockItem",
+        "AXToolbar", "AXDisclosureTriangle", "AXIncrementor", "AXColorWell", "AXDockItem", "AXWindow",
     ]
     /// Apps sans saisie de texte hors de leurs champs (renommer, rechercher) : le bureau et les fenêtres du Finder.
     static let textlessApps: Set<String> = ["com.apple.finder"]

@@ -28,6 +28,10 @@ final class DictationContext: @unchecked Sendable {
     /// Le collage n'a pas été tenté : le curseur a quitté ce champ pendant la dictée. Noté par l'insertion, pour que
     /// la bulle le dise.
     var leftTextField = false
+    /// Touches de frappe au début de la dictée (`KeyboardTap.typingKeys`) : aucune depuis, le texte peut suivre le
+    /// curseur jusqu'au champ choisi, même dans une autre app.
+    var typingKeysAtStart = KeyboardTap.typingKeys
+    var typedSinceStart: Bool { KeyboardTap.typingKeys != typingKeysAtStart }
     /// Le champ actif a été lu (ou sa lecture a échoué) : rien de plus à attendre.
     private(set) var fieldRead = false
 

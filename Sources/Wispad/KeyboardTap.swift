@@ -64,6 +64,11 @@ final class KeyboardTap: @unchecked Sendable {
     private static let typed = OSAllocatedUnfairLock(initialState: 0)
     static var keystrokes: Int { typed.withLock { $0 } }
 
+    /// Touches de frappe réelles (ni raccourci ⌘ ou ⌃, ni modificateur seul) : écrit-on à la main pendant la dictée ?
+    /// Un compteur seulement, jamais les touches.
+    private static let typing = OSAllocatedUnfairLock(initialState: 0)
+    static var typingKeys: Int { typing.withLock { $0 } }
+
     static func noteInput() {
         typed.withLock { $0 &+= 1 }
     }
@@ -329,7 +334,10 @@ final class KeyboardTap: @unchecked Sendable {
         if let pressed = output.pressedAt, Self.now() - pressed < Self.promptPressMilliseconds {
             physicalStateReliable = keyIsDown()
         }
-        if phase == .down, !output.swallow { Self.typed.withLock { $0 &+= 1 } }
+        if phase == .down, !output.swallow {
+            Self.typed.withLock { $0 &+= 1 }
+            if event.flags.intersection([.maskCommand, .maskControl]).isEmpty { Self.typing.withLock { $0 &+= 1 } }
+        }
         apply(output)
         return output.swallow ? nil : Unmanaged.passUnretained(event)
     }

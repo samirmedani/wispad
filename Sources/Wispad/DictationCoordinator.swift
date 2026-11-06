@@ -1048,11 +1048,9 @@ final class DictationCoordinator {
             }
             if let note = job.announcement { pendingAnnouncement = note.message }
         } else {
-            // Dictée commencée sans champ et finie avant que l'utilisateur ait cliqué dans l'un d'eux : la carte attend
-            // qu'il le fasse.
-            let waitsForField = status == .noTarget && !context.startedInTextField && !context.leftTextField
-                && !context.accessibilityRefused
-                && context.selectedText?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false
+            // Dictée finie hors d'un champ (commencée sans champ, ou curseur sorti du champ sans rien taper depuis) : la
+            // carte attend que l'utilisateur clique dans un champ, et le texte s'y écrit.
+            let waitsForField = status == .noTarget && !context.accessibilityRefused && TextInserter.followsFocus(context)
             offerReadyText(finalText, status: status, recordID: record.id, accessibilityRefused: context.accessibilityRefused,
                            heldModifiers: context.heldModifiers, leftTextField: context.leftTextField,
                            waitsForField: waitsForField)
