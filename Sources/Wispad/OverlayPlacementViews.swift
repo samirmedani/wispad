@@ -269,7 +269,7 @@ extension OverlayRole {
         switch self {
         case .dictation: return CGSize(width: OverlayLayout.spectrumPillWidth, height: OverlayLayout.pillHeight)
         case .alerts: return OverlayLayout.contentSize(for: .failure(""), hasReadyText: true)
-        case .info: return CGSize(width: 300, height: OverlayLayout.messageHeight)
+        case .info: return CGSize(width: OverlayLayout.messageMaxWidth, height: OverlayLayout.messageHeight)
         }
     }
 }
@@ -409,7 +409,7 @@ struct OverlayLayoutEditor: View {
         .accessibilityValue(anchorDescription(role))
         .accessibilityAddTraits(isSelected ? .isSelected : [])
         .accessibilityAdjustableAction { direction in
-            let current = placement.anchor(for: role) ?? OverlayAnchor(x: 0.5, y: 0)
+            let current = placement.anchor(for: placement.positionRole(for: role)) ?? OverlayAnchor(x: 0.5, y: 0)
             let step = direction == .increment ? 0.1 : -0.1
             setAnchor(OverlayAnchor(x: current.x, y: current.y + step), for: role)
         }
@@ -421,7 +421,7 @@ struct OverlayLayoutEditor: View {
         var frames: [OverlayRole: CGRect] = [:]
         var placed: [(OverlayAnchor, CGRect)] = []
         for role in [OverlayRole.dictation, .info, .alerts] {
-            let anchor = dragging?.role == role ? dragging!.anchor : (placement.anchor(for: role) ?? OverlayAnchor(x: 0.5, y: 0))
+            let anchor = dragging?.role == role ? dragging!.anchor : (placement.anchor(for: placement.positionRole(for: role)) ?? OverlayAnchor(x: 0.5, y: 0))
             let tokenSize = CGSize(width: max(64, role.screenSize.width * scale), height: max(20, role.screenSize.height * scale))
             var frame = rect(for: anchor, tokenSize: tokenSize, in: size)
             for (other, otherFrame) in placed where other == anchor && frame.intersects(otherFrame) {

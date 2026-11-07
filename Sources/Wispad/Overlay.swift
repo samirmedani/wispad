@@ -120,13 +120,13 @@ enum OverlayLayout {
     static let panelSize = CGSize(width: 560, height: 198)
     /// Bulle de dictée du style par défaut (Noir profond) ; selon le style, `PillMetrics.of(_:)`.
     static let pillHeight = PillMetrics.black.height
-    /// Message sur une ligne : pastille de 26 pt dans 42 pt de haut ; deux lignes de texte au plus.
-    static let messageHeight: CGFloat = 42
-    static let messageBadge: CGFloat = 26
-    /// Largeur maximale d'un message : un texte long passe à la ligne avant le bord du panneau et son ombre.
-    static let messageMaxWidth: CGFloat = 520
-    /// Cartes : texte prêt à copier, mots appris.
-    static let cardWidth: CGFloat = 392
+    /// Format commun : rectangle compact et badge discret. Les textes longs peuvent revenir à la ligne.
+    static let messageHeight: CGFloat = 34
+    static let messageBadge: CGFloat = 20
+    static let messageCornerRadius: CGFloat = 10
+    static let messageMaxWidth: CGFloat = 320
+    static let messageMaxHeight: CGFloat = 62
+    static let cardMaxHeight: CGFloat = 128
     /// Espace transparent sous la pilule : toute l'ombre portée y tient (flou de 12 pt décalé de 4 pt). À 10 pt, le
     /// bord du panneau la coupait net.
     static let bottomMargin: CGFloat = 32
@@ -170,8 +170,8 @@ enum OverlayLayout {
         switch mode {
         case .listening, .finishing: return CGSize(width: pill.spectrumWidth, height: pill.height)
         case .handsFree: return CGSize(width: pill.handsFreeWidth, height: pill.height)
-        case .failure: return hasReadyText ? CGSize(width: cardWidth, height: 128) : CGSize(width: messageMaxWidth, height: 52)
-        case .notice, .learning, .update: return CGSize(width: messageMaxWidth, height: 52)
+        case .failure where hasReadyText: return CGSize(width: messageMaxWidth, height: cardMaxHeight)
+        case .failure, .notice, .learning, .update: return CGSize(width: messageMaxWidth, height: messageMaxHeight)
         }
     }
 
@@ -970,7 +970,7 @@ struct MessageLine: View {
 
     var body: some View {
         let closable = model.overlay.state.isHovered && onDismiss != nil
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             Button { onDismiss?() } label: {
                 CountdownBadge(kind: kind, size: OverlayLayout.messageBadge, countdown: countdown, closing: closable)
                     .contentShape(Circle())
@@ -984,17 +984,17 @@ struct MessageLine: View {
             Text(OverlayText.display(message))
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(MessagePalette(style).primary)
-                .lineLimit(2)
+                .lineLimit(actions.isEmpty ? 2 : 3)
                 .fixedSize(horizontal: false, vertical: true)
             ForEach(actions.indices, id: \.self) { index in
-                MessageButton(action: actions[index], height: 26, fontSize: 12)
+                MessageButton(action: actions[index], height: 22, fontSize: 11)
             }
         }
         .padding(.leading, 8)
-        .padding(.trailing, actions.isEmpty ? 16 : 8)
-        .padding(.vertical, 8)
+        .padding(.trailing, actions.isEmpty ? 12 : 8)
+        .padding(.vertical, 6)
         .frame(minHeight: OverlayLayout.messageHeight)
-        .modifier(MessageSurface(shape: RoundedRectangle(cornerRadius: OverlayLayout.messageHeight / 2, style: .continuous)))
+        .modifier(MessageSurface(shape: RoundedRectangle(cornerRadius: OverlayLayout.messageCornerRadius, style: .continuous)))
     }
 }
 
@@ -1010,9 +1010,9 @@ struct MessageCard: View {
 
     var body: some View {
         let palette = MessagePalette(style)
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 12) {
-                CountdownBadge(kind: kind, size: 36, countdown: countdown)
+        VStack(alignment: .leading, spacing: 9) {
+            HStack(alignment: .top, spacing: 8) {
+                CountdownBadge(kind: kind, size: OverlayLayout.messageBadge, countdown: countdown)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title)
                         .font(.system(size: 14, weight: .semibold))
@@ -1029,13 +1029,13 @@ struct MessageCard: View {
             HStack(spacing: 8) {
                 Spacer(minLength: 0)
                 ForEach(actions.indices, id: \.self) { index in
-                    MessageButton(action: actions[index], height: 30, fontSize: 13)
+                    MessageButton(action: actions[index], height: 24, fontSize: 12)
                 }
             }
         }
-        .padding(16)
-        .frame(width: OverlayLayout.cardWidth)
-        .modifier(MessageSurface(shape: RoundedRectangle(cornerRadius: 26, style: .continuous)))
+        .padding(10)
+        .frame(width: OverlayLayout.messageMaxWidth)
+        .modifier(MessageSurface(shape: RoundedRectangle(cornerRadius: OverlayLayout.messageCornerRadius, style: .continuous)))
     }
 }
 
@@ -1065,7 +1065,7 @@ private struct MessageCloseButton: View {
     }
 }
 
-/// Bouton en capsule : plein pour l'action principale (Copier), voilé pour les autres.
+/// Bouton à coins arrondis : plein pour l'action principale (Copier), voilé pour les autres.
 private struct MessageButton: View {
     @Environment(\.bubbleStyle) private var style
     var action: MessageAction
@@ -1078,10 +1078,10 @@ private struct MessageButton: View {
             Text(action.title)
                 .font(.system(size: fontSize, weight: .semibold))
                 .foregroundStyle(action.prominent ? palette.onProminent : palette.primary)
-                .padding(.horizontal, height * 0.45)
+                .padding(.horizontal, 8)
                 .frame(height: height)
-                .background(Capsule().fill(action.prominent ? palette.prominent : palette.control))
-                .contentShape(Capsule())
+                .background(action.prominent ? palette.prominent : palette.control, in: .rect(cornerRadius: 6))
+                .contentShape(.rect(cornerRadius: 6))
         }
         .buttonStyle(.plain)
         .fixedSize()
@@ -1374,6 +1374,10 @@ final class OverlayController {
         guard let model else { return nil }
         let placement = model.settings.overlayPlacement
         let role = mode.isMessage ? (previewRole ?? mode.role) : mode.role
+        let positionRole = placement.positionRole(for: role)
+        let referenceSize = mode.isMessage && positionRole == .dictation
+            ? OverlayLayout.contentSize(for: .finishing, hasReadyText: false, style: model.settings.bubbleStyle,
+                                        size: model.settings.bubbleSize) : nil
         let size = OverlayLayout.contentSize(for: mode, hasReadyText: model.coordinator.failureText != nil,
                                              style: model.settings.bubbleStyle, size: model.settings.bubbleSize)
         let zone = mode.isMessage && placement.avoidsInput && previewRole == nil
@@ -1383,8 +1387,9 @@ final class OverlayController {
             among: screens(), zone: zone, shownOn: shown == nil ? nil : placedScreen,
             shownAt: shown.map { OverlayLayout.bottomCenter(of: $0.frame) }, pointer: pointer(), main: mainScreen()
         ) else { return nil }
-        let bottomCenter = OverlayGeometry.bottomCenter(on: screen, anchor: placement.anchor(for: role), contentSize: size,
-                                                        dockShown: Self.dockShown(onFrame: screen.frame), zone: zone)
+        let bottomCenter = OverlayGeometry.bottomCenter(on: screen, anchor: placement.anchor(for: positionRole), contentSize: size,
+                                                        dockShown: Self.dockShown(onFrame: screen.frame), zone: zone,
+                                                        referenceSize: referenceSize)
         return (OverlayLayout.panelFrame(bottomCenter: bottomCenter), screen.id)
     }
 

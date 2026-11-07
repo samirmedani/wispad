@@ -10292,12 +10292,12 @@
         }
       }
     },
-    "Où la bulle et ses messages apparaissent à l'écran." : {
+    "Sans emplacement dédié, les messages suivent le spectre de la dictée." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Where the bubble and its messages appear on screen."
+            "value" : "Messages follow the dictation waveform unless you give them their own position."
           }
         }
       }

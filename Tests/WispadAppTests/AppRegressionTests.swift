@@ -1242,7 +1242,7 @@ struct AppRegressionTests {
             .environment(f.model).environment(\.colorScheme, .dark).environment(\.overlayGlass, false))
         line.scale = 2
         let lineImage = try #require(line.nsImage)
-        #expect(lineImage.size.height <= 52)
+        #expect(lineImage.size.height <= OverlayLayout.messageMaxHeight)
         #expect(lineImage.size.width <= OverlayLayout.messageMaxWidth)
         if let folder = ProcessInfo.processInfo.environment["WISPAD_OVERLAY_SNAPSHOTS"] {
             f.model.overlay.state.isHovered = true
