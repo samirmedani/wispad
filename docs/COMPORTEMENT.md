@@ -156,25 +156,23 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   cadence de l'écran (120 Hz en ProMotion).
 - Elle laisse passer les clics, sauf sur ses boutons : ✕ / ■ en mains libres, Copier et Coller d'un texte non
   écrit, Voir / Retirer d'un mot appris, ✕ d'un message.
-- Messages en rectangles à coins arrondis : 34 points de haut sur une ligne, avec un badge de 20 points et une
-  seconde ligne possible (troisième si le message a des boutons). Largeur plafonnée à 320 points, même pour « Texte prêt à copier », dont les boutons
-  gardent leur propre ligne. Les boutons ont aussi des coins arrondis. Brefs et sans point final (une erreur de macOS terminée par un
-  point le perd). À gauche, une pastille de la couleur du message (rouge : erreur, vert : réussite, vert d'eau :
-  relais, bleu : nouvelle version, orange : texte prêt, violet : mots appris, gris : information) ; son anneau se vide
+- Messages en rectangles à coins arrondis : 34 points de haut sur une ligne, 320 points de large au plus.
+  Une deuxième ligne est possible, ou une troisième avec boutons. « Texte prêt à copier » garde ses deux actions
+  sur une ligne séparée, avec les boutons macOS en taille petite et Copier dans la couleur d'accent du système.
+  Le fond est le Liquid Glass standard de macOS 26, sans reflet blanc ni contour ajoutés par Wispad ; avant
+  macOS 26 ou si la transparence est réduite, il est mat et uni. À gauche, une petite icône ; un anneau fin se vide
   pendant le décompte. Pointeur sur la bulle, sans clic préalable : le décompte (anneau compris) s'arrête et reprend
   où il en était à la sortie ; sur une ligne, la pastille devient la ✕, sur une carte la ✕ paraît en haut à droite.
   Rien ne bouge. Un message qui paraît sous le pointeur attend aussi. La ✕ ferme le message tout de suite, sans
   prendre le focus ni le premier plan à l'app active. La bulle d'enregistrement (spectre, finalisation) n'a ni ✕ ni
   décompte.
 - **Style de la bulle** (Réglages › Bulle) : trois cartes montrent la vraie bulle sur une page claire et un fond
-  coloré ; un clic la choisit, la bulle affichée change tout de suite. **Noir profond** (par défaut) : messages noirs
-  avec un reflet doux sur le haut et une ombre, bulle de dictée en verre fumé noir de 30 points de haut ; lisible sur
-  tous les fonds. **Verre transparent** : verre dessiné par Wispad, sans aucun flou ; ce qu'il y a derrière reste
+  coloré ; un clic la choisit, la bulle de dictée change tout de suite. **Noir profond** (par défaut) : spectre en
+  verre fumé noir de 30 points de haut, lisible sur tous les fonds. **Verre transparent** : verre dessiné par Wispad, sans aucun flou ; ce qu'il y a derrière reste
   net, sous un voile léger, un reflet sur le haut, des bords intérieurs plus denses et un liseré lumineux. Le
   Glass.clear d'Apple n'est plus utilisé : sur macOS il floute autant que le dépoli (rayures fondues, fond sombre
   devenu gris laiteux, mesuré le 23 octobre 2026). Un fin halo (blanc en apparence claire, noir en sombre) garde le
-  spectre, la vague de finalisation et les symboles ✕ / ■ lisibles sur un fond de leur couleur ; les messages gardent
-  un voile plus dense (74 % à densité nulle) pour que leur texte se lise. **Verre dépoli** : Liquid Glass d'Apple
+  spectre, la vague de finalisation et les symboles ✕ / ■ lisibles sur un fond de leur couleur. **Verre dépoli** : Liquid Glass d'Apple
   (Glass.regular, macOS 26 ; matériau translucide avant), flouté. En verre, la bulle de dictée fait 40 points de
   haut, spectre et boutons agrandis d'autant. Ombre portée douce (26 %, flou de 12 points, 4 points plus bas),
   dessinée hors de la forme et jamais coupée : le panneau garde 32 points sous la bulle (10 avant la 0.3.0, d'où un
@@ -182,7 +180,7 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   reflets brillants, symboles foncés), Sombre (verre fumé, symboles clairs) ou Comme l'app ; et **Densité du verre**
   (25 % par défaut ; à zéro, le verre seul), qui épaissit le voile du verre transparent (de 5 à 50 % sur la bulle de
   dictée) ou teinte le dépoli (jusqu'à 70 %). Un grand aperçu sous ces réglages montre la bulle des mains libres et un
-  message dans le style choisi ; il suit le curseur, comme la bulle affichée. La densité s'enregistre au relâchement
+  message dans le matériau système ; le spectre suit le curseur de densité. La densité s'enregistre au relâchement
   du curseur. Un verre « Transparent » choisi avant la 0.3.0 devient ce verre sans flou.
 - **Taille de la bulle** (Réglages › Bulle, sous les cartes) : de 80 % à 160 %, par pas de 10 % (100 % par défaut).
   La bulle de dictée, son spectre (en dessin net) et les boutons ✕ / ■ des mains libres grandissent ensemble ; les

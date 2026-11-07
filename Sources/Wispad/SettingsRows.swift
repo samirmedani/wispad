@@ -383,7 +383,7 @@ enum SettingsPresentation {
 
     static let bubbleStyle = SettingText(
         title: String(localized: "Style de la bulle"),
-        summary: String(localized: "Pour la bulle de dictée comme pour ses messages ; le spectre garde ses couleurs.")
+        summary: String(localized: "Change le style du spectre. Les messages utilisent le matériau système.")
     )
 
     static let soundsVolume = SettingText(
@@ -420,7 +420,7 @@ enum SettingsPresentation {
         summary: String(localized: "Plus dense, il se lit mieux sur un fond chargé ; à zéro, le verre seul."),
         details: [
             String(localized: "Elle assombrit le verre en apparence sombre, l'éclaircit en apparence claire."),
-            String(localized: "Les messages gardent un voile plus dense que la bulle de dictée : leur texte reste lisible.")
+            String(localized: "La densité ne change que le verre du spectre.")
         ]
     )
 
