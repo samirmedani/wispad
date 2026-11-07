@@ -70,6 +70,67 @@ private final class InsertionFixture {
 @MainActor
 @Suite(.serialized, .inputZoneExclusive)
 struct TextInsertionTests {
+    @Test func choosesOnlyAnUnambiguousEmptyField() {
+        let line = ProbableInput.Candidate(multiline: false, canFill: true)
+        let area = ProbableInput.Candidate(multiline: true, canFill: true)
+        let filled = ProbableInput.Candidate(multiline: true, canFill: false)
+        #expect(ProbableInput.choose([line]) == 0)
+        #expect(ProbableInput.choose([line, area]) == 1)
+        #expect(ProbableInput.choose([line, line]) == nil)
+        #expect(ProbableInput.choose([area, filled]) == nil)
+        #expect(ProbableInput.choose([line, filled]) == nil)
+    }
+
+    @Test func probableFieldWritesWithoutPostingKeysOrTouchingClipboard() async throws {
+        let f = InsertionFixture(); defer { f.dispose() }
+        let node = try #require(f.field.element)
+        f.field = InsertionField(element: node, role: "AXWindow")
+        f.context.probableInputKeys = KeyboardTap.keystrokes
+        var system = f.system
+        system.findProbableInput = { _, _ in .init(app: node, window: node, element: node, focus: node) }
+        system.fillProbableInput = { _, text, _, _ in
+            #expect(text == "Bonjour.")
+            return .inserted
+        }
+
+        #expect(await f.insert(system: system) == .inserted)
+        #expect(f.context.usedProbableInput)
+        #expect(f.keys == 0 && f.sent == 1)
+        #expect(f.board.string(forType: .string) == "Copie conservée")
+    }
+
+    @Test func probableSearchDoesNotRunWhenDisabledOrWhenAFieldIsAlreadyFocused() async throws {
+        let f = InsertionFixture(); defer { f.dispose() }
+        var system = f.system
+        system.findProbableInput = { _, _ in
+            Issue.record("Recherche inattendue d'un champ")
+            return nil
+        }
+        f.context.probableInputKeys = KeyboardTap.keystrokes
+        #expect(await f.insert(system: system) == .inserted)
+        f.field = InsertionField(element: f.field.element, role: "AXWindow")
+        f.context.probableInputKeys = nil
+        #expect(await f.insert(system: system) == .noTarget)
+    }
+
+    @Test func probableFieldIsNotFilledIfAppChangesDuringTheSearch() async throws {
+        let f = InsertionFixture(); defer { f.dispose() }
+        let node = try #require(f.field.element)
+        f.field = InsertionField(element: node, role: "AXWindow")
+        f.context.probableInputKeys = KeyboardTap.keystrokes
+        var system = f.system
+        system.findProbableInput = { _, _ in
+            f.pid = 51_515
+            return .init(app: node, window: node, element: node, focus: node)
+        }
+        system.fillProbableInput = { _, _, _, _ in
+            Issue.record("Écriture dans une app qui n'est plus au premier plan")
+            return .failed
+        }
+        #expect(await f.insert(system: system) == .noTarget)
+        #expect(f.keys == 0 && f.sent == 0)
+    }
+
     /// Arrêt au milieu d'une phrase, puis reprise : la correction prolonge la dictée précédente, son point s'efface.
     @Test func aDictationThatGoesOnFromThePreviousPasteErasesItsPeriodFirst() async {
         let f = InsertionFixture(); defer { f.dispose() }

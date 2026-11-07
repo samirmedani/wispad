@@ -92,6 +92,10 @@ struct SettingsView: View {
             ))
         }
         Section("Général") {
+            SettingToggle(text: SettingsPresentation.findProbableInput, isOn: Binding(
+                get: { model.settings.findProbableInput },
+                set: { model.settings.findProbableInput = $0; model.saveSettings() }
+            ))
             Toggle("Sons de début et de fin", isOn: Binding(
                 get: { model.settings.soundsEnabled },
                 set: { model.settings.soundsEnabled = $0; model.saveSettings() }

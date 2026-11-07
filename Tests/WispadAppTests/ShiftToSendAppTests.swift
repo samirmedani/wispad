@@ -36,9 +36,10 @@ private final class SendFixture {
     let directory: URL
     var returns: [pid_t] = []
     var order: [String] = []
+    var probableInputKeys: Int?
     var model: AppModel!
 
-    init(status: InsertionStatus = .inserted, enabled: Bool = true) throws {
+    init(status: InsertionStatus = .inserted, enabled: Bool = true, inferred: Bool = false) throws {
         directory = FileManager.default.temporaryDirectory.appendingPathComponent("wispad-send-tests-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         var dependencies = AppDependencies()
@@ -63,9 +64,11 @@ private final class SendFixture {
         dependencies.restoreOutput = {}
         dependencies.watchCorrections = { _, _, _, _ in }
         dependencies.judgeTerms = { _, _, _ in TermJudgement(kept: []) }
-        dependencies.insert = { [weak self] _, _, shouldProceed, _ in
+        dependencies.insert = { [weak self] _, context, shouldProceed, _ in
             guard shouldProceed() else { return .cancelled }
             self?.order.append("collage")
+            self?.probableInputKeys = context.probableInputKeys
+            context.usedProbableInput = inferred
             return status
         }
         dependencies.pressReturn = { [weak self] pid in
@@ -111,6 +114,15 @@ struct ShiftToSendAppTests {
         defer { f.dispose() }
         await f.dictate(send: false)
         #expect(f.order == ["collage"])
+        #expect(f.probableInputKeys != nil)
+    }
+
+    @Test func anInferredFieldNeverSendsAMessageEvenWithShift() async throws {
+        let f = try SendFixture(inferred: true)
+        defer { f.dispose() }
+        await f.dictate(send: true)
+        #expect(f.order == ["collage"])
+        #expect(f.returns.isEmpty)
     }
 
     @Test func turnedOffInSettingsNeverPressesReturn() async throws {
