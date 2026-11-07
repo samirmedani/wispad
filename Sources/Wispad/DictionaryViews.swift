@@ -141,7 +141,7 @@ struct DictionaryView: View {
                         .strokeBorder(selected ? filter.tint.opacity(0.35) : .clear))
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(HoverButtonStyle(treatment: .row))
                 .accessibilityLabel("\(filter.label), \(count) entrées")
                 .accessibilityAddTraits(selected ? .isSelected : [])
                 .help(filter == .unknown ? String(localized: "L'origine de ces anciens mots n'a pas été enregistrée.") : filter.label)
@@ -214,7 +214,7 @@ struct DictionaryView: View {
             .padding(.vertical, 4)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(HoverButtonStyle(treatment: .quiet, tint: .primary))
         .accessibilityLabel(title)
         .accessibilityValue(selected ? (sort.ascending ? String(localized: "Tri croissant") : String(localized: "Tri décroissant")) : String(localized: "Non trié"))
         .help("Cliquer pour trier, puis inverser l’ordre")

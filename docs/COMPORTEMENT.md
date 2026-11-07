@@ -291,8 +291,9 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 - Aspect d'une app Mac : barre latérale native de macOS (liste de la barre latérale, sélection du système), chaque
   section avec sa pastille de couleur et son symbole blanc, comme dans Réglages Système. Sélection, liens, graphiques,
   onglets et boutons prennent la couleur d'accent choisie dans Réglages Système ; le rouge de Wispad reste à la marque
-  (icône, pastille de l'Accueil, Voix) et à l'écoute. Au survol, un bouton reçoit un fond discret : il ne grossit pas
-  et ne projette pas d'ombre.
+  (icône, pastille de l'Accueil, Voix) et à l'écoute. Les sections non sélectionnées, les vignettes d'apparence et
+  les commandes partagées réagissent au survol avec un fond discret, sans déplacer le contenu. La sélection native
+  de la barre latérale reste distincte. Le fond change sans animation si macOS réduit les animations.
 - **Légère, comme Superwhisper** : la barre latérale ne montre que les sections et, en bas, un pied discret (étoile,
   version, liens) ; les raccourcis de la dictée sont une rangée de touches dessinées en bas de l'Accueil (carte
   « Raccourcis »). Titres d'écran de 22 points semi-gras, sous-titre de 12,5 points ; cartes posées à plat, filet très

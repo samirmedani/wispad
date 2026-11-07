@@ -749,7 +749,7 @@ private struct AdvancedToggleSection: View {
                 .padding(.vertical, 4)
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(HoverButtonStyle(treatment: .row))
             .accessibilityLabel(expanded ? String(localized: "Masquer les réglages avancés") : String(localized: "Afficher les réglages avancés"))
         }
     }

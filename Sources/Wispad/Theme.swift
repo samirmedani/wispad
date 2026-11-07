@@ -79,6 +79,7 @@ private struct HoverButtonBody: View {
     var treatment: HoverTreatment
     var tint: Color
     @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.interactionReduceMotion) private var reduceMotion
     @Environment(\.interactionPreviewHover) private var previewHover
     @State private var hovering = false
@@ -87,8 +88,9 @@ private struct HoverButtonBody: View {
     private var pressed: Bool { isEnabled && configuration.isPressed }
     private var fill: Color {
         if treatment == .filled { return tint.opacity(pressed ? 0.78 : highlighted ? 0.9 : 1) }
-        if treatment == .row { return .clear }
-        return tint.opacity(pressed ? 0.14 : highlighted ? 0.085 : 0)
+        let ink = treatment == .row ? Color.primary : tint
+        let hoverOpacity = contrast == .increased ? 0.20 : 0.11
+        return ink.opacity(pressed ? hoverOpacity + 0.06 : highlighted ? hoverOpacity : 0)
     }
 
     @ViewBuilder private var label: some View {
@@ -104,16 +106,15 @@ private struct HoverButtonBody: View {
             .padding(.horizontal, treatment == .filled ? 13 : 0)
             .padding(.vertical, treatment == .filled ? 7 : 0)
             .background {
-                if treatment != .row {
-                    RoundedRectangle(cornerRadius: treatment.radius, style: .continuous)
-                        .fill(fill)
-                }
+                RoundedRectangle(cornerRadius: treatment.radius, style: .continuous)
+                    .fill(fill)
+                    .allowsHitTesting(false)
+                    .animation(reduceMotion ? nil : Theme.hover, value: highlighted)
+                    .animation(reduceMotion ? nil : Theme.quick, value: pressed)
             }
             .contentShape(RoundedRectangle(cornerRadius: treatment.radius, style: .continuous))
             .opacity(isEnabled ? 1 : 0.5)
             .onHover { hovering = $0 }
-            .animation(reduceMotion ? nil : Theme.hover, value: highlighted)
-            .animation(reduceMotion ? nil : Theme.hover, value: pressed)
     }
 }
 
