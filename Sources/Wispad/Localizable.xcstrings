@@ -9094,12 +9094,12 @@
         }
       }
     },
-    "Les messages gardent un voile plus dense que la bulle de dictée : leur texte reste lisible." : {
+    "La densité ne change que le verre du spectre." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Messages keep a denser veil than the dictation bubble, so their text stays readable."
+            "value" : "Density only changes the glass behind the waveform."
           }
         }
       }
@@ -10913,12 +10913,12 @@
         }
       }
     },
-    "Pour la bulle de dictée comme pour ses messages ; le spectre garde ses couleurs." : {
+    "Change le style du spectre. Les messages utilisent le matériau système." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "For the dictation bubble and its messages alike; the spectrum keeps its colors."
+            "value" : "Changes the waveform style. Messages use the system material."
           }
         }
       }

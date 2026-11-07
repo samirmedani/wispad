@@ -178,11 +178,8 @@ struct BubbleGlass: Codable, Equatable {
     /// Verre transparent de Wispad, sans flou (`GlassLens`), au lieu du Liquid Glass d'Apple.
     var isLens: Bool { variant == .clear }
 
-    /// Voile du verre transparent : léger sur la bulle de dictée, où le spectre se lit sur tout fond ; plus dense sous
-    /// un message, dont le texte doit rester lisible. L'intensité le renforce.
-    func lensVeil(message: Bool) -> Double {
-        message ? 0.74 + intensity * 0.22 : 0.05 + intensity * 0.45
-    }
+    /// Voile du verre transparent sous le spectre. L'intensité le renforce.
+    var lensVeil: Double { 0.05 + intensity * 0.45 }
 }
 
 /// Applique l'apparence à toute l'app. Changée à la main, les fenêtres ouvertes passent de l'une à l'autre en fondu

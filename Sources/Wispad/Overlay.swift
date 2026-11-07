@@ -406,7 +406,7 @@ struct OverlayCluster: View {
         let style = model.settings.bubbleStyle
         ZStack {
             if mode.isMessage {
-                // Messages : leur propre fond (noir profond ou verre), sans le contour de la bulle de dictée.
+                // Les messages ont leur propre surface système, quel que soit le style du spectre.
                 MessageBubble(mode: mode)
                     .transition(Self.swap)
             } else {
@@ -533,7 +533,7 @@ private struct OverlayGlass<S: InsettableShape>: ViewModifier {
             )
         if clear, glassSettings.isLens {
             clipped.background {
-                GlassLens(shape: shape, veil: glassSettings.lensVeil(message: false), dark: scheme == .dark, shadow: rim)
+                GlassLens(shape: shape, veil: glassSettings.lensVeil, dark: scheme == .dark, shadow: rim)
             }
         } else if #available(macOS 26, *), glassEnabled {
             clipped
@@ -702,7 +702,7 @@ enum MessageKind {
         case .relay: return "arrow.triangle.branch"
         case .error: return "exclamationmark"
         case .update: return "arrow.down"
-        case .ready: return "doc.on.clipboard"
+        case .ready: return "doc"
         case .learning: return "sparkles"
         }
     }
@@ -714,7 +714,7 @@ enum MessageKind {
         case .relay: return OverlayStyle.relay
         case .error: return OverlayStyle.red
         case .update: return OverlayStyle.update
-        case .ready: return Color(red: 1, green: 0.62, blue: 0.16)
+        case .ready: return .secondary
         case .learning: return Color(red: 0.72, green: 0.49, blue: 1)
         }
     }
@@ -736,35 +736,7 @@ extension EnvironmentValues {
     @Entry var bubbleSize = 1.0
 }
 
-/// Couleurs d'un message : blanc sur le noir profond, couleurs de macOS sur le verre (clair ou sombre).
-struct MessagePalette {
-    let primary: Color
-    let secondary: Color
-    /// Fond d'un bouton secondaire et de la ✕.
-    let control: Color
-    let prominent: Color
-    let onProminent: Color
-
-    init(_ style: BubbleStyle) {
-        switch style {
-        case .black:
-            primary = .white.opacity(0.95)
-            secondary = .white.opacity(0.62)
-            control = .white.opacity(0.13)
-            prominent = .white
-            onProminent = .black.opacity(0.9)
-        case .glass:
-            primary = .primary
-            secondary = .secondary
-            control = .primary.opacity(0.09)
-            prominent = .primary
-            onProminent = Color(nsColor: .windowBackgroundColor)
-        }
-    }
-}
-
-/// Messages de la bulle : une ligne (erreur, confirmation, relais, nouvelle version) ou une carte (texte prêt à
-/// copier, mots appris), dans le style choisi.
+/// Messages : un bandeau bref ou une carte pour récupérer le texte.
 struct MessageBubble: View {
     @Environment(AppModel.self) private var model
     var mode: OverlayMode
@@ -774,7 +746,6 @@ struct MessageBubble: View {
         MessageWidth(maxWidth: OverlayLayout.messageMaxWidth) {
             content
         }
-        .environment(\.bubbleStyle, style)
         .modifier(BubbleScheme(style: style))
     }
 
@@ -890,66 +861,46 @@ private struct MessageWidth: Layout {
     }
 }
 
-/// Fond d'un message, sans contour : noir profond avec un reflet doux et une ombre, ou Liquid Glass transparent
-/// (macOS 26 ; matériau translucide avant).
+/// Le matériau système compose la carte après sa mise en page. Pas de liseré ni de reflet dessiné par Wispad.
 private struct MessageSurface<S: Shape>: ViewModifier {
-    @Environment(\.bubbleStyle) private var style
-    @Environment(\.bubbleGlass) private var glassSettings
     @Environment(\.colorScheme) private var scheme
     @Environment(\.overlayGlass) private var glassEnabled
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     var shape: S
 
     @ViewBuilder func body(content: Content) -> some View {
-        switch style {
-        case .black:
+        if #available(macOS 26, *), glassEnabled, !reduceTransparency {
+            content.glassEffect(.regular, in: shape)
+        } else {
+            // Ancien macOS, transparence réduite ou capture hors écran : surface mate et lisible.
             content.background {
-                shape.fill(Color.black)
-                    .overlay(shape.fill(LinearGradient(colors: [.white.opacity(0.09), .white.opacity(0)],
-                                                       startPoint: .top, endPoint: .center)))
-                    .shadow(color: .black.opacity(0.35), radius: 8, y: 3)
-            }
-        case .glass:
-            if glassSettings.isLens {
-                content.background {
-                    GlassLens(shape: shape, veil: glassSettings.lensVeil(message: true), dark: scheme == .dark)
-                }
-            } else if #available(macOS 26, *), glassEnabled {
-                content.glassEffect(glassSettings.glass(for: scheme), in: shape)
-                    .background { ShapeShadow(shape: shape, opacity: 0.3) }
-            } else {
-                content.background {
-                    shape.fill(Material.regularMaterial)
-                        .overlay(shape.fill(glassSettings.tint(for: scheme) ?? .clear))
-                        .shadow(color: .black.opacity(0.18), radius: 8, y: 3)
-                }
+                shape.fill(Color(white: scheme == .dark ? 0.15 : 0.94))
+                    .shadow(color: .black.opacity(0.18), radius: 6, y: 3)
             }
         }
     }
 }
 
-/// Pastille teintée ; son anneau se vide avec le décompte, à l'arrêt sous le pointeur. Sur une ligne, elle devient
-/// la ✕ au survol.
+/// Icône discrète avec un anneau fin qui se vide pendant le décompte, figé au survol.
 struct CountdownBadge: View {
-    @Environment(\.bubbleStyle) private var style
     var kind: MessageKind
     var size: CGFloat
     var countdown: MessageCountdown?
     var closing = false
 
     var body: some View {
-        let palette = MessagePalette(style)
         ZStack {
-            Circle().inset(by: size * 0.135).fill(closing ? palette.control : kind.tint.opacity(0.2))
             Image(systemName: closing ? "xmark" : kind.symbol)
-                .font(.system(size: size * (closing ? 0.3 : 0.36), weight: .bold))
-                .foregroundStyle(closing ? palette.primary : kind.tint)
-            Circle().inset(by: 1).stroke(kind.tint.opacity(0.16), lineWidth: 2)
+                .font(.system(size: size * (closing ? 0.43 : 0.59), weight: .medium))
+                .foregroundStyle(closing ? Color.primary : kind.tint)
             // Seul l'anneau se redessine à chaque image ; figé quand le décompte est en pause.
-            TimelineView(.animation(minimumInterval: nil, paused: countdown?.isPaused ?? true)) { timeline in
-                Circle().inset(by: 1)
-                    .trim(from: 0, to: CGFloat(countdown?.fraction(at: timeline.date) ?? 0))
-                    .stroke(kind.tint, style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
+            if let countdown, !closing {
+                TimelineView(.animation(minimumInterval: nil, paused: countdown.isPaused)) { timeline in
+                    Circle().inset(by: 1)
+                        .trim(from: 0, to: CGFloat(countdown.fraction(at: timeline.date)))
+                        .stroke(kind.tint.opacity(0.38), style: StrokeStyle(lineWidth: 1, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                }
             }
         }
         .frame(width: size, height: size)
@@ -961,7 +912,6 @@ struct CountdownBadge: View {
 /// la ✕ et le décompte s'arrête ; rien ne bouge.
 struct MessageLine: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.bubbleStyle) private var style
     var kind: MessageKind
     var message: String
     var countdown: MessageCountdown?
@@ -983,11 +933,11 @@ struct MessageLine: View {
             .accessibilityHidden(onDismiss == nil)
             Text(OverlayText.display(message))
                 .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(MessagePalette(style).primary)
+                .foregroundStyle(.primary)
                 .lineLimit(actions.isEmpty ? 2 : 3)
                 .fixedSize(horizontal: false, vertical: true)
             ForEach(actions.indices, id: \.self) { index in
-                MessageButton(action: actions[index], height: 22, fontSize: 11)
+                MessageButton(action: actions[index])
             }
         }
         .padding(.leading, 8)
@@ -1000,7 +950,6 @@ struct MessageLine: View {
 
 /// Une carte : titre et raison, boutons sur leur ligne, ✕ en haut à droite au survol.
 struct MessageCard: View {
-    @Environment(\.bubbleStyle) private var style
     var kind: MessageKind
     var title: String
     var message: String
@@ -1009,17 +958,16 @@ struct MessageCard: View {
     var actions: [MessageAction]
 
     var body: some View {
-        let palette = MessagePalette(style)
         VStack(alignment: .leading, spacing: 9) {
             HStack(alignment: .top, spacing: 8) {
                 CountdownBadge(kind: kind, size: OverlayLayout.messageBadge, countdown: countdown)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(palette.primary)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.primary)
                     Text(OverlayText.display(message))
-                        .font(.system(size: 12.5))
-                        .foregroundStyle(palette.secondary)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.top, 1)
@@ -1029,7 +977,7 @@ struct MessageCard: View {
             HStack(spacing: 8) {
                 Spacer(minLength: 0)
                 ForEach(actions.indices, id: \.self) { index in
-                    MessageButton(action: actions[index], height: 24, fontSize: 12)
+                    MessageButton(action: actions[index])
                 }
             }
         }
@@ -1042,18 +990,16 @@ struct MessageCard: View {
 /// ✕ d'une carte : place gardée, visible et cliquable seulement sous le pointeur.
 private struct MessageCloseButton: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.bubbleStyle) private var style
     var onDismiss: () -> Void
 
     var body: some View {
         let hovered = model.overlay.state.isHovered
-        let palette = MessagePalette(style)
         Button(action: onDismiss) {
             Image(systemName: "xmark")
                 .font(.system(size: 8.5, weight: .bold))
-                .foregroundStyle(palette.secondary)
+                .foregroundStyle(.secondary)
                 .frame(width: 22, height: 22)
-                .background(Circle().fill(palette.control))
+                .background(Circle().fill(.primary.opacity(0.09)))
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
@@ -1065,31 +1011,19 @@ private struct MessageCloseButton: View {
     }
 }
 
-/// Bouton à coins arrondis : plein pour l'action principale (Copier), voilé pour les autres.
+/// Les boutons macOS restent séparés du matériau de la carte ; seule l'action principale prend l'accent.
 private struct MessageButton: View {
-    @Environment(\.bubbleStyle) private var style
     var action: MessageAction
-    var height: CGFloat
-    var fontSize: CGFloat
 
     var body: some View {
-        let palette = MessagePalette(style)
-        let button = Button(action: action.perform) {
-            Text(action.title)
-                .font(.system(size: fontSize, weight: .semibold))
-                .foregroundStyle(action.prominent ? palette.onProminent : palette.primary)
-                .padding(.horizontal, 8)
-                .frame(height: height)
-                .background(action.prominent ? palette.prominent : palette.control, in: .rect(cornerRadius: 6))
-                .contentShape(.rect(cornerRadius: 6))
-        }
-        .buttonStyle(.plain)
-        .fixedSize()
-        .accessibilityLabel(action.title)
-        if let help = action.help {
-            button.help(help)
+        let button = Button(action.title, action: action.perform)
+            .controlSize(.small)
+            .fixedSize()
+            .help(action.help ?? action.title)
+        if action.prominent {
+            button.buttonStyle(.borderedProminent).tint(Color(nsColor: .controlAccentColor))
         } else {
-            button
+            button.buttonStyle(.bordered)
         }
     }
 }
