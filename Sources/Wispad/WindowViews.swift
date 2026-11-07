@@ -145,7 +145,8 @@ struct Sidebar: View {
             set: { section in if let section { model.selectedSection = section } }
         )) {
             ForEach(AppSection.allCases) { section in
-                SidebarRow(section: section, alert: section == .settings && model.missingPermissions)
+                SidebarRow(section: section, alert: section == .settings && model.missingPermissions,
+                           selected: section == model.selectedSection)
                     .tag(section)
                     .help("\(section.title) (⌘\((AppSection.allCases.firstIndex(of: section) ?? 0) + 1))")
             }
@@ -168,8 +169,15 @@ struct Sidebar: View {
 
 /// Rangée de la barre latérale : pastille de couleur et symbole blanc, comme dans Réglages Système.
 struct SidebarRow: View {
+    @Environment(\.interactionPreviewHover) private var previewHover
+    @Environment(\.interactionReduceMotion) private var reduceMotion
+    @Environment(\.colorSchemeContrast) private var contrast
+    @State private var hovering = false
     var section: AppSection
     var alert: Bool
+    var selected: Bool
+
+    private var highlighted: Bool { !selected && (hovering || (previewHover && section == .history)) }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -184,6 +192,17 @@ struct SidebarRow: View {
                     .help("Une autorisation manque")
             }
         }
+        .contentShape(Rectangle())
+        .background {
+            // Le fond déborde légèrement le contenu natif sans modifier sa taille ni recouvrir la sélection.
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color.primary.opacity(highlighted ? (contrast == .increased ? 0.20 : 0.11) : 0))
+                .padding(.horizontal, -6)
+                .padding(.vertical, -3)
+                .allowsHitTesting(false)
+                .animation(reduceMotion ? nil : Theme.hover, value: highlighted)
+        }
+        .onHover { hovering = $0 }
         .accessibilityElement(children: .combine)
     }
 }
