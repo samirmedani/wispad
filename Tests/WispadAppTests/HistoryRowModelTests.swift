@@ -208,6 +208,29 @@ struct HistoryRowModelTests {
         }
     }
 
+    @Test func hoverActionsDoNotChangeTheWidthOrHeightOfTheText() async throws {
+        let prefix = "stable-hover-\(UUID().uuidString)"
+        let text = Array(repeating: "Une dictée fictive qui passe sur plusieurs lignes.", count: 12)
+            .joined(separator: " ")
+        func measure(hovered: Bool) async throws -> HistoryRowCache.Overflow {
+            let id = "\(prefix)-\(hovered)"
+            let rows = try await render(count: 1, hover: hovered) { _, source in
+                source.id = id
+                source.finalText = text
+                source.audioPath = "/tmp/fixture-audio.wav"
+            }
+            #expect(rows.contains(id))
+            return try #require(HistoryRowCache.shared.measurement(id: id, text: text, width: 0))
+        }
+
+        let resting = try await measure(hovered: false)
+        let hovered = try await measure(hovered: true)
+        #expect(resting.overflows && hovered.overflows)
+        #expect(resting.collapsedHeight > 0)
+        #expect(resting.width == hovered.width)
+        #expect(resting.collapsedHeight == hovered.collapsedHeight)
+    }
+
     private func record(id: String, at date: Date, app: String?, bundle: String?, audio: String?) -> DictationRecord {
         DictationRecord(
             id: id,
@@ -244,7 +267,7 @@ struct HistoryRowModelTests {
         text.utf8.withContiguousStorageIfAvailable { UInt(bitPattern: $0.baseAddress) }
     }
 
-    private func render(count: Int, configure: (Int, inout DictationRecord) -> Void) async throws -> Set<String> {
+    private func render(count: Int, hover: Bool = false, configure: (Int, inout DictationRecord) -> Void) async throws -> Set<String> {
         _ = NSApplication.shared
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("wispad-history-row-test-\(UUID().uuidString)")
@@ -266,6 +289,7 @@ struct HistoryRowModelTests {
         let log = RenderedRows()
         let host = NSHostingView(rootView: HistoryView()
             .environment(model)
+            .environment(\.interactionPreviewHover, hover)
             .environment(\.historyRowDidRender, { log.ids.insert($0) }))
         let window = OffscreenWindow(
             contentRect: NSRect(x: -20_000, y: -20_000, width: 980, height: 660),

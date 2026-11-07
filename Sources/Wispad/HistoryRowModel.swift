@@ -43,6 +43,7 @@ final class HistoryRowCache {
         var text: String
         var width: CGFloat
         var overflows: Bool
+        var collapsedHeight: CGFloat = 0
 
         /// `nil` : à mesurer. Une largeur nulle veut dire « pas encore connue » (ligne qui réapparaît) :
         /// la dernière mesure fait foi, puis la vraie largeur la confirme ou demande une nouvelle mesure.
@@ -72,8 +73,13 @@ final class HistoryRowCache {
         return item
     }
 
+    func measurement(id: String, text: String, width: CGFloat) -> Overflow? {
+        guard let measure = overflowByID[id], measure.overflows(text: text, width: width) != nil else { return nil }
+        return measure
+    }
+
     func overflows(id: String, text: String, width: CGFloat) -> Bool? {
-        overflowByID[id]?.overflows(text: text, width: width)
+        measurement(id: id, text: text, width: width)?.overflows
     }
 
     func store(_ overflow: Overflow, id: String) {
