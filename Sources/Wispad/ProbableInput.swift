@@ -21,10 +21,10 @@ enum ProbableInput {
         let app: AXUIElement
         let window: AXUIElement
         let element: AXUIElement
-        let focus: AXUIElement
+        let focus: AXUIElement?
     }
 
-    @MainActor static func find(pid: pid_t, focus: AXUIElement) async -> Target? {
+    @MainActor static func find(pid: pid_t, focus: AXUIElement?) async -> Target? {
         let focus = UncheckedSendable(focus)
         let task = Task.detached(priority: .userInitiated) {
             await BlockingQueue.run(label: "wispad.champ-probable") { scan(pid: pid, expectedFocus: focus.value) }
@@ -38,7 +38,7 @@ enum ProbableInput {
         await BlockingQueue.run(label: "wispad.champ-probable.ecriture") {
             let node = target.element
             guard let window = element(kAXFocusedWindowAttribute, target.app), CFEqual(window, target.window),
-                  let focus = element(kAXFocusedUIElementAttribute, target.app), CFEqual(focus, target.focus),
+                  focusMatches(target.focus, in: target.app),
                   !ContextProbe.isSecure(node), isWritable(node), ContextProbe.valueForCheck(node) == "",
                   ContextProbe.systemFrontmostPID() == pid,
                   KeyboardTap.keystrokes == keys, !IsSecureEventInputEnabled() else { return .noTarget }
@@ -59,16 +59,17 @@ enum ProbableInput {
     private static let excluded: Set<String> = [
         "AXToolbar", "AXMenuBar", "AXMenu", "AXMenuItem", "AXComboBox", "AXSearchField",
         "AXSecureTextField", "AXDialog", "AXSystemDialog", "AXSheet", "AXPopover",
+        "AXStaticText", "AXImage", "AXButton",
     ]
 
-    private static func scan(pid: pid_t, expectedFocus: AXUIElement) -> Target? {
+    private static func scan(pid: pid_t, expectedFocus: AXUIElement?) -> Target? {
         let app = AXUIElementCreateApplication(pid)
         AXUIElementSetMessagingTimeout(app, 0.06)
         guard let window = element(kAXFocusedWindowAttribute, app) else { return nil }
         AXUIElementSetMessagingTimeout(window, 0.06)
         guard ContextProbe.string(kAXSubroleAttribute, window) == "AXStandardWindow",
               let bounds = ContextProbe.frame(of: window) else { return nil }
-        guard let focus = element(kAXFocusedUIElementAttribute, app), CFEqual(focus, expectedFocus) else { return nil }
+        guard focusMatches(expectedFocus, in: app) else { return nil }
         let deadline = ProcessInfo.processInfo.systemUptime + 0.25
         let limit = 300
         var queue = [(window, bounds)]
@@ -113,7 +114,7 @@ enum ProbableInput {
         }
         guard ProcessInfo.processInfo.systemUptime < deadline,
               let choice = choose(fields.map(\.1)) else { return nil }
-        return Target(app: app, window: window, element: fields[choice].0, focus: focus)
+        return Target(app: app, window: window, element: fields[choice].0, focus: expectedFocus)
     }
 
     private static func isWritable(_ node: AXUIElement) -> Bool {
@@ -122,6 +123,14 @@ enum ProbableInput {
         return AXUIElementCopyAttributeValue(node, kAXEnabledAttribute as CFString, &enabled) == .success &&
             enabled as? Bool == true &&
             AXUIElementIsAttributeSettable(node, kAXValueAttribute as CFString, &settable) == .success && settable.boolValue
+    }
+
+    /// Un focus réellement absent peut rester absent. Une erreur ou un nouveau champ ne vaut jamais accord.
+    private static func focusMatches(_ expected: AXUIElement?, in app: AXUIElement) -> Bool {
+        var value: CFTypeRef?
+        let status = AXUIElementCopyAttributeValue(app, kAXFocusedUIElementAttribute as CFString, &value)
+        guard let expected else { return status == .noValue }
+        return status == .success && value.map { CFEqual($0, expected) } == true
     }
 
     private static func element(_ attribute: String, _ node: AXUIElement) -> AXUIElement? {

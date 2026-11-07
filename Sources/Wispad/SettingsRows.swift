@@ -429,6 +429,11 @@ enum SettingsPresentation {
     static let appearanceTitle = String(localized: "Apparence")
     static let appearanceSummary = String(localized: "« Système » suit macOS. La bulle garde son style, choisi dans l'onglet Bulle.")
 
+    static let messagesFollowSpectrum = SettingText(
+        title: String(localized: "Messages au même endroit que le spectre"),
+        summary: String(localized: "Les alertes et les messages restent à la place de la bulle de dictée.")
+    )
+
     static let avoidInput = SettingText(
         title: String(localized: "Ne jamais couvrir le champ de saisie"),
         summary: String(localized: "Les messages se placent au-dessus du champ où tu écris."),

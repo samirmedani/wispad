@@ -99,6 +99,39 @@ struct TextInsertionTests {
         #expect(f.board.string(forType: .string) == "Copie conservée")
     }
 
+    @Test func codexCanFindAFieldWhenAccessibilityReportsNoFocus() async throws {
+        let f = InsertionFixture(); defer { f.dispose() }
+        let node = try #require(f.field.element)
+        f.field = InsertionField()
+        f.context.probableInputKeys = KeyboardTap.keystrokes
+        var system = f.system
+        system.bundleID = { _ in ContextProbe.codexBundleID }
+        system.findProbableInput = { _, focus in
+            #expect(focus == nil)
+            return .init(app: node, window: node, element: node, focus: nil)
+        }
+        system.fillProbableInput = { _, _, _, _ in .inserted }
+        #expect(await f.insert(system: system) == .inserted)
+        #expect(f.context.usedProbableInput && f.keys == 0)
+    }
+
+    @Test func codexWithoutAReadableFieldOnlyShowsRecoveryIfPasteWasNotRead() async {
+        let f = InsertionFixture(); defer { f.dispose() }
+        f.field = InsertionField()
+        var system = f.system
+        system.bundleID = { _ in ContextProbe.codexBundleID }
+        f.deliver = false
+        #expect(await f.insert(system: system) == .failed)
+        #expect(f.board.string(forType: .string) == "Copie conservée")
+
+        // Le contenu peut être lu même si Codex ne laisse pas confirmer l'écriture dans son champ.
+        system.postPaste = { _ in
+            #expect(f.board.string(forType: .string) == "Bonjour.")
+            return true
+        }
+        #expect(await f.insert(system: system) == .pasteSent)
+    }
+
     @Test func probableSearchDoesNotRunWhenDisabledOrWhenAFieldIsAlreadyFocused() async throws {
         let f = InsertionFixture(); defer { f.dispose() }
         var system = f.system
@@ -410,6 +443,7 @@ struct TextInsertionTests {
         #expect(board.string(forType: .string) == "Dictée.")
         transaction.expectPaste()
         #expect(await transaction.waitForPasteRead(within: 0.05) == false)
+        #expect(!transaction.wasDefinitelyUnread)
         transaction.restoreIfUnchanged()
         #expect(board.string(forType: .string) == "https://exemple.fr/lien")
         // Sans lecture d'avance, la lecture qui suit ⌘V est bien celle du collage.

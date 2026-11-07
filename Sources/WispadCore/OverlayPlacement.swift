@@ -36,6 +36,9 @@ public struct OverlayAnchor: Codable, Equatable, Sendable {
 public struct OverlayPlacement: Codable, Equatable, Sendable {
     /// Les messages se décalent pour ne pas couvrir le champ où l'on écrit.
     public var avoidsInput = false
+    /// Valeur par défaut aussi pour les anciens réglages : les positions séparées restent en mémoire.
+    public var messagesFollowSpectrum = true
+    public var shouldAvoidInput: Bool { !messagesFollowSpectrum && avoidsInput }
     /// Positions personnalisées, par rôle (`OverlayRole.rawValue`). Absente : au-dessus du Dock, au centre.
     public var anchors: [String: OverlayAnchor] = [:]
 
@@ -44,6 +47,7 @@ public struct OverlayPlacement: Codable, Equatable, Sendable {
     /// Lecture tolérante : une valeur illisible ou un rôle inconnu laissent les autres choix intacts.
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        messagesFollowSpectrum = (try? container.decode(Bool.self, forKey: .messagesFollowSpectrum)) ?? true
         avoidsInput = (try? container.decode(Bool.self, forKey: .avoidsInput)) ?? false
         let raw = (try? container.decode([String: Lenient<OverlayAnchor>].self, forKey: .anchors)) ?? [:]
         anchors = raw.reduce(into: [:]) { result, item in
@@ -55,7 +59,7 @@ public struct OverlayPlacement: Codable, Equatable, Sendable {
 
     /// Sans position dédiée, les messages reprennent celle du spectre.
     public func positionRole(for role: OverlayRole) -> OverlayRole {
-        anchor(for: role) == nil ? .dictation : role
+        messagesFollowSpectrum || anchor(for: role) == nil ? .dictation : role
     }
 
     public mutating func setAnchor(_ anchor: OverlayAnchor?, for role: OverlayRole) {

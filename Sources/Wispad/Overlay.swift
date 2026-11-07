@@ -1314,7 +1314,7 @@ final class OverlayController {
                                         size: model.settings.bubbleSize) : nil
         let size = OverlayLayout.contentSize(for: mode, hasReadyText: model.coordinator.failureText != nil,
                                              style: model.settings.bubbleStyle, size: model.settings.bubbleSize)
-        let zone = mode.isMessage && placement.avoidsInput && previewRole == nil
+        let zone = mode.isMessage && placement.shouldAvoidInput && previewRole == nil
             ? InputZoneTracker.zone(frontmost: NSWorkspace.shared.frontmostApplication?.processIdentifier) : nil
         let shown = panel.flatMap { $0.isVisible ? $0 : nil }
         guard let screen = OverlayGeometry.screen(

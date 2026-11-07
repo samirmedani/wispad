@@ -98,7 +98,7 @@ struct InsertionSystem {
     var read: (pid_t) async -> InsertionField = { pid in
         await InsertionField.read(pid: pid, within: TextInserter.fieldReadLimit)
     }
-    var findProbableInput: (pid_t, AXUIElement) async -> ProbableInput.Target? = { await ProbableInput.find(pid: $0, focus: $1) }
+    var findProbableInput: (pid_t, AXUIElement?) async -> ProbableInput.Target? = { await ProbableInput.find(pid: $0, focus: $1) }
     var fillProbableInput: (ProbableInput.Target, String, pid_t, Int) async -> InsertionStatus = {
         await ProbableInput.fill($0, text: $1, pid: $2, keys: $3)
     }
@@ -238,13 +238,17 @@ enum TextInserter {
             return .refusedSecure
         }
         let kind = field.kind(bundleID: bundle)
-        // Le repli ne suit jamais un changement d'app ni un champ quitté. Un éditeur opaque garde son collage usuel.
-        if kind != .text, (kind == .notText || field.role == FocusedField.pageRole || field.role == "AXGroup"),
+        let isCodex = bundle == ContextProbe.codexBundleID
+        // Codex expose parfois sa fenêtre sans focus. Autoriser une recherche en lecture seule dans ce cas,
+        // mais uniquement un champ visible et sûr ; à défaut, garder le collage usuel de l'éditeur opaque.
+        let canSearch = field.element != nil
+            ? (kind == .notText || field.role == FocusedField.pageRole || field.role == "AXGroup")
+            : isCodex
+        if kind != .text, canSearch,
            let keys = context.probableInputKeys, keys == KeyboardTap.keystrokes, originalPID == pid,
            !ContextProbe.isOwnProcess(pid), !context.startedInTextField, !context.isSecure,
-           !context.typedSinceStart, context.selectedText?.isEmpty != false, !system.secureInput(),
-           let focus = field.element {
-            let candidate = await system.findProbableInput(pid, focus)
+           !context.typedSinceStart, context.selectedText?.isEmpty != false, !system.secureInput() {
+            let candidate = await system.findProbableInput(pid, field.element)
             guard shouldProceed(), !Task.isCancelled else { return .cancelled }
             guard system.frontmostPID() == pid, keys == KeyboardTap.keystrokes, !system.secureInput() else { return .noTarget }
             if let candidate {
@@ -293,7 +297,9 @@ enum TextInserter {
             if await transaction.waitForPasteRead(within: hold) {
                 try? await Task.sleep(nanoseconds: UInt64(Self.readGrace * 1_000_000_000))
             }
+            let unread = transaction.wasDefinitelyUnread
             transaction.restoreIfUnchanged()
+            return unread
         }
         let sentAt = Date()
         // Où écrit l'utilisateur : lu après l'envoi, sans retarder le texte ni l'apparition de la bulle.
@@ -321,6 +327,13 @@ enum TextInserter {
         // Même champ, toujours lisible et inchangé une seconde après ⌘V : le texte n'est pas arrivé.
         // Un champ illisible (apps Electron, éditeurs dessinés) ne prouve rien : collage envoyé, sans alerte.
         var status: InsertionStatus = confirmed ? .inserted : unchangedTarget ? .failed : .pasteSent
+        // Dans Codex, un champ opaque peut vraiment prendre ⌘V. Attendre toute la fenêtre de lecture avant
+        // d'afficher la carte ; ne jamais réessayer automatiquement un collage déjà lu ou incertain.
+        if isCodex, kind == .unknown, status == .pasteSent,
+           await restoring.value, shouldProceed(), !Task.isCancelled,
+           system.frontmostPID() == pid, KeyboardTap.keystrokes == keystrokes {
+            status = .failed
+        }
         if !confirmed {
             log.notice("collage non confirmé : champ_inchangé=\(unchangedTarget, privacy: .public) statut=\(status.rawValue, privacy: .public)")
         }

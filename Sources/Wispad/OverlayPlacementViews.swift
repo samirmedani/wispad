@@ -9,10 +9,16 @@ struct OverlayPlacementSection: View {
     var body: some View {
         BubbleLookSection()
         Section {
-            SettingToggle(text: SettingsPresentation.avoidInput, isOn: Binding(
-                get: { model.settings.overlayPlacement.avoidsInput },
-                set: { model.settings.overlayPlacement.avoidsInput = $0; model.saveSettings() }
+            SettingToggle(text: SettingsPresentation.messagesFollowSpectrum, isOn: Binding(
+                get: { model.settings.overlayPlacement.messagesFollowSpectrum },
+                set: { model.settings.overlayPlacement.messagesFollowSpectrum = $0; model.saveSettings() }
             ))
+            if !model.settings.overlayPlacement.messagesFollowSpectrum {
+                SettingToggle(text: SettingsPresentation.avoidInput, isOn: Binding(
+                    get: { model.settings.overlayPlacement.avoidsInput },
+                    set: { model.settings.overlayPlacement.avoidsInput = $0; model.saveSettings() }
+                ))
+            }
             OverlayLayoutEditor()
         } header: {
             SectionTitle(title: SettingsPresentation.placementTitle, summary: SettingsPresentation.placementSummary)
@@ -277,7 +283,7 @@ extension OverlayRole {
 /// Schéma de l'écran : on fait glisser chaque bulle à main levée ; la grille aimante légèrement.
 struct OverlayLayoutEditor: View {
     @Environment(AppModel.self) private var model
-    @State private var selected: OverlayRole = .alerts
+    @State private var selected: OverlayRole = .dictation
     @State private var dragging: (role: OverlayRole, anchor: OverlayAnchor)?
     @State private var grab: CGSize = .zero
 
@@ -306,19 +312,19 @@ struct OverlayLayoutEditor: View {
             .frame(maxWidth: 560)
             .frame(maxWidth: .infinity)
             HStack(spacing: 8) {
-                Label(selected.label, systemImage: selected.symbol)
+                Label(selection.label, systemImage: selection.symbol)
                     .font(.system(size: 12, weight: .medium))
-                Text(anchorDescription(selected))
+                Text(anchorDescription(selection))
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                 Spacer()
-                Button("Aperçu à l'écran") { model.coordinator.previewPlacement(selected) }
-                Button("Par défaut") { setAnchor(nil, for: selected) }
-                    .disabled(placement.anchor(for: selected) == nil)
+                Button("Aperçu à l'écran") { model.coordinator.previewPlacement(selection) }
+                Button("Par défaut") { setAnchor(nil, for: selection) }
+                    .disabled(placement.anchor(for: selection) == nil)
                 Button("Tout réinitialiser") {
-                    OverlayRole.allCases.forEach { setAnchor(nil, for: $0) }
+                    roles.forEach { setAnchor(nil, for: $0) }
                 }
-                .disabled(placement.anchors.isEmpty)
+                .disabled(!roles.contains { placement.anchor(for: $0) != nil })
             }
             .controlSize(.small)
         }
@@ -326,6 +332,8 @@ struct OverlayLayoutEditor: View {
     }
 
     private var placement: OverlayPlacement { model.settings.overlayPlacement }
+    private var roles: [OverlayRole] { placement.messagesFollowSpectrum ? [.dictation] : [.dictation, .info, .alerts] }
+    private var selection: OverlayRole { placement.messagesFollowSpectrum ? .dictation : selected }
 
     private func canvas(size: CGSize) -> some View {
         let scale = size.width / max(1, screen.width)
@@ -341,7 +349,7 @@ struct OverlayLayoutEditor: View {
                 .fill(Color.white.opacity(0.14))
                 .frame(width: size.width * 0.42, height: Self.dockBand - 6)
                 .position(x: size.width / 2, y: size.height - Self.dockBand / 2)
-            ForEach(OverlayRole.allCases, id: \.self) { role in
+            ForEach(roles, id: \.self) { role in
                 if let frame = frames[role] {
                     token(role, frame: frame, size: size, scale: scale)
                 }
@@ -374,7 +382,7 @@ struct OverlayLayoutEditor: View {
     }
 
     private func token(_ role: OverlayRole, frame: CGRect, size: CGSize, scale: CGFloat) -> some View {
-        let isSelected = role == selected
+        let isSelected = role == selection
         return HStack(spacing: 4) {
             Image(systemName: role.symbol)
             Text(role.label).lineLimit(1).minimumScaleFactor(0.7)
@@ -420,7 +428,7 @@ struct OverlayLayoutEditor: View {
     private func tokenFrames(in size: CGSize, scale: CGFloat) -> [OverlayRole: CGRect] {
         var frames: [OverlayRole: CGRect] = [:]
         var placed: [(OverlayAnchor, CGRect)] = []
-        for role in [OverlayRole.dictation, .info, .alerts] {
+        for role in roles {
             let anchor = dragging?.role == role ? dragging!.anchor : (placement.anchor(for: placement.positionRole(for: role)) ?? OverlayAnchor(x: 0.5, y: 0))
             let tokenSize = CGSize(width: max(64, role.screenSize.width * scale), height: max(20, role.screenSize.height * scale))
             var frame = rect(for: anchor, tokenSize: tokenSize, in: size)

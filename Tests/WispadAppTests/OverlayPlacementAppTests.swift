@@ -54,6 +54,12 @@ struct OverlayPlacementAppTests {
         #expect(base == pill)
         #expect(overlay.targetFrame(for: notice) == base)
         box.model.settings.overlayPlacement.avoidsInput = true
+        box.model.settings.overlayPlacement.setAnchor(OverlayAnchor(x: 0.5, y: 0.18), for: .alerts)
+        box.model.coordinator.failureText = "Phrase fictive."
+        defer { box.model.coordinator.failureText = nil }
+        #expect(overlay.targetFrame(for: .failure("Texte prêt")) == pill)
+        #expect(overlay.targetFrame(for: notice) == base)
+        box.model.settings.overlayPlacement.messagesFollowSpectrum = false
         let moved = try #require(overlay.targetFrame(for: notice))
         #expect(moved.minY + OverlayLayout.bottomMargin == zone.maxY + OverlayGeometry.inputGap)
         #expect(overlay.targetFrame(for: .listening) == pill)
@@ -69,6 +75,8 @@ struct OverlayPlacementAppTests {
         #expect(box.model.overlay.targetFrame(for: .notice("Collé")) == spectrum)
         #expect(box.model.overlay.targetFrame(for: .failure("Texte prêt")) == spectrum)
         box.model.settings.overlayPlacement.setAnchor(OverlayAnchor(x: 0.7, y: 0.3), for: .info)
+        #expect(box.model.overlay.targetFrame(for: .notice("Collé")) == spectrum)
+        box.model.settings.overlayPlacement.messagesFollowSpectrum = false
         #expect(box.model.overlay.targetFrame(for: .notice("Collé")) != spectrum)
         #expect(box.model.overlay.targetFrame(for: .failure("Texte prêt")) == spectrum)
     }
@@ -76,6 +84,7 @@ struct OverlayPlacementAppTests {
     @Test func aChosenPlaceIsUsedAndStaysOnScreen() throws {
         let box = try Box()
         guard let screen = NSScreen.screens.first(where: { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) }) ?? NSScreen.main else { return }
+        box.model.settings.overlayPlacement.messagesFollowSpectrum = false
         box.model.settings.overlayPlacement.setAnchor(OverlayAnchor(x: 1, y: 1), for: .alerts)
         box.model.coordinator.failureText = "Phrase de test."
         defer { box.model.coordinator.failureText = nil }
@@ -91,6 +100,7 @@ struct OverlayPlacementAppTests {
         let box = try Box()
         for (name, custom) in [("editeur-par-defaut", false), ("editeur-personnalise", true)] {
             box.model.settings.overlayPlacement.anchors = [:]
+            box.model.settings.overlayPlacement.messagesFollowSpectrum = !custom
             if custom {
                 box.model.settings.overlayPlacement.setAnchor(OverlayAnchor(x: 0.85, y: 0.82), for: .alerts)
                 box.model.settings.overlayPlacement.setAnchor(OverlayAnchor(x: 0.5, y: 0.92), for: .info)
