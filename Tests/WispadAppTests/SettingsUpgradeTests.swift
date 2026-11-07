@@ -105,7 +105,7 @@ struct SettingsUpgradeTests {
         settings.dictionaryPeriod = .days30
         settings.dictionaryKind = .phrase
         settings.dictionarySort = .originDescending
-        settings.overlayPlacement.avoidsInput = false
+        settings.overlayPlacement.avoidsInput = true
         settings.overlayPlacement.setAnchor(OverlayAnchor(x: 0.25, y: 0.75), for: .info)
         settings.appearance = .dark
         settings.bubbleStyle = .glass

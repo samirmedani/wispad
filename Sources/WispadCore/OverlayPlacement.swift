@@ -35,7 +35,7 @@ public struct OverlayAnchor: Codable, Equatable, Sendable {
 /// Réglages de placement de la bulle et de ses messages.
 public struct OverlayPlacement: Codable, Equatable, Sendable {
     /// Les messages se décalent pour ne pas couvrir le champ où l'on écrit.
-    public var avoidsInput = true
+    public var avoidsInput = false
     /// Positions personnalisées, par rôle (`OverlayRole.rawValue`). Absente : au-dessus du Dock, au centre.
     public var anchors: [String: OverlayAnchor] = [:]
 
@@ -44,7 +44,7 @@ public struct OverlayPlacement: Codable, Equatable, Sendable {
     /// Lecture tolérante : une valeur illisible ou un rôle inconnu laissent les autres choix intacts.
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        avoidsInput = (try? container.decode(Bool.self, forKey: .avoidsInput)) ?? true
+        avoidsInput = (try? container.decode(Bool.self, forKey: .avoidsInput)) ?? false
         let raw = (try? container.decode([String: Lenient<OverlayAnchor>].self, forKey: .anchors)) ?? [:]
         anchors = raw.reduce(into: [:]) { result, item in
             if OverlayRole(rawValue: item.key) != nil, let anchor = item.value.value { result[item.key] = anchor }
@@ -52,6 +52,11 @@ public struct OverlayPlacement: Codable, Equatable, Sendable {
     }
 
     public func anchor(for role: OverlayRole) -> OverlayAnchor? { anchors[role.rawValue] }
+
+    /// Sans position dédiée, les messages reprennent celle du spectre.
+    public func positionRole(for role: OverlayRole) -> OverlayRole {
+        anchor(for: role) == nil ? .dictation : role
+    }
 
     public mutating func setAnchor(_ anchor: OverlayAnchor?, for role: OverlayRole) {
         anchors[role.rawValue] = anchor
@@ -129,10 +134,18 @@ public enum OverlayGeometry {
     /// Dock (ou près du bord bas), au centre ; puis hors de la zone de saisie, si elle est lisible. Toujours un point
     /// fini, et la bulle entière sur l'écran dès qu'elle tient dans sa zone utile.
     public static func bottomCenter(on screen: OverlayScreen, anchor: OverlayAnchor?, contentSize: CGSize,
-                                    dockShown: @autoclosure () -> Bool, zone: CGRect?) -> CGPoint {
+                                    dockShown: @autoclosure () -> Bool, zone: CGRect?,
+                                    referenceSize: CGSize? = nil) -> CGPoint {
         var bottomCenter: CGPoint
         if let anchor {
-            bottomCenter = point(for: anchor, visible: screen.visible, contentSize: contentSize)
+            bottomCenter = point(for: anchor, visible: screen.visible, contentSize: referenceSize ?? contentSize)
+            if referenceSize != nil {
+                // Même point d'ancrage que le spectre, sauf près d'un bord où le message entier doit rester visible.
+                let min = point(for: OverlayAnchor(x: 0, y: 0), visible: screen.visible, contentSize: contentSize)
+                let max = point(for: OverlayAnchor(x: 1, y: 1), visible: screen.visible, contentSize: contentSize)
+                bottomCenter.x = Swift.min(max.x, Swift.max(min.x, bottomCenter.x))
+                bottomCenter.y = Swift.min(max.y, Swift.max(min.y, bottomCenter.y))
+            }
         } else {
             bottomCenter = CGPoint(x: screen.visible.midX,
                                    y: defaultBottom(screen: screen.frame, visible: screen.visible, dockShown: dockShown()))

@@ -51,12 +51,26 @@ struct OverlayPlacementAppTests {
         // Saisie juste là où la bulle s'affiche par défaut, comme le champ de Codex en bas de fenêtre.
         let zone = CGRect(x: base.midX - 300, y: bottom - 20, width: 600, height: 80)
         InputZoneTracker.note(zone, pid: pid)
+        #expect(base == pill)
+        #expect(overlay.targetFrame(for: notice) == base)
+        box.model.settings.overlayPlacement.avoidsInput = true
         let moved = try #require(overlay.targetFrame(for: notice))
         #expect(moved.minY + OverlayLayout.bottomMargin == zone.maxY + OverlayGeometry.inputGap)
         #expect(overlay.targetFrame(for: .listening) == pill)
         // Réglage coupé : les messages restent à leur place.
         box.model.settings.overlayPlacement.avoidsInput = false
         #expect(overlay.targetFrame(for: notice) == base)
+    }
+
+    @Test func messagesFollowAMovedSpectrumUntilGivenTheirOwnPlace() throws {
+        let box = try Box()
+        box.model.settings.overlayPlacement.setAnchor(OverlayAnchor(x: 0.4, y: 0.5), for: .dictation)
+        let spectrum = try #require(box.model.overlay.targetFrame(for: .listening))
+        #expect(box.model.overlay.targetFrame(for: .notice("Collé")) == spectrum)
+        #expect(box.model.overlay.targetFrame(for: .failure("Texte prêt")) == spectrum)
+        box.model.settings.overlayPlacement.setAnchor(OverlayAnchor(x: 0.7, y: 0.3), for: .info)
+        #expect(box.model.overlay.targetFrame(for: .notice("Collé")) != spectrum)
+        #expect(box.model.overlay.targetFrame(for: .failure("Texte prêt")) == spectrum)
     }
 
     @Test func aChosenPlaceIsUsedAndStaysOnScreen() throws {

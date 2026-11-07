@@ -156,9 +156,9 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   cadence de l'écran (120 Hz en ProMotion).
 - Elle laisse passer les clics, sauf sur ses boutons : ✕ / ■ en mains libres, Copier et Coller d'un texte non
   écrit, Voir / Retirer d'un mot appris, ✕ d'un message.
-- Messages, sans contour : sur une ligne (erreur, « Collé », mot appris, relais, nouvelle version), 42 points de haut,
-  texte de 13 points sur deux lignes au plus, 520 points de large au plus ; en carte de 392 points (texte prêt à
-  copier), avec les boutons sur leur propre ligne. Brefs et sans point final (une erreur de macOS terminée par un
+- Messages en rectangles à coins arrondis : 34 points de haut sur une ligne, avec un badge de 20 points et une
+  seconde ligne possible (troisième si le message a des boutons). Largeur plafonnée à 320 points, même pour « Texte prêt à copier », dont les boutons
+  gardent leur propre ligne. Les boutons ont aussi des coins arrondis. Brefs et sans point final (une erreur de macOS terminée par un
   point le perd). À gauche, une pastille de la couleur du message (rouge : erreur, vert : réussite, vert d'eau :
   relais, bleu : nouvelle version, orange : texte prêt, violet : mots appris, gris : information) ; son anneau se vide
   pendant le décompte. Pointeur sur la bulle, sans clic préalable : le décompte (anneau compris) s'arrête et reprend
@@ -192,11 +192,12 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   commence en **Noir profond**, à 100 %.
 - **Place à l'écran** (Réglages › Bulle et messages) : trois places réglables à main levée sur un schéma quadrillé
   de l'écran, la grille aimantant légèrement les bulles. **Dictée** (spectre et finalisation), **Alertes de
-  collage** (texte prêt à copier) et **Messages** (« Collé », mot appris, relais, nouvelle version). Par défaut :
-  au-dessus du Dock, au centre. Double-clic sur une bulle du schéma ou « Par défaut » : place d'origine ; « Aperçu à
+  collage** (texte prêt à copier) et **Messages** (« Collé », mot appris, relais, nouvelle version). Les messages et
+  alertes reprennent la place du spectre tant qu'ils n'ont pas de position dédiée. Le spectre se place par défaut
+  au-dessus du Dock, au centre. Double-clic sur une bulle du schéma ou « Par défaut » rétablit sa place par défaut ; « Aperçu à
   l'écran » montre un message 3 s à la place choisie. Entre deux places, la bulle glisse (0,22 s, sans animation si
   le mouvement est réduit). Une place est gardée en fractions de l'écran, et la bulle reste entière à l'écran.
-- **Ne jamais couvrir le champ de saisie** (activé par défaut, désactivable) : après chaque collage, Wispad lit où se
+- **Ne jamais couvrir le champ de saisie** (option désactivée par défaut ; choix enregistrés conservés) : après chaque collage, Wispad lit où se
   trouve la saisie dans l'app au premier plan. C'est le champ actif s'il mesure au plus 240 points de haut, sinon la
   ligne du curseur ; pour un champ invisible à l'accessibilité (Codex, apps Electron), les 22 % du bas de la fenêtre
   active (90 à 200 points). Les messages qui couvriraient cette zone se placent 12 points au-dessus, sinon en

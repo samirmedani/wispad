@@ -379,7 +379,7 @@ enum SettingsPresentation {
     // MARK: Bulle et messages
 
     static let placementTitle = String(localized: "Position")
-    static let placementSummary = String(localized: "Où la bulle et ses messages apparaissent à l'écran.")
+    static let placementSummary = String(localized: "Sans emplacement dédié, les messages suivent le spectre de la dictée.")
 
     static let bubbleStyle = SettingText(
         title: String(localized: "Style de la bulle"),

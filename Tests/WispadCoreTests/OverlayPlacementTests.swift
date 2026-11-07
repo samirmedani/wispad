@@ -16,7 +16,7 @@ struct OverlayPlacementTests {
         #expect(decoded.anchors.count == 1)
         let empty = try JSONDecoder().decode(OverlayPlacement.self, from: Data("{}".utf8))
         #expect(empty == OverlayPlacement())
-        #expect(empty.avoidsInput)
+        #expect(!empty.avoidsInput)
     }
 
     @Test func anchorsKeepTheWholeBubbleOnScreen() {
