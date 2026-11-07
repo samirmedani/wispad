@@ -536,12 +536,12 @@ final class DictationCoordinator {
     @discardableResult
     func endCapture(allowVoiceTail: Bool = true, sendAfterPaste: Bool = false) -> Task<Void, Never>? {
         guard let current = capture, current.listening else { return nil }
-        if sendAfterPaste, !current.sendAfterPaste {
-            current.sendAfterPaste = true
+        if sendAfterPaste { current.sendAfterPaste = true }
+        if let pending = current.releaseTask { return pending }
+        if current.marks.released == nil {
+            current.marks.released = KeyboardTap.now()
             current.keystrokesAtEnd = KeyboardTap.keystrokes
         }
-        if let pending = current.releaseTask { return pending }
-        if current.marks.released == nil { current.marks.released = KeyboardTap.now() }
         if allowVoiceTail, !current.restarting.withLock({ $0 }), let audio = current.audio, audio.needsVoiceTail {
             current.audioWatch?.cancel()
             current.microphoneAccessWatch?.cancel()
@@ -984,6 +984,9 @@ final class DictationCoordinator {
             trial.receiveDictation(finalText)
             status = .inserted
         } else {
+            if model.settings.findProbableInput, commandSelection == nil {
+                context.probableInputKeys = current.keystrokesAtEnd
+            }
             status = await model.dependencies.insert(finalText, context, { [weak job] in
                 job.map { !$0.cancelled } ?? false
             }, { [weak self, weak job] in
@@ -1027,7 +1030,7 @@ final class DictationCoordinator {
         }
         if status.delivered {
             // Apprentissage seulement sur un texte vu dans le champ ; un champ illisible ne dit rien de plus.
-            if status == .inserted {
+            if status == .inserted, !context.usedProbableInput {
                 watchCorrections(
                     of: finalText, status: status, pid: context.pid, selectionCommand: commandSelection != nil,
                     writtenByWispad: trial != nil, speech: speech, traceID: current.run.trace.id
@@ -1039,7 +1042,7 @@ final class DictationCoordinator {
             model.statusBanner = nil
             job.delivered = true
             deliveredAt = Date()
-            if let pid = context.pid, !job.cancelled, Self.sendsAfterPaste(
+            if let pid = context.pid, !job.cancelled, !context.usedProbableInput, Self.sendsAfterPaste(
                 requested: current.sendAfterPaste, enabled: model.settings.sendWithShift, status: status,
                 keystrokesAtEnd: current.keystrokesAtEnd, keystrokesNow: KeyboardTap.keystrokes,
                 selectionCommand: commandSelection != nil, trial: trial != nil

@@ -117,6 +117,7 @@ struct AppSettings: Codable, Equatable {
     var speakerAgreement: SpeakerAgreement = .asHeard
     /// Maj tenue à l'arrêt de la dictée : Entrée suit le collage (message envoyé).
     var sendWithShift = true
+    var findProbableInput = true
     /// Volume des sons de dictée, de 0 à 100 % : général, puis début et fin (l'annulation suit la fin). Le son joué
     /// prend le général multiplié par le sien ; 100 % partout est le niveau d'origine.
     var soundsVolume = 1.0
@@ -226,6 +227,7 @@ struct AppSettings: Codable, Equatable {
         soundsEnabled = value(.soundsEnabled, defaults.soundsEnabled)
         speakerAgreement = value(.speakerAgreement, defaults.speakerAgreement)
         sendWithShift = value(.sendWithShift, defaults.sendWithShift)
+        findProbableInput = value(.findProbableInput, defaults.findProbableInput)
         soundsVolume = number(.soundsVolume, defaults.soundsVolume, in: Self.soundVolumeRange)
         startSoundVolume = number(.startSoundVolume, defaults.startSoundVolume, in: Self.soundVolumeRange)
         endSoundVolume = number(.endSoundVolume, defaults.endSoundVolume, in: Self.soundVolumeRange)

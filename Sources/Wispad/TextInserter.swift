@@ -98,6 +98,10 @@ struct InsertionSystem {
     var read: (pid_t) async -> InsertionField = { pid in
         await InsertionField.read(pid: pid, within: TextInserter.fieldReadLimit)
     }
+    var findProbableInput: (pid_t, AXUIElement) async -> ProbableInput.Target? = { await ProbableInput.find(pid: $0, focus: $1) }
+    var fillProbableInput: (ProbableInput.Target, String, pid_t, Int) async -> InsertionStatus = {
+        await ProbableInput.fill($0, text: $1, pid: $2, keys: $3)
+    }
     var pasteboard: NSPasteboard = .general
     /// Sur le fil principal : la touche V se cherche dans la disposition du clavier, que macOS n'autorise que là.
     var postPaste: @MainActor (pid_t) async -> Bool = { _ in TextInserter.postCommandV() }
@@ -222,6 +226,7 @@ enum TextInserter {
         let field = await system.read(pid)
         guard shouldProceed(), !Task.isCancelled else { return .cancelled }
         guard system.frontmostPID() == pid else { return .noTarget }
+        let originalPID = context.pid
         if context.pid != pid {
             // L'historique et l'apprentissage doivent viser l'app réellement choisie, pas celle du démarrage.
             context.pid = pid
@@ -233,6 +238,25 @@ enum TextInserter {
             return .refusedSecure
         }
         let kind = field.kind(bundleID: bundle)
+        // Le repli ne suit jamais un changement d'app ni un champ quitté. Un éditeur opaque garde son collage usuel.
+        if kind != .text, (kind == .notText || field.role == FocusedField.pageRole || field.role == "AXGroup"),
+           let keys = context.probableInputKeys, keys == KeyboardTap.keystrokes, originalPID == pid,
+           !ContextProbe.isOwnProcess(pid), !context.startedInTextField, !context.isSecure,
+           !context.typedSinceStart, context.selectedText?.isEmpty != false, !system.secureInput(),
+           let focus = field.element {
+            let candidate = await system.findProbableInput(pid, focus)
+            guard shouldProceed(), !Task.isCancelled else { return .cancelled }
+            guard system.frontmostPID() == pid, keys == KeyboardTap.keystrokes, !system.secureInput() else { return .noTarget }
+            if let candidate {
+                let status = await system.fillProbableInput(candidate, text, pid, keys)
+                if status.delivered {
+                    context.usedProbableInput = true
+                    last = nil
+                    didSendPaste()
+                }
+                return status
+            }
+        }
         guard kind != .notText else { return .noTarget }
         if Self.leftTextField(context: context, field: field, kind: kind, pid: pid) {
             log.notice("collage retenu : le curseur a quitté le champ du début de la dictée")

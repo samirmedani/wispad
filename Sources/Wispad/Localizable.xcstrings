@@ -41,6 +41,16 @@
         }
       }
     },
+    "Chercher un champ de saisie" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Find a text field"
+          }
+        }
+      }
+    },
     "Clique dans un champ : le texte s'y écrira" : {
       "localizations" : {
         "en" : {
@@ -107,6 +117,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Social media"
+          }
+        }
+      }
+    },
+    "Sans curseur actif, insère la dictée dans un champ vide de la fenêtre si le choix est clair." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When no text field is focused, insert the dictation into an empty field in the window if the choice is clear."
           }
         }
       }

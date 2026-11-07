@@ -1107,7 +1107,12 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
   presse-papiers et confirme « Copié » (1,5 s), **Coller** le colle dans le champ de l'app active (même collage que
   « Coller la dernière dictée »). Le collage garde tous les formats du presse-papiers précédent et refuse les champs
   sécurisés.
-- Dictée commencée hors d'un champ (ni champ de texte reconnu ni sélection au départ) et finie avant que
+- **Chercher un champ de saisie** (Réglages › Général, activé par défaut) : si une dictée commence et se termine
+  sans champ actif dans la même app, Wispad peut remplir un champ vide, visible et modifiable dans sa fenêtre active.
+  Une seule zone multiligne est préférée aux champs courts ; plusieurs candidats de même priorité, une cible déjà
+  remplie ou une recherche incomplète font renoncer. Ni champ sécurisé, ni barre d'outils, ni champ de recherche.
+  Le repli ne déplace pas le focus, ne modifie pas le presse-papiers et n'envoie jamais le message avec Maj.
+- Dictée commencée hors d'un champ (ni champ de texte reconnu ni sélection au départ), sans cible trouvée, et finie avant que
   l'utilisateur ait cliqué dans l'un d'eux : la carte dit « Clique dans un champ : le texte s'y écrira ». Tant
   qu'elle est affichée (12 s, en pause au survol), le curseur de l'app au premier plan est relu toutes les 0,25 s ;
   dès qu'il entre dans un champ de texte reconnu (ni sécurisé, ni dans Wispad), le texte s'y colle comme avec

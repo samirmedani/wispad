@@ -345,6 +345,11 @@ enum SettingsPresentation {
         ]
     )
 
+    static let findProbableInput = SettingText(
+        title: String(localized: "Chercher un champ de saisie"),
+        summary: String(localized: "Sans curseur actif, insère la dictée dans un champ vide de la fenêtre si le choix est clair.")
+    )
+
     static let mute = SettingText(
         title: String(localized: "Couper le son du Mac pendant la dictée"),
         summary: String(localized: "Le son revient dès que tu arrêtes de parler.")
