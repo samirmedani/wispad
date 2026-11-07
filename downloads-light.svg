@@ -10,7 +10,7 @@
 <text x="474.0" y="91.0" font-size="23" font-weight="700" fill="#1f2328" text-anchor="start">1</text>
 <rect x="618" y="36" width="150" height="70" rx="12" fill="#f6f8fa" stroke="#d1d9e0"/>
 <text x="634.0" y="62.0" font-size="12" font-weight="500" fill="#59636e" text-anchor="start">7 derniers jours</text>
-<text x="634.0" y="91.0" font-size="23" font-weight="700" fill="#1f2328" text-anchor="start">+76</text>
+<text x="634.0" y="91.0" font-size="23" font-weight="700" fill="#1f2328" text-anchor="start">+58</text>
 <rect x="778" y="36" width="150" height="70" rx="12" fill="#f6f8fa" stroke="#d1d9e0"/>
 <text x="794.0" y="62.0" font-size="12" font-weight="500" fill="#59636e" text-anchor="start">Étoiles GitHub</text>
 <text x="794.0" y="91.0" font-size="23" font-weight="700" fill="#1f2328" text-anchor="start">★ 5</text>
@@ -23,15 +23,15 @@
 <text x="60.0" y="272.0" font-size="12" font-weight="400" fill="#59636e" text-anchor="end">100</text>
 <line x1="72" y1="216.0" x2="928" y2="216.0" stroke="#d1d9e0" stroke-dasharray="3 5"/>
 <text x="60.0" y="220.0" font-size="12" font-weight="400" fill="#59636e" text-anchor="end">150</text>
-<path d="M72.0,338.7 L84.5,337.7 L89.6,337.7 L112.0,336.6 L114.1,336.6 L116.3,335.6 L128.3,297.1 L159.2,296.1 L186.6,296.1 L263.6,296.1 L277.0,293.0 L279.5,289.8 L283.3,286.7 L295.2,283.6 L299.7,280.5 L305.0,280.5 L315.9,277.4 L348.1,277.4 L350.3,274.2 L352.9,272.2 L357.0,270.1 L360.1,267.0 L362.0,265.9 L367.9,262.8 L370.0,262.8 L371.4,260.7 L373.2,260.7 L387.8,258.6 L397.0,258.6 L403.9,256.6 L411.8,256.6 L419.0,253.4 L486.3,253.4 L495.6,251.4 L499.4,251.4 L504.2,249.3 L505.3,249.3 L510.3,246.2 L515.0,246.2 L538.2,244.1 L585.3,244.1 L586.9,242.0 L610.7,239.9 L669.2,239.9 L676.6,238.9 L681.5,238.9 L688.4,235.8 L699.1,234.7 L701.8,234.7 L728.4,231.6 L799.7,231.6 L808.9,229.5 L852.4,229.5 L874.7,227.4 L880.9,227.4 L888.2,226.4 L890.6,224.3 L893.5,222.2 L895.4,220.2 L897.3,219.1 L899.1,219.1 L900.2,218.1 L928.0,217.0 L928.0,372 L72.0,372 Z" fill="url(#aire)"/>
-<path d="M72.0,338.7 L84.5,337.7 L89.6,337.7 L112.0,336.6 L114.1,336.6 L116.3,335.6 L128.3,297.1 L159.2,296.1 L186.6,296.1 L263.6,296.1 L277.0,293.0 L279.5,289.8 L283.3,286.7 L295.2,283.6 L299.7,280.5 L305.0,280.5 L315.9,277.4 L348.1,277.4 L350.3,274.2 L352.9,272.2 L357.0,270.1 L360.1,267.0 L362.0,265.9 L367.9,262.8 L370.0,262.8 L371.4,260.7 L373.2,260.7 L387.8,258.6 L397.0,258.6 L403.9,256.6 L411.8,256.6 L419.0,253.4 L486.3,253.4 L495.6,251.4 L499.4,251.4 L504.2,249.3 L505.3,249.3 L510.3,246.2 L515.0,246.2 L538.2,244.1 L585.3,244.1 L586.9,242.0 L610.7,239.9 L669.2,239.9 L676.6,238.9 L681.5,238.9 L688.4,235.8 L699.1,234.7 L701.8,234.7 L728.4,231.6 L799.7,231.6 L808.9,229.5 L852.4,229.5 L874.7,227.4 L880.9,227.4 L888.2,226.4 L890.6,224.3 L893.5,222.2 L895.4,220.2 L897.3,219.1 L899.1,219.1 L900.2,218.1 L928.0,217.0" fill="none" stroke="#ff3b36" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M72.0,338.7 L83.2,337.7 L87.7,337.7 L107.8,336.6 L109.6,336.6 L111.6,335.6 L122.3,297.1 L150.0,296.1 L174.5,296.1 L243.4,296.1 L255.4,293.0 L257.6,289.8 L260.9,286.7 L271.6,283.6 L275.7,280.5 L280.4,280.5 L290.1,277.4 L319.0,277.4 L320.9,274.2 L323.3,272.2 L326.9,270.1 L329.7,267.0 L331.4,265.9 L336.6,262.8 L338.5,262.8 L339.8,260.7 L341.4,260.7 L354.5,258.6 L362.7,258.6 L368.8,256.6 L375.9,256.6 L382.4,253.4 L442.6,253.4 L450.9,251.4 L454.2,251.4 L458.5,249.3 L459.5,249.3 L464.1,246.2 L468.2,246.2 L489.0,244.1 L531.1,244.1 L532.5,242.0 L553.8,239.9 L606.1,239.9 L612.7,238.9 L617.2,238.9 L623.3,235.8 L632.9,234.7 L635.3,234.7 L659.0,231.6 L722.9,231.6 L731.1,229.5 L770.0,229.5 L790.0,227.4 L795.4,227.4 L802.0,226.4 L804.1,224.3 L806.7,222.2 L808.5,220.2 L810.1,219.1 L811.8,219.1 L812.7,218.1 L837.6,217.0 L928.0,217.0 L928.0,372 L72.0,372 Z" fill="url(#aire)"/>
+<path d="M72.0,338.7 L83.2,337.7 L87.7,337.7 L107.8,336.6 L109.6,336.6 L111.6,335.6 L122.3,297.1 L150.0,296.1 L174.5,296.1 L243.4,296.1 L255.4,293.0 L257.6,289.8 L260.9,286.7 L271.6,283.6 L275.7,280.5 L280.4,280.5 L290.1,277.4 L319.0,277.4 L320.9,274.2 L323.3,272.2 L326.9,270.1 L329.7,267.0 L331.4,265.9 L336.6,262.8 L338.5,262.8 L339.8,260.7 L341.4,260.7 L354.5,258.6 L362.7,258.6 L368.8,256.6 L375.9,256.6 L382.4,253.4 L442.6,253.4 L450.9,251.4 L454.2,251.4 L458.5,249.3 L459.5,249.3 L464.1,246.2 L468.2,246.2 L489.0,244.1 L531.1,244.1 L532.5,242.0 L553.8,239.9 L606.1,239.9 L612.7,238.9 L617.2,238.9 L623.3,235.8 L632.9,234.7 L635.3,234.7 L659.0,231.6 L722.9,231.6 L731.1,229.5 L770.0,229.5 L790.0,227.4 L795.4,227.4 L802.0,226.4 L804.1,224.3 L806.7,222.2 L808.5,220.2 L810.1,219.1 L811.8,219.1 L812.7,218.1 L837.6,217.0 L928.0,217.0" fill="none" stroke="#ff3b36" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="928.0" cy="217.0" r="5" fill="#ff3b36" stroke="#ffffff" stroke-width="2.5"/>
 <text x="918.0" y="205.0" font-size="13" font-weight="700" fill="#1f2328" text-anchor="end" stroke="#ffffff" stroke-width="8" stroke-linejoin="round" paint-order="stroke">149</text>
 <text x="72.0" y="394.0" font-size="12" font-weight="400" fill="#59636e" text-anchor="start">28 oct.</text>
-<text x="286.0" y="394.0" font-size="12" font-weight="400" fill="#59636e" text-anchor="middle">30 oct.</text>
-<text x="500.0" y="394.0" font-size="12" font-weight="400" fill="#59636e" text-anchor="middle">1 nov.</text>
+<text x="286.0" y="394.0" font-size="12" font-weight="400" fill="#59636e" text-anchor="middle">31 oct.</text>
+<text x="500.0" y="394.0" font-size="12" font-weight="400" fill="#59636e" text-anchor="middle">2 nov.</text>
 <text x="714.0" y="394.0" font-size="12" font-weight="400" fill="#59636e" text-anchor="middle">4 nov.</text>
-<text x="928.0" y="394.0" font-size="12" font-weight="400" fill="#59636e" text-anchor="end">6 nov.</text>
+<text x="928.0" y="394.0" font-size="12" font-weight="400" fill="#59636e" text-anchor="end">7 nov.</text>
 <text x="32.0" y="432.0" font-size="15" font-weight="600" fill="#1f2328" text-anchor="start">Par version</text>
 <text x="928.0" y="432.0" font-size="12" font-weight="400" fill="#59636e" text-anchor="end">20 dernières versions sur 73</text>
 <line x1="72" y1="572" x2="928" y2="572" stroke="#d1d9e0"/>
@@ -95,5 +95,5 @@
 <rect x="893.8" y="521.0" width="25.7" height="51.0" rx="4.0" fill="#ff3b36" fill-opacity="1"/>
 <text x="906.6" y="514.0" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">1</text>
 <text x="906.6" y="592.0" font-size="11.5" font-weight="600" fill="#1f2328" text-anchor="middle">0.8.23</text>
-<text x="32.0" y="620.0" font-size="12" font-weight="400" fill="#59636e" text-anchor="start">Relevé toutes les heures depuis l'API GitHub · données du 6 nov. 2026 à 9 h (heure de Paris)</text>
+<text x="32.0" y="620.0" font-size="12" font-weight="400" fill="#59636e" text-anchor="start">Relevé toutes les heures depuis l'API GitHub · données du 7 nov. 2026 à 9 h 57 (heure de Paris)</text>
 </svg>
