@@ -12,6 +12,8 @@ struct HistoryView: View {
     @State private var appliedQuery = ""
     @State private var pendingDeleteAll = false
     @State private var detailRecord: DictationRecord?
+    @State private var rowWidth: CGFloat = 0
+    @State private var scrollActivity = HistoryScrollActivity()
 
     var body: some View {
         let groups = DayGroup.make(filtered)
@@ -68,7 +70,8 @@ struct HistoryView: View {
                                 ForEach(group.records) { record in
                                     let first = record.id == group.records.first?.id
                                     let last = record.id == group.records.last?.id
-                                    HistoryRow(record: record, first: first, last: last, onDetails: { detailRecord = record })
+                                    HistoryRow(record: record, rowWidth: rowWidth, scrollActivity: scrollActivity,
+                                               first: first, last: last, onDetails: { detailRecord = record })
                                         .modifier(HistoryCardRow(first: first, last: last))
                                 }
                             } header: {
@@ -82,11 +85,13 @@ struct HistoryView: View {
                             }
                         }
                     }
+                    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { rowWidth = $0 }
                     .padding(.horizontal, 32)
                     .padding(.bottom, 32)
                     .frame(maxWidth: 920)
                     .frame(maxWidth: .infinity)
                 }
+                .modifier(HistoryScrollPhase(activity: scrollActivity))
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) { HistoryAudioDock() }
@@ -223,30 +228,30 @@ struct HistoryRow: View {
     @Environment(AppModel.self) private var model
     @Environment(\.historyRowDidRender) private var didRender
     @Environment(\.interactionReduceMotion) private var reduceMotion
-    @Environment(\.interactionPreviewHover) private var previewHover
     @Environment(\.historyPreviewExpand) private var previewExpand
-    @Environment(\.isEnabled) private var isEnabled
     var record: DictationRecord
+    var rowWidth: CGFloat
+    var scrollActivity: HistoryScrollActivity? = nil
     /// Place dans la carte du jour : le fond de survol suit ses coins arrondis.
     var first = true
     var last = true
     var onDetails: (() -> Void)? = nil
-    @State private var hovering = false
     /// Hauteur pleine visible (animée) ; le texte complet est dans la vue dès que `showsFull`.
     @State private var expanded = false
     /// Texte complet mis en page une seule fois : seule la hauteur visible s'anime, les mots ne bougent jamais.
     @State private var showsFull = false
     /// Ouvert par « Afficher tout » : reste ouvert quand la souris s'en va.
     @State private var pinned = false
-    @State private var collapsedHeight: CGFloat = 0
     @State private var fullHeight: CGFloat = 0
+    @State private var openingHeight: CGFloat = 0
     /// Survol en attente : la ligne ne s'ouvre qu'après un arrêt de la souris (`HoverDwell`).
     @State private var dwell: Task<Void, Never>?
-    @State private var textWidth: CGFloat = 0
     /// Dernière mesure de cette ligne : la changer redessine la ligne, qui relit alors le cache.
     @State private var lastMeasure: HistoryRowCache.Overflow?
 
     private static let collapsedLines = 4
+    private static let horizontalPadding: CGFloat = 16
+    private static let columnSpacing: CGFloat = 14
 
     /// Largeur des boutons du survol (copier, retranscrire et écouter, supprimer), réservée même sans survol.
     static func actionsWidth(text: Bool, audio: Bool) -> CGFloat {
@@ -254,24 +259,23 @@ struct HistoryRow: View {
         return CGFloat(count) * 26 + CGFloat(count - 1) * 2
     }
 
-    private var hovered: Bool { isEnabled && (hovering || previewHover) }
 
     var body: some View {
         let _ = didRender?(record.id)
         let cache = HistoryRowCache.shared
         let item = cache.item(for: record)
         let selected = model.historyPlayer.recordID == record.id
-        // Un texte court sur une seule ligne logique ne dépasse jamais quatre lignes : pas de mesure à faire.
-        // Sinon, la troncature mesurée une fois à cette largeur est réutilisée ; la mesure cachée n'existe
-        // que tant qu'aucun résultat n'est connu.
-        let overflows = item.mayOverflow
-            ? cache.overflows(id: item.id, text: item.text, width: textWidth)
-                ?? lastMeasure?.overflows(text: item.text, width: textWidth)
-            : false
-        let measuring = item.mayOverflow && !showsFull && overflows == nil
-        // Le bouton n'apparaît que si la limite coupe vraiment le texte à la largeur actuelle.
-        let canExpand = showsFull || overflows == true
-        HStack(alignment: .top, spacing: 14) {
+        let actionsWidth = Self.actionsWidth(text: !item.text.isEmpty, audio: item.hasAudio)
+        let accessoryWidth = actionsWidth + (onDetails == nil ? 0 : 28)
+        let textWidth = rowWidth > 0
+            ? max(1, rowWidth - 2 * Self.horizontalPadding - 2 * Self.columnSpacing - Self.timeColumnWidth - accessoryWidth)
+            : 0
+        let measure = item.mayOverflow && textWidth > 0
+            ? cache.measurement(id: item.id, text: item.text, width: textWidth)
+                ?? lastMeasure.flatMap { $0.overflows(text: item.text, width: textWidth) == nil ? nil : $0 }
+            : nil
+        let canExpand = showsFull || measure?.overflows == true
+        HStack(alignment: .top, spacing: Self.columnSpacing) {
             Text(item.time)
                 .font(.system(size: 12, weight: .medium))
                 .monospacedDigit()
@@ -279,7 +283,7 @@ struct HistoryRow: View {
                 // « 19:03 » comme « 12:03 PM » : une seule ligne, colonne alignée d'une ligne à l'autre.
                 .lineLimit(1)
                 .fixedSize()
-                .frame(minWidth: Self.timeColumnWidth, alignment: .leading)
+                .frame(width: Self.timeColumnWidth, alignment: .leading)
                 .padding(.top, 1)
             VStack(alignment: .leading, spacing: 7) {
                 if item.text.isEmpty {
@@ -289,40 +293,10 @@ struct HistoryRow: View {
                         .foregroundStyle(.secondary)
                 } else {
                     if showsFull {
-                        fullText(item.text)
+                        fullText(item.text, collapsedHeight: measure?.collapsedHeight ?? openingHeight)
                     } else {
-                        Text(item.text)
-                            .font(.system(size: 13))
-                            .lineLimit(Self.collapsedLines)
-                            .onGeometryChange(for: CGSize.self) { $0.size } action: {
-                                textWidth = $0.width
-                                collapsedHeight = $0.height
-                            }
-                            .background(alignment: .topLeading) {
-                                if measuring {
-                                    // Même texte sans limite, à la même largeur, jamais affiché.
-                                    Text(item.text)
-                                        .font(.system(size: 13))
-                                        .fixedSize(horizontal: false, vertical: true)
-                                        .hidden()
-                                        .accessibilityHidden(true)
-                                        .onGeometryChange(for: HistoryTextMeasure.self) { proxy in
-                                            HistoryTextMeasure(
-                                                full: proxy.size,
-                                                shown: proxy.bounds(of: .named(historyRowTextSpace))?.size ?? .zero
-                                            )
-                                        } action: { measure in
-                                            guard measure.shown.width > 0 else { return }
-                                            let result = HistoryRowCache.Overflow(
-                                                text: item.text, width: measure.shown.width, overflows: measure.overflows
-                                            )
-                                            cache.store(result, id: item.id)
-                                            // La ligne relit le résultat et retire la mesure cachée.
-                                            lastMeasure = result
-                                        }
-                                }
-                            }
-                            .coordinateSpace(.named(historyRowTextSpace))
+                        collapsedText(item, measuring: item.mayOverflow && textWidth > 0 && measure == nil,
+                                      cache: cache)
                     }
                     if canExpand {
                         Button(expanded ? String(localized: "Réduire") : String(localized: "Afficher tout")) {
@@ -331,7 +305,7 @@ struct HistoryRow: View {
                                 collapse()
                             } else {
                                 pinned = true
-                                expand()
+                                expand(from: measure?.collapsedHeight ?? 0)
                             }
                         }
                         .buttonStyle(.plain)
@@ -350,17 +324,74 @@ struct HistoryRow: View {
                     StatusChip(text: item.status.text, tint: item.status.tint)
                 }
             }
-            Spacer(minLength: 8)
-            HStack(spacing: 2) {
-                if let onDetails {
-                    HoverIconButton(symbol: "info.circle", help: String(localized: "Détails de la dictée"), action: onDetails)
-                        .accessibilityLabel("Détails de la dictée")
-                        .accessibilityIdentifier("dictation-details-\(record.id)")
+            .frame(minWidth: textWidth > 0 ? textWidth : nil,
+                   maxWidth: textWidth > 0 ? textWidth : .infinity, alignment: .leading)
+            // Cette colonne fixe est seule à participer au layout. Les boutons sont superposés, jamais mesurés
+            // avec le texte : leur apparition ne peut changer ni les retours à la ligne, ni la hauteur.
+            Color.clear.frame(width: accessoryWidth, height: 26)
+                .accessibilityHidden(true)
+        }
+        .padding(.horizontal, Self.horizontalPadding)
+        .padding(.vertical, 12)
+        .modifier(HistoryRowHover(first: first, last: last, onChange: { inside in
+            hoverChanged(inside, collapsedHeight: measure?.overflows == true ? measure?.collapsedHeight : nil)
+        }) { hovered in
+            actionBar(item, width: actionsWidth, visible: hovered || selected, selected: selected)
+        })
+        .onDisappear {
+            dwell?.cancel()
+            dwell = nil
+        }
+        // Aperçu hors écran (`--history-expand-preview`) : les lignes longues s'ouvrent comme après un arrêt du survol.
+        .onChange(of: canExpand && previewExpand, initial: true) { _, open in
+            if open { pinned = true; expand(from: measure?.collapsedHeight ?? 0) }
+        }
+    }
+
+    @ViewBuilder private func collapsedText(_ item: HistoryRowItem, measuring: Bool, cache: HistoryRowCache) -> some View {
+        let text = Text(item.text)
+            .font(.system(size: 13))
+            .lineLimit(Self.collapsedLines)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        if measuring {
+            text
+                .background(alignment: .topLeading) {
+                    // La cinquième ligne suffit pour décider. Une ligne déjà mesurée à cette largeur
+                    // n'installe plus de vue cachée ni d'observateur de géométrie.
+                    Text(item.text)
+                        .font(.system(size: 13))
+                        .lineLimit(Self.collapsedLines + 1)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .hidden()
+                        .accessibilityHidden(true)
+                        .onGeometryChange(for: HistoryTextMeasure.self) { proxy in
+                            HistoryTextMeasure(full: proxy.size,
+                                               shown: proxy.bounds(of: .named(historyRowTextSpace))?.size ?? .zero)
+                        } action: { measure in
+                            guard measure.shown.width > 0 else { return }
+                            let result = HistoryRowCache.Overflow(
+                                text: item.text, width: measure.shown.width, overflows: measure.overflows,
+                                collapsedHeight: measure.shown.height
+                            )
+                            cache.store(result, id: item.id)
+                            lastMeasure = result
+                        }
                 }
-                // Boutons du survol construits pour la seule ligne survolée ou en lecture : une longue liste ne garde pas
-                // quatre boutons invisibles (et leur suivi du pointeur) par ligne. La place reste réservée.
-                Group {
-                    if hovered || selected {
+                .coordinateSpace(.named(historyRowTextSpace))
+        } else {
+            text
+        }
+    }
+
+    private func actionBar(_ item: HistoryRowItem, width: CGFloat, visible: Bool, selected: Bool) -> some View {
+        HStack(spacing: 2) {
+            if let onDetails {
+                HoverIconButton(symbol: "info.circle", help: String(localized: "Détails de la dictée"), action: onDetails)
+                    .accessibilityIdentifier("dictation-details-\(record.id)")
+            }
+            Color.clear.frame(width: width, height: 26)
+                .overlay(alignment: .trailing) {
+                    if visible {
                         HStack(spacing: 2) {
                             if !item.text.isEmpty {
                                 HoverIconButton(symbol: "doc.on.doc", help: String(localized: "Copier")) { model.copy(record.finalText) }
@@ -369,12 +400,10 @@ struct HistoryRow: View {
                                 HoverIconButton(symbol: "arrow.clockwise", help: String(localized: "Retranscrire")) {
                                     Task { await model.coordinator.retranscribe(record) }
                                 }
-                                HoverIconButton(
-                                    symbol: selected && model.historyPlayer.isPlaying ? "pause.fill" : "play.fill",
-                                    help: selected && model.historyPlayer.isPlaying ? String(localized: "Mettre en pause") : String(localized: "Écouter"),
-                                    tint: selected ? Theme.accent : .secondary
-                                ) { model.play(record) }
-                                .accessibilityLabel(selected && model.historyPlayer.isPlaying ? String(localized: "Mettre en pause") : String(localized: "Écouter l'audio"))
+                                let playing = selected && model.historyPlayer.isPlaying
+                                HoverIconButton(symbol: playing ? "pause.fill" : "play.fill",
+                                                help: playing ? String(localized: "Mettre en pause") : String(localized: "Écouter l'audio"),
+                                                tint: selected ? Theme.accent : .secondary) { model.play(record) }
                             }
                             HoverIconButton(symbol: "trash", help: String(localized: "Supprimer"), tint: .red) {
                                 withAnimation(reduceMotion ? nil : Theme.spring) { model.deleteHistory(record) }
@@ -382,34 +411,12 @@ struct HistoryRow: View {
                         }
                     }
                 }
-                .frame(width: Self.actionsWidth(text: !item.text.isEmpty, audio: item.hasAudio), alignment: .trailing)
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        // L'animation du survol ne porte que sur le fond : posée sur toute la ligne, elle animait aussi le passage du
-        // texte de quatre lignes au texte complet, et les mots glissaient les uns sur les autres.
-        .background(HistoryCardShape.make(first: first, last: last)
-            .fill(hovered ? Theme.subtleFill.opacity(0.5) : Color.clear)
-            .animation(reduceMotion ? nil : Theme.hover, value: hovered))
-        .contentShape(Rectangle())
-        .onHover { inside in
-            hovering = inside
-            hoverChanged(inside, canExpand: canExpand)
-        }
-        .onDisappear {
-            dwell?.cancel()
-            dwell = nil
-        }
-        // Aperçu hors écran (`--history-expand-preview`) : les lignes longues s'ouvrent comme après un arrêt du survol.
-        .onChange(of: canExpand && previewExpand, initial: true) { _, open in
-            if open { pinned = true; expand() }
         }
     }
 
     /// Texte complet, mis en page une fois à sa hauteur naturelle et découpé à la hauteur visible : pendant
     /// l'ouverture et la fermeture, seule cette hauteur change. Fondu en bas tant que la ligne n'est pas ouverte.
-    private func fullText(_ text: String) -> some View {
+    private func fullText(_ text: String, collapsedHeight: CGFloat) -> some View {
         let visible = expanded ? max(fullHeight, collapsedHeight) : collapsedHeight
         return Text(text)
             .font(.system(size: 13))
@@ -427,25 +434,29 @@ struct HistoryRow: View {
             }
     }
 
-    private func hoverChanged(_ inside: Bool, canExpand: Bool) {
+    private func hoverChanged(_ inside: Bool, collapsedHeight: CGFloat?) {
         dwell?.cancel()
         dwell = nil
-        guard !previewHover else { return }
         if inside {
-            guard canExpand, !showsFull else { return }
-            // Un passage rapide de la souris n'ouvre rien : il faut s'arrêter sur la ligne.
+            guard let collapsedHeight, !showsFull else { return }
+            // Un passage rapide n'ouvre rien ; le défilement remet aussi l'attente à zéro.
             dwell = Task { @MainActor in
-                try? await Task.sleep(for: HoverDwell.delay)
-                guard !Task.isCancelled, hovering else { return }
-                expand()
+                if let scrollActivity {
+                    guard await scrollActivity.waitForStillness() else { return }
+                } else {
+                    try? await Task.sleep(for: HoverDwell.delay)
+                }
+                guard !Task.isCancelled else { return }
+                expand(from: collapsedHeight)
             }
         } else if showsFull, !pinned {
             collapse()
         }
     }
 
-    private func expand() {
+    private func expand(from collapsedHeight: CGFloat) {
         guard !expanded else { return }
+        openingHeight = collapsedHeight
         // Texte complet d'abord, à la hauteur des quatre lignes, sans animation ; puis la hauteur visible s'ouvre.
         var still = Transaction(animation: nil)
         still.disablesAnimations = true
@@ -473,6 +484,76 @@ struct HistoryRow: View {
     }
 }
 
+/// Non observable : un geste de défilement ne demande aucune nouvelle mise en page aux lignes.
+@MainActor
+final class HistoryScrollActivity {
+    private var scrolling = false
+    private var stoppedAt: ContinuousClock.Instant?
+
+    func update(scrolling: Bool) {
+        if self.scrolling, !scrolling { stoppedAt = .now }
+        self.scrolling = scrolling
+    }
+
+    func waitForStillness() async -> Bool {
+        let initialDeadline = ContinuousClock.now + HoverDwell.delay
+        while !Task.isCancelled {
+            let deadline = max(initialDeadline, stoppedAt.map { $0 + HoverDwell.delay } ?? initialDeadline)
+            if !scrolling, ContinuousClock.now >= deadline { return true }
+            do {
+                try await Task.sleep(until: scrolling ? .now + .milliseconds(125) : deadline, clock: .continuous)
+            } catch {
+                return false
+            }
+        }
+        return false
+    }
+}
+
+private struct HistoryScrollPhase: ViewModifier {
+    let activity: HistoryScrollActivity
+
+    func body(content: Content) -> some View {
+        if #available(macOS 15, *) {
+            content.onScrollPhaseChange { _, phase in activity.update(scrolling: phase.isScrolling) }
+        } else {
+            content
+        }
+    }
+}
+
+/// Le survol ne réévalue que le fond et les commandes, indépendamment du texte de la ligne.
+private struct HistoryRowHover<Actions: View>: ViewModifier {
+    @Environment(\.interactionPreviewHover) private var previewHover
+    @Environment(\.isEnabled) private var isEnabled
+    @State private var inside = false
+    var first: Bool
+    var last: Bool
+    var onChange: (Bool) -> Void
+    @ViewBuilder var actions: (Bool) -> Actions
+
+    func body(content: Content) -> some View {
+        let hovered = isEnabled && (inside || previewHover)
+        content
+            .background {
+                if hovered {
+                    HistoryCardShape.make(first: first, last: last)
+                        .fill(Theme.subtleFill.opacity(0.5))
+                        .allowsHitTesting(false)
+                }
+            }
+            .overlay(alignment: .topTrailing) {
+                actions(hovered).padding(.trailing, 16).padding(.top, 12)
+            }
+            .contentShape(Rectangle())
+            .onHover { value in
+                guard isEnabled, !previewHover else { return }
+                inside = value
+                onChange(value)
+            }
+    }
+}
+
 extension EnvironmentValues {
     /// Aperçu hors écran : ouvre les lignes longues de l'historique, sans souris.
     @Entry var historyPreviewExpand = historyExpandPreview
@@ -495,7 +576,7 @@ enum HoverDwell {
 /// Espace de coordonnées du texte affiché : la mesure cachée y lit sa taille dans la même passe.
 private let historyRowTextSpace = "history-row-text"
 
-/// Une mesure de texte : taille sans limite de lignes et taille affichée, lues dans la même passe.
+/// Taille du texte avec une ligne de plus et taille affichée, lues dans la même passe.
 struct HistoryTextMeasure: Equatable {
     var full: CGSize
     var shown: CGSize

@@ -137,13 +137,15 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 - Survol d'un texte coupé : la ligne s'ouvre en entier si la souris s'y arrête 0,5 s ; un passage rapide n'ouvre
   rien. Elle se referme quand la souris s'en va, sauf si elle a été ouverte par « Afficher tout » (« Réduire » la
   referme). À l'ouverture, le texte complet est mis en page une fois et seule sa hauteur visible s'agrandit (fondu en
-  bas tant qu'il est coupé) : les mots ne bougent jamais. Le survol n'anime que le fond de la ligne. Le texte se
-  sélectionne une fois ouvert. Sans animation avec « Réduire les animations ».
-- Au survol : détails, copier, retranscrire et écouter (si l'audio est gardé), supprimer.
+  bas tant qu'il est coupé). Le texte se sélectionne une fois ouvert. Sans animation avec « Réduire les animations ».
+  Sur macOS 15 et plus, aucun agrandissement automatique pendant le défilement : le délai repart à l'arrêt.
+- Au survol : copier, retranscrire et écouter (si l'audio est gardé), supprimer. Les actions se superposent à leur
+  colonne réservée, sans changer la largeur ou la hauteur du texte. Le bouton Détails reste visible.
 - La recherche filtre dès que l'on cesse de taper (150 ms) ; l'effacer réaffiche tout aussitôt. Elle porte sur le
   texte collé et sur ce qui a été entendu : une dictée dont la correction est partie à côté se retrouve par ses mots.
-- Le défilement reste fluide avec des milliers de dictées : seules les lignes visibles sont construites, et une
-  ligne déjà vue n'est ni reformatée ni remesurée.
+- L'historique construit les lignes à la demande, y compris pour une journée très chargée. Une mesure commune donne
+  la largeur des lignes ; le test de troncature s'arrête à la cinquième ligne et son résultat est réutilisé tant que
+  la largeur ne change pas.
 - Supprimer une dictée, ou tout l'historique, l'efface aussi de la mémoire de Wispad, même ouvert depuis des jours ;
   l'historique relu après chaque dictée n'y est jamais gardé en double.
 - Un texte enregistré (dictée, transcription, autre écoute, app, mot du dictionnaire, refus) se relit en entier, même
