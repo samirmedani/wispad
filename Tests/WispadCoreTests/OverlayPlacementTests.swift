@@ -19,6 +19,18 @@ struct OverlayPlacementTests {
         #expect(!empty.avoidsInput)
     }
 
+    @Test func upgradedSettingsUseTheSpectrumEvenWithLegacyOffsetsAndAvoidance() throws {
+        let data = Data(#"{"avoidsInput":true,"anchors":{"alerts":{"x":0.5,"y":0.18},"dictation":{"x":0.5,"y":0}}}"#.utf8)
+        var placement = try JSONDecoder().decode(OverlayPlacement.self, from: data)
+        #expect(placement.positionRole(for: .alerts) == .dictation)
+        #expect(!placement.shouldAvoidInput)
+        placement.messagesFollowSpectrum = false
+        #expect(placement.positionRole(for: .alerts) == .alerts)
+        #expect(placement.shouldAvoidInput)
+        let reloaded = try JSONDecoder().decode(OverlayPlacement.self, from: JSONEncoder().encode(placement))
+        #expect(reloaded == placement)
+    }
+
     @Test func anchorsKeepTheWholeBubbleOnScreen() {
         let size = CGSize(width: 420, height: 122)
         let low = OverlayGeometry.point(for: OverlayAnchor(x: 0, y: 0), visible: visible, contentSize: size)

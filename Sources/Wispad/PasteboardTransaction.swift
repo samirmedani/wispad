@@ -63,6 +63,8 @@ struct PasteboardTransaction {
 
     /// L'app a lu la dictée après ⌘V.
     var wasRead: Bool { provider.wasRead }
+    /// Si le texte avait déjà été demandé avant ⌘V, les lectures suivantes peuvent être servies sans le fournisseur.
+    var wasDefinitelyUnread: Bool { stillOwnsContents && provider.wasDefinitelyUnread }
 
     /// À appeler juste avant ⌘V : une lecture antérieure (service système, presse-papiers universel) ne compte pas.
     func expectPaste() { provider.expectPaste() }
@@ -85,6 +87,7 @@ private final class DictationProvider: NSObject, NSPasteboardItemDataProvider, @
     private struct State {
         var pasteSent = false
         var read = false
+        var readEarly = false
         var waiters: [UUID: CheckedContinuation<Bool, Never>] = [:]
     }
     private let text: String
@@ -95,15 +98,17 @@ private final class DictationProvider: NSObject, NSPasteboardItemDataProvider, @
     func expectPaste() { state.withLock { $0.pasteSent = true } }
 
     var wasRead: Bool { state.withLock { $0.read } }
+    var wasDefinitelyUnread: Bool { state.withLock { $0.pasteSent && !$0.read && !$0.readEarly } }
 
     func pasteboard(_ pasteboard: NSPasteboard?, item: NSPasteboardItem, provideDataForType type: NSPasteboard.PasteboardType) {
-        item.setString(text, forType: type)
         let pending = state.withLock { current -> [CheckedContinuation<Bool, Never>] in
-            guard current.pasteSent, !current.read else { return [] }
+            guard current.pasteSent else { current.readEarly = true; return [] }
+            guard !current.read else { return [] }
             current.read = true
             defer { current.waiters.removeAll() }
             return Array(current.waiters.values)
         }
+        item.setString(text, forType: type)
         pending.forEach { $0.resume(returning: true) }
     }
 

@@ -190,14 +190,13 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   cliquable) suit la taille. À 160 %, la bulle des mains libres et son ombre tiennent encore dans le panneau. La
   bulle affichée et l'aperçu suivent le curseur ; la taille s'enregistre au relâchement. Une nouvelle installation
   commence en **Noir profond**, à 100 %.
-- **Place à l'écran** (Réglages › Bulle et messages) : trois places réglables à main levée sur un schéma quadrillé
-  de l'écran, la grille aimantant légèrement les bulles. **Dictée** (spectre et finalisation), **Alertes de
-  collage** (texte prêt à copier) et **Messages** (« Collé », mot appris, relais, nouvelle version). Les messages et
-  alertes reprennent la place du spectre tant qu'ils n'ont pas de position dédiée. Le spectre se place par défaut
-  au-dessus du Dock, au centre. Double-clic sur une bulle du schéma ou « Par défaut » rétablit sa place par défaut ; « Aperçu à
-  l'écran » montre un message 3 s à la place choisie. Entre deux places, la bulle glisse (0,22 s, sans animation si
-  le mouvement est réduit). Une place est gardée en fractions de l'écran, et la bulle reste entière à l'écran.
-- **Ne jamais couvrir le champ de saisie** (option désactivée par défaut ; choix enregistrés conservés) : après chaque collage, Wispad lit où se
+- **Place à l'écran** (Réglages › Bulle et messages) : **Messages au même endroit que le spectre** est actif par
+  défaut, y compris après une mise à jour. Les anciens emplacements séparés restent enregistrés, sans déplacer
+  les messages tant que l'option est active. Si on la coupe, le schéma permet de placer séparément **Dictée**,
+  **Alertes de collage** et **Messages**. La position d'origine du spectre est au centre, au-dessus du Dock.
+  Double-clic ou « Par défaut » remet la position d'origine ; « Aperçu à l'écran » dure 3 s.
+- **Ne jamais couvrir le champ de saisie** (disponible seulement avec les emplacements séparés) : après chaque
+  collage, Wispad lit où se
   trouve la saisie dans l'app au premier plan. C'est le champ actif s'il mesure au plus 240 points de haut, sinon la
   ligne du curseur ; pour un champ invisible à l'accessibilité (Codex, apps Electron), les 22 % du bas de la fenêtre
   active (90 à 200 points). Les messages qui couvriraient cette zone se placent 12 points au-dessus, sinon en
@@ -1113,6 +1112,10 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
   Une seule zone multiligne est préférée aux champs courts ; plusieurs candidats de même priorité, une cible déjà
   remplie ou une recherche incomplète font renoncer. Ni champ sécurisé, ni barre d'outils, ni champ de recherche.
   Le repli ne déplace pas le focus, ne modifie pas le presse-papiers et n'envoie jamais le message avec Maj.
+  Codex reçoit la demande d'accessibilité étendue et peut être inspecté même s'il n'annonce pas d'élément actif,
+  à condition que sa fenêtre et un champ fiable soient lisibles. S'il ne montre aucun champ, Wispad garde le
+  collage habituel ; si le presse-papiers de ce collage est resté certainement non lu, la carte de récupération
+  s'affiche. Aucun second collage automatique dans ce cas.
 - Dictée commencée hors d'un champ (ni champ de texte reconnu ni sélection au départ), sans cible trouvée, et finie avant que
   l'utilisateur ait cliqué dans l'un d'eux : la carte dit « Clique dans un champ : le texte s'y écrira ». Tant
   qu'elle est affichée (12 s, en pause au survol), le curseur de l'app au premier plan est relu toutes les 0,25 s ;

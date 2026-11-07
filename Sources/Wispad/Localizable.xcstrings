@@ -101,6 +101,26 @@
         }
       }
     },
+    "Les alertes et les messages restent à la place de la bulle de dictée." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alerts and messages stay where the dictation bubble appears."
+          }
+        }
+      }
+    },
+    "Messages au même endroit que le spectre" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Messages at the same position as the waveform"
+          }
+        }
+      }
+    },
     "Mois en cours : %@ consommés, retirés du crédit à la facture mensuelle." : {
       "localizations" : {
         "en" : {

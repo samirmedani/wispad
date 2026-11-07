@@ -213,6 +213,7 @@ enum ContextProbe {
     /// Navigateurs Chromium : ils ignorent AXManualAccessibility (réservé à Electron) et n'exposent le champ d'une
     /// page qu'avec AXEnhancedUserInterface, comme pour un lecteur d'écran (mesuré le 9 octobre : 40 collages sur 40
     /// non confirmés dans Chrome). Limité aux navigateurs : ce drapeau peut ralentir les animations de fenêtre.
+    static let codexBundleID = "com.openai.codex"
     static let chromiumBrowsers: Set<String> = [
         "com.google.Chrome", "com.google.Chrome.beta", "com.google.Chrome.dev", "com.google.Chrome.canary",
         "org.chromium.Chromium", "com.brave.Browser", "com.microsoft.edgemac", "company.thebrowser.Browser",
@@ -220,8 +221,12 @@ enum ContextProbe {
     ]
 
     static func openAccessibility(_ app: AXUIElement, pid: pid_t) {
-        AXUIElementSetAttributeValue(app, "AXManualAccessibility" as CFString, kCFBooleanTrue)
-        if let bundle = NSRunningApplication(processIdentifier: pid)?.bundleIdentifier, chromiumBrowsers.contains(bundle) {
+        let bundle = NSRunningApplication(processIdentifier: pid)?.bundleIdentifier
+        if bundle != codexBundleID {
+            AXUIElementSetAttributeValue(app, "AXManualAccessibility" as CFString, kCFBooleanTrue)
+        }
+        // Codex prend en charge ce drapeau mais pas AXManualAccessibility.
+        if let bundle, bundle == codexBundleID || chromiumBrowsers.contains(bundle) {
             AXUIElementSetAttributeValue(app, "AXEnhancedUserInterface" as CFString, kCFBooleanTrue)
         }
     }
