@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="640" viewBox="0 0 960 640" role="img" aria-labelledby="titre desc" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" style="font-variant-numeric: tabular-nums">
-<title id="titre">Téléchargements de Wispad</title><desc id="desc">161 téléchargements de Wispad, 80 versions, 5 étoiles.</desc>
+<title id="titre">Téléchargements de Wispad</title><desc id="desc">163 téléchargements de Wispad, 80 versions, 5 étoiles.</desc>
 <defs><linearGradient id="aire" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff4d48" stop-opacity="0.30"/><stop offset="1" stop-color="#ff4d48" stop-opacity="0"/></linearGradient></defs>
 <rect x="0.5" y="0.5" width="959" height="639" rx="16" fill="#0d1117" stroke="#3d444d"/>
 <text x="32.0" y="58.0" font-size="15" font-weight="600" fill="#9198a1" text-anchor="start">Téléchargements</text>
-<text x="30.0" y="114.0" font-size="54" font-weight="700" fill="#f0f6fc" text-anchor="start">161</text>
+<text x="30.0" y="114.0" font-size="54" font-weight="700" fill="#f0f6fc" text-anchor="start">163</text>
 <text x="32.0" y="142.0" font-size="13" font-weight="400" fill="#9198a1" text-anchor="start">Wispad.dmg, toutes versions confondues</text>
 <rect x="458" y="36" width="150" height="70" rx="12" fill="#151b23" stroke="#3d444d"/>
 <text x="474.0" y="62.0" font-size="12" font-weight="500" fill="#9198a1" text-anchor="start">Version v0.8.30</text>
-<text x="474.0" y="91.0" font-size="23" font-weight="700" fill="#f0f6fc" text-anchor="start">0</text>
+<text x="474.0" y="91.0" font-size="23" font-weight="700" fill="#f0f6fc" text-anchor="start">2</text>
 <rect x="618" y="36" width="150" height="70" rx="12" fill="#151b23" stroke="#3d444d"/>
 <text x="634.0" y="62.0" font-size="12" font-weight="500" fill="#9198a1" text-anchor="start">7 derniers jours</text>
 <text x="634.0" y="91.0" font-size="23" font-weight="700" fill="#f0f6fc" text-anchor="start">+47</text>
@@ -25,10 +25,10 @@
 <text x="60.0" y="259.0" font-size="12" font-weight="400" fill="#9198a1" text-anchor="end">150</text>
 <line x1="72" y1="216.0" x2="928" y2="216.0" stroke="#3d444d" stroke-dasharray="3 5"/>
 <text x="60.0" y="220.0" font-size="12" font-weight="400" fill="#9198a1" text-anchor="end">200</text>
-<path d="M72.0,347.0 L81.7,346.3 L85.6,346.3 L103.1,345.5 L104.7,345.5 L106.4,344.7 L115.7,315.8 L139.7,315.1 L161.0,315.1 L220.8,315.1 L231.2,312.7 L233.1,310.4 L236.0,308.0 L245.3,305.7 L248.8,303.4 L252.9,303.4 L261.4,301.0 L286.4,301.0 L288.0,298.7 L290.1,297.1 L293.3,295.6 L295.7,293.2 L297.2,292.4 L301.7,290.1 L303.4,290.1 L304.5,288.5 L305.8,288.5 L317.2,287.0 L324.4,287.0 L329.7,285.4 L335.8,285.4 L341.4,283.1 L393.7,283.1 L400.9,281.5 L403.8,281.5 L407.6,280.0 L408.4,280.0 L412.3,277.6 L415.9,277.6 L434.0,276.1 L470.5,276.1 L471.8,274.5 L490.3,272.9 L535.7,272.9 L541.4,272.2 L545.3,272.2 L550.6,269.8 L558.9,269.0 L561.0,269.0 L581.6,266.7 L637.0,266.7 L644.1,265.1 L677.9,265.1 L695.2,263.6 L700.0,263.6 L705.7,262.8 L707.5,261.2 L709.8,259.7 L711.3,258.1 L712.8,257.3 L714.2,257.3 L715.0,256.6 L736.6,255.8 L815.1,255.8 L850.4,255.8 L851.6,254.2 L854.6,252.7 L857.3,251.1 L858.4,249.5 L859.4,249.5 L861.5,247.2 L882.4,246.4 L928.0,246.4 L928.0,372 L72.0,372 Z" fill="url(#aire)"/>
-<path d="M72.0,347.0 L81.7,346.3 L85.6,346.3 L103.1,345.5 L104.7,345.5 L106.4,344.7 L115.7,315.8 L139.7,315.1 L161.0,315.1 L220.8,315.1 L231.2,312.7 L233.1,310.4 L236.0,308.0 L245.3,305.7 L248.8,303.4 L252.9,303.4 L261.4,301.0 L286.4,301.0 L288.0,298.7 L290.1,297.1 L293.3,295.6 L295.7,293.2 L297.2,292.4 L301.7,290.1 L303.4,290.1 L304.5,288.5 L305.8,288.5 L317.2,287.0 L324.4,287.0 L329.7,285.4 L335.8,285.4 L341.4,283.1 L393.7,283.1 L400.9,281.5 L403.8,281.5 L407.6,280.0 L408.4,280.0 L412.3,277.6 L415.9,277.6 L434.0,276.1 L470.5,276.1 L471.8,274.5 L490.3,272.9 L535.7,272.9 L541.4,272.2 L545.3,272.2 L550.6,269.8 L558.9,269.0 L561.0,269.0 L581.6,266.7 L637.0,266.7 L644.1,265.1 L677.9,265.1 L695.2,263.6 L700.0,263.6 L705.7,262.8 L707.5,261.2 L709.8,259.7 L711.3,258.1 L712.8,257.3 L714.2,257.3 L715.0,256.6 L736.6,255.8 L815.1,255.8 L850.4,255.8 L851.6,254.2 L854.6,252.7 L857.3,251.1 L858.4,249.5 L859.4,249.5 L861.5,247.2 L882.4,246.4 L928.0,246.4" fill="none" stroke="#ff4d48" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-<circle cx="928.0" cy="246.4" r="5" fill="#ff4d48" stroke="#0d1117" stroke-width="2.5"/>
-<text x="918.0" y="234.4" font-size="13" font-weight="700" fill="#f0f6fc" text-anchor="end" stroke="#0d1117" stroke-width="8" stroke-linejoin="round" paint-order="stroke">161</text>
+<path d="M72.0,347.0 L81.6,346.3 L85.5,346.3 L102.8,345.5 L104.4,345.5 L106.1,344.7 L115.3,315.8 L139.2,315.1 L160.3,315.1 L219.7,315.1 L230.0,312.7 L231.9,310.4 L234.8,308.0 L243.9,305.7 L247.4,303.4 L251.5,303.4 L259.9,301.0 L284.7,301.0 L286.4,298.7 L288.4,297.1 L291.6,295.6 L294.0,293.2 L295.5,292.4 L300.0,290.1 L301.6,290.1 L302.7,288.5 L304.0,288.5 L315.3,287.0 L322.4,287.0 L327.7,285.4 L333.8,285.4 L339.4,283.1 L391.2,283.1 L398.4,281.5 L401.3,281.5 L405.0,280.0 L405.8,280.0 L409.7,277.6 L413.3,277.6 L431.2,276.1 L467.4,276.1 L468.7,274.5 L487.1,272.9 L532.1,272.9 L537.8,272.2 L541.6,272.2 L546.9,269.8 L555.2,269.0 L557.2,269.0 L577.7,266.7 L632.7,266.7 L639.7,265.1 L673.3,265.1 L690.5,263.6 L695.2,263.6 L700.9,262.8 L702.7,261.2 L704.9,259.7 L706.4,258.1 L707.8,257.3 L709.3,257.3 L710.1,256.6 L731.5,255.8 L809.4,255.8 L844.4,255.8 L845.6,254.2 L848.6,252.7 L851.3,251.1 L852.4,249.5 L853.3,249.5 L855.5,247.2 L876.1,246.4 L921.4,246.4 L928.0,244.9 L928.0,372 L72.0,372 Z" fill="url(#aire)"/>
+<path d="M72.0,347.0 L81.6,346.3 L85.5,346.3 L102.8,345.5 L104.4,345.5 L106.1,344.7 L115.3,315.8 L139.2,315.1 L160.3,315.1 L219.7,315.1 L230.0,312.7 L231.9,310.4 L234.8,308.0 L243.9,305.7 L247.4,303.4 L251.5,303.4 L259.9,301.0 L284.7,301.0 L286.4,298.7 L288.4,297.1 L291.6,295.6 L294.0,293.2 L295.5,292.4 L300.0,290.1 L301.6,290.1 L302.7,288.5 L304.0,288.5 L315.3,287.0 L322.4,287.0 L327.7,285.4 L333.8,285.4 L339.4,283.1 L391.2,283.1 L398.4,281.5 L401.3,281.5 L405.0,280.0 L405.8,280.0 L409.7,277.6 L413.3,277.6 L431.2,276.1 L467.4,276.1 L468.7,274.5 L487.1,272.9 L532.1,272.9 L537.8,272.2 L541.6,272.2 L546.9,269.8 L555.2,269.0 L557.2,269.0 L577.7,266.7 L632.7,266.7 L639.7,265.1 L673.3,265.1 L690.5,263.6 L695.2,263.6 L700.9,262.8 L702.7,261.2 L704.9,259.7 L706.4,258.1 L707.8,257.3 L709.3,257.3 L710.1,256.6 L731.5,255.8 L809.4,255.8 L844.4,255.8 L845.6,254.2 L848.6,252.7 L851.3,251.1 L852.4,249.5 L853.3,249.5 L855.5,247.2 L876.1,246.4 L921.4,246.4 L928.0,244.9" fill="none" stroke="#ff4d48" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="928.0" cy="244.9" r="5" fill="#ff4d48" stroke="#0d1117" stroke-width="2.5"/>
+<text x="918.0" y="232.9" font-size="13" font-weight="700" fill="#f0f6fc" text-anchor="end" stroke="#0d1117" stroke-width="8" stroke-linejoin="round" paint-order="stroke">163</text>
 <text x="72.0" y="394.0" font-size="12" font-weight="400" fill="#9198a1" text-anchor="start">28 oct.</text>
 <text x="286.0" y="394.0" font-size="12" font-weight="400" fill="#9198a1" text-anchor="middle">31 oct.</text>
 <text x="500.0" y="394.0" font-size="12" font-weight="400" fill="#9198a1" text-anchor="middle">3 nov.</text>
@@ -94,8 +94,8 @@
 <rect x="851.0" y="470.0" width="25.7" height="102.0" rx="4.0" fill="#ff4d48" fill-opacity="0.5"/>
 <text x="863.8" y="463.0" font-size="12" font-weight="600" fill="#f0f6fc" text-anchor="middle">2</text>
 <text x="863.8" y="592.0" font-size="11.5" font-weight="400" fill="#9198a1" text-anchor="middle">0.8.29</text>
-<rect x="893.8" y="570.0" width="25.7" height="2" fill="#9198a1" fill-opacity="0.5"/>
-<text x="906.6" y="563.0" font-size="12" font-weight="500" fill="#9198a1" text-anchor="middle">0</text>
+<rect x="893.8" y="470.0" width="25.7" height="102.0" rx="4.0" fill="#ff4d48" fill-opacity="1"/>
+<text x="906.6" y="463.0" font-size="12" font-weight="600" fill="#f0f6fc" text-anchor="middle">2</text>
 <text x="906.6" y="592.0" font-size="11.5" font-weight="600" fill="#f0f6fc" text-anchor="middle">0.8.30</text>
-<text x="32.0" y="620.0" font-size="12" font-weight="400" fill="#9198a1" text-anchor="start">Relevé toutes les heures depuis l'API GitHub · données du 8 nov. 2026 à 21 h 51 (heure de Paris)</text>
+<text x="32.0" y="620.0" font-size="12" font-weight="400" fill="#9198a1" text-anchor="start">Relevé toutes les heures depuis l'API GitHub · données du 8 nov. 2026 à 23 h 57 (heure de Paris)</text>
 </svg>
