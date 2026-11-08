@@ -84,7 +84,7 @@ curseur : messagerie, e-mail, éditeur de code, terminal, navigateur.
   <tr>
     <td width="50%" align="center">
       <img src="docs/images/ecran-history.png" alt="Écran Historique : dictées classées par jour avec l'app, le nombre de mots et le statut">
-      <br><b>Historique</b> · tout est gardé sur ton Mac, cherchable ; une dictée ratée se retranscrit.
+      <br><b>Historique</b> · tout est gardé sur ton Mac, cherchable ; une longue dictée s'ouvre en entier au survol, une dictée ratée se retranscrit.
     </td>
     <td width="50%" align="center">
       <img src="docs/images/ecran-usage.png" alt="Écran Consommation : dépense des 7 derniers jours, part de chaque fournisseur, coût par mois face aux abonnements">
@@ -103,7 +103,7 @@ curseur : messagerie, e-mail, éditeur de code, terminal, navigateur.
   </tr>
   <tr>
     <td colspan="2" align="center">
-      <img src="docs/images/ecran-profile.png" alt="Profil, carte Ton cerveau : sujets de démonstration (Code, Travail, Voyages, Cuisine) reliés en 3D, avec un portrait écrit et le coût de l'analyse" width="70%">
+      <img src="docs/images/ecran-profile.png" alt="Profil, carte Ton cerveau : sujets de démonstration (Code, Travail, Voyages, Cuisine) reliés en 3D, avec un portrait écrit et le coût de l'analyse" width="72%">
       <br><b>Profil</b> · tes chiffres, ton rythme, tes mots et tes tics ; en option, ton cerveau en 3D, par mots ou par sujets lus par une IA, avec le coût annoncé avant.
     </td>
   </tr>
@@ -158,9 +158,10 @@ curseur : messagerie, e-mail, éditeur de code, terminal, navigateur.
   le spectre passe au vert pendant le relais.
 - **Rien n'est perdu** : sans connexion ou en cas d'erreur, l'audio reste dans l'historique pour **Retranscrire** ;
   un collage raté laisse le texte prêt à **Copier**.
-- **La bulle ne cache pas ton champ** : ses messages se placent au-dessus de la zone où tu écris, et chaque bulle se
-  place à la main dans Réglages › Bulle, en noir profond, en verre transparent (le fond reste net) ou en verre dépoli
-  (Liquid Glass).
+- **Une bulle discrète** : les messages apparaissent à l'endroit du spectre, en cartes compactes de Liquid Glass ;
+  la bulle se place à la main dans Réglages › Bulle, en noir profond, en verre transparent ou en verre dépoli.
+- **Pas de champ sélectionné ?** Wispad écrit dans le champ vide évident de la fenêtre active ; sinon, le texte reste
+  prêt à **Coller** ou **Copier** (désactivable dans Réglages › Général).
 - **Contexte facultatif** : Wispad peut lire la fenêtre active pour bien écrire les noms d'une conversation
   (désactivé par défaut, jamais enregistré).
 
