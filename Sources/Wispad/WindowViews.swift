@@ -141,7 +141,9 @@ struct Sidebar: View {
 
     var body: some View {
         List(selection: Binding(
-            get: { model.selectedSection },
+            // Captures hors écran : la sélection native, faite d'un matériau d'AppKit, s'y dessine en noir ; la rangée
+            // dessine alors la même sélection d'accent elle-même.
+            get: { sidebarDrawsSelection ? nil : model.selectedSection },
             set: { section in if let section { model.selectedSection = section } }
         )) {
             ForEach(AppSection.allCases) { section in
@@ -178,11 +180,14 @@ struct SidebarRow: View {
     var selected: Bool
 
     private var highlighted: Bool { !selected && (hovering || (previewHover && section == .history)) }
+    private var drawnSelection: Bool { selected && sidebarDrawsSelection }
 
     var body: some View {
         HStack(spacing: 0) {
             Label {
                 Text(section.title)
+                    .fontWeight(drawnSelection ? .semibold : nil)
+                    .foregroundStyle(drawnSelection ? Color.white : Color.primary)
             } icon: {
                 SidebarIcon(section: section)
             }
@@ -196,7 +201,8 @@ struct SidebarRow: View {
         .background {
             // Le fond déborde légèrement le contenu natif sans modifier sa taille ni recouvrir la sélection.
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(Color.primary.opacity(highlighted ? (contrast == .increased ? 0.20 : 0.11) : 0))
+                .fill(drawnSelection ? Theme.accent
+                      : Color.primary.opacity(highlighted ? (contrast == .increased ? 0.20 : 0.11) : 0))
                 .padding(.horizontal, -6)
                 .padding(.vertical, -3)
                 .allowsHitTesting(false)
@@ -206,6 +212,13 @@ struct SidebarRow: View {
         .accessibilityElement(children: .combine)
     }
 }
+
+#if DEBUG
+/// Aperçus et captures hors écran de design-preview.
+let sidebarDrawsSelection = CommandLine.arguments.contains("--design-preview")
+#else
+let sidebarDrawsSelection = false
+#endif
 
 struct SidebarIcon: View {
     var section: AppSection

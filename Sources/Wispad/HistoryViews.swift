@@ -385,10 +385,6 @@ struct HistoryRow: View {
 
     private func actionBar(_ item: HistoryRowItem, width: CGFloat, visible: Bool, selected: Bool) -> some View {
         HStack(spacing: 2) {
-            if let onDetails {
-                HoverIconButton(symbol: "info.circle", help: String(localized: "Détails de la dictée"), action: onDetails)
-                    .accessibilityIdentifier("dictation-details-\(record.id)")
-            }
             Color.clear.frame(width: width, height: 26)
                 .overlay(alignment: .trailing) {
                     if visible {
@@ -411,6 +407,10 @@ struct HistoryRow: View {
                         }
                     }
                 }
+            if let onDetails {
+                HoverIconButton(symbol: "info.circle", help: String(localized: "Détails de la dictée"), action: onDetails)
+                    .accessibilityIdentifier("dictation-details-\(record.id)")
+            }
         }
     }
 
