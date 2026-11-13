@@ -25,7 +25,7 @@ Le banc est reproductible :
 
 ```sh
 scripts/learning-bench.sh
-WISPAD_SECRET_COMMAND=yatofix-secret scripts/learning-bench.sh --live
+WISPAD_SECRET_COMMAND=/chemin/vers/ta-commande-de-secrets scripts/learning-bench.sh --live
 ```
 
 La passe réseau fait deux passages du même corpus et rapporte vrais/faux positifs, vrais/faux négatifs, appels en erreur, appels au modèle de correction et latences médiane/95e percentile. Elle utilise Jev et, si elle est fournie, `WISPAD_TEST_DEEPSEEK_API_KEY`. Elle réserve au plus 0,96 $ dans le plafond partagé des tests réseau ; cette réserve conservatrice n’est pas une mesure du coût facturé. Les modèles effectivement appelés sont indiqués.

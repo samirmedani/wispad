@@ -3,6 +3,219 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.8.30 — 8 novembre 2026
+
+- Historique : le bouton d'informations est aligné à la même place sur toutes les lignes.
+- README : nouvelles captures de l'app, avec des données de démonstration.
+
+## 0.8.29 — 8 novembre 2026
+
+- Les sections de la barre latérale réagissent au survol avec un fond discret. La sélection native reste distincte.
+- Les vignettes d’apparence, filtres du dictionnaire et réglages avancés des fournisseurs répondent aussi au survol.
+- Le fond ne déplace aucun contenu et respecte le réglage Réduire les animations de macOS.
+
+## 0.8.28 — 7 novembre 2026
+
+- Les alertes et les messages restent au même endroit que le spectre, y compris après la mise à jour d’anciens réglages. Les positions séparées restent disponibles dans Réglages → Bulle et messages.
+- Codex reçoit la demande d’accessibilité étendue. Si Wispad ne peut pas lire son champ et que le collage n’a certainement pas lu le presse-papiers, la carte de récupération apparaît.
+
+## 0.8.27 — 7 novembre 2026
+
+- Historique : les boutons apparaissent au survol sans faire bouger le texte ni changer les retours à la ligne.
+- L’aperçu complet attend toujours une demi-seconde de survol. Sur macOS 15 et plus, le délai repart quand le défilement s’arrête.
+- Les lignes réutilisent leurs mesures quand on revient dessus ; le contrôle de troncature ne met plus en page toute la dictée.
+
+## 0.8.26 — 7 novembre 2026
+
+- Les messages de dictée utilisent le Liquid Glass natif sur macOS 26, sans liseré ni reflet blanc ajouté par Wispad. Sur les macOS précédents et avec la transparence réduite, le fond reste mat.
+- La carte « Texte prêt à copier » garde une petite icône et des boutons macOS compacts ; Copier suit la couleur d’accent du système.
+
+## 0.8.25 — 7 novembre 2026
+
+- Les messages et alertes suivent la position du spectre, sauf si tu leur as attribué leur propre emplacement dans Réglages → Bulle et messages.
+- Les messages et leurs boutons adoptent des rectangles compacts à coins arrondis. Les cartes « Texte prêt à copier » occupent moins de place.
+- L’évitement du champ de saisie devient optionnel par défaut. Les choix déjà enregistrés restent en place.
+
+## 0.8.24 — 7 novembre 2026
+
+- Quand aucun champ n’est actif, Wispad peut insérer la dictée dans un champ vide et visible de la fenêtre active, si le choix est clair. Il ne déplace pas le focus et n’envoie pas le message.
+- Le réglage **Chercher un champ de saisie** est activé par défaut. Il se désactive dans **Réglages → Général**.
+
+## 0.8.23 — 6 novembre 2026
+
+Wispad 0.8.23 allège sa fenêtre, à la manière de Superwhisper.
+
+**Amélioré**
+- **Barre latérale épurée** : seulement les sections, puis un pied discret (étoile, version, liens).
+- **Raccourcis sur l’Accueil** : une rangée de touches en bas de l’écran (mains libres, maintien, Maj pour envoyer, annuler, coller la dernière).
+- **Titres plus légers** et cartes posées à plat, sans ombre.
+
+## 0.8.22 — 6 novembre 2026
+
+Wispad 0.8.22 colle ta dictée là où est ton curseur.
+
+**Corrigé**
+- **Plus de faux « Champ sécurisé »** : Wispad refusait parfois de coller dans Codex ou Chrome alors que tu étais dans un champ de message, juste parce qu’une app gardait la saisie protégée des mots de passe. Il ne refuse plus que dans un vrai champ de mot de passe.
+- **Plus de texte perdu dans le vide** : une dictée finie alors qu’aucun champ n’était actif partait dans le vide ; maintenant la carte « Clique dans un champ » attend ton clic et le texte s’y écrit.
+- **Le texte suit ton curseur** : si tu cliques dans un champ d’une autre app avant la fin de la dictée, le texte y va. Si tu as tapé au clavier entre-temps, il reste dans l’app de départ, pour ne pas écrire au milieu de ce que tu tapes.
+
+## 0.8.21 — 6 novembre 2026
+
+Wispad 0.8.21 rend l’historique plus calme et plus fluide.
+
+**Amélioré**
+- **Ouvrir une dictée au survol** : laisse ta souris une demi-seconde sur une dictée coupée pour l’afficher en entier. Un passage rapide n’ouvre rien et ne fait plus bouger la liste. La dictée se referme quand la souris s’en va ; « Afficher tout » la garde ouverte.
+- **Plus de mots qui se chevauchent** : à l’ouverture, le texte reste en place et seule sa hauteur s’agrandit.
+- **Défilement plus fluide** : chaque image de l’historique demande environ 20 % de calcul en moins, ce qui laisse tenir 120 images par seconde sur un écran ProMotion.
+
+## 0.8.20 — 6 novembre 2026
+
+Wispad 0.8.20 accorde ce que tu dis de toi.
+
+**Nouveau**
+- **Quand tu parles de toi** (Réglages › Mise en forme) : choisis Au féminin ou Au masculin, et Wispad écrit « je suis allée » ou « je suis allé », « je me suis trompée », « je suis seule »… L’oreille ne fait pas la différence, la transcription l’écrivait souvent au masculin.
+- Seuls les mots qui se rapportent à toi et qui se prononcent pareil changent. Une phrase sur quelqu’un d’autre et le reste du texte ne bougent pas. Rien n’est analysé dans ta voix. Par défaut, c’est Comme entendu.
+
+## 0.8.19 — 5 novembre 2026
+
+Wispad 0.8.19 passe d’un écran à l’autre plus vite.
+
+**Amélioré**
+- **Changer de section** est environ deux fois plus rapide : chaque écran est gardé une fois ouvert, et les autres se préparent pendant que Wispad est au repos.
+- Revenir sur un écran retrouve sa place (défilement, recherche).
+- Consommation ne refait plus tous ses calculs à chaque affichage.
+- Quand tu dictes dans une autre app, Wispad ne fait pas plus de travail qu’avant.
+
+## 0.8.18 — 5 novembre 2026
+
+Wispad 0.8.18 envoie ton message avec Maj.
+
+**Nouveau**
+- **Maj pour envoyer** : pendant que tu tiens fn, appuie sur Maj pour finir la dictée. Le texte se colle, puis Entrée l’envoie. En mains libres, Maj et fn ensemble font la même chose.
+- Entrée ne part que si le texte est bien arrivé dans le champ et que tu n’as rien tapé ni cliqué entre-temps. Le réglage se coupe dans Réglages › Général.
+
+## 0.8.17 — 5 novembre 2026
+
+Wispad 0.8.17 ressemble enfin à une app Mac.
+
+**Nouveau**
+- **Barre latérale de macOS** : la liste des sections est celle du système, avec une pastille de couleur par section, comme dans Réglages Système.
+- **Couleur de ton Mac** : sélections, liens, graphiques et boutons prennent la couleur d’accent choisie dans Réglages Système. Le rouge de Wispad reste pour la marque et pendant l’écoute.
+- **Survol plus sobre** : les boutons ne grossissent plus au passage de la souris.
+- **Icône de la barre des menus** : un petit point montre l’étape de la dictée (jaune au démarrage, bleu pendant la transcription, vert quand le texte est écrit, orange en cas d’erreur).
+
+## 0.8.16 — 5 novembre 2026
+
+Wispad 0.8.16 écrit ta dictée même quand le champ ignore le collage.
+
+**Corrigé**
+- **Champ qui refuse le collage** : quand une page ou une app ignore le collage de Wispad (par exemple certains champs de saisie dans Chrome), le texte n’attend plus derrière « Texte prêt ». Wispad l’écrit directement dans le champ, une seule fois, à condition que tu n’aies rien tapé et que tu sois toujours dans le même champ.
+
+## 0.8.15 — 5 novembre 2026
+
+Wispad 0.8.15 écrit là où tu cliques, même si tu lisais une page web en lançant la dictée.
+
+**Corrigé**
+- **Dictée lancée depuis une page web** : si tu commences à parler en lisant une page dans Chrome (ou dans une app comme Codex), sans être dans un champ, puis que tu cliques dans un champ d’une autre app, le texte s’y écrit. Avant, Wispad prenait la page pour un champ et gardait le texte avec « Collage impossible ».
+- **Dictée finie sur la page** : Wispad ne colle plus dans le vide. La carte « Clique dans un champ » attend que tu cliques dans un vrai champ.
+
+## 0.8.14 — 4 novembre 2026
+
+Wispad 0.8.14 attend que tu choisisses où écrire.
+
+**Nouveau**
+- **Clique après avoir parlé** : si tu lances une dictée sans curseur dans un champ et que tu ne cliques dans le champ qu’après, Wispad affiche « Clique dans un champ : le texte s’y écrira ». Le texte s’y colle dès que tu cliques, tant que la carte est affichée.
+
+## 0.8.13 — 3 novembre 2026
+
+Wispad 0.8.13 nettoie ce qui faisait « oral » dans tes textes.
+
+**Amélioré**
+- **« S’te plaît » et « y’a »** : Wispad écrit maintenant « s’il te plaît » et « y a ».
+- **Mots répétés** : les bégaiements disparaissent (« tu tu peux » → « tu peux », « c’est, c’est » → « c’est »). Les répétitions voulues restent, comme « non non », « vas-y, vas-y » ou « ça, ça sent l’arnaque ».
+
+## 0.8.12 — 3 novembre 2026
+
+Wispad 0.8.12 garde mieux tes mots et ta façon de parler.
+
+**Corrigé**
+- **Plus de mot remplacé à tort** : un mot qui a déjà un sens n’est plus changé pour un mot qui se prononce presque pareil, comme « en disant » devenu « en lisant ».
+- **Tes questions restent les tiennes** : « Pourquoi on n’arrive pas ? » ne devient plus « Pourquoi n’arrive-t-on pas ? », et « c’est les » ne devient plus « ce sont les ».
+
+## 0.8.11 — 3 novembre 2026
+
+Wispad 0.8.11 n’écrit plus « m’créer » ni « j’pense ».
+
+**Corrigé**
+- **Élisions de l’oral** : « m’créer », « j’pense », « d’faire » ou « qu’tu » s’écrivent maintenant « me créer », « je pense », « de faire » et « que tu », même avec le ton détendu. « T’as », « t’es » et « y a » restent comme tu les dis.
+
+## 0.8.10 — 2 novembre 2026
+
+Wispad 0.8.10 n’invente plus de phrase quand il n’a presque rien entendu.
+
+**Corrigé**
+- **Plus de phrase inventée** : sur une dictée très courte ou peu audible, l’écoute en direct pouvait imaginer une phrase entière, comme « Je suis un peu fatigué. », et Wispad la collait. Une écoute qui n’a rien en commun avec l’enregistrement n’est plus utilisée.
+
+## 0.8.9 — 2 novembre 2026
+
+Wispad 0.8.9 colle plus vite quand tu finis ta phrase au dernier moment.
+
+**Corrigé**
+- **Fin de dictée plus rapide** : quand tes derniers mots arrivent juste après le relâchement de la touche, Wispad prépare leur correction tout de suite au lieu d’attendre la transcription complète. Environ une seconde de gagnée dans ce cas.
+- **Virgules naturelles** : la ponctuation reste sobre, mais les virgules qui isolent « frère », « quoi » ou une interjection sont de retour (« Ah putain, la dinguerie, frère »).
+
+## 0.8.8 — 2 novembre 2026
+
+Wispad 0.8.8 tient mieux le coup quand macOS fait des siennes avec le micro.
+
+**Corrigé**
+- **Plus de gel à la fin d’une dictée** : Wispad n’attend plus que macOS ait rendu le micro pour envoyer ta dictée. Le 2 novembre, cette attente avait figé l’app 9 secondes avant qu’elle se ferme.
+- **Ta dictée n’est plus perdue** : si Wispad se ferme de façon inattendue pendant ou juste après une dictée, son audio est retrouvé au lancement suivant et t’attend dans l’Historique, prêt à transcrire.
+
+**Nouveau**
+- **Relance automatique après un plantage** : Wispad revient tout seul en arrière-plan, sans fenêtre. Une bulle te le signale. Si tu le quittes toi-même, il reste fermé.
+
+## 0.8.7 — 2 novembre 2026
+
+Wispad 0.8.7 se met à jour sans te déranger.
+
+**Corrigé**
+- **Fin de mise à jour discrète** : l’icône de Wispad ne rebondit plus dans le Dock et la fenêtre des nouveautés ne s’ouvre plus. Une bulle confirme que la mise à jour est installée, et elle s’efface dès que tu commences à parler. Les nouveautés restent dans Réglages › Aide.
+
+## 0.8.6 — 2 novembre 2026
+
+Wispad 0.8.6 écrit comme tu parles, selon l’endroit où tu écris.
+
+**Nouveau**
+- **Ton selon le site** : dans ton navigateur, Wispad reconnaît le site au titre de la page. Sur X, LinkedIn, Reddit ou Bluesky, il passe en ton détendu ; sur Discord, WhatsApp ou Slack aussi ; sur Gmail ou Outlook, en ton soigné. Ton choix dans Réglages › Mise en forme › Ton selon l’app l’emporte toujours, avec une nouvelle catégorie « Réseaux sociaux ».
+
+**Corrigé**
+- **Tes mots restent les tiens** : « ouais » ne devient plus « oui », « grave dommage » ne devient plus « vraiment dommage », « j’en sais rien » reste « j’en sais rien ».
+- **Ponctuation moins « rédigée »** : plus de virgule après « Du coup » ou « En vrai » quand tu l’as dit d’un trait, plus de point-virgule, plus de deux-points pour découper une phrase, et « mdr » en minuscules.
+- **Ton détendu plus fidèle** : il garde « t’as », « faut », « y a » et les petits mots comme « bah » ou « genre ».
+
+## 0.8.5 — 1er novembre 2026
+
+Wispad 0.8.5 raccorde mieux ta dictée au texte déjà écrit et garde sa mise en forme.
+
+**Corrigé**
+- **Majuscule au milieu d’une phrase** : quand tu dictes après « Je pense que », ta dictée continue la phrase (« Je pense que demain, c’est mieux. ») au lieu de repartir avec une majuscule. En début de champ, de ligne ou après un point, la majuscule est bien là. Les noms propres et les sigles gardent la leur.
+- **Reprise après un arrêt** : si tu t’arrêtes au milieu d’une phrase puis reprends, Wispad retire le point qu’il avait mis à la fin de la première partie et continue la phrase (« Je voulais te dire que demain on se voit. »).
+- **Mise en forme perdue** : quand le texte que tu dictais était aussi affiché à l’écran, Wispad pouvait jeter toute la correction, paragraphes compris, pour un seul mot repris de l’écran. Il garde maintenant la mise en forme.
+
+**Amélioré**
+- **Raccord** : la correction voit ce qui précède le curseur et ajoute une virgule quand la phrase en demande une (« Bonjour Paul, je voulais te dire merci. »). Si la phrase continue après le curseur, ta dictée n’y met plus de point final.
+
+## 0.8.4 — 1er novembre 2026
+
+Wispad 0.8.4 affiche ton vrai crédit xAI.
+
+**Corrigé**
+- **Solde xAI** : avec la clé de gestion xAI, Consommation affichait le crédit sans retirer ce que tu avais consommé depuis le début du mois. xAI ne le déduit qu’à la facture mensuelle, vers le 10 du mois suivant. Le solde pouvait donc paraître presque deux fois trop élevé. Wispad affiche maintenant le crédit réellement disponible.
+
+**Nouveau**
+- **Détail du compte xAI**, sous le solde : nombre de jours de crédit restants au rythme des 30 derniers jours, consommation du mois en cours, dépense des 30 derniers jours par clé API et par service, et dernière recharge, avec la mention automatique ou manuelle. Ces montants viennent de la facturation xAI ; ce ne sont pas des estimations.
+
 ## 0.8.3 — 1er novembre 2026
 
 Wispad 0.8.3 tranche mieux quand ses deux transcriptions se contredisent sur un mot.

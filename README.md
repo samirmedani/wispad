@@ -39,9 +39,11 @@
 <p align="center">
   <a href="#installer"><b>Installer</b></a> ·
   <a href="#fonctionnalités"><b>Fonctionnalités</b></a> ·
+  <a href="#fournisseurs"><b>Clés API</b></a> ·
   <a href="#confidentialité"><b>Confidentialité</b></a> ·
   <a href="#versions"><b>Versions</b></a> ·
-  <a href="#contribuer"><b>Contribuer</b></a>
+  <a href="#contribuer"><b>Contribuer</b></a> ·
+  <a href="https://yatofix.com/wispad"><b>Site</b></a>
 </p>
 
 > *English: Wispad is open-source voice dictation for macOS. Double-press fn, speak, and the text is typed wherever
@@ -66,7 +68,10 @@
 | :--- | :--- |
 | <kbd>fn</kbd> <kbd>fn</kbd> | Dictée mains libres ; un appui suivant l'arrête. |
 | <kbd>fn</kbd> maintenu | Dictée tant que la touche est tenue. |
+| <kbd>⇧</kbd> pendant la dictée | **Maj pour envoyer** : la dictée s'arrête, le texte se colle, puis Entrée part toute seule (désactivable). |
 | <kbd>esc</kbd> | Annule l'écoute, rien n'est inséré. |
+
+Le raccourci se change dans Réglages › Raccourci.
 
 Un appui simple au repos ne fait rien : ni micro, ni bulle. La bulle, en verre noir au-dessus du Dock, montre le
 spectre de ta voix pendant l'écoute ; le texte transcrit, corrigé puis collé arrive dans l'app où se trouve ton
@@ -148,6 +153,9 @@ curseur : messagerie, e-mail, éditeur de code, terminal, navigateur.
   notes, code et terminal, navigateur). Le registre change, jamais les mots ni le sens.
 - **Réécrire une sélection** : sélectionne un texte et dis « reformule plus poliment », « traduis en anglais » ou
   « rends-le plus court ».
+- **Quand tu parles de toi** (Réglages › Mise en forme) : au féminin ou au masculin, Wispad écrit « je suis allée »
+  ou « je suis allé ». Seuls les mots qui se rapportent à toi et se prononcent pareil changent ; par défaut, comme
+  entendu.
 
 ### Rapide et fiable
 
@@ -211,6 +219,10 @@ Tes clés peuvent rester **sur ton Mac** ou être **lues sur ton serveur ou dans
 
 Une seule clé suffit pour commencer (xAI ou OpenAI). Clés facultatives : clé de gestion xAI (solde réel affiché
 dans Consommation) et TypeSafe (Jev, premier avis sur les mots appris ; sans elle, le service de correction juge seul).
+
+**Quelle clé prendre ?** Sur 5 144 dictées réelles, le duo xAI (voix, environ 0,30 $ de l'heure) et DeepSeek
+(correction, environ 0,11 $ de l'heure) revient à environ 0,41 $ par heure de dictée. Le classement complet, avec
+ce qu'est une clé API et où la créer : [yatofix.com/wispad](https://yatofix.com/wispad#keys).
 
 ## Confidentialité
 
@@ -350,6 +362,12 @@ Les contributions sont bienvenues ! Toute modification passe par une pull reques
 comportement ou un nouveau fournisseur, ouvre d'abord une issue. Pour signaler une faille : [SECURITY.md](SECURITY.md).
 
 Wispad te rend service ? Une ⭐ sur GitHub aide d'autres personnes à le trouver.
+
+## Roadmap
+
+Windows, iPhone et iPad, dictée hors connexion, nouvelles langues, commandes vocales… Les pistes à venir sont sur
+[yatofix.com/wispad](https://yatofix.com/wispad#roadmap), où chacun peut voter oui ou non. Rien n'y est daté : les
+plus demandées passent en premier. Une autre idée ? Ouvre une issue.
 
 ## Contributeurs
 
