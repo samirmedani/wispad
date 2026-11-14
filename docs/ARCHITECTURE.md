@@ -303,7 +303,7 @@ sur le disque.
 **Un fournisseur de correction** : une route dans `TextCleaner.routes`, un cas `UsageAPI`, son tarif dans
 `Pricing.tokenRate`, son libellé dans `Presentation.swift`, une clé dans `APIKeys.accounts`. Pour qu'il se
 choisisse dans le sélecteur de Fournisseurs : un compte dans `CleanupChoice.accounts` (route dans
-`TextCleaner.modelRoute`), sa pastille dans `ProviderTile` et la page de ses clés dans `ProviderLinks`
+`TextCleaner.modelRoute`), sa pastille dans `ProviderTile` (son logo officiel en SVG dans les Assets, `Logo…`, en modèle teinté) et la page de ses clés dans `ProviderLinks`
 (`ProvidersViews.swift`) ; un modèle d'origine a son nom lisible dans `CleanupModelText.name`.
 
 **Un fournisseur de voix** : un cas `ProviderID` (catalogue et modèles dans `Catalog.swift`), le flux dans

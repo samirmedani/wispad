@@ -389,7 +389,9 @@ struct ModelSummaryButton: View {
     }
 }
 
-/// Pastille d'un fournisseur : sa couleur et un signe simple, sans logo officiel.
+/// Pastille d'un fournisseur : son vrai logo (Assets, marques de LobeHub Icons, licence MIT) sur le fond de sa marque,
+/// comme son icône d'app : xAI blanc sur noir, OpenAI noir sur blanc, la baleine bleue de DeepSeek sur blanc, TypeSafe
+/// noir sur rose. Serveur local et compte inconnu : un symbole du système.
 struct ProviderTile: View {
     var account: String
     var size: CGFloat = 28
@@ -398,42 +400,67 @@ struct ProviderTile: View {
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
         glyph
-            .foregroundStyle(.white)
             .frame(width: size, height: size)
-            .background(shape.fill(tint.gradient))
-            .overlay(shape.strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.14 : 0), lineWidth: 1))
+            .background(shape.fill(background))
+            .overlay(shape.strokeBorder(border, lineWidth: 1))
             .accessibilityHidden(true)
     }
 
     @ViewBuilder private var glyph: some View {
-        switch account {
-        case ProviderID.xai.rawValue, APIKeys.xaiManagement:
-            Text(verbatim: "xAI")
-                .font(.system(size: size * 0.34, weight: .heavy, design: .rounded))
-        default:
+        if let logo {
+            Image(logo.asset)
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .foregroundStyle(logo.ink)
+                .frame(width: size * logo.scale, height: size * logo.scale)
+        } else {
             Image(systemName: symbol)
                 .font(.system(size: size * 0.48, weight: .semibold))
+                .foregroundStyle(.white)
+        }
+    }
+
+    private struct Logo {
+        var asset: String
+        var ink: Color
+        var paper: Color
+        /// Part de la pastille occupée par le logo (chacun a ses propres marges).
+        var scale: CGFloat
+    }
+
+    private var logo: Logo? {
+        switch account {
+        case ProviderID.xai.rawValue, APIKeys.xaiManagement:
+            return Logo(asset: "LogoXAI", ink: .white, paper: Color(white: 0.06), scale: 0.56)
+        case ProviderID.openAI.rawValue:
+            return Logo(asset: "LogoOpenAI", ink: .black, paper: .white, scale: 0.66)
+        case CleanupModel.deepSeekAccount:
+            return Logo(asset: "LogoDeepSeek", ink: Color(red: 0.302, green: 0.42, blue: 0.996), paper: .white, scale: 0.72)
+        case APIKeys.typesafe:
+            return Logo(asset: "LogoTypeSafe", ink: Color(white: 0.1), paper: Color(red: 0.898, green: 0.318, blue: 0.729), scale: 0.62)
+        default:
+            return nil
         }
     }
 
     private var symbol: String {
         switch account {
-        case ProviderID.openAI.rawValue: return "circle.hexagongrid.fill"
-        case CleanupModel.deepSeekAccount: return "fish.fill"
-        case APIKeys.typesafe: return "checkmark.seal.fill"
         case CleanupModel.localAccount: return "laptopcomputer"
         default: return "key.fill"
         }
     }
 
-    private var tint: Color {
-        switch account {
-        case ProviderID.xai.rawValue, APIKeys.xaiManagement: return Color(white: 0.12)
-        case ProviderID.openAI.rawValue: return Color(red: 0.06, green: 0.64, blue: 0.5)
-        case CleanupModel.deepSeekAccount: return Color(red: 0.3, green: 0.42, blue: 1)
-        case APIKeys.typesafe: return Color(red: 0.49, green: 0.36, blue: 1)
-        default: return .gray
-        }
+    private var background: AnyShapeStyle {
+        if let logo { return AnyShapeStyle(logo.paper) }
+        return AnyShapeStyle(Color.gray.gradient)
+    }
+
+    /// Un filet discret détache les fonds blancs en clair et les fonds sombres en sombre.
+    private var border: Color {
+        let paperIsLight = logo.map { $0.paper == .white } ?? false
+        if colorScheme == .dark { return Color.white.opacity(paperIsLight ? 0 : 0.14) }
+        return Color.black.opacity(paperIsLight ? 0.1 : 0)
     }
 }
 
