@@ -3,12 +3,14 @@ import os
 import WispadCore
 
 enum AppSection: String, CaseIterable, Identifiable, Codable {
+    // Ordre de la barre latérale et des raccourcis ⌘1 à ⌘7 : Dictée (Accueil, Historique), Toi (Profil,
+    // Dictionnaire), Services (Fournisseurs, Consommation), puis Réglages.
     case home
     case history
     case profile
-    case usage
     case dictionary
     case providers
+    case usage
     case settings
 
     var id: String { rawValue }

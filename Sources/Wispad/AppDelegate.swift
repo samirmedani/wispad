@@ -257,18 +257,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
 
     @objc private func toggleDictation() {
-        guard let model else { return }
-        switch model.coordinator.phase {
-        case .listening:
-            model.hotkeys?.sessionEnded()
-            let send = NSEvent.modifierFlags.contains(.shift)
-            model.coordinator.enqueue { model.coordinator.endCapture(sendAfterPaste: send) }
-        case .starting:
-            return
-        case .idle, .finishing, .failure:
-            model.hotkeys?.externalToggleStarted()
-            model.coordinator.enqueue { await model.coordinator.begin(.toggle) }
-        }
+        model?.toggleHandsFreeDictation()
     }
 
     @objc private func cancelDictation() {
