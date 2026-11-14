@@ -3,6 +3,13 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.8.33 — 14 novembre 2026
+
+Wispad 0.8.33 montre les vrais logos des fournisseurs.
+
+**Amélioré**
+- **Logos officiels** de xAI, OpenAI, DeepSeek et TypeSafe, sur la couleur de leur marque, dans Fournisseurs (clés API, modèles, choix du modèle) à la place des pictogrammes génériques.
+
 ## 0.8.32 — 14 novembre 2026
 
 Wispad 0.8.32 protège et rend plus pratique la dernière dictée de la barre latérale.

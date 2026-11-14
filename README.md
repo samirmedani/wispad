@@ -378,4 +378,6 @@ Pour contribuer à ton tour : voir [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Licence
 
-Code sous licence [MIT](LICENSE).
+Code sous licence [MIT](LICENSE). Les logos de xAI, OpenAI, DeepSeek et TypeSafe AI sont des marques de leurs propriétaires,
+utilisées pour désigner leurs services ; leurs fichiers SVG viennent de [LobeHub Icons](https://github.com/lobehub/lobe-icons)
+(licence MIT).

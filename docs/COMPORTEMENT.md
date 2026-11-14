@@ -1397,7 +1397,8 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
   à l'analyse des sujets. Aucune clé ni réglage de raisonnement n'est envoyé ; délai de 15 s (chargement du modèle).
   Les appels comptent dans Consommation à 0 $ (« Modèle local · correction »). Repasser sur Aucun remet la correction
   en automatique si elle utilisait le modèle local.
-- Fournisseurs › Clés API liste les clés enregistrées, une ligne par clé : pastille et nom du fournisseur, rôle, clé masquée (son
+- Fournisseurs › Clés API liste les clés enregistrées, une ligne par clé : pastille (le vrai logo du fournisseur sur la
+  couleur de sa marque, comme son icône d'app ; un symbole pour un serveur local) et nom du fournisseur, rôle, clé masquée (son
   début connu, comme « xai- » ou « sk-proj- », et ses quatre derniers caractères : « xai-••••3f9a »), un interrupteur
   et, pour le fichier de l'app, une corbeille (après confirmation). Une clé coupée reste enregistrée mais n'est plus
   utilisée nulle part : voix, relais, correction, Jev, soldes. Choisir pour la voix un fournisseur dont la clé est
