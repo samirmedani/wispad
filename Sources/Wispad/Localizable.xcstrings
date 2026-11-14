@@ -9534,16 +9534,6 @@
         }
       }
     },
-    "Met en forme les énumérations et les changements d'idée." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Formats lists and changes of topic."
-          }
-        }
-      }
-    },
     "Mettre à jour" : {
       "localizations" : {
         "en" : {
@@ -12673,16 +12663,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Status"
-          }
-        }
-      }
-    },
-    "Structurer les listes et paragraphes" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Format lists and paragraphs"
           }
         }
       }
@@ -16573,6 +16553,66 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hide this dictation"
+          }
+        }
+      }
+    },
+    "Structurer les listes" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Format lists"
+          }
+        }
+      }
+    },
+    "Met en forme les énumérations en listes à puces ou numérotées." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turns enumerations into bulleted or numbered lists."
+          }
+        }
+      }
+    },
+    "Paragraphes automatiques" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatic paragraphs"
+          }
+        }
+      }
+    },
+    "Découpe les longues dictées en paragraphes, à chaque changement d'idée." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Splits long dictations into paragraphs at each change of idea."
+          }
+        }
+      }
+    },
+    "À partir d'une quarantaine de mots : salutation, sujets et formule de fin passent chacun à la ligne." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "From about forty words: the greeting, each topic and the closing each get their own paragraph."
+          }
+        }
+      }
+    },
+    "Les messages courts restent d'un seul bloc. Demande la correction." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Short messages stay in one block. Requires correction."
           }
         }
       }

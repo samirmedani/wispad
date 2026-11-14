@@ -85,13 +85,22 @@ enum SettingsPresentation {
     /// `smart` : la correction est active et un service est configuré, la mise en forme se fait sans commande.
     static func structure(smart: Bool) -> SettingText {
         SettingText(
-            title: String(localized: "Structurer les listes et paragraphes"),
-            summary: String(localized: "Met en forme les énumérations et les changements d'idée."),
+            title: String(localized: "Structurer les listes"),
+            summary: String(localized: "Met en forme les énumérations en listes à puces ou numérotées."),
             details: [smart
                 ? String(localized: "Tu peux aussi dire « première puce », « deuxième puce » ou « nouveau paragraphe ».")
                 : String(localized: "Les commandes explicites « première puce », « deuxième puce » et « nouveau paragraphe » fonctionnent localement. Pour structurer une dictée naturelle, active la correction avec un fournisseur configuré.")]
         )
     }
+
+    static let paragraphs = SettingText(
+        title: String(localized: "Paragraphes automatiques"),
+        summary: String(localized: "Découpe les longues dictées en paragraphes, à chaque changement d'idée."),
+        details: [
+            String(localized: "À partir d'une quarantaine de mots : salutation, sujets et formule de fin passent chacun à la ligne."),
+            String(localized: "Les messages courts restent d'un seul bloc. Demande la correction."),
+        ]
+    )
 
     static let selectionCommands = SettingText(
         title: String(localized: "Réécrire la sélection sur consigne"),
