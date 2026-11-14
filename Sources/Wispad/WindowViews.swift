@@ -552,8 +552,8 @@ struct LastDictationButton: View {
     }
 }
 
-/// Petite icône de la carte de dictée : au survol, elle s'éclaircit, grossit un peu et prend un rond ; elle se tasse
-/// au clic. `tint` remplace la couleur, par exemple le vert de la copie confirmée.
+/// Petite icône de la carte de dictée, avec le survol commun (`IconHoverEffect`). `tint` remplace la couleur, par
+/// exemple le vert de la copie confirmée.
 struct CardIconStyle: ButtonStyle {
     static let size: CGFloat = 20
     var tint: Color?
@@ -566,28 +566,16 @@ struct CardIconStyle: ButtonStyle {
 private struct CardIconBody: View {
     var configuration: ButtonStyleConfiguration
     var tint: Color?
-    @Environment(\.colorSchemeContrast) private var contrast
-    @Environment(\.interactionReduceMotion) private var reduceMotion
     @Environment(\.interactionPreviewHover) private var previewHover
     @State private var hovering = false
 
     private var highlighted: Bool { hovering || previewHover }
 
     var body: some View {
-        let pressed = configuration.isPressed
-        let ring = contrast == .increased ? 0.24 : 0.14
         configuration.label
-            .foregroundStyle(tint ?? (highlighted ? Color.primary : Color.secondary))
+            .foregroundStyle(tint ?? Color.secondary)
             .frame(width: CardIconStyle.size, height: CardIconStyle.size)
-            .background {
-                Circle()
-                    .fill(Color.primary.opacity(pressed ? ring + 0.08 : highlighted ? ring : 0))
-                    .scaleEffect(highlighted || pressed ? 1 : 0.6)
-            }
-            .scaleEffect(pressed ? 0.86 : highlighted ? 1.08 : 1)
-            .contentShape(Circle())
-            .animation(reduceMotion ? nil : Theme.spring, value: highlighted)
-            .animation(reduceMotion ? nil : Theme.quick, value: pressed)
+            .modifier(IconHoverEffect(highlighted: highlighted, pressed: configuration.isPressed))
             .onHover { hovering = $0 }
     }
 }

@@ -59,7 +59,8 @@ enum HoverTreatment {
     fileprivate var radius: CGFloat { self == .icon ? 9 : 10 }
 }
 
-/// Comme une app Mac : au survol, un fond discret apparaît ; le bouton ne grossit pas et ne projette aucune ombre.
+/// Comme une app Mac : au survol, un fond discret apparaît ; le bouton ne projette aucune ombre. Une petite icône
+/// (`.icon`) prend l'effet de survol commun, `IconHoverEffect`.
 struct HoverButtonStyle: ButtonStyle {
     var treatment: HoverTreatment
     var tint: Color
@@ -102,6 +103,19 @@ private struct HoverButtonBody: View {
     }
 
     var body: some View {
+        if treatment == .icon {
+            configuration.label
+                .frame(minWidth: 20, minHeight: 20)
+                // L'accent par défaut donnerait un rond bleuté : le rond suit le texte, sauf teinte choisie (rouge).
+                .modifier(IconHoverEffect(highlighted: highlighted, pressed: pressed, ink: tint == Theme.accent ? .primary : tint))
+                .opacity(isEnabled ? 1 : 0.5)
+                .onHover { hovering = $0 }
+        } else {
+            surface
+        }
+    }
+
+    private var surface: some View {
         label
             .padding(.horizontal, treatment == .filled ? 13 : 0)
             .padding(.vertical, treatment == .filled ? 7 : 0)
@@ -115,6 +129,34 @@ private struct HoverButtonBody: View {
             .contentShape(RoundedRectangle(cornerRadius: treatment.radius, style: .continuous))
             .opacity(isEnabled ? 1 : 0.5)
             .onHover { hovering = $0 }
+    }
+}
+
+/// Survol commun des petites icônes : l'icône s'éclaircit, grossit un peu et prend un rond ; elle se tasse au clic.
+/// Avec « Réduire les animations », seul le rond apparaît, sans mouvement.
+struct IconHoverEffect: ViewModifier {
+    var highlighted: Bool
+    var pressed: Bool
+    var ink: Color = .primary
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.interactionReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        let ring = contrast == .increased ? 0.24 : 0.14
+        let lift = scheme == .dark ? 0.12 : -0.08
+        content
+            .brightness(highlighted ? lift : 0)
+            .background {
+                Capsule(style: .continuous)
+                    .fill(ink.opacity(pressed ? ring + 0.08 : highlighted ? ring : 0))
+                    .scaleEffect(reduceMotion || highlighted || pressed ? 1 : 0.6)
+                    .allowsHitTesting(false)
+            }
+            .scaleEffect(reduceMotion ? 1 : pressed ? 0.86 : highlighted ? 1.08 : 1)
+            .contentShape(Capsule(style: .continuous))
+            .animation(reduceMotion ? nil : Theme.spring, value: highlighted)
+            .animation(reduceMotion ? nil : Theme.quick, value: pressed)
     }
 }
 
