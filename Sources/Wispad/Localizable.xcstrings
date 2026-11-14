@@ -16566,6 +16566,16 @@
           }
         }
       }
+    },
+    "Masquer cette dictée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide this dictation"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

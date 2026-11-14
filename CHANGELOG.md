@@ -3,6 +3,15 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.8.32 — 14 novembre 2026
+
+Wispad 0.8.32 protège et rend plus pratique la dernière dictée de la barre latérale.
+
+**Amélioré**
+- **Floutée par défaut** : le texte de ta dernière dictée ne se lit qu'en passant la souris dessus.
+- **Copier en un clic** : un clic sur la case, ou sur son icône, copie le texte ; une coche confirme la copie.
+- **Croix pour la masquer** : elle disparaît tout de suite, la dictée suivante s'affichera de nouveau.
+
 ## 0.8.31 — 14 novembre 2026
 
 Wispad 0.8.31 a une nouvelle barre latérale, plus calme et plus utile.

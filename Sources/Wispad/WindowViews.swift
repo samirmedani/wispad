@@ -349,7 +349,7 @@ struct ProvidersHealthDot: View {
 }
 
 /// Carte du haut : l'app et son état, le bouton micro (dictée mains libres), les mots du jour avec les sept derniers
-/// jours, et la dernière dictée (un clic ouvre l'Historique).
+/// jours, et la dernière dictée (floutée, un clic la copie, la croix la masque).
 struct DictateCard: View {
     @Environment(AppModel.self) private var model
     @Environment(\.colorSchemeContrast) private var contrast
@@ -384,7 +384,7 @@ struct DictateCard: View {
                 WeekBars(values: digest.wordsByDay)
             }
             .accessibilityElement(children: .combine)
-            if let last = digest.last {
+            if let last = digest.last, last.id != model.settings.dismissedLastDictationID {
                 LastDictationButton(last: last)
                     .padding(.top, 9)
             }
@@ -452,33 +452,51 @@ struct WeekBars: View {
     }
 }
 
-/// Dernière dictée réussie : app et moment, puis le début du texte. Un clic ouvre l'Historique.
+/// Dernière dictée réussie : app et moment, puis le début du texte, flouté tant que le pointeur ne le survole pas. Un
+/// clic (ou l'icône) copie le texte ; la croix masque cette dictée, la suivante s'affichera.
 struct LastDictationButton: View {
     @Environment(AppModel.self) private var model
     @Environment(\.interactionReduceMotion) private var reduceMotion
     @State private var hovering = false
+    @State private var copied = false
     var last: SidebarDigest.LastDictation
 
+    private var hidden: Bool { !hovering }
+
     var body: some View {
-        Button {
-            model.selectedSection = .history
-        } label: {
+        Button(action: copy) {
             VStack(alignment: .leading, spacing: 2) {
-                TimelineView(.periodic(from: .now, by: 60)) { context in
-                    Text(caption(now: context.date))
-                        .font(.system(size: 10.5))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                HStack(spacing: 4) {
+                    TimelineView(.periodic(from: .now, by: 60)) { context in
+                        Text(caption(now: context.date))
+                            .font(.system(size: 10.5))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 4)
+                    Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(copied ? Color.green : Color.secondary)
+                        .contentTransition(reduceMotion ? .identity : .symbolEffect(.replace))
+                        .frame(width: 16, height: 16)
+                        .accessibilityHidden(true)
+                    // Place de la croix, posée par-dessus (un bouton ne peut pas en contenir un autre).
+                    Color.clear.frame(width: 16, height: 16)
                 }
                 Text(last.text)
                     .font(.system(size: 12))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                     .truncationMode(.tail)
+                    // Aucun rectangle ne coupe les contours diffus autour des glyphes.
+                    .blur(radius: hidden ? 5 : 0, opaque: false)
+                    .opacity(hidden ? 0.6 : 1)
+                    .animation(reduceMotion ? nil : Theme.privacy, value: hidden)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 9)
-            .padding(.vertical, 7)
+            .padding(.leading, 9)
+            .padding(.trailing, 5)
+            .padding(.vertical, 6)
             .background {
                 RoundedRectangle(cornerRadius: 9, style: .continuous)
                     .fill(Color.primary.opacity(hovering ? 0.09 : 0.055))
@@ -487,10 +505,38 @@ struct LastDictationButton: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .overlay(alignment: .topTrailing) {
+            Button(action: dismiss) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 16, height: 16)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(HoverButtonStyle(treatment: .icon))
+            .padding(.top, 6)
+            .padding(.trailing, 5)
+            .help(String(localized: "Masquer cette dictée"))
+            .accessibilityLabel(String(localized: "Masquer cette dictée"))
+        }
         .onHover { hovering = $0 }
-        .help(String(localized: "Ouvrir l'Historique"))
-        .accessibilityLabel(String(localized: "Dernière dictée"))
+        .help(copied ? String(localized: "Copié") : String(localized: "Copier la dernière dictée"))
+        .accessibilityLabel(String(localized: "Copier la dernière dictée"))
         .accessibilityValue(last.text)
+    }
+
+    private func copy() {
+        model.copy(last.text)
+        copied = true
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(1_600))
+            copied = false
+        }
+    }
+
+    private func dismiss() {
+        model.settings.dismissedLastDictationID = last.id
+        model.saveSettings()
     }
 
     private func caption(now: Date) -> String {
