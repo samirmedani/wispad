@@ -87,6 +87,8 @@ struct AppSettings: Codable, Equatable {
     /// Avec du texte sélectionné, une dictée qui commence par une consigne (« reformule », « traduis ») transforme la sélection.
     var selectionCommands = true
     var structureDictation = true
+    /// Une longue dictée est découpée en paragraphes par la correction (ParagraphPolicy). Actif par défaut.
+    var autoParagraphs = true
     /// Format des dates et des heures écrites par la correction (Réglages › Mise en forme), lu champ par champ.
     /// Heures en « 14h30 » par défaut : « 14 h 30 », la typographie stricte, reste au choix.
     var dateFormat = DictationDateFormat(timeStyle: .compact)
@@ -212,6 +214,7 @@ struct AppSettings: Codable, Equatable {
         tones = table(.tones, defaults.tones)
         selectionCommands = value(.selectionCommands, defaults.selectionCommands)
         structureDictation = value(.structureDictation, defaults.structureDictation)
+        autoParagraphs = value(.autoParagraphs, defaults.autoParagraphs)
         dateFormat = value(.dateFormat, defaults.dateFormat)
         numberFormat = value(.numberFormat, defaults.numberFormat)
         useWindowContext = value(.useWindowContext, true)

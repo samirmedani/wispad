@@ -381,8 +381,8 @@ s'ouvrent dans un popover avec le bouton ⓘ de la rangée ; ceux de la correcti
 - **Confidentialité** : « Ce qui est envoyé » (audio et, si disponibles, app active, sélection et court extrait
   autour du curseur ; historique et audio restent sur ce Mac), « Comprendre le sujet grâce à la fenêtre active »
   (inactif sans la correction), conservation, durée et plafond de l'audio.
-- **Correction** : « Corriger le texte avant insertion », « Structurer les listes et paragraphes », « Réécrire la
-  sélection sur consigne » (inactif sans la correction). Le ton se règle dans la section « Ton selon l'app », inactive
+- **Correction** : « Corriger le texte avant insertion », « Structurer les listes », « Paragraphes automatiques »
+  (actif par défaut, inactif sans la correction), « Réécrire la sélection sur consigne » (inactif sans la correction). Le ton se règle dans la section « Ton selon l'app », inactive
   sans la correction.
 - **Mise en forme** (inactive sans la correction) : format des dates et des heures écrites par la correction (voir
   « Dates et heures » plus bas), conservé aux mises à jour, lu champ par champ.
@@ -826,8 +826,7 @@ novembre » → « 03/11/2026 » devient « 03/11 ».
 
 ## Mise en forme
 
-Réglage « Structurer les listes et paragraphes » : énumérations et changements d'idée mis en forme par la
-correction. Avec ce réglage, commandes explicites locales, même sans correction : « première puce », « deuxième
+Réglage « Structurer les listes » : énumérations mises en forme par la correction. Avec ce réglage, commandes explicites locales, même sans correction : « première puce », « deuxième
 puce »… jusqu'à la dixième (aussi « premier point », « premièrement »), « fin de liste », « nouveau paragraphe »,
 « à la ligne », « nouvelle ligne » (et « first bullet », « firstly », « end of list », « new paragraph »,
 « new line »).
@@ -839,6 +838,17 @@ Restent des phrases : deux éléments, une énumération suivie d'autre chose da
 Julie hier au cinéma. »), un récit d'actions. Banc réseau : `scripts/live-test.sh ImplicitListLiveTests` (18/20 le
 11 octobre sur Grok, 8/20 avec l'ancienne consigne ; les deux échecs restants sont des appels sans réponse, texte
 gardé tel quel).
+
+### Paragraphes automatiques
+
+Réglage « Paragraphes automatiques » (Réglages › Correction), actif par défaut, conservé aux mises à jour, inactif
+sans la correction. Une dictée d'au moins 40 mots reçoit, en fin de consigne, la demande de la découper en paragraphes
+séparés par une ligne vide : un paragraphe par sujet, étape ou moment, la salutation et la formule de fin d'un message
+à part, la chute d'un récit à part, jamais un paragraphe par phrase, aucun mot changé. En dessous de 40 mots, ou
+réglage coupé, la consigne interdit d'ajouter un paragraphe de soi-même : seuls les retours à la ligne déjà présents
+et les commandes « nouveau paragraphe » ou « à la ligne » en créent. Une consigne sur la sélection n'est pas concernée.
+Banc réseau : `scripts/live-test.sh ParagraphLiveTests` (16/16 le 14 novembre sur DeepSeek, 6/16 avec l'ancienne
+consigne, où aucune des quatre longues dictées n'était découpée).
 
 ### Dates et heures
 

@@ -58,6 +58,7 @@ struct SettingsUpgradeTests {
         settings.tones = ["email": .polished, "notes": .casual]
         settings.selectionCommands = false
         settings.structureDictation = false
+        settings.autoParagraphs = false
         settings.dateFormat = DictationDateFormat(order: .monthDayYear, separator: .dot, fourDigitYear: false, leadingZero: false,
                                                   monthInWords: true, clock: .twelveHour, timeStyle: .colon)
         settings.numberFormat = DictationNumberFormat(thousands: .none, symbols: false)

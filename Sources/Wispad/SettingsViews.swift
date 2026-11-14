@@ -178,6 +178,10 @@ struct SettingsView: View {
                 get: { model.settings.structureDictation },
                 set: { model.settings.structureDictation = $0; model.saveSettings() }
             ))
+            SettingToggle(text: SettingsPresentation.paragraphs, isOn: Binding(
+                get: { model.settings.autoParagraphs },
+                set: { model.settings.autoParagraphs = $0; model.saveSettings() }
+            ), enabled: model.settings.cleanupEnabled)
             SettingToggle(text: SettingsPresentation.selectionCommands, isOn: Binding(
                 get: { model.settings.selectionCommands },
                 set: { model.settings.selectionCommands = $0; model.saveSettings() }

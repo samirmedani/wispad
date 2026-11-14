@@ -3,6 +3,17 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.8.34 — 14 novembre 2026
+
+Wispad 0.8.34 découpe tes longues dictées en paragraphes.
+
+**Nouveau**
+- **Paragraphes automatiques**, activé par défaut (Réglages › Correction) : à partir d'une quarantaine de mots, la correction passe à la ligne à chaque changement d'idée. Dans un message, la salutation et la formule de fin vont à part. Les messages courts restent d'un seul bloc, et aucun mot ne change.
+
+**Amélioré**
+- **Paragraphes bien plus fiables** : avant, la consigne était trop discrète et une longue dictée sortait presque toujours d'un seul bloc.
+- **« Structurer les listes »** ne s'occupe plus que des listes à puces et numérotées ; les paragraphes ont leur propre réglage.
+
 ## 0.8.33 — 14 novembre 2026
 
 Wispad 0.8.33 montre les vrais logos des fournisseurs.

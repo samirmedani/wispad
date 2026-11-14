@@ -1386,6 +1386,7 @@ final class DictationCoordinator {
             let correctionBegan = KeyboardTap.now()
             var request = CorrectionRequest(transcript: raw, dictionary: model.dictionary.map(\.term), appName: record.targetApp,
                                             structureDictation: model.settings.structureDictation, language: model.settings.language)
+            request.autoParagraphs = model.settings.autoParagraphs
             // La catégorie enregistrée garde le site d'origine (X dans Chrome) : le ton de la retranscription aussi.
             request.tone = record.usageCategory.flatMap(UsageKind.init(rawValue:)).map(model.tone(kind:))
                 ?? model.tone(bundleID: record.targetBundle, appName: record.targetApp)

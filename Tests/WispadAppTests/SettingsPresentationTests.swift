@@ -15,7 +15,8 @@ struct SettingsPresentationTests {
             SettingsPresentation.cleanup(enabled: true, structure: true, steps: steps, maxSeconds: 5, hasCleanupKey: true),
             SettingsPresentation.cleanup(enabled: false, structure: false, steps: [], maxSeconds: 0, hasCleanupKey: false),
             SettingsPresentation.structure(smart: true), SettingsPresentation.structure(smart: false),
-            SettingsPresentation.selectionCommands, SettingsPresentation.sentData, SettingsPresentation.windowContext,
+            SettingsPresentation.selectionCommands, SettingsPresentation.paragraphs, SettingsPresentation.sentData,
+            SettingsPresentation.windowContext,
             SettingsPresentation.retention, SettingsPresentation.learning(hasTypeSafeKey: true),
             SettingsPresentation.learning(hasTypeSafeKey: false), SettingsPresentation.mute,
             SettingsPresentation.muteMode, SettingsPresentation.diagnostics, SettingsPresentation.voiceIsolation(),
@@ -58,7 +59,7 @@ struct SettingsPresentationTests {
         let unique = [
             SettingsPresentation.dictationShortcut, SettingsPresentation.pasteLast, SettingsPresentation.verifyWithFile,
             SettingsPresentation.cleanup(enabled: true, structure: false, steps: steps, maxSeconds: 5, hasCleanupKey: false),
-            SettingsPresentation.structure(smart: true), SettingsPresentation.selectionCommands,
+            SettingsPresentation.structure(smart: true), SettingsPresentation.selectionCommands, SettingsPresentation.paragraphs,
             SettingsPresentation.sentData, SettingsPresentation.windowContext, SettingsPresentation.retention,
             SettingsPresentation.learning(hasTypeSafeKey: false), SettingsPresentation.mute,
             SettingsPresentation.muteMode, SettingsPresentation.diagnostics, SettingsPresentation.voiceIsolation()
