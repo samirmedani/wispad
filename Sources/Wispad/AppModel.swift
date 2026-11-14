@@ -906,6 +906,22 @@ final class AppModel {
         onOpenWindow?(selectedSection)
     }
 
+    /// Dictée mains libres lancée ou arrêtée sans le raccourci : menu de la barre des menus, bouton micro de la barre
+    /// latérale. Arrêter avec Maj tenue envoie le message, comme le raccourci.
+    func toggleHandsFreeDictation() {
+        switch coordinator.phase {
+        case .listening:
+            hotkeys?.sessionEnded()
+            let send = NSEvent.modifierFlags.contains(.shift)
+            coordinator.enqueue { [coordinator] in coordinator.endCapture(sendAfterPaste: send) }
+        case .starting:
+            return
+        case .idle, .finishing, .failure:
+            hotkeys?.externalToggleStarted()
+            coordinator.enqueue { [coordinator] in await coordinator.begin(.toggle) }
+        }
+    }
+
     /// « Nouveautés de cette version » (Réglages › Aide) : les notes de la version installée, dans la fenêtre de mise à
     /// jour, sans installation. Faux si GitHub ne les rend pas (hors ligne, version de développement).
     @discardableResult

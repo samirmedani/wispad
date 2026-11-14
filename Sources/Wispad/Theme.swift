@@ -22,7 +22,7 @@ enum Theme {
     static let keyEdge = Color.adaptive(light: NSColor(white: 0, alpha: 0.22), dark: NSColor(white: 0, alpha: 0.6))
 
     static let radius: CGFloat = 14
-    static let sidebarWidth: CGFloat = 220
+    static let sidebarWidth: CGFloat = 244
     static let spring = Animation.spring(response: 0.32, dampingFraction: 0.86)
     static let quick = Animation.easeOut(duration: 0.14)
     static let hover = Animation.easeOut(duration: 0.18)
@@ -187,7 +187,7 @@ enum MainWindow {
             .environment(\.interactionPreviewReduceMotion, reduceMotion)
             // Captures hors écran : la capture d'une fenêtre ne dessine pas le Liquid Glass (zone blanche), son repli si.
             .environment(\.overlayGlass, systemGlass))
-        window.minSize = NSSize(width: 820, height: 540)
+        window.minSize = NSSize(width: 820, height: 600)
         if offscreen {
             window.setFrameOrigin(NSPoint(x: -20_000, y: -20_000))
         } else {

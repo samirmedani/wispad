@@ -3,6 +3,19 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.8.31 — 14 novembre 2026
+
+Wispad 0.8.31 a une nouvelle barre latérale, plus calme et plus utile.
+
+**Nouveau**
+- **Carte de dictée** en haut : l'état de Wispad, un bouton micro pour dicter sans le raccourci, tes mots du jour avec les sept derniers jours, et ta dernière dictée (un clic ouvre l'Historique).
+- **Sections rangées en trois groupes** : Dictée, Toi, Services. Chacune affiche son chiffre du moment : mots et dictées du jour, série de jours, suggestions du Dictionnaire à valider, état des fournisseurs, dépense des 30 derniers jours.
+- **Dépense en bas** : ce que tes dictées ont coûté ces 30 derniers jours, face au prix d'un abonnement à Wispr Flow.
+
+**Amélioré**
+- Symboles plus sobres ; la section ouverte se repère à son trait de couleur.
+- Les raccourcis ⌘1 à ⌘7 suivent l'ordre de la barre latérale. Le bouton d'apparence passe en bas, à côté des liens.
+
 ## 0.8.30 — 8 novembre 2026
 
 - Historique : le bouton d'informations est aligné à la même place sur toutes les lignes.
