@@ -302,8 +302,8 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
     (app, moment, début du texte sur une ligne). Son texte est flouté tant que le pointeur ne le survole pas (0.8.32).
     Un clic sur la case, ou sur son icône, copie le texte (l'icône devient une coche, « Texte copié. » s'affiche) ; la
     petite croix masque cette dictée, retenue sur l'appareil (jamais exportée) : la suivante s'affiche de nouveau.
-    L'icône copier et la croix sont deux boutons : au survol, chacune s'éclaircit, grossit un peu et prend un rond ;
-    elle se tasse au clic (sans mouvement si « Réduire les animations » est actif) ;
+    L'icône copier et la croix sont deux boutons, avec le survol commun des petites icônes (voir « Survol des petites
+    icônes ») ;
   - les sections en trois groupes : Dictée (Accueil, Historique), Toi (Profil, Dictionnaire), Services (Fournisseurs,
     Consommation). Symboles sobres ; la section ouverte a un fond doux, un trait d'accent sur le bord et son symbole
     en couleur d'accent. Chaque rangée porte son chiffre du moment, rien s'il n'y a rien à dire : mots du jour,
@@ -825,6 +825,13 @@ novembre » → « 03/11/2026 » devient « 03/11 ».
   → OAuth 2.0 (« Auth » seul seulement avec un contexte OAuth), « j'ai fixe le bug » → « j'ai fix le bug ». Chaque règle exige un indice
   impossible en français correct ; une liste de pièges est verrouillée par les tests.
 - Consignes dictées (« OK, ajoute à la liste ») gardées comme texte ; une puce isolée redevient une phrase.
+
+## Survol des petites icônes
+
+Toutes les petites icônes cliquables de la fenêtre (Historique : copier, retranscrire, écouter, supprimer, détails ;
+lecteur audio, Dictionnaire, carte de dernière dictée, bouton d'apparence, croix des fenêtres et des bandeaux) ont le
+même survol : l'icône s'éclaircit, grossit un peu et prend un rond (rouge pour supprimer), puis se tasse au clic.
+Avec « Réduire les animations », seul le rond apparaît, sans mouvement.
 
 ## Mise en forme
 

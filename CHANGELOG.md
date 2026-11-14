@@ -3,6 +3,13 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.8.36 — 14 novembre 2026
+
+Wispad 0.8.36 donne le même survol animé à toutes les petites icônes.
+
+**Amélioré**
+- **Survol animé partout** : dans l'Historique (copier, retranscrire, écouter, supprimer, détails), le lecteur audio, le Dictionnaire et les fenêtres, l'icône sous le pointeur s'éclaircit, grossit un peu et prend un rond, puis se tasse au clic. Le rond de la corbeille est rouge.
+
 ## 0.8.35 — 14 novembre 2026
 
 Wispad 0.8.35 rend plus vivantes les icônes de la dernière dictée.
