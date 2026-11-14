@@ -301,7 +301,9 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
     et une barre par jour sur les sept derniers jours (aujourd'hui en couleur d'accent) ; la dernière dictée réussie
     (app, moment, début du texte sur une ligne). Son texte est flouté tant que le pointeur ne le survole pas (0.8.32).
     Un clic sur la case, ou sur son icône, copie le texte (l'icône devient une coche, « Texte copié. » s'affiche) ; la
-    petite croix masque cette dictée, retenue sur l'appareil (jamais exportée) : la suivante s'affiche de nouveau ;
+    petite croix masque cette dictée, retenue sur l'appareil (jamais exportée) : la suivante s'affiche de nouveau.
+    L'icône copier et la croix sont deux boutons : au survol, chacune s'éclaircit, grossit un peu et prend un rond ;
+    elle se tasse au clic (sans mouvement si « Réduire les animations » est actif) ;
   - les sections en trois groupes : Dictée (Accueil, Historique), Toi (Profil, Dictionnaire), Services (Fournisseurs,
     Consommation). Symboles sobres ; la section ouverte a un fond doux, un trait d'accent sur le bord et son symbole
     en couleur d'accent. Chaque rangée porte son chiffre du moment, rien s'il n'y a rien à dire : mots du jour,
