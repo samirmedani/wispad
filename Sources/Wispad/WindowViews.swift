@@ -474,14 +474,8 @@ struct LastDictationButton: View {
                             .lineLimit(1)
                     }
                     Spacer(minLength: 4)
-                    Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(copied ? Color.green : Color.secondary)
-                        .contentTransition(reduceMotion ? .identity : .symbolEffect(.replace))
-                        .frame(width: 16, height: 16)
-                        .accessibilityHidden(true)
-                    // Place de la croix, posée par-dessus (un bouton ne peut pas en contenir un autre).
-                    Color.clear.frame(width: 16, height: 16)
+                    // Place des icônes copier et masquer, posées par-dessus (un bouton ne peut pas en contenir un autre).
+                    Color.clear.frame(width: 2 * CardIconStyle.size + 4, height: 16)
                 }
                 Text(last.text)
                     .font(.system(size: 12))
@@ -506,18 +500,25 @@ struct LastDictationButton: View {
         }
         .buttonStyle(.plain)
         .overlay(alignment: .topTrailing) {
-            Button(action: dismiss) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 16, height: 16)
-                    .contentShape(Rectangle())
+            HStack(spacing: 4) {
+                Button(action: copy) {
+                    Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                        .font(.system(size: 10, weight: .semibold))
+                        .contentTransition(reduceMotion ? .identity : .symbolEffect(.replace))
+                }
+                .buttonStyle(CardIconStyle(tint: copied ? .green : nil))
+                .help(copied ? String(localized: "Copié") : String(localized: "Copier la dernière dictée"))
+                .accessibilityLabel(String(localized: "Copier la dernière dictée"))
+                Button(action: dismiss) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 9, weight: .bold))
+                }
+                .buttonStyle(CardIconStyle())
+                .help(String(localized: "Masquer cette dictée"))
+                .accessibilityLabel(String(localized: "Masquer cette dictée"))
             }
-            .buttonStyle(HoverButtonStyle(treatment: .icon))
-            .padding(.top, 6)
-            .padding(.trailing, 5)
-            .help(String(localized: "Masquer cette dictée"))
-            .accessibilityLabel(String(localized: "Masquer cette dictée"))
+            .padding(.top, 4)
+            .padding(.trailing, 3)
         }
         .onHover { hovering = $0 }
         .help(copied ? String(localized: "Copié") : String(localized: "Copier la dernière dictée"))
@@ -548,6 +549,46 @@ struct LastDictationButton: View {
             : formatter.localizedString(for: last.date, relativeTo: now)
         guard let app = last.app, !app.isEmpty else { return moment }
         return app + " · " + moment
+    }
+}
+
+/// Petite icône de la carte de dictée : au survol, elle s'éclaircit, grossit un peu et prend un rond ; elle se tasse
+/// au clic. `tint` remplace la couleur, par exemple le vert de la copie confirmée.
+struct CardIconStyle: ButtonStyle {
+    static let size: CGFloat = 20
+    var tint: Color?
+
+    func makeBody(configuration: Configuration) -> some View {
+        CardIconBody(configuration: configuration, tint: tint)
+    }
+}
+
+private struct CardIconBody: View {
+    var configuration: ButtonStyleConfiguration
+    var tint: Color?
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.interactionReduceMotion) private var reduceMotion
+    @Environment(\.interactionPreviewHover) private var previewHover
+    @State private var hovering = false
+
+    private var highlighted: Bool { hovering || previewHover }
+
+    var body: some View {
+        let pressed = configuration.isPressed
+        let ring = contrast == .increased ? 0.24 : 0.14
+        configuration.label
+            .foregroundStyle(tint ?? (highlighted ? Color.primary : Color.secondary))
+            .frame(width: CardIconStyle.size, height: CardIconStyle.size)
+            .background {
+                Circle()
+                    .fill(Color.primary.opacity(pressed ? ring + 0.08 : highlighted ? ring : 0))
+                    .scaleEffect(highlighted || pressed ? 1 : 0.6)
+            }
+            .scaleEffect(pressed ? 0.86 : highlighted ? 1.08 : 1)
+            .contentShape(Circle())
+            .animation(reduceMotion ? nil : Theme.spring, value: highlighted)
+            .animation(reduceMotion ? nil : Theme.quick, value: pressed)
+            .onHover { hovering = $0 }
     }
 }
 

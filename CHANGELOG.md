@@ -3,6 +3,13 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.8.35 — 14 novembre 2026
+
+Wispad 0.8.35 rend plus vivantes les icônes de la dernière dictée.
+
+**Amélioré**
+- **Copier et masquer réagissent au survol** : dans la carte de la barre latérale, l'icône sous le pointeur s'éclaircit, grossit un peu et prend un rond, puis se tasse au clic. L'icône copier est maintenant un vrai bouton.
+
 ## 0.8.34 — 14 novembre 2026
 
 Wispad 0.8.34 découpe tes longues dictées en paragraphes.
