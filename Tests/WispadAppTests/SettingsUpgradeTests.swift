@@ -86,6 +86,7 @@ struct SettingsUpgradeTests {
         settings.muteWhileDictating = false
         settings.muteMode = .always
         settings.githubStarClicked = true
+        settings.dismissedLastDictationID = "fixture-dictation"
         settings.updateRemindedVersion = "0.1.2"
         settings.homePeriod = .days30
         settings.usagePeriod = .all

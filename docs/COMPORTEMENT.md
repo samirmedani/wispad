@@ -299,7 +299,9 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
     micro rouge qui lance une dictée mains libres (comme deux appuis sur le raccourci, ou « Dicter (mains libres) » du
     menu de la barre des menus) puis l'arrête (Maj tenue : Entrée part après le collage) ; les mots dictés aujourd'hui
     et une barre par jour sur les sept derniers jours (aujourd'hui en couleur d'accent) ; la dernière dictée réussie
-    (app, moment, début du texte sur une ligne), dont un clic ouvre l'Historique ;
+    (app, moment, début du texte sur une ligne). Son texte est flouté tant que le pointeur ne le survole pas (0.8.32).
+    Un clic sur la case, ou sur son icône, copie le texte (l'icône devient une coche, « Texte copié. » s'affiche) ; la
+    petite croix masque cette dictée, retenue sur l'appareil (jamais exportée) : la suivante s'affiche de nouveau ;
   - les sections en trois groupes : Dictée (Accueil, Historique), Toi (Profil, Dictionnaire), Services (Fournisseurs,
     Consommation). Symboles sobres ; la section ouverte a un fond doux, un trait d'accent sur le bord et son symbole
     en couleur d'accent. Chaque rangée porte son chiffre du moment, rien s'il n'y a rien à dire : mots du jour,

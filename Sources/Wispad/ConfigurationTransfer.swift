@@ -11,7 +11,7 @@ extension AppSettings {
     /// la connexion, les clés coupées, le serveur de modèle local, l'état du premier lancement et de la navigation.
     static let deviceOnlyKeys: Set<String> = [
         "microphoneUID", "launchAtLogin", "disabledKeys", "localModelURL", "onboardingCompleted", "onboardingResume",
-        "githubStarClicked", "updateRemindedVersion", "lastSection", "settingsTab",
+        "githubStarClicked", "dismissedLastDictationID", "updateRemindedVersion", "lastSection", "settingsTab",
     ]
 
     /// Réglages à exporter, clé par clé, sans ceux de l'appareil.
