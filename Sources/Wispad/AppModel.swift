@@ -156,7 +156,11 @@ final class AppModel {
         selectedSection = settings.lastSection
         reload()
         purgeAudio()
-        if persistsSettings { refreshPermissions() }
+        if persistsSettings {
+            refreshPermissions()
+            // Habitudes de saisie (empreintes de champs, sans texte) : gardées d'un lancement à l'autre.
+            ProbableInputMemory.shared.configure(directory: supportURL)
+        }
         if !settings.onboardingCompleted {
             onboarding = OnboardingController(model: self, step: OnboardingFlow.resumeStep(saved: settings.onboardingResume))
         }

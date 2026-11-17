@@ -24,6 +24,8 @@ final class Capture {
     /// Maj pour envoyer : demandé à l'arrêt, avec le compte des frappes à cet instant (une frappe depuis l'annule).
     var sendAfterPaste = false
     var keystrokesAtEnd = 0
+    /// Touches de frappe à l'arrêt : une frappe depuis empêche de chercher un champ probable.
+    var typingKeysAtEnd = 0
     var audio: (any AudioRecording)?
     var audioURL: URL?
     var speech: SpeechRequest?

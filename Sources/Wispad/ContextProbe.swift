@@ -28,13 +28,14 @@ final class DictationContext: @unchecked Sendable {
     /// Le collage n'a pas été tenté : le curseur a quitté ce champ pendant la dictée. Noté par l'insertion, pour que
     /// la bulle le dise.
     var leftTextField = false
-    /// Compteur à l'arrêt de la dictée, seulement si la recherche d'un champ est autorisée pour ce collage.
+    /// Touches de frappe à l'arrêt de la dictée (`KeyboardTap.typingKeys`), seulement si la recherche d'un champ
+    /// probable est autorisée pour ce collage. Une frappe depuis l'arrêt l'empêche : l'utilisateur écrit quelque part.
     var probableInputKeys: Int?
     var usedProbableInput = false
-    /// Touches de frappe au début de la dictée (`KeyboardTap.typingKeys`) : aucune depuis, le texte peut suivre le
-    /// curseur jusqu'au champ choisi, même dans une autre app.
-    var typingKeysAtStart = KeyboardTap.typingKeys
-    var typedSinceStart: Bool { KeyboardTap.typingKeys != typingKeysAtStart }
+    /// La dictée réécrit la sélection sur consigne : elle reste liée à l'app et au champ du début.
+    var rewritesSelection = false
+    /// Début de la dictée (horloge de KeyboardTap.now()) : seuls les clics faits depuis comptent.
+    var startedAt = KeyboardTap.now()
     /// Le champ actif a été lu (ou sa lecture a échoué) : rien de plus à attendre.
     private(set) var fieldRead = false
 
@@ -116,9 +117,11 @@ enum ContextProbe {
         field.isSecure = isSecure(element)
         guard !field.isSecure else { return field }
         let role = string(kAXRoleAttribute, element)
+        let cursor = selectedRange(element) != nil
         field.isTextField = FocusedField.kind(role: role, subrole: string(kAXSubroleAttribute, element),
-                                              hasTextCursor: selectedRange(element) != nil,
-                                              editable: role == FocusedField.pageRole && isEditable(element),
+                                              hasTextCursor: cursor,
+                                              editable: FocusedField.needsEditableCheck(role: role, hasTextCursor: cursor)
+                                                  && isEditable(element),
                                               bundleID: nil) == .text
         field.selectedText = string(kAXSelectedTextAttribute, element)
         if let count = number(kAXNumberOfCharactersAttribute, element), count <= 4_000,

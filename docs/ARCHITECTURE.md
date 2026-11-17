@@ -425,6 +425,8 @@ ne réécrit jamais un fichier abîmé (les clés de sa partie intacte servent).
   `--profile-preview`, `--profile-brain`, `--profile-hide tics,fixes`, `--profile-topics-intro` (avec `--keys-preview`
   pour une clé de correction fictive), `--profile-topics-preview`, `--profile-cards-preview` (panneau « Personnaliser »).
 - Tests réseau à la demande, clés de test seulement : `scripts/live-test.sh SelfCorrectionLiveTests`.
+- Champ probable sur une vraie fenêtre ouverte, en lecture seule (candidats et scores, sans leur texte) :
+  `WISPAD_PROBE_FIELDS=<identifiant de l'app> swift test --filter ProbableInputProbeTests`.
 - Sonde de délais (clés de test) : `WISPAD_LATENCY_PROBE=1 scripts/live-test.sh LatencyProbeLiveTests` mesure, sur
   des phrases synthétiques, le délai entre l'arrêt et le texte final du flux xAI. Elle mesure aussi le fichier
   complet, le protocole `finalize` / `transcript.done` et la correction Grok. Elle n'affiche que des durées et

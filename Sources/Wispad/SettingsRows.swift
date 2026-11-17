@@ -356,7 +356,7 @@ enum SettingsPresentation {
 
     static let findProbableInput = SettingText(
         title: String(localized: "Chercher un champ de saisie"),
-        summary: String(localized: "Sans curseur actif, insère la dictée dans un champ vide de la fenêtre si le choix est clair.")
+        summary: String(localized: "Sans curseur dans un champ, écrit dans le champ le plus probable de la fenêtre : zone de message, réponse, dernier champ utilisé.")
     )
 
     static let mute = SettingText(

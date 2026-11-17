@@ -103,18 +103,28 @@ public enum FocusedField {
     public static let pageRole = "AXWebArea"
 
     /// `role` : nil quand aucun élément n'a le focus (ou qu'il n'a pas pu être lu).
-    /// `editable` : l'élément se déclare modifiable (valeur modifiable ou ancêtre modifiable) ; lu seulement pour une
-    /// page web. Une page lisible qui annonce un curseur sans être modifiable n'est pas un champ : on n'y écrit pas.
+    /// `editable` : l'élément se déclare modifiable (valeur modifiable ou ancêtre modifiable) ; lu seulement quand
+    /// `needsEditableCheck` le demande. Une page lisible qui annonce un curseur sans être modifiable n'est pas un champ :
+    /// on n'y écrit pas. Pareil pour un lien, un bouton ou une liste de la page auquel Chrome prête un curseur.
     /// Une page sans curseur reste indécise : son arbre d'accessibilité n'est peut-être pas encore ouvert.
     public static func kind(role: String?, subrole: String? = nil, hasTextCursor: Bool, editable: Bool = false,
                             bundleID: String?) -> FocusedFieldKind {
         if role == pageRole, !editable { return hasTextCursor ? .notText : .unknown }
+        if hasTextCursor, let role, nonTextRoles.contains(role), !editable { return .notText }
         if hasTextCursor { return .text }
         if let role, textRoles.contains(role) { return .text }
         if let subrole, textRoles.contains(subrole) { return .text }
         if let bundleID, textlessApps.contains(bundleID) { return .notText }
         guard let role else { return .unknown }
         return nonTextRoles.contains(role) ? .notText : .unknown
+    }
+
+    /// Le curseur seul ne suffit pas à juger l'élément : la page elle-même, ou un lien, un bouton, une liste avec un
+    /// curseur de texte (Chrome en prête un au lien cliqué, mesuré sur X le 17 novembre 2026). Il faut alors lire
+    /// s'il se déclare modifiable.
+    public static func needsEditableCheck(role: String?, hasTextCursor: Bool) -> Bool {
+        guard let role else { return false }
+        return role == pageRole || (hasTextCursor && nonTextRoles.contains(role))
     }
 
     /// Une lecture inchangée peut être un instantané AX en retard : elle ne prouve pas l'échec d'un envoi.

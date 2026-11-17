@@ -16,7 +16,7 @@ struct InsertionField: @unchecked Sendable {
     var role: String?
     var subrole: String?
     var hasTextCursor = false
-    /// Page web qui se déclare modifiable (document en mode édition) : son curseur est celui d'un champ.
+    /// Page web (ou lien, bouton, liste avec un curseur) qui se déclare modifiable : son curseur est celui d'un champ.
     var editable = false
     var selection: NSRange?
 
@@ -42,7 +42,9 @@ struct InsertionField: @unchecked Sendable {
             role: role,
             subrole: ContextProbe.string(kAXSubroleAttribute, element),
             hasTextCursor: selection != nil,
-            editable: role == FocusedField.pageRole && ContextProbe.isEditable(element), selection: selection
+            editable: FocusedField.needsEditableCheck(role: role, hasTextCursor: selection != nil)
+                && ContextProbe.isEditable(element),
+            selection: selection
         )
     }
 
@@ -98,9 +100,22 @@ struct InsertionSystem {
     var read: (pid_t) async -> InsertionField = { pid in
         await InsertionField.read(pid: pid, within: TextInserter.fieldReadLimit)
     }
-    var findProbableInput: (pid_t, AXUIElement?) async -> ProbableInput.Target? = { await ProbableInput.find(pid: $0, focus: $1) }
+    /// Champ le plus probable de la fenêtre active, lu en lecture seule (`ProbableInput`).
+    var findProbableInput: (ProbableInput.Request) async -> ProbableInput.Target? = { await ProbableInput.find($0) }
+    /// Place le focus dans le champ choisi, comme un clic ; faux si rien n'a pu être vérifié.
+    var focusProbableInput: (ProbableInput.Target, pid_t, Int) async -> Bool = {
+        await ProbableInput.focus($0, pid: $1, typingKeys: $2)
+    }
     var fillProbableInput: (ProbableInput.Target, String, pid_t, Int) async -> InsertionStatus = {
-        await ProbableInput.fill($0, text: $1, pid: $2, keys: $3)
+        await ProbableInput.fill($0, text: $1, pid: $2, typingKeys: $3)
+    }
+    /// Dernier clic depuis cet instant (horloge de KeyboardTap.now()), et pointeur de la souris.
+    var click: (Int) -> CGPoint? = { ClickTracker.click(since: $0) }
+    var latestClick: () -> ClickTracker.Click? = { ClickTracker.latest }
+    var pointer: () -> CGPoint? = { ClickTracker.pointer() }
+    /// Champ où la dictée vient d'arriver : il compte pour les prochaines dictées sans curseur dans un champ.
+    var remember: (pid_t, String?, AXUIElement?) -> Void = { pid, bundle, element in
+        ProbableInput.remember(pid: pid, bundleID: bundle, element: element)
     }
     var pasteboard: NSPasteboard = .general
     /// Sur le fil principal : la touche V se cherche dans la disposition du clavier, que macOS n'autorise que là.
@@ -198,9 +213,8 @@ enum TextInserter {
             return .failed
         }
         let frontmost = system.frontmostPID()
-        // Le texte va là où est le curseur à la fin, comme on l'attend d'une dictée : sans champ au départ, ou sans rien
-        // tapé à la main depuis (un clic dans un champ d'une autre app pendant la dictée). Un champ de départ suivi de
-        // frappe reste lié à son app (on écrit peut-être ailleurs), une sélection aussi (jamais de réécriture ailleurs).
+        // Le texte va là où est l'utilisateur à la fin, comme on l'attend d'une dictée, même s'il a changé d'app ou
+        // tapé entre-temps. Seule une sélection réécrite sur consigne reste liée à son app (jamais de réécriture ailleurs).
         let followsFocus = Self.followsFocus(context)
         let target = followsFocus ? frontmost : context.pid ?? frontmost
         guard let pid = target, frontmost == pid else {
@@ -223,7 +237,7 @@ enum TextInserter {
             log.notice("collage attendu \(Int(waited * 1_000), privacy: .public) ms : touches modificatrices relâchées")
         }
         let bundle = system.bundleID(pid)
-        let field = await system.read(pid)
+        var field = await system.read(pid)
         guard shouldProceed(), !Task.isCancelled else { return .cancelled }
         guard system.frontmostPID() == pid else { return .noTarget }
         let originalPID = context.pid
@@ -237,32 +251,49 @@ enum TextInserter {
             Self.logSecureRefusal(field: field, system: system, target: pid)
             return .refusedSecure
         }
-        let kind = field.kind(bundleID: bundle)
+        var kind = field.kind(bundleID: bundle)
         let isCodex = bundle == ContextProbe.codexBundleID
-        // Codex expose parfois sa fenêtre sans focus. Autoriser une recherche en lecture seule dans ce cas,
-        // mais uniquement un champ visible et sûr ; à défaut, garder le collage usuel de l'éditeur opaque.
-        let canSearch = field.element != nil
-            ? (kind == .notText || field.role == FocusedField.pageRole || field.role == "AXGroup")
-            : isCodex
-        if kind != .text, canSearch,
-           let keys = context.probableInputKeys, keys == KeyboardTap.keystrokes, originalPID == pid,
-           !ContextProbe.isOwnProcess(pid), !context.startedInTextField, !context.isSecure,
-           !context.typedSinceStart, context.selectedText?.isEmpty != false, !system.secureInput() {
-            let candidate = await system.findProbableInput(pid, field.element)
+        // Curseur hors d'un champ : le champ le plus probable de la fenêtre (zone de message, champ du début, dernier
+        // champ utilisé, sous le dernier clic). Focus illisible ou indécis : un éditeur caché l'a peut-être, il faut une
+        // preuve forte. Jamais si l'utilisateur tape depuis l'arrêt, ni pour une sélection, ni vers un mot de passe.
+        var choseField = false
+        if kind != .text, let typing = context.probableInputKeys, typing == KeyboardTap.typingKeys,
+           !ContextProbe.isOwnProcess(pid), !context.isSecure, !context.rewritesSelection,
+           !Self.secureInputHeld(by: pid, system: system) {
+            let request = ProbableInput.Request(
+                pid: pid, bundleID: bundle, focus: field.element, start: originalPID == pid ? context.element : nil,
+                click: system.click(context.startedAt), pointer: system.pointer(), strict: kind == .unknown
+            )
+            let candidate = await system.findProbableInput(request)
             guard shouldProceed(), !Task.isCancelled else { return .cancelled }
-            guard system.frontmostPID() == pid, keys == KeyboardTap.keystrokes, !system.secureInput() else { return .noTarget }
+            guard system.frontmostPID() == pid, typing == KeyboardTap.typingKeys else { return .noTarget }
             if let candidate {
-                let status = await system.fillProbableInput(candidate, text, pid, keys)
-                if status.delivered {
+                if await system.focusProbableInput(candidate, pid, typing) {
+                    choseField = true
                     context.usedProbableInput = true
-                    last = nil
-                    didSendPaste()
+                    field = await system.read(pid)
+                    guard shouldProceed(), !Task.isCancelled else { return .cancelled }
+                    guard system.frontmostPID() == pid else { return .noTarget }
+                    if field.isSecure {
+                        Self.logSecureRefusal(field: field, system: system, target: pid)
+                        return .refusedSecure
+                    }
+                    kind = field.kind(bundleID: bundle)
+                } else if candidate.native, candidate.empty {
+                    // Champ natif où le focus ne se place pas : sa valeur s'écrit directement, sans touche.
+                    let status = await system.fillProbableInput(candidate, text, pid, typing)
+                    if status.delivered {
+                        context.usedProbableInput = true
+                        last = nil
+                        didSendPaste()
+                        if status == .inserted { system.remember(pid, bundle, candidate.element) }
+                    }
+                    if status != .noTarget { return status }
                 }
-                return status
             }
         }
-        guard kind != .notText else { return .noTarget }
-        if Self.leftTextField(context: context, field: field, kind: kind, pid: pid) {
+        guard kind != .notText || choseField else { return .noTarget }
+        if !choseField, Self.leftTextField(context: context, field: field, kind: kind, pid: pid) {
             log.notice("collage retenu : le curseur a quitté le champ du début de la dictée")
             context.leftTextField = true
             // Pas de ⌘V : la zone de saisie est quand même repérée, pour que la carte « Texte prêt » ne la couvre pas.
@@ -345,6 +376,8 @@ enum TextInserter {
         }
         // Un texte non confirmé ne doit jamais servir à inventer une espace à la dictée suivante.
         last = confirmed ? Memory(pid: pid, element: field.element, text: joined, keystrokes: keystrokes, at: Date()) : nil
+        // Champ confirmé : il compte pour les prochaines dictées finies sans curseur dans un champ.
+        if confirmed, context.probableInputKeys != nil { system.remember(pid, bundle, field.element) }
         if confirmed {
             transaction.restoreIfUnchanged()
         } else {
@@ -477,15 +510,39 @@ enum TextInserter {
         return chunks
     }
 
-    /// Le curseur a quitté le champ pendant la dictée : elle a commencé dans un champ de texte de cette app, et le focus
-    /// est maintenant sur un autre élément lisible qui n'en est pas un (la page, la conversation, un groupe). Cette app
-    /// expose ses champs (celui du début a été lu) : ce n'est pas un éditeur caché, et un ⌘V partirait dans le vide,
-    /// sans que rien ne puisse le prouver ensuite. Un focus illisible ne prouve rien : le collage reste envoyé.
+    /// Le texte suit l'utilisateur jusqu'à l'app où il est à la fin de la dictée. Seule une sélection réécrite sur
+    /// consigne reste liée à son app : jamais de réécriture ailleurs. Le 17 novembre 2026, trois dictées (Discord,
+    /// Chrome) finissaient en « Texte prêt » parce qu'une touche tapée pendant l'écoute liait le texte à l'app du début.
     static func followsFocus(_ context: DictationContext) -> Bool {
-        let noSelection = context.selectedText?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false
-        return noSelection && (!context.startedInTextField || !context.typedSinceStart)
+        !context.rewritesSelection
     }
 
+    /// Saisie sécurisée tenue par l'app visée, ou par une app que macOS ne nomme pas : aucun champ n'est cherché.
+    static func secureInputHeld(by pid: pid_t, system: InsertionSystem) -> Bool {
+        guard system.secureInput() else { return false }
+        return system.secureInputHolder().map { $0 == pid } ?? true
+    }
+
+    /// Carte « Texte prêt » qui attend un champ : après un clic, le champ sous le clic (ou son éditeur parent) reçoit le
+    /// focus s'il ne l'a pas pris lui-même (éditeur qui n'annonce pas son focus). Vrai quand le curseur est dans un champ.
+    @MainActor static func focusInputAtLatestClick(system: InsertionSystem = InsertionSystem()) async -> Bool {
+        guard system.trusted(), let pid = system.frontmostPID(), !ContextProbe.isOwnProcess(pid),
+              let click = system.latestClick(), KeyboardTap.now() - click.at < 3_000 else { return false }
+        let field = await system.read(pid)
+        guard !field.isSecure, system.frontmostPID() == pid else { return false }
+        if field.kind(bundleID: system.bundleID(pid)) == .text { return true }
+        guard !secureInputHeld(by: pid, system: system) else { return false }
+        let typing = KeyboardTap.typingKeys
+        let request = ProbableInput.Request(pid: pid, bundleID: system.bundleID(pid), focus: field.element,
+                                            click: click.point, clickOnly: true)
+        guard let target = await system.findProbableInput(request), system.frontmostPID() == pid else { return false }
+        return await system.focusProbableInput(target, pid, typing)
+    }
+
+    /// Le curseur a quitté le champ pendant la dictée : elle a commencé dans un champ de texte de cette app, et le focus
+    /// est maintenant sur un autre élément lisible qui n'en est pas un (la page, la conversation, un groupe), sans champ
+    /// probable trouvé. Cette app expose ses champs (celui du début a été lu) : ce n'est pas un éditeur caché, et un ⌘V
+    /// partirait dans le vide. Un focus illisible ne prouve rien : le collage reste envoyé.
     static func leftTextField(context: DictationContext, field: InsertionField, kind: FocusedFieldKind, pid: pid_t) -> Bool {
         guard context.startedInTextField, context.pid == pid, kind != .text, field.role != nil,
               let now = field.element else { return false }

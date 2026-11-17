@@ -53,9 +53,13 @@ final class HotkeyMonitor: HotkeyControl {
         refreshConfig()
         tap.start()
         // Un clic peut déplacer le curseur ou envoyer le message : le raccord avec le dernier collage n'est
-        // plus sûr. Seul un compteur avance, rien n'est lu du clic.
-        clickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { _ in
+        // plus sûr. Un compteur avance, et la position du clic gauche est gardée pour trouver le champ visé
+        // (`ClickTracker`) : rien n'est lu de ce qui est cliqué.
+        clickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { event in
             KeyboardTap.noteInput()
+            if event.type == .leftMouseDown {
+                MainActor.assumeIsolated { ClickTracker.note(NSEvent.mouseLocation) }
+            }
         }
     }
 
