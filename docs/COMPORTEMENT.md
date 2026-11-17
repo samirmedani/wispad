@@ -1132,29 +1132,48 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
   presse-papiers et confirme « Copié » (1,5 s), **Coller** le colle dans le champ de l'app active (même collage que
   « Coller la dernière dictée »). Le collage garde tous les formats du presse-papiers précédent et refuse les champs
   sécurisés.
-- **Chercher un champ de saisie** (Réglages › Général, activé par défaut) : si une dictée commence et se termine
-  sans champ actif dans la même app, Wispad peut remplir un champ vide, visible et modifiable dans sa fenêtre active.
-  Une seule zone multiligne est préférée aux champs courts ; plusieurs candidats de même priorité, une cible déjà
-  remplie ou une recherche incomplète font renoncer. Ni champ sécurisé, ni barre d'outils, ni champ de recherche.
-  Le repli ne déplace pas le focus, ne modifie pas le presse-papiers et n'envoie jamais le message avec Maj.
-  Codex reçoit la demande d'accessibilité étendue et peut être inspecté même s'il n'annonce pas d'élément actif,
-  à condition que sa fenêtre et un champ fiable soient lisibles. S'il ne montre aucun champ, Wispad garde le
-  collage habituel ; si le presse-papiers de ce collage est resté certainement non lu, la carte de récupération
-  s'affiche. Aucun second collage automatique dans ce cas.
-- Dictée commencée hors d'un champ (ni champ de texte reconnu ni sélection au départ), sans cible trouvée, et finie avant que
-  l'utilisateur ait cliqué dans l'un d'eux : la carte dit « Clique dans un champ : le texte s'y écrira ». Tant
-  qu'elle est affichée (12 s, en pause au survol), le curseur de l'app au premier plan est relu toutes les 0,25 s ;
-  dès qu'il entre dans un champ de texte reconnu (ni sécurisé, ni dans Wispad), le texte s'y colle comme avec
-  **Coller**. Un conteneur illisible ne déclenche rien. Carte fermée, Copier, nouvelle dictée ou carte remplacée :
-  l'attente s'arrête. Même attente pour une dictée commencée dans un champ dont le curseur est sorti, si rien n'a été
-  tapé à la main depuis son début (voir « Le texte suit le curseur »).
-- **Le texte suit le curseur** : il va dans le champ où est le curseur à la fin de la dictée, même dans une autre app
-  (dictée commencée dans Codex, clic dans un champ de Chrome avant la fin). Seule exception : une dictée commencée dans
-  un champ, suivie de frappe à la main (ni raccourci ⌘ ou ⌃, ni modificateur seul) avant la fin, reste liée à son app :
-  l'utilisateur écrit peut-être dans l'autre app. Une sélection à remplacer reste toujours liée à son app.
+- **Chercher un champ de saisie** (Réglages › Général, activé par défaut) : une dictée finie sans curseur dans un
+  champ (focus sur la page, une liste, un message, un lien, la fenêtre, ou illisible) va dans le champ le plus probable
+  de la fenêtre active de l'app au premier plan. Wispad lit cette fenêtre par l'accessibilité, en lecture seule,
+  0,35 s au plus (branches hors de l'écran ignorées, listes de messages en dernier), et note chaque champ visible, actif
+  et modifiable, sans lire son texte : zone multiligne ; texte indicatif (« Message », « Répondre », « Quoi de neuf »,
+  « Poser une question » comptent pour, « Rechercher », adresse, mot de passe et champs de formulaire contre) ; taille
+  et largeur ; bas de la fenêtre ; contenu principal de la page plutôt que l'en-tête ou une colonne annexe ; fenêtre
+  modale de la page (réponse, nouveau message) devant le reste ; champ vide plutôt que rempli. S'y ajoutent les signaux
+  de l'utilisateur : clic sur le champ ou près de lui depuis le début de la dictée, champ du début de la dictée,
+  dernier champ où Wispad a écrit dans cette app (30 min), habitudes (voir ci-dessous) et, plus faiblement, la
+  position du pointeur. Le champ retenu doit avoir au moins 2,5 points et 1,5 point d'avance (un seul champ visible :
+  1 point). Focus illisible ou indécis (un éditeur caché l'a peut-être) ou parcours incomplet : il faut un signal de
+  l'utilisateur, ou une zone de message évidente (7,5 points et 3 d'avance). Jamais la barre d'adresse, les barres
+  d'outils, onglets et menus, un champ de recherche du système ou un mot de passe. Aucune recherche si l'utilisateur a
+  tapé depuis l'arrêt, pour une sélection réécrite, ou quand l'app visée tient la saisie sécurisée.
+  Le champ choisi reçoit le focus comme après un clic, dans la même fenêtre, si rien n'a bougé depuis la recherche
+  (même fenêtre au premier plan, même élément actif, aucune frappe) ; un texte déjà présent garde la dictée à sa fin.
+  Puis le collage habituel part et se vérifie dans ce champ ; Maj pour envoyer n'y envoie jamais le message. Un champ
+  natif vide qui refuse le focus reçoit sa valeur directement, sans presse-papiers. Sans choix net, rien ne change :
+  collage envoyé pour un focus illisible (Codex, apps Electron), carte « Clique dans un champ » sinon. Mesuré le
+  17 novembre 2026 : zone de message de Discord choisie devant sa recherche en 58 ms, zone « Quoi de neuf » de X dans
+  Chrome devant la recherche du site en 95 ms.
+- **Habitudes de saisie** : après chaque dictée confirmée dans un champ (réglage actif), la forme du champ (rôle,
+  identifiants techniques de la page, place dans la fenêtre) est gardée sur le Mac sous forme d'empreinte, avec l'app
+  et le site eux aussi réduits à une empreinte : ni texte, ni adresse, ni libellé. Fichier champs-probables.json du
+  dossier de Wispad, 300 lieux et 12 formes par lieu au plus, les plus anciens oubliés.
+- Dictée finie sans champ trouvé : la carte dit « Clique dans un champ : le texte s'y écrira ». Tant qu'elle est
+  affichée (12 s, en pause au survol), le curseur de l'app au premier plan est relu toutes les 0,25 s ; dès qu'il entre
+  dans un champ de texte reconnu (ni sécurisé, ni dans Wispad), le texte s'y colle comme avec **Coller**. Un clic sur un
+  champ qui n'annonce pas son focus (éditeur riche, app Electron) y place le curseur, puis le texte s'y colle. Sans
+  clic, un conteneur illisible ne déclenche rien. Carte fermée, Copier, nouvelle dictée ou carte remplacée : l'attente
+  s'arrête.
+- **Le texte suit l'utilisateur** : il va dans l'app où il est à la fin de la dictée, même s'il a changé d'app ou tapé à
+  la main pendant l'écoute (trois dictées commencées dans Discord et Chrome restaient « prêtes à copier » le
+  17 novembre 2026). Seule une sélection réécrite sur consigne reste liée à son app ; une simple sélection au départ
+  ne lie plus rien. Dictée commencée dans un champ dont le curseur est sorti (vers la page, un message) : ce champ est
+  proposé en premier à la recherche du champ probable.
 - **Fenêtre sans champ** : une app native dont aucun champ n'a le focus annonce sa fenêtre (`AXWindow`). Wispad n'y
-  envoie plus de ⌘V dans le vide (le clic suivant dans un champ ne recevait rien) : la carte attend un clic dans un
-  champ. Une app Electron illisible (Codex), qui n'annonce rien, reçoit le collage comme avant.
+  envoie plus de ⌘V dans le vide : il cherche le champ probable, sinon la carte attend un clic dans un champ. Un lien, un
+  bouton ou une liste auquel Chrome prête un curseur de texte sans être modifiable n'est pas un champ non plus (lien
+  cliqué sur X, 17 novembre 2026). Une app Electron illisible (Codex), qui n'annonce rien, reçoit le collage comme avant
+  quand aucun champ probable n'est sûr.
 - Champ qui ignore ⌘V : le collage est envoyé dans un champ de texte reconnu, lisible et modifiable, et ce champ est
   resté identique pendant la seconde de confirmation (page qui intercepte le collage ou le raccourci, ⌘V perdu ; deux
   dictées dans Chrome le 5 novembre 2026). Wispad écrit alors le texte une seule fois dans ce même champ, autrement :

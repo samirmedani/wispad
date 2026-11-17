@@ -306,6 +306,13 @@ struct PasteShortcutTests {
         // Les vrais champs web gardent leur rôle de texte, et un groupe avec curseur (mode édition) reste un champ.
         #expect(FocusedField.kind(role: "AXTextArea", hasTextCursor: true, bundleID: "com.google.Chrome") == .text)
         #expect(FocusedField.kind(role: "AXGroup", hasTextCursor: true, bundleID: "com.google.Chrome") == .text)
+        // Lien cliqué sur X : Chrome lui prête un curseur, mais rien n'y est modifiable.
+        #expect(FocusedField.kind(role: "AXLink", hasTextCursor: true, bundleID: "com.google.Chrome") == .notText)
+        #expect(FocusedField.kind(role: "AXLink", hasTextCursor: true, editable: true, bundleID: "com.google.Chrome") == .text)
+        #expect(FocusedField.needsEditableCheck(role: "AXLink", hasTextCursor: true))
+        #expect(!FocusedField.needsEditableCheck(role: "AXLink", hasTextCursor: false))
+        #expect(!FocusedField.needsEditableCheck(role: "AXTextArea", hasTextCursor: true))
+        #expect(FocusedField.needsEditableCheck(role: "AXWebArea", hasTextCursor: false))
     }
 
     @Test func pasteStatusNeedsTextlessFocusBeforeAndAfter() {

@@ -3,6 +3,18 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.8.37 — 17 novembre 2026
+
+Wispad 0.8.37 trouve le champ où écrire quand le curseur n'est dans aucun champ.
+
+**Amélioré**
+- **Champ de saisie probable** : une dictée finie sans curseur dans un champ va dans le champ le plus probable de la fenêtre active, par exemple la zone de message de Discord, de Slack ou de Codex, ou « Quoi de neuf » et la réponse sur X, jamais la barre d'adresse ni une recherche. Wispad lit la fenêtre sur le Mac, sans rien envoyer, en une centaine de millisecondes. Il tient compte de l'endroit où tu as cliqué, du champ où la dictée a commencé, du dernier champ utilisé et de tes habitudes par app et par site (gardées en empreintes, sans texte). Sans choix net, la carte « Clique dans un champ » reste là.
+- **Clic après la dictée** : la carte qui attend un champ reconnaît aussi un clic sur un éditeur qui n'annonce pas son curseur (apps Electron, éditeurs riches).
+
+**Corrigé**
+- Une dictée commencée dans une app puis finie dans une autre restait « prête à copier » si une touche avait été tapée pendant l'écoute, ou si du texte était sélectionné au départ. Le texte suit maintenant l'app où tu es à la fin ; seule une sélection réécrite sur consigne reste liée à son app.
+- Dans Chrome, un lien cliqué était pris pour un champ, et le collage partait sur ce lien.
+
 ## 0.8.36 — 14 novembre 2026
 
 Wispad 0.8.36 donne le même survol animé à toutes les petites icônes.

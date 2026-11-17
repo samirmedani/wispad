@@ -541,6 +541,7 @@ final class DictationCoordinator {
         if current.marks.released == nil {
             current.marks.released = KeyboardTap.now()
             current.keystrokesAtEnd = KeyboardTap.keystrokes
+            current.typingKeysAtEnd = KeyboardTap.typingKeys
         }
         if allowVoiceTail, !current.restarting.withLock({ $0 }), let audio = current.audio, audio.needsVoiceTail {
             current.audioWatch?.cancel()
@@ -984,8 +985,9 @@ final class DictationCoordinator {
             trial.receiveDictation(finalText)
             status = .inserted
         } else {
+            context.rewritesSelection = commandSelection != nil
             if model.settings.findProbableInput, commandSelection == nil {
-                context.probableInputKeys = current.keystrokesAtEnd
+                context.probableInputKeys = current.typingKeysAtEnd
             }
             status = await model.dependencies.insert(finalText, context, { [weak job] in
                 job.map { !$0.cancelled } ?? false
@@ -1156,16 +1158,26 @@ final class DictationCoordinator {
         if waitsForField, let shown = shownFailure { awaitField(for: shown.id) }
     }
 
-    /// Carte « Texte prêt » d'une dictée commencée sans champ : tant qu'elle est là (12 s, en pause au survol), le
+    /// Carte « Texte prêt » d'une dictée finie sans champ : tant qu'elle est là (12 s, en pause au survol), le
     /// curseur est relu toutes les 0,25 s ; dès qu'il entre dans un champ de texte reconnu, le texte s'y colle comme
-    /// avec Coller. Fermée, copiée, remplacée ou une nouvelle dictée lancée : l'attente s'arrête.
+    /// avec Coller. Un clic sur un champ qui n'annonce pas son focus (éditeur riche, app Electron) y place le curseur.
+    /// Fermée, copiée, remplacée ou une nouvelle dictée lancée : l'attente s'arrête.
     private func awaitField(for failure: UUID) {
         fieldWatch?.cancel()
+        let firstClick = model?.dependencies.clickSerial() ?? 0
         fieldWatch = Task { @MainActor [weak self] in
+            var seenClick = firstClick
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: Self.fieldWatchNanoseconds)
                 guard let self, self.awaitsField(failure) else { return }
-                guard let model = self.model, await model.dependencies.focusTakesText() else { continue }
+                guard let model = self.model else { return }
+                var ready = await model.dependencies.focusTakesText()
+                let click = model.dependencies.clickSerial()
+                if !ready, click != seenClick {
+                    seenClick = click
+                    ready = await model.dependencies.focusInputAtClick()
+                }
+                guard ready else { continue }
                 guard !Task.isCancelled, self.awaitsField(failure) else { return }
                 Self.insertionLog.notice("champ choisi après la dictée : collage")
                 self.pasteReadyText()

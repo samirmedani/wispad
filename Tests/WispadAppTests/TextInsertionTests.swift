@@ -52,6 +52,13 @@ private final class InsertionFixture {
             if self.typingWorks { self.field.value = (self.field.value ?? "") + text }
             return true
         }
+        // Jamais la vraie fenêtre, la vraie souris ni la vraie mémoire des champs.
+        s.findProbableInput = { _ in nil }
+        s.focusProbableInput = { _, _, _ in false }
+        s.click = { _ in nil }
+        s.latestClick = { nil }
+        s.pointer = { nil }
+        s.remember = { _, _, _ in }
         s.pasteboard = board
         s.confirmationLimit = 0.09
         s.clipboardHold = hold
@@ -70,98 +77,180 @@ private final class InsertionFixture {
 @MainActor
 @Suite(.serialized, .inputZoneExclusive)
 struct TextInsertionTests {
-    @Test func choosesOnlyAnUnambiguousEmptyField() {
-        let line = ProbableInput.Candidate(multiline: false, canFill: true)
-        let area = ProbableInput.Candidate(multiline: true, canFill: true)
-        let filled = ProbableInput.Candidate(multiline: true, canFill: false)
-        #expect(ProbableInput.choose([line]) == 0)
-        #expect(ProbableInput.choose([line, area]) == 1)
-        #expect(ProbableInput.choose([line, line]) == nil)
-        #expect(ProbableInput.choose([area, filled]) == nil)
-        #expect(ProbableInput.choose([line, filled]) == nil)
+    private func target(_ node: AXUIElement, native: Bool = false, empty: Bool = true) -> ProbableInput.Target {
+        ProbableInput.Target(app: node, window: node, element: node, focus: nil, length: 0, caretMovable: true,
+                             native: native, empty: empty, strict: false)
     }
 
-    @Test func probableFieldWritesWithoutPostingKeysOrTouchingClipboard() async throws {
+    /// Curseur hors d'un champ : le champ probable reçoit le focus, comme après un clic, puis le collage habituel part et
+    /// se vérifie dans ce champ.
+    @Test func aProbableFieldGetsTheFocusThenTheUsualPaste() async throws {
+        let f = InsertionFixture(); defer { f.dispose() }
+        let window = AXUIElementCreateApplication(51_515)
+        let composer = try #require(f.field.element)
+        let textArea = f.field
+        f.field = InsertionField(element: window, role: "AXWindow")
+        f.context.probableInputKeys = KeyboardTap.typingKeys
+        var requests: [ProbableInput.Request] = []
+        var focused = 0
+        var system = f.system
+        system.findProbableInput = { request in
+            requests.append(request)
+            return self.target(composer)
+        }
+        system.focusProbableInput = { _, pid, _ in
+            #expect(pid == 42_424)
+            focused += 1
+            f.field = textArea
+            return true
+        }
+        #expect(await f.insert(system: system) == .inserted)
+        #expect(focused == 1 && f.keys == 1 && f.sent == 1)
+        #expect(f.field.value == "Avant Bonjour.")
+        #expect(f.context.usedProbableInput)
+        #expect(requests.count == 1 && requests.first?.strict == false)
+        #expect(requests.first.map { $0.focus.map { CFEqual($0, window) } == true } == true)
+        #expect(f.board.string(forType: .string) == "Copie conservée")
+    }
+
+    /// Focus illisible (Codex, apps Electron) : la recherche demande une preuve forte, et le collage part ensuite.
+    @Test func anUnreadableFocusSearchesStrictly() async throws {
+        let f = InsertionFixture(); defer { f.dispose() }
+        let node = try #require(f.field.element)
+        f.field = InsertionField()
+        f.context.probableInputKeys = KeyboardTap.typingKeys
+        var strict: Bool?
+        var system = f.system
+        system.bundleID = { _ in ContextProbe.codexBundleID }
+        system.findProbableInput = { request in
+            strict = request.strict
+            #expect(request.focus == nil)
+            return self.target(node)
+        }
+        system.focusProbableInput = { _, _, _ in true }
+        #expect(await f.insert(system: system).delivered)
+        #expect(strict == true && f.keys == 1)
+        #expect(f.context.usedProbableInput)
+    }
+
+    /// Champ natif vide qui refuse le focus : sa valeur s'écrit directement, sans touche ni presse-papiers.
+    @Test func aNativeFieldThatRefusesTheFocusGetsItsValueDirectly() async throws {
         let f = InsertionFixture(); defer { f.dispose() }
         let node = try #require(f.field.element)
         f.field = InsertionField(element: node, role: "AXWindow")
-        f.context.probableInputKeys = KeyboardTap.keystrokes
+        f.context.probableInputKeys = KeyboardTap.typingKeys
         var system = f.system
-        system.findProbableInput = { _, _ in .init(app: node, window: node, element: node, focus: node) }
+        system.findProbableInput = { _ in self.target(node, native: true) }
+        system.focusProbableInput = { _, _, _ in false }
         system.fillProbableInput = { _, text, _, _ in
             #expect(text == "Bonjour.")
             return .inserted
         }
-
         #expect(await f.insert(system: system) == .inserted)
         #expect(f.context.usedProbableInput)
         #expect(f.keys == 0 && f.sent == 1)
         #expect(f.board.string(forType: .string) == "Copie conservée")
     }
 
-    @Test func codexCanFindAFieldWhenAccessibilityReportsNoFocus() async throws {
-        let f = InsertionFixture(); defer { f.dispose() }
-        let node = try #require(f.field.element)
-        f.field = InsertionField()
-        f.context.probableInputKeys = KeyboardTap.keystrokes
-        var system = f.system
-        system.bundleID = { _ in ContextProbe.codexBundleID }
-        system.findProbableInput = { _, focus in
-            #expect(focus == nil)
-            return .init(app: node, window: node, element: node, focus: nil)
-        }
-        system.fillProbableInput = { _, _, _, _ in .inserted }
-        #expect(await f.insert(system: system) == .inserted)
-        #expect(f.context.usedProbableInput && f.keys == 0)
-    }
-
-    @Test func codexWithoutAReadableFieldOnlyShowsRecoveryIfPasteWasNotRead() async {
-        let f = InsertionFixture(); defer { f.dispose() }
-        f.field = InsertionField()
-        var system = f.system
-        system.bundleID = { _ in ContextProbe.codexBundleID }
-        f.deliver = false
-        #expect(await f.insert(system: system) == .failed)
-        #expect(f.board.string(forType: .string) == "Copie conservée")
-
-        // Le contenu peut être lu même si Codex ne laisse pas confirmer l'écriture dans son champ.
-        system.postPaste = { _ in
-            #expect(f.board.string(forType: .string) == "Bonjour.")
-            return true
-        }
-        #expect(await f.insert(system: system) == .pasteSent)
-    }
-
-    @Test func probableSearchDoesNotRunWhenDisabledOrWhenAFieldIsAlreadyFocused() async throws {
+    /// Réglage coupé, champ déjà actif, frappe depuis l'arrêt ou sélection réécrite : aucune recherche.
+    @Test func noSearchWhenDisabledFocusedTypingOrRewriting() async throws {
         let f = InsertionFixture(); defer { f.dispose() }
         var system = f.system
-        system.findProbableInput = { _, _ in
+        system.findProbableInput = { _ in
             Issue.record("Recherche inattendue d'un champ")
             return nil
         }
-        f.context.probableInputKeys = KeyboardTap.keystrokes
+        f.context.probableInputKeys = KeyboardTap.typingKeys
         #expect(await f.insert(system: system) == .inserted)
         f.field = InsertionField(element: f.field.element, role: "AXWindow")
         f.context.probableInputKeys = nil
         #expect(await f.insert(system: system) == .noTarget)
+        f.context.probableInputKeys = KeyboardTap.typingKeys &- 1
+        #expect(await f.insert(system: system) == .noTarget)
+        f.context.probableInputKeys = KeyboardTap.typingKeys
+        f.context.rewritesSelection = true
+        #expect(await f.insert(system: system) == .noTarget)
+        #expect(f.keys == 1)
     }
 
-    @Test func probableFieldIsNotFilledIfAppChangesDuringTheSearch() async throws {
+    @Test func noFieldIsFocusedIfTheAppChangesDuringTheSearch() async throws {
         let f = InsertionFixture(); defer { f.dispose() }
         let node = try #require(f.field.element)
         f.field = InsertionField(element: node, role: "AXWindow")
-        f.context.probableInputKeys = KeyboardTap.keystrokes
+        f.context.probableInputKeys = KeyboardTap.typingKeys
         var system = f.system
-        system.findProbableInput = { _, _ in
+        system.findProbableInput = { _ in
             f.pid = 51_515
-            return .init(app: node, window: node, element: node, focus: node)
+            return self.target(node)
         }
-        system.fillProbableInput = { _, _, _, _ in
-            Issue.record("Écriture dans une app qui n'est plus au premier plan")
-            return .failed
+        system.focusProbableInput = { _, _, _ in
+            Issue.record("Focus placé dans une app qui n'est plus au premier plan")
+            return false
         }
         #expect(await f.insert(system: system) == .noTarget)
         #expect(f.keys == 0 && f.sent == 0)
+    }
+
+    /// Commencée dans un champ, curseur parti sur la page : le champ du début est proposé à la recherche, et le texte
+    /// y revient au lieu de rester « prêt à copier ».
+    @Test func leavingTheFieldOffersTheStartFieldToTheSearch() async throws {
+        let f = InsertionFixture(); defer { f.dispose() }
+        let start = try #require(f.field.element)
+        let textArea = f.field
+        f.context.element = start
+        f.context.startedInTextField = true
+        f.context.probableInputKeys = KeyboardTap.typingKeys
+        f.field = InsertionField(element: AXUIElementCreateApplication(61_616), role: "AXWebArea")
+        var system = f.system
+        system.findProbableInput = { request in
+            #expect(request.start.map { CFEqual($0, start) } == true)
+            return self.target(start)
+        }
+        system.focusProbableInput = { _, _, _ in f.field = textArea; return true }
+        #expect(await f.insert(system: system) == .inserted)
+        #expect(!f.context.leftTextField && f.keys == 1)
+    }
+
+    /// Un champ où la dictée est confirmée compte pour les prochaines fois, seulement si la recherche est active.
+    @Test func aConfirmedFieldIsRememberedOnlyWhenTheSearchIsOn() async throws {
+        let f = InsertionFixture(); defer { f.dispose() }
+        var remembered: [pid_t] = []
+        var system = f.system
+        system.remember = { pid, bundle, element in
+            #expect(bundle == "com.google.Chrome" && element != nil)
+            remembered.append(pid)
+        }
+        #expect(await f.insert(system: system) == .inserted)
+        #expect(remembered.isEmpty)
+        f.field.value = "Avant "
+        f.context.probableInputKeys = KeyboardTap.typingKeys
+        #expect(await f.insert(system: system) == .inserted)
+        #expect(remembered == [42_424])
+    }
+
+    /// Carte « Texte prêt » qui attend : un clic récent sur un champ qui n'annonce pas son focus y place le curseur.
+    @Test func aClickOnAFieldThatHidesItsFocusPlacesTheCursorThere() async throws {
+        let f = InsertionFixture(); defer { f.dispose() }
+        let node = try #require(f.field.element)
+        let textArea = f.field
+        f.field = InsertionField(element: node, role: "AXGroup")
+        var system = f.system
+        var requests: [ProbableInput.Request] = []
+        system.findProbableInput = { request in requests.append(request); return self.target(node) }
+        system.focusProbableInput = { _, _, _ in true }
+        #expect(await !TextInserter.focusInputAtLatestClick(system: system))
+        #expect(requests.isEmpty)
+        let point = CGPoint(x: 300, y: 500)
+        // Un clic trop ancien ne compte pas.
+        system.latestClick = { .init(point: point, at: KeyboardTap.now() - 5_000, serial: 1) }
+        #expect(await !TextInserter.focusInputAtLatestClick(system: system))
+        system.latestClick = { .init(point: point, at: KeyboardTap.now(), serial: 2) }
+        #expect(await TextInserter.focusInputAtLatestClick(system: system))
+        #expect(requests.count == 1 && requests.first?.clickOnly == true && requests.first?.click == point)
+        // Champ déjà actif : rien à chercher.
+        f.field = textArea
+        #expect(await TextInserter.focusInputAtLatestClick(system: system))
+        #expect(requests.count == 1)
     }
 
     /// Arrêt au milieu d'une phrase, puis reprise : la correction prolonge la dictée précédente, son point s'efface.
@@ -251,12 +340,22 @@ struct TextInsertionTests {
         #expect(f.board.string(forType: .string) == "Copie conservée")
     }
 
-    @Test func aSelectionKeepsItsOriginalAppEvenWithoutAReadableTextRole() async {
+    @Test func aRewrittenSelectionKeepsItsOriginalAppEvenWithoutAReadableTextRole() async {
         let f = InsertionFixture(); defer { f.dispose() }
         f.context.selectedText = "Une phrase fictive à reformuler."
+        f.context.rewritesSelection = true
         f.pid = 42_425
         #expect(await f.insert() == .noTarget)
         #expect(f.keys == 0 && f.reads == 0)
+    }
+
+    /// Une simple sélection au départ (texte surligné sur une page) ne lie plus la dictée à son app.
+    @Test func aPlainSelectionStillFollowsTheUser() async {
+        let f = InsertionFixture(); defer { f.dispose() }
+        f.context.selectedText = "Un passage fictif surligné."
+        f.pid = 42_425
+        #expect(await f.insert() == .inserted)
+        #expect(f.context.pid == 42_425 && f.keys == 1)
     }
 
     /// Choisir la destination ne permet pas de la suivre indéfiniment pendant une lecture AX lente.
@@ -522,21 +621,9 @@ struct TextInsertionTests {
         #expect(f.keys == 1)
     }
 
-    @Test func changingAppsOrEnteringASecureFieldNeverWrites() async {
-        let f = InsertionFixture(); defer { f.dispose() }
-        f.context.startedInTextField = true
-        // Frappe à la main depuis le début de la dictée : on écrit peut-être dans l'autre app.
-        f.context.typingKeysAtStart = KeyboardTap.typingKeys &- 1
-        f.pid = 42_425
-        #expect(await f.insert() == .noTarget)
-        f.pid = 42_424; f.field.isSecure = true
-        #expect(await f.insert() == .refusedSecure)
-        #expect(f.keys == 0)
-    }
-
-    /// Commencée dans un champ, puis un clic dans un champ d'une autre app, sans rien taper : le texte suit le curseur,
-    /// comme on l'attend d'une dictée (scénario du banc du 6 novembre 2026, rien n'était collé nulle part).
-    @Test func withoutTypingTheTextFollowsTheCursorToAnotherApp() async {
+    /// Commencée dans un champ, puis un clic dans un champ d'une autre app : le texte suit l'utilisateur, même s'il a
+    /// tapé pendant l'écoute (banc du 6 novembre 2026 ; trois dictées restées « prêtes à copier » le 17 novembre 2026).
+    @Test func aDictationStartedInAFieldFollowsTheUserToAnotherApp() async {
         let f = InsertionFixture(); defer { f.dispose() }
         f.context.startedInTextField = true
         f.pid = 42_425

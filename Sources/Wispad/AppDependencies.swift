@@ -165,6 +165,10 @@ struct AppDependencies {
     /// Le curseur de l'app au premier plan est dans un vrai champ de texte (ni sécurisé, ni Wispad) : la carte
     /// « Texte prêt » d'une dictée commencée sans champ y colle alors le texte d'elle-même.
     var focusTakesText: () async -> Bool = { await TextInserter.frontmostFocusTakesText() }
+    /// Numéro du dernier clic dans une autre app (0 sans clic) : un nouveau clic relance la recherche d'un champ.
+    var clickSerial: () -> Int = { ClickTracker.latest?.serial ?? 0 }
+    /// Après un clic, le champ sous le clic reçoit le focus s'il ne l'a pas pris lui-même. Vrai : curseur dans un champ.
+    var focusInputAtClick: () async -> Bool = { await TextInserter.focusInputAtLatestClick() }
     /// « Coller la dernière dictée » : attend que les touches du raccourci soient relâchées avant ⌘V.
     /// Raccourcis déclarés par macOS (Réglages Système › Clavier › Raccourcis), pour refuser une combinaison prise.
     var systemShortcuts: () -> [PasteShortcut] = { SystemShortcuts.enabled() }
