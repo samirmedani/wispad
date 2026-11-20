@@ -1836,6 +1836,36 @@
         }
       }
     },
+    "Dépenses API · 30 derniers jours" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API spending · Last 30 days"
+          }
+        }
+      }
+    },
+    "Au moins %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "At least %@"
+          }
+        }
+      }
+    },
+    "Ouvrir Consommation" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Usage"
+          }
+        }
+      }
+    },
     "30 derniers jours" : {
       "localizations" : {
         "en" : {
@@ -16397,16 +16427,6 @@
         }
       }
     },
-    "%@ %@ : %@ par mois" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@ %2$@: %3$@ per month"
-          }
-        }
-      }
-    },
     "%lld auj." : {
       "localizations" : {
         "en" : {
@@ -16433,16 +16453,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld suggestions to review"
-          }
-        }
-      }
-    },
-    "Ce que tes dictées ont coûté ces 30 derniers jours, face au prix d'un abonnement" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "What your dictations cost over the last 30 days, compared with a subscription"
           }
         }
       }
