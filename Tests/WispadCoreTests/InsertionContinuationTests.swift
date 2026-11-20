@@ -83,4 +83,57 @@ struct InsertionContinuationTests {
         #expect(CorrectionPrompt.system(for: request).contains("la dictée continue cette phrase"))
         #expect(CorrectionPrompt.system(for: CorrectionRequest(transcript: "x", language: .english)).contains("the dictation continues that sentence"))
     }
+
+    @Test func agreementContextKeepsTheParagraphBeforeTheCursor() {
+        let paragraph = "Paul a reçu le dossier.\n\n"
+        var request = CorrectionRequest(transcript: "ils regardent encore le calendrier",
+                                        previousDictations: ["Les collègues de Victor replacent les agendas."],
+                                        windowText: "Ses collègues relisent le planning.")
+        request.textBeforeCursor = String(repeating: "x", count: CorrectionRequest.cursorContextLimit) + paragraph
+        let prompt = CorrectionPrompt.userText(request)
+        #expect(prompt.contains(paragraph))
+        #expect(!prompt.contains(String(repeating: "x", count: CorrectionRequest.cursorContextLimit)))
+        #expect(!prompt.contains("replacent les agendas"))
+        #expect(prompt.contains("orthographe uniquement): Victor"))
+        #expect(!prompt.contains("champ de saisie vide"))
+        #expect(CorrectionPrompt.system(for: request).contains("même après un saut de paragraphe"))
+        request.windowMayResolveAgreement = true
+        #expect(CorrectionPrompt.userText(request).contains("champ de saisie vide"))
+    }
+
+    @Test func exactContinuationKeepsItsEarlierSubject() {
+        let before = "Hugo était de garde. Il était seul dans le bureau.\n\n"
+        #expect(ContinuationAgreement.reapply(in: "Ils étaient encore seuls dans le bureau quand le téléphone a sonné.", after: before)
+                == "Il était encore seul dans le bureau quand le téléphone a sonné.")
+        #expect(ContinuationAgreement.reapply(in: "Elle prépare donc la réponse pour le client.",
+                                             after: "Elles préparent la réponse pour le client.\n") == "Elles préparent donc la réponse pour le client.")
+        for other in ["Les techniciens étaient encore seuls dans le bureau.", "Ils étaient encore seuls dans le garage.",
+                      "« Ils étaient encore seuls dans le bureau. »", "Ils sont encore seuls dans le bureau.",
+                      "Ils étaient seuls dans le bureau."] {
+            #expect(ContinuationAgreement.reapply(in: other, after: before) == other)
+        }
+        #expect(ContinuationAgreement.reapply(in: "Ils étaient encore seuls dans le bureau.", after: nil)
+                == "Ils étaient encore seuls dans le bureau.")
+    }
+
+    @Test func coordinatedDraftUsesTheLastSubjectOutsideQuotes() {
+        let heard = "Elle examine encore le tableau électrique avant de partir."
+        let draft = "Elle ferme la porte, puis elles examinent le tableau électrique.\u{2028}"
+        #expect(ContinuationAgreement.reapply(in: heard, after: draft)
+                == "Elles examinent encore le tableau électrique avant de partir.")
+        let quotation = "Le rapport indique « Les techniciennes arrivent et elles examinent le tableau électrique »."
+        #expect(ContinuationAgreement.reapply(in: heard, after: quotation) == heard)
+        let different = "Les techniciennes arrivent et elles examinent le plan de secours."
+        #expect(ContinuationAgreement.reapply(in: heard, after: different) == heard)
+    }
+
+    @Test func aSubjectAfterACommaKeepsItsOwnAgreement() {
+        let draft = "Les passagers montent et ils surveillent la porte du quai."
+        let differentSubject = "Il surveille encore la porte du quai, le gardien."
+        #expect(ContinuationAgreement.reapply(in: differentSubject, after: draft) == differentSubject)
+
+        let continuation = "Il surveille encore la porte du quai. Ensuite, la gare ferme."
+        #expect(ContinuationAgreement.reapply(in: continuation, after: draft)
+                == "Ils surveillent encore la porte du quai. Ensuite, la gare ferme.")
+    }
 }

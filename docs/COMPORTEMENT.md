@@ -712,7 +712,8 @@ plus élevé sur les seules dictées concernées.
 - La correction ne répond jamais au contenu dicté et ne recopie jamais le contexte.
 - **Une seule préparation anticipée** : après un segment final du flux suivi de 0,25 seconde sans nouveau
   texte, Wispad peut préparer la correction. Les notifications identiques ne repoussent pas cette attente. Un
-  nouveau mot avant la fin de l'attente annule seulement le timer : aucun texte périmé n'est envoyé.
+  nouveau mot avant la fin de l'attente annule le timer. Si la correction de l'ancien texte est déjà en cours,
+  elle est annulée dès que la reprise change le texte ; elle ne déclenche plus un relais.
 - **Préparation à l'arrêt si nécessaire** : une préparation du même texte est réutilisée. Avec la vérification
   audio, un segment déjà annoncé final ou un texte terminé par « . », « ! » ou « ? » garde sa préparation immédiate.
   Sinon, Wispad attend le texte final du flux avant de préparer la correction, en parallèle du fichier encore
@@ -722,14 +723,16 @@ plus élevé sur les seules dictées concernées.
   Le 2 novembre 2026, la correction partait sinon après le fichier, en série : 2,2 s pour 15 s de parole.
   Sans vérification audio, la préparation du dernier texte entendu au relâchement reste inchangée.
   Chaque préparation garde son texte source ; le fichier peut retrouver celle de la première pause même si une
-  autre préparation tourne déjà sur le texte de fin. Ces indices ne contournent jamais le fichier ni les garde-fous.
+  préparation de fin tourne déjà, si celle de la pause avait terminé avant la reprise. Ces indices ne contournent
+  jamais le fichier ni les garde-fous.
 - **Trois corrections au plus** : une anticipation à une pause, une préparation du flux final seulement si le texte
   a changé, puis une correction définitive uniquement si le fichier apporte encore un texte différent qui ne peut
   pas réutiliser une préparation. Une dictée inchangée après la pause ne paie qu'une seule correction. Chaque
   correction garde ses relais habituels en cas de panne. Le fichier, l'autre écoute, le contexte et les garde-fous
   de fidélité restent utilisés comme avant ; une correction obsolète ne retarde jamais la correction définitive.
   Une retouche locale sûre d'un ou deux mots peut encore réutiliser une correction prête. Tous les appels envoyés
-  restent comptés, même devenus inutiles ou annulés après l'envoi. Échap annule le timer et les préparations ; couper
+  restent comptés, même devenus inutiles ou annulés après l'envoi. Seule la correction retenue peut mettre un
+  service en pause. Échap annule le timer et les préparations ; couper
   la correction ou perdre la connexion empêche tout nouvel envoi. Si plusieurs longues pauses sont suivies d'une
   reprise, aucune nouvelle anticipation ne part : le budget reste borné, avec parfois moins d'avance que l'ancienne
   version qui payait une correction à chaque pause.
@@ -744,9 +747,19 @@ plus élevé sur les seules dictées concernées.
 Réglage « Comprendre le sujet grâce à la fenêtre active », proposé au premier lancement, désactivé par défaut
 pour une nouvelle installation.
 
-- Fin de la conversation visible dans la fenêtre où l'on dicte (2 000 caractères au plus, lue pendant l'écoute
-  en 300 ms au plus) et dernières dictées livrées dans la même app (cinq, trente minutes, 1 500 caractères).
-- Texte autour du curseur et sélection, pour l'orthographe.
+- Texte juste avant le curseur (500 caractères au plus), pour raccorder une phrase et lever une ambiguïté
+  de genre ou de nombre si la dictée poursuit clairement le même sujet, même après un saut de paragraphe.
+  Si le texte est illisible, le dernier collage confirmé dans ce même champ peut servir pendant 30 secondes,
+  en l'absence de frappe, de clic ou d'envoi par Wispad. Un nouveau référent garde ses propres accords ; dans le doute, la
+  correction conserve les pronoms et accords transcrits. Une reprise explicite du même prédicat peut
+  rétablir localement un accord déjà écrit dans le brouillon, y compris quand le sujet est introduit par une
+  coordination dans la phrase précédente. Cette retouche locale exige une première proposition sans virgule,
+  car une virgule peut annoncer un nouveau sujet à la fin de la proposition.
+- Avec le réglage activé, fin de la conversation visible (2 000 caractères au plus, lue pendant l'écoute
+  en 300 ms au plus). Elle peut servir aux accords si le champ est vide et que la dictée poursuit le même sujet.
+- Texte autour du curseur et sélection, pour l'orthographe. Les dernières dictées livrées dans la même app
+  (cinq, trente minutes, 1 500 caractères) peuvent appartenir à un autre fil. Quand le brouillon ou le fil
+  visible fournit un contexte d'accord, seuls les termes extraits de ces anciennes dictées sont transmis.
 - Rien de ce contexte n'est enregistré ni journalisé ; il n'ajoute jamais un mot qui n'a pas été dit.
 - Jamais Wispad lui-même : quand sa fenêtre est au premier plan (dictionnaire, recherche…), même si elle y passe
   pendant la lecture d'une autre app, ni le contexte, ni le champ, ni la zone de saisie, ni le suivi des corrections

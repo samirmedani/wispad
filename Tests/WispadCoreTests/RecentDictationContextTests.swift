@@ -78,7 +78,7 @@ struct RecentDictationContextTests {
             previousDictations: ["Le bac nord contient douze modules."]
         )
         let prompt = CorrectionPrompt.userText(request)
-        #expect(prompt.contains("Dictées précédentes dans cette application (même conversation ; jamais à recopier ; servent seulement à comprendre le sujet, l'orthographe et les nombres): Le bac nord contient douze modules."))
+        #expect(prompt.contains("Dictées précédentes dans cette application (peuvent venir d'un autre fil ; jamais à recopier ; indices de sujet, d'orthographe et de nombres uniquement): Le bac nord contient douze modules."))
         let empty = CorrectionPrompt.userText(CorrectionRequest(transcript: "x"))
         #expect(!empty.contains("Dictées précédentes"))
     }

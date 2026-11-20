@@ -169,6 +169,7 @@ final class CorrectionLedger {
     private let completion = Completion()
     let task: Task<PreparedCorrection, Never>
     var ready: PreparedCorrection? { completion.value }
+    private(set) var discarded = false
     private var recorded = false
 
     init(task source: Task<PreparedCorrection, Never>) {
@@ -182,13 +183,20 @@ final class CorrectionLedger {
         }
     }
 
+    /// Garde les préparations achevées : le fichier peut encore confirmer leur texte.
+    func discardIfPending() {
+        guard ready == nil, !discarded else { return }
+        discarded = true
+        task.cancel()
+    }
+
     func account(model: AppModel, run: DictationTraceRecorder) async -> PreparedCorrection {
         let prepared = await task.value
         if !recorded {
             recorded = true
             for usage in prepared.outcome.failedUsages { run.adopt(usage, model: model) }
             if let usage = prepared.outcome.usage { run.adopt(usage, model: model) }
-            model.recordCleanup(prepared.outcome)
+            model.recordCleanup(prepared.outcome, affectsHealth: false)
         }
         return prepared
     }

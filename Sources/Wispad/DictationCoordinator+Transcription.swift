@@ -354,9 +354,11 @@ extension DictationCoordinator {
         )
         request.autoParagraphs = model.settings.autoParagraphs
         request.tone = model.tone(bundleID: context.bundleID, appName: context.appName, windowTitle: context.windowTitle)
-        // Ce qui précède le curseur décide de la majuscule et du raccord ; un champ illisible (Electron) prend le
-        // dernier collage de Wispad dans cette app, sans frappe depuis.
-        request.textBeforeCursor = context.beforeCursor ?? TextInserter.recentPaste(pid: context.pid)
+        // Un champ lu vide a sa propre valeur : il ne reprend jamais un collage d'un brouillon précédent.
+        if !context.isSecure {
+            request.textBeforeCursor = context.beforeCursor ?? TextInserter.recentPaste(pid: context.pid, element: context.element)
+            request.windowMayResolveAgreement = context.fieldIsEmpty && windowText != nil
+        }
         request.dateFormat = model.settings.dateFormat
         request.numberFormat = model.settings.numberFormat
         request.speakerAgreement = model.settings.speakerAgreement

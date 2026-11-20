@@ -1031,7 +1031,10 @@ public enum TextCleaner {
                     corrected: corrected,
                     context: request.nearbyText,
                     dictionary: request.dictionary,
-                    previousDictations: request.previousDictations + [request.windowText].compactMap { $0 },
+                    previousDictations: request.previousDictations + [
+                        request.windowText,
+                        request.textBeforeCursor.map { String($0.suffix(CorrectionRequest.cursorContextLimit)) }
+                    ].compactMap { $0 },
                     alternative: request.alternativeTranscript,
                     otherHearings: request.localDivergences.map(\.local),
                     language: CorrectionPrompt.language(for: request),
@@ -1039,9 +1042,12 @@ public enum TextCleaner {
                 )
                 var failed = requests.events
                 let usage = failed.popLast()
+                let language = CorrectionPrompt.language(for: request)
+                let coherent = language == .french
+                    ? ContinuationAgreement.reapply(in: faithful, after: request.textBeforeCursor)
+                    : faithful
                 // Le texte retenu, corrigé ou transcrit, prend le format des dates et des heures sans dépendre du modèle.
-                let dated = DateTimeWriter.apply(faithful, format: request.dateFormat,
-                                                 english: CorrectionPrompt.language(for: request) == .english)
+                let dated = DateTimeWriter.apply(coherent, format: request.dateFormat, english: language == .english)
                 // Puis les montants, pourcentages, mesures et téléphones, au format choisi.
                 let numbered = NumberWriter.apply(dated, format: request.numberFormat,
                                                   english: CorrectionPrompt.language(for: request) == .english)

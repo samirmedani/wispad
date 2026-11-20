@@ -19,6 +19,15 @@ struct ExternalDataAppTests {
 
     /// Une commande qui se termine sans lire la clé (`put` refusé) fermait le tuyau : l'écriture de la clé arrêtait
     /// Wispad (signal SIGPIPE ou exception de `FileHandle.write`).
+    @Test func cursorContextUsesThePrefixAndPreservesParagraphBreaks() {
+        let before = "😀Paul relit le dossier.\n\n"
+        let field = before + "Le texte sélectionné appartient à la phrase suivante."
+        let offset = before.utf16.count
+        #expect(ContextProbe.textBeforeCursor(in: field, at: offset, length: offset - 1) == String(before.dropFirst()))
+        #expect(ContextProbe.textBeforeCursor(in: field, at: 0, length: 500) == "")
+        #expect(ContextProbe.textBeforeCursor(in: field, at: field.utf16.count + 1, length: 500) == nil)
+    }
+
     @Test(.timeLimit(.minutes(1))) func vaultCommandThatIgnoresItsInputDoesNotStopWispad() async throws {
         let (tool, folder) = try vaultTool("exit 3")
         defer { try? FileManager.default.removeItem(at: folder) }

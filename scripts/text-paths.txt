@@ -31,6 +31,7 @@ Sources/WispadCore/FranglaisNormalizer.swift
 # Correction et finitions : garde-fou, mots qui sonnent pareil, report des mots du fichier, modèles et effort de
 # raisonnement, ton et consignes sur une sélection, langue, dates, nombres, listes, grammaire écrite.
 Sources/WispadCore/FidelityGuard.swift
+Sources/WispadCore/ContinuationAgreement.swift
 Sources/WispadCore/CorrectionLearner.swift
 Sources/WispadCore/PhoneticKey.swift
 Sources/WispadCore/CorrectionPatch.swift
