@@ -1381,11 +1381,16 @@ final class AppModel {
         }
     }
 
-    /// Enregistre chaque appel facturable et tient à jour la santé des services.
-    func recordCleanup(_ outcome: CleanupOutcome) {
-        for usage in outcome.failedUsages + [outcome.usage].compactMap({ $0 }) {
-            recordUsage(usage)
-            if usage.api == .deepSeekCleanup { recordHealth(ServiceHealth.deepSeek, succeeded: usage.succeeded) }
+    /// Enregistre chaque appel facturable. Seule une correction retenue mesure la santé du service.
+    func recordCleanup(_ outcome: CleanupOutcome, affectsHealth: Bool = true) {
+        for usage in outcome.failedUsages + [outcome.usage].compactMap({ $0 }) { recordUsage(usage) }
+        if affectsHealth { recordCleanupHealth(outcome) }
+    }
+
+    func recordCleanupHealth(_ outcome: CleanupOutcome) {
+        for usage in outcome.failedUsages + [outcome.usage].compactMap({ $0 })
+            where usage.api == .deepSeekCleanup && usage.failureCause != .cancelled {
+            recordHealth(ServiceHealth.deepSeek, succeeded: usage.succeeded)
         }
     }
 

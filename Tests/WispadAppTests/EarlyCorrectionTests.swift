@@ -58,6 +58,7 @@ private final class EarlyFixture {
     var fileText = ""
     var fileDelay: Double = 0
     var cleanDelay: Double = 0
+    var cleanOverride: (@MainActor (String) async -> CleanupOutcome)?
     var completedCleans = 0
     var holdContext = false
     let contextRelease = AsyncResult<FieldSnapshot?>()
@@ -115,6 +116,7 @@ private final class EarlyFixture {
             if self?.fileWaitsForCleanText == text { self?.fileRelease.resolve(.success(())) }
             if first, self?.holdPrepared == true { _ = try? await self?.preparedRelease.value() }
             guard enabled else { return CleanupOutcome(text: text) }
+            if let clean = self?.cleanOverride { return await clean(text) }
             if let delay = self?.cleanDelay, delay > 0 { try? await Task.sleep(for: .seconds(delay)) }
             self?.completedCleans += 1
             let usage = UsageEvent(api: .deepSeekCleanup, model: CleanupModel.deepSeek, costUSD: 0.00001)
@@ -300,6 +302,39 @@ struct EarlyCorrectionTests {
         let trace = try f.trace()
         #expect(trace.earlyCorrections == 1)
         #expect(trace.earlyCorrectionUsed == false)
+    }
+
+    @Test(.timeLimit(.minutes(1))) func resumedSpeechCancelsTheOldCorrectionWithoutPausingDeepSeek() async throws {
+        let f = try EarlyFixture()
+        defer { f.dispose() }
+        let fragment = "Le train attend."
+        let final = "Le train attend depuis cinq minutes."
+        let obsoleteCancelled = AsyncResult<Void>()
+        f.fileText = final
+        f.cleanOverride = { text in
+            var timeout = UsageEvent(api: .deepSeekCleanup, model: CleanupModel.deepSeek, costUSD: nil, succeeded: false)
+            timeout.failureCause = .timeout
+            if text == fragment {
+                do { try await Task.sleep(for: .seconds(20)) } catch { obsoleteCancelled.resolve(.success(())) }
+                // Le délai peut expirer en même temps que l'annulation ; l'appel reste dans les comptes.
+                return CleanupOutcome(text: text, usage: timeout)
+            }
+            let relay = UsageEvent(api: .openAICleanup, model: "correcteur-relais-fictif", costUSD: nil, succeeded: true)
+            return CleanupOutcome(text: text.uppercased(), usage: relay, failedUsages: [timeout], fallback: "OpenAI")
+        }
+        await f.model.coordinator.begin(.toggle)
+        await f.pause(after: fragment)
+        try await f.waitForPreparation(of: fragment)
+        f.stream.onPartial?(final)
+        f.stream.text = final
+        try await obsoleteCancelled.value()
+        await f.model.coordinator.end()
+
+        #expect(f.cleanTexts == [fragment, final])
+        #expect(f.inserted == [final.uppercased()])
+        #expect(f.cleanupCount() == 2)
+        #expect(f.model.usage.filter { $0.api == .openAICleanup }.count == 1)
+        #expect(!f.model.health.isDown(ServiceHealth.deepSeek))
     }
 
     @Test func cancelledPreparedDictationAccountsItsSinglePreparation() async throws {

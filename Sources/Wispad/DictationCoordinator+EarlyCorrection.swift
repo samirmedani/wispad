@@ -28,6 +28,12 @@ extension DictationCoordinator {
         if current.latestHeard != text {
             current.earlyPauseTask?.cancel()
             current.earlyPauseTask = nil
+            if !current.correctionClaimed, let paused = current.earlyReady,
+               paused.ledger.ready == nil, !paused.ledger.discarded,
+               !TranscriptEquivalence.normalize(text).isEmpty,
+               !TranscriptEquivalence.equivalent(paused.text, FranglaisNormalizer.normalize(text)) {
+                paused.ledger.discardIfPending()
+            }
         }
         current.latestHeard = text
     }
@@ -56,7 +62,8 @@ extension DictationCoordinator {
               current.earlyCorrections.count < limit, let speech = current.speech else { return }
         let text = FranglaisNormalizer.normalize(heard.trimmingCharacters(in: .whitespacesAndNewlines))
         guard !text.isEmpty, model.commandSelection(for: text, context: current.context) == nil,
-              !current.earlyCorrections.contains(where: { TranscriptEquivalence.equivalent($0.text, text) }) else { return }
+              !current.earlyCorrections.contains(where: { !$0.ledger.discarded && TranscriptEquivalence.equivalent($0.text, text) }) else { return }
+        for preparation in current.earlyCorrections { preparation.ledger.discardIfPending() }
         let task = Task { @MainActor in
             // À l'arrêt, la dernière phrase de la seconde écoute arrive pendant la lecture du contexte.
             let local = atRelease ? await current.localHearing?.finalText(within: Self.localHearingWait)
@@ -107,7 +114,9 @@ extension DictationCoordinator {
     /// `TranscriptEquivalence`. Une préparation sur un autre texte reste comptée, sans être réutilisée à tort.
     func claimEarlyCorrection(for text: String, current: Capture, model: AppModel) -> CorrectionLedger? {
         current.correctionClaimed = true
-        let used = current.earlyCorrections.last { TranscriptEquivalence.equivalent($0.text, text) }?.ledger
+        let used = current.earlyCorrections.last {
+            !$0.ledger.discarded && TranscriptEquivalence.equivalent($0.text, text)
+        }?.ledger
         // Vrai seulement quand le texte collé en sort (le fichier peut encore dire autre chose).
         if !current.earlyCorrections.isEmpty, current.run.trace.earlyCorrectionUsed == nil {
             current.run.trace.earlyCorrectionUsed = false

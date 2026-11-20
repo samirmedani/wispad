@@ -854,7 +854,7 @@ final class DictationCoordinator {
             current.run.trace.timings.correctionMs = max(0, KeyboardTap.now() - began)
             for usage in cleaned.failedUsages { current.run.record(usage) }
             if let usage = cleaned.usage { current.run.record(usage) }
-            model.recordCleanup(cleaned)
+            model.recordCleanup(cleaned, affectsHealth: false)
         } else if usePrepared, let correctionLedger {
             let prepared = await correctionLedger.account(model: model, run: current.run)
             cleaned = prepared.outcome
@@ -923,6 +923,7 @@ final class DictationCoordinator {
                 }
             }
         }
+        if !job.cancelled { model.recordCleanupHealth(cleaned) }
         if let fallback = cleaned.fallback {
             showRelay(fallback)
             let primary = cleaned.failedUsages.first?.api.provider ?? ServiceHealth.deepSeek
