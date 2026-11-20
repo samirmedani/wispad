@@ -2,20 +2,27 @@ import Foundation
 
 /// Filet local pour une reprise littérale du sujet et du prédicat déjà écrits dans le brouillon.
 enum ContinuationAgreement {
-    private static let onset = try! NSRegularExpression(pattern: #"^\s*(il|ils|elle|elles) +([\p{L}]+)\b"#, options: .caseInsensitive)
+    private static let subjectAndVerb = #"(il|ils|elle|elles)\h+([\p{L}]+)\b"#
+    private static let onset = try! NSRegularExpression(
+        pattern: #"^\s*"# + subjectAndVerb, options: .caseInsensitive
+    )
+    private static let priorOnset = try! NSRegularExpression(
+        pattern: #"(?:^\s*|\b(?:et|mais|puis)\h+)"# + subjectAndVerb, options: .caseInsensitive
+    )
+    private static let quotations = CharacterSet(charactersIn: "«»“”\"")
     private static let opposite = ["il": "ils", "ils": "il", "elle": "elles", "elles": "elle"]
     private static let linkWords: Set<String> = ["encore", "toujours", "donc", "déjà"]
-    private static let clauses = CharacterSet(charactersIn: ".!?;:\n\r")
+    private static let clauses = CharacterSet(charactersIn: ".!?;:").union(.newlines)
     private static let letters = try! NSRegularExpression(pattern: #"[\p{L}]+"#)
 
     static func reapply(in text: String, after before: String?) -> String {
         guard let before, let previous = before.components(separatedBy: clauses).last(where: {
             !$0.trimmingCharacters(in: .whitespaces).isEmpty
-        }) else { return text }
+        }), previous.rangeOfCharacter(from: quotations) == nil else { return text }
         let earlier = previous as NSString
         let written = text as NSString
         guard let lead = onset.firstMatch(in: text, range: NSRange(location: 0, length: written.length)),
-              let prior = onset.firstMatch(in: previous, range: NSRange(location: 0, length: earlier.length)) else { return text }
+              let prior = priorOnset.matches(in: previous, range: NSRange(location: 0, length: earlier.length)).last else { return text }
         let pronoun = written.substring(with: lead.range(at: 1))
         let referent = earlier.substring(with: prior.range(at: 1)).lowercased()
         guard opposite[pronoun.lowercased()] == referent else { return text }

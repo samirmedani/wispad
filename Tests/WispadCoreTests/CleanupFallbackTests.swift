@@ -73,6 +73,17 @@ struct CleanupFallbackTests {
         #expect(await stub.hosts == ["api.deepseek.com"])
     }
 
+    @Test func coordinatedDraftRepairsThePronounEvenWhenTheModelKeepsItsWrongNumber() async {
+        let heard = "Elle examine encore le tableau électrique avant de partir."
+        let stub = CleanupHTTPStub([.reply()], content: heard)
+        var request = CorrectionRequest(transcript: heard)
+        request.textBeforeCursor = "Deux techniciennes sont entrées et elles examinent le tableau électrique.\n\n"
+        let result = await TextCleaner.clean(transcript: heard, request: request, speech: Self.speech(), enabled: true,
+                                             transport: { try await stub.request($0) })
+        #expect(result.usage?.succeeded == true)
+        #expect(result.text == "Elles examinent encore le tableau électrique avant de partir.")
+    }
+
     @Test func successfulReplyWithoutTokensHasUnknownCost() async throws {
         let stub = CleanupHTTPStub([.reply(tokens: false)])
         let usage = try #require(await Self.clean(stub).usage)

@@ -752,7 +752,8 @@ pour une nouvelle installation.
   Si le texte est illisible, le dernier collage confirmé dans ce même champ peut servir pendant 30 secondes,
   en l'absence de frappe, de clic ou d'envoi par Wispad. Un nouveau référent garde ses propres accords ; dans le doute, la
   correction conserve les pronoms et accords transcrits. Une reprise explicite du même prédicat peut
-  rétablir localement un accord déjà écrit dans le brouillon.
+  rétablir localement un accord déjà écrit dans le brouillon, y compris quand le sujet est introduit par une
+  coordination dans la phrase précédente.
 - Avec le réglage activé, fin de la conversation visible (2 000 caractères au plus, lue pendant l'écoute
   en 300 ms au plus). Elle peut servir aux accords si le champ est vide et que la dictée poursuit le même sujet.
 - Texte autour du curseur et sélection, pour l'orthographe. Les dernières dictées livrées dans la même app

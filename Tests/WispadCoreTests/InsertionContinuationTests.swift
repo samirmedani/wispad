@@ -115,4 +115,15 @@ struct InsertionContinuationTests {
         #expect(ContinuationAgreement.reapply(in: "Ils étaient encore seuls dans le bureau.", after: nil)
                 == "Ils étaient encore seuls dans le bureau.")
     }
+
+    @Test func coordinatedDraftUsesTheLastSubjectOutsideQuotes() {
+        let heard = "Elle examine encore le tableau électrique avant de partir."
+        let draft = "Elle ferme la porte, puis elles examinent le tableau électrique.\u{2028}"
+        #expect(ContinuationAgreement.reapply(in: heard, after: draft)
+                == "Elles examinent encore le tableau électrique avant de partir.")
+        let quotation = "Le rapport indique « Les techniciennes arrivent et elles examinent le tableau électrique »."
+        #expect(ContinuationAgreement.reapply(in: heard, after: quotation) == heard)
+        let different = "Les techniciennes arrivent et elles examinent le plan de secours."
+        #expect(ContinuationAgreement.reapply(in: heard, after: different) == heard)
+    }
 }
