@@ -3,6 +3,12 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.8.38 — 20 novembre 2026
+
+- **Dépenses API.** La barre latérale affiche le montant des 30 derniers jours. La comparaison avec Wispr Flow Pro se trouve dans Consommation.
+- **Accords entre deux dictées.** Wispad utilise le texte autour du curseur pour conserver le singulier ou le pluriel quand tu poursuis le même sujet, même après un saut de paragraphe.
+- **Reprise de parole.** Wispad annule la correction d’un fragment quand tu reprends la même dictée. Une correction devenue obsolète ne peut plus faire basculer les dictées suivantes vers un relais.
+
 ## 0.8.37 — 17 novembre 2026
 
 Wispad 0.8.37 trouve le champ où écrire quand le curseur n'est dans aucun champ.

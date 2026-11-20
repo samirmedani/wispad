@@ -309,9 +309,10 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
     en couleur d'accent. Chaque rangée porte son chiffre du moment, rien s'il n'y a rien à dire : mots du jour,
     dictées du jour, série de jours d'affilée (dès 2 jours, en finissant aujourd'hui ou hier), suggestions du
     Dictionnaire à valider (pastille d'accent, sinon le nombre de mots), état des fournisseurs (point vert « Prêt »,
-    « Relais », « À régler », « Sans clé », comme la vue d'ensemble de Fournisseurs), dépense des 30 derniers jours ;
-  - en bas, Réglages (point orange si une autorisation manque), la dépense des 30 derniers jours avec une jauge face
-    au prix mensuel de Wispr Flow Pro (un clic ouvre Consommation), puis le pied : étoile, version, apparence, liens.
+    « Relais », « À régler », « Sans clé », comme la vue d'ensemble de Fournisseurs) ;
+  - en bas, Réglages (point orange si une autorisation manque), le montant des dépenses API des 30 derniers jours,
+    puis le pied (étoile, version, apparence, liens). Le montant indique « Au moins » si les coûts sont incomplets.
+    Un clic ouvre Consommation, où la carte des abonnements compare le coût mensuel à Wispr Flow Pro.
   - Ordre des raccourcis ⌘1 à ⌘7 et du menu Présentation : celui de la barre latérale (Accueil, Historique, Profil,
     Dictionnaire, Fournisseurs, Consommation, Réglages). Tout est calculé sur ce Mac depuis l'historique ; une dictée
     sans texte ne compte pas. Les raccourcis de la dictée restent une rangée de touches en bas de l'Accueil (carte

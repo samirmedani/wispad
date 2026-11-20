@@ -300,11 +300,7 @@ struct SidebarRowDetail: View {
         case .providers:
             ProvidersHealthDot()
         case .usage:
-            let spent = model.usageSummary(for: .days30)
-            if spent.totalUSD > 0 {
-                meta(UsagePresentation.amount(spent.totalUSD, incomplete: spent.hasUnpricedCalls || model.usageLoadFailed))
-                    .help(String(localized: "Dépensé ces 30 derniers jours"))
-            }
+            EmptyView()
         case .settings:
             if model.missingPermissions {
                 Circle().fill(Color.orange).frame(width: 7, height: 7)
@@ -580,51 +576,29 @@ private struct CardIconBody: View {
     }
 }
 
-/// Dépense des 30 derniers jours face au prix mensuel de Wispr Flow Pro, avec une jauge.
+/// Dépenses d'API des 30 derniers jours et raccourci vers leur détail.
 struct SpendLine: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
         let summary = model.usageSummary(for: .days30)
-        let reference = SubscriptionReference.all.first
+        let amount = MoneyFormat.usd(summary.totalUSD)
         let incomplete = summary.hasUnpricedCalls || model.usageLoadFailed
         Button {
             model.selectedSection = .usage
         } label: {
-            VStack(alignment: .leading, spacing: 5) {
-                HStack(spacing: 6) {
-                    Text("30 derniers jours")
-                        .foregroundStyle(.secondary)
-                    Spacer(minLength: 4)
-                    Text(UsagePresentation.amount(summary.totalUSD, incomplete: incomplete))
-                        .fontWeight(.medium)
-                }
-                .font(.system(size: 11).monospacedDigit())
-                .lineLimit(1)
-                GeometryReader { proxy in
-                    Capsule().fill(Color.primary.opacity(0.08))
-                        .overlay(alignment: .leading) {
-                            Capsule().fill(Color.green)
-                                .frame(width: max(3, proxy.size.width * fraction(summary.totalUSD, reference)))
-                        }
-                }
-                .frame(height: 4)
-                if let reference {
-                    Text("\(reference.name) \(reference.plan) : \(MoneyFormat.usd(reference.monthlyUSD)) par mois")
-                        .font(.system(size: 10.5).monospacedDigit())
-                        .foregroundStyle(.tertiary)
-                        .lineLimit(1)
-                }
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Dépenses API · 30 derniers jours")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                Text(incomplete ? String(localized: "Au moins \(amount)") : amount)
+                    .font(.system(size: 13, weight: .semibold).monospacedDigit())
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help(String(localized: "Ce que tes dictées ont coûté ces 30 derniers jours, face au prix d'un abonnement"))
-    }
-
-    private func fraction(_ spent: Double, _ reference: SubscriptionReference?) -> CGFloat {
-        guard let reference, reference.monthlyUSD > 0 else { return 0 }
-        return CGFloat(min(1, max(0, spent / reference.monthlyUSD)))
+        .help(String(localized: "Ouvrir Consommation"))
     }
 }
 
