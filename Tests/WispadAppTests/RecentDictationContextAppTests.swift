@@ -1,3 +1,4 @@
+import ApplicationServices
 import Foundation
 import Testing
 @testable import WispadApp
@@ -36,7 +37,7 @@ private final class RecentContextFixture {
     var fileTerms: [[String]] = []
     var model: AppModel!
 
-    init(bundle: String, window: ((pid_t) async -> String?)? = nil) throws {
+    init(bundle: String, field: FieldSnapshot? = nil, window: ((pid_t) async -> String?)? = nil) throws {
         directory = FileManager.default.temporaryDirectory.appendingPathComponent("wispad-recent-context-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         var dependencies = AppDependencies()
@@ -49,7 +50,7 @@ private final class RecentContextFixture {
             context.pid = 4_242
             context.bundleID = bundle
             context.appName = "Éditeur fictif"
-            return (context, Task { nil })
+            return (context, Task { field })
         }
         dependencies.readWindow = window ?? { _ in nil }
         dependencies.makeCapture = { RecentContextAudio() }
@@ -173,6 +174,23 @@ struct RecentDictationContextAppTests {
         await f.model.coordinator.begin(.pushToTalk)
         await f.model.coordinator.end()
         #expect(calls.pids == [4_242])
+    }
+
+    @Test func onlyAnEmptyFieldAllowsAgreementFromTheVisibleThread() async throws {
+        let bundle = "com.example.fictif.discussion"
+        let fields: [(String?, Bool)] = [(nil, false), ("", false), ("", true), ("Paul relit le dossier.\n\n", false)]
+        for (before, isEmpty) in fields {
+            var field = FieldSnapshot(element: AXUIElementCreateApplication(4_242))
+            field.beforeCursor = before
+            field.fieldIsEmpty = isEmpty
+            let f = try RecentContextFixture(bundle: bundle, field: field) { _ in "Des collègues attendent." }
+            defer { f.dispose() }
+            await f.model.coordinator.begin(.pushToTalk)
+            await f.model.coordinator.end()
+            let request = try #require(f.requests.last)
+            #expect(request.textBeforeCursor == before)
+            #expect(request.windowMayResolveAgreement == isEmpty)
+        }
     }
 
     @Test func oldSettingsWithoutTheKeyKeepWindowContextOn() throws {

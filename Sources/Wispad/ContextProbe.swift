@@ -12,6 +12,7 @@ final class DictationContext: @unchecked Sendable {
     var nearbyText: String?
     /// Fin du texte juste avant le curseur au début de la dictée : vide en début de champ, nil si illisible.
     var beforeCursor: String?
+    var fieldIsEmpty = false
     /// Titre de la fenêtre active : dans un navigateur, il donne le site, donc le ton. Jamais enregistré ni journalisé.
     var windowTitle: String?
     var isSecure = false
@@ -47,6 +48,7 @@ final class DictationContext: @unchecked Sendable {
         selectedText = field.selectedText
         nearbyText = field.nearbyText
         beforeCursor = field.beforeCursor
+        fieldIsEmpty = field.fieldIsEmpty
         windowTitle = field.windowTitle
         startedInTextField = field.isTextField
     }
@@ -59,6 +61,7 @@ struct FieldSnapshot: @unchecked Sendable {
     var selectedText: String?
     var nearbyText: String?
     var beforeCursor: String?
+    var fieldIsEmpty = false
     var windowTitle: String?
     /// Rôle de texte ou curseur de texte : un vrai champ, pas la page ni un conteneur.
     var isTextField = false
@@ -117,18 +120,26 @@ enum ContextProbe {
         field.isSecure = isSecure(element)
         guard !field.isSecure else { return field }
         let role = string(kAXRoleAttribute, element)
-        let cursor = selectedRange(element) != nil
+        let selection = selectedRange(element)
+        let cursor = selection != nil
         field.isTextField = FocusedField.kind(role: role, subrole: string(kAXSubroleAttribute, element),
                                               hasTextCursor: cursor,
                                               editable: FocusedField.needsEditableCheck(role: role, hasTextCursor: cursor)
                                                   && isEditable(element),
                                               bundleID: nil) == .text
         field.selectedText = string(kAXSelectedTextAttribute, element)
-        if let count = number(kAXNumberOfCharactersAttribute, element), count <= 4_000,
-           let value = string(kAXValueAttribute, element) {
-            field.nearbyText = nearby(value: value, element: element)
+        let count = number(kAXNumberOfCharactersAttribute, element)
+        let value = count.map { $0 <= 4_000 } == true ? string(kAXValueAttribute, element) : nil
+        if let value {
+            field.nearbyText = nearby(value: value, selection: selection ?? NSRange(location: 0, length: 0))
         }
-        if field.isTextField { field.beforeCursor = textBeforeCursor(element, length: 160) }
+        if field.isTextField {
+            field.fieldIsEmpty = value?.isEmpty ?? (count == 0)
+            if let selection {
+                field.beforeCursor = textBeforeCursor(element, at: selection.location, length: CorrectionRequest.cursorContextLimit,
+                                                      fieldValue: value)
+            }
+        }
         return field
     }
 
@@ -352,15 +363,14 @@ enum ContextProbe {
     /// Quelques caractères juste avant le curseur (ou la sélection), pour raccorder deux dictées : "" en début
     /// de champ, nil si l'app ne les expose pas. Jamais journalisés.
     static func textBeforeCursor(_ element: AXUIElement?, length: Int = 32) -> String? {
-        guard let element else { return nil }
-        var rangeValue: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, &rangeValue) == .success,
-              let rangeValue, CFGetTypeID(rangeValue) == AXValueGetTypeID() else { return nil }
-        var selection = CFRange(location: 0, length: 0)
-        guard AXValueGetValue(rangeValue as! AXValue, .cfRange, &selection), selection.location >= 0 else { return nil }
-        guard selection.location > 0 else { return "" }
-        let start = max(0, selection.location - length)
-        var wanted = CFRange(location: start, length: selection.location - start)
+        guard let element, let selection = selectedRange(element) else { return nil }
+        return textBeforeCursor(element, at: selection.location, length: length)
+    }
+
+    private static func textBeforeCursor(_ element: AXUIElement, at location: Int, length: Int, fieldValue: String? = nil) -> String? {
+        guard location > 0, length > 0 else { return "" }
+        let start = max(0, location - length)
+        var wanted = CFRange(location: start, length: location - start)
         if let parameter = AXValueCreate(.cfRange, &wanted) {
             var value: CFTypeRef?
             if AXUIElementCopyParameterizedAttributeValue(element, kAXStringForRangeParameterizedAttribute as CFString, parameter, &value) == .success,
@@ -368,10 +378,19 @@ enum ContextProbe {
                 return text
             }
         }
-        guard let value = valueForCheck(element) else { return nil }
-        let ns = value as NSString
-        guard selection.location <= ns.length else { return nil }
-        return ns.substring(with: NSRange(location: start, length: selection.location - start))
+        guard let value = fieldValue ?? valueForCheck(element) else { return nil }
+        return textBeforeCursor(in: value, at: location, length: length)
+    }
+
+    static func textBeforeCursor(in value: String, at location: Int, length: Int) -> String? {
+        let text = value as NSString
+        guard location >= 0, location <= text.length else { return nil }
+        guard location > 0, length > 0 else { return "" }
+        let start = max(0, location - length)
+        // Écarte le premier demi-caractère si la borne coupe un emoji ou un accent combiné.
+        let first = text.rangeOfComposedCharacterSequence(at: start)
+        let boundary = first.location == start ? start : min(location, NSMaxRange(first))
+        return text.substring(with: NSRange(location: boundary, length: location - boundary))
     }
 
     static func string(_ attribute: String, _ element: AXUIElement) -> String? {
@@ -386,12 +405,6 @@ enum ContextProbe {
         return (value as? NSNumber)?.intValue
     }
 
-    private static func nearby(value: String, element: AXUIElement) -> String {
-        var rangeValue: CFTypeRef?
-        let read = AXUIElementCopyAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, &rangeValue) == .success
-        return nearby(value: value, selection: read ? rangeValue : nil)
-    }
-
     /// Texte autour de la sélection que l'app annonce. Une valeur qui n'est pas une plage, ou une plage démesurée,
     /// ne fait pas planter Wispad : le début du champ sert alors de repère, comme sans sélection lisible.
     static func nearby(value: String, selection rangeValue: CFTypeRef?) -> String {
@@ -402,11 +415,15 @@ enum ContextProbe {
                 _ = AXValueGetValue(axValue, .cfRange, pointer)
             }
         }
+        return nearby(value: value, selection: NSRange(location: range.location, length: range.length))
+    }
+
+    private static func nearby(value: String, selection: NSRange) -> String {
         let ns = value as NSString
-        let location = min(max(0, range.location), ns.length)
+        let location = min(max(0, selection.location), ns.length)
         let start = max(0, location - 220)
         // Longueur bornée au champ avant l'addition, qui ne peut plus déborder.
-        let end = min(ns.length, location + min(max(range.length, 0), ns.length) + 220)
+        let end = min(ns.length, location + min(max(selection.length, 0), ns.length) + 220)
         guard end > start else { return String(value.prefix(400)) }
         return ns.substring(with: NSRange(location: start, length: end - start))
     }

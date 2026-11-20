@@ -744,9 +744,17 @@ plus élevé sur les seules dictées concernées.
 Réglage « Comprendre le sujet grâce à la fenêtre active », proposé au premier lancement, désactivé par défaut
 pour une nouvelle installation.
 
-- Fin de la conversation visible dans la fenêtre où l'on dicte (2 000 caractères au plus, lue pendant l'écoute
-  en 300 ms au plus) et dernières dictées livrées dans la même app (cinq, trente minutes, 1 500 caractères).
-- Texte autour du curseur et sélection, pour l'orthographe.
+- Texte juste avant le curseur (500 caractères au plus), pour raccorder une phrase et lever une ambiguïté
+  de genre ou de nombre si la dictée poursuit clairement le même sujet, même après un saut de paragraphe.
+  Si le texte est illisible, le dernier collage confirmé dans ce même champ peut servir pendant 30 secondes,
+  en l'absence de frappe, de clic ou d'envoi par Wispad. Un nouveau référent garde ses propres accords ; dans le doute, la
+  correction conserve les pronoms et accords transcrits. Une reprise explicite du même prédicat peut
+  rétablir localement un accord déjà écrit dans le brouillon.
+- Avec le réglage activé, fin de la conversation visible (2 000 caractères au plus, lue pendant l'écoute
+  en 300 ms au plus). Elle peut servir aux accords si le champ est vide et que la dictée poursuit le même sujet.
+- Texte autour du curseur et sélection, pour l'orthographe. Les dernières dictées livrées dans la même app
+  (cinq, trente minutes, 1 500 caractères) peuvent appartenir à un autre fil. Quand le brouillon ou le fil
+  visible fournit un contexte d'accord, seuls les termes extraits de ces anciennes dictées sont transmis.
 - Rien de ce contexte n'est enregistré ni journalisé ; il n'ajoute jamais un mot qui n'a pas été dit.
 - Jamais Wispad lui-même : quand sa fenêtre est au premier plan (dictionnaire, recherche…), même si elle y passe
   pendant la lecture d'une autre app, ni le contexte, ni le champ, ni la zone de saisie, ni le suivi des corrections

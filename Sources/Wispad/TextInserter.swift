@@ -582,11 +582,11 @@ enum TextInserter {
         return last
     }
 
-    /// Dernier collage de Wispad dans cette app, sans frappe depuis : la correction sait ce qui précède le curseur
-    /// quand l'app ne laisse pas lire son champ.
-    static func recentPaste(pid: pid_t?) -> String? {
-        guard let pid, let last, last.pid == pid, Date().timeIntervalSince(last.at) < 30,
-              last.keystrokes == KeyboardTap.keystrokes else { return nil }
+    /// Secours quand le texte du champ est illisible : collage confirmé dans ce champ précis,
+    /// sans frappe ni clic depuis. Deux conversations peuvent partager le même processus.
+    static func recentPaste(pid: pid_t?, element: AXUIElement?) -> String? {
+        guard let pid, let element, let last = previousMemory(pid: pid, element: element),
+              last.element != nil else { return nil }
         return last.text
     }
 
@@ -643,6 +643,8 @@ enum TextInserter {
               let up = CGEvent(keyboardEventSource: source, virtualKey: returnKey, keyDown: false) else { return false }
         down.flags = []
         up.flags = []
+        // La touche synthétique n'est pas comptée par KeyboardTap : l'envoi peut vider le même champ.
+        if last?.pid == pid { last = nil }
         down.post(tap: .cghidEventTap)
         up.post(tap: .cghidEventTap)
         log.notice("Entrée envoyée après le collage (Maj pour envoyer)")
