@@ -753,7 +753,8 @@ pour une nouvelle installation.
   en l'absence de frappe, de clic ou d'envoi par Wispad. Un nouveau référent garde ses propres accords ; dans le doute, la
   correction conserve les pronoms et accords transcrits. Une reprise explicite du même prédicat peut
   rétablir localement un accord déjà écrit dans le brouillon, y compris quand le sujet est introduit par une
-  coordination dans la phrase précédente.
+  coordination dans la phrase précédente. Cette retouche locale exige une première proposition sans virgule,
+  car une virgule peut annoncer un nouveau sujet à la fin de la proposition.
 - Avec le réglage activé, fin de la conversation visible (2 000 caractères au plus, lue pendant l'écoute
   en 300 ms au plus). Elle peut servir aux accords si le champ est vide et que la dictée poursuit le même sujet.
 - Texte autour du curseur et sélection, pour l'orthographe. Les dernières dictées livrées dans la même app

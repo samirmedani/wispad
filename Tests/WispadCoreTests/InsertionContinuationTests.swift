@@ -126,4 +126,14 @@ struct InsertionContinuationTests {
         let different = "Les techniciennes arrivent et elles examinent le plan de secours."
         #expect(ContinuationAgreement.reapply(in: heard, after: different) == heard)
     }
+
+    @Test func aSubjectAfterACommaKeepsItsOwnAgreement() {
+        let draft = "Les passagers montent et ils surveillent la porte du quai."
+        let differentSubject = "Il surveille encore la porte du quai, le gardien."
+        #expect(ContinuationAgreement.reapply(in: differentSubject, after: draft) == differentSubject)
+
+        let continuation = "Il surveille encore la porte du quai. Ensuite, la gare ferme."
+        #expect(ContinuationAgreement.reapply(in: continuation, after: draft)
+                == "Ils surveillent encore la porte du quai. Ensuite, la gare ferme.")
+    }
 }

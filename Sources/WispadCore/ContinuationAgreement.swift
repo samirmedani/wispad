@@ -35,6 +35,8 @@ enum ContinuationAgreement {
 
         let earlierBody = bodyWords(in: previous, after: NSMaxRange(prior.range))
         let currentClause = text.components(separatedBy: clauses).first ?? text
+        // Une virgule peut introduire le sujet explicite à la fin de la proposition.
+        guard !currentClause.contains(",") else { return text }
         let writtenBody = bodyWords(in: currentClause, after: NSMaxRange(lead.range))
         let repeated = writtenBody.drop(while: { linkWords.contains($0.0) })
         guard repeated.count < writtenBody.count, repeated.count >= 3, earlierBody.count >= 3 else { return text }
