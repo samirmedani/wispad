@@ -3,6 +3,12 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.8.39 — 22 novembre 2026
+
+- **Fausse alerte « Texte prêt à copier ».** Dans les apps qui mettent du temps à afficher le texte collé (comme Antigravity), Wispad attend un peu plus longtemps avant de conclure à un échec. Si le texte arrive juste avant la seconde tentative, il n'est plus écrit deux fois et la carte ne s'affiche pas.
+- **Décompte des messages.** Un message qui apparaît sous le pointeur immobile disparaît seul, avec son anneau qui se vide. Le décompte se met en pause seulement si tu bouges la souris dessus.
+- La carte « Texte prêt à copier » évite le champ dans sa taille actuelle, même s'il a grandi après le collage.
+
 ## 0.8.38 — 20 novembre 2026
 
 - **Dépenses API.** La barre latérale affiche le montant des 30 derniers jours. La comparaison avec Wispr Flow Pro se trouve dans Consommation.

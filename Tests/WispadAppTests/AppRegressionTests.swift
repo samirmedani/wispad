@@ -1447,7 +1447,7 @@ struct AppRegressionTests {
         #expect(coordinator.notice == nil)
         #expect(coordinator.noticeTimer.countdown == nil)
 
-        // Un message qui paraît sous le pointeur attend aussi ; ✕ le ferme tout de suite.
+        // Pointeur qui a bougé sur la bulle : le message suivant attend aussi ; ✕ le ferme tout de suite.
         coordinator.holdMessages(true)
         coordinator.announce("Collé", relay: false)
         #expect(coordinator.noticeTimer.countdown?.isPaused == true)

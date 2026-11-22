@@ -137,6 +137,7 @@ struct InsertionSystem {
     /// Tape le texte comme au clavier, dans l'app au premier plan.
     var typeText: @MainActor (String) async -> Bool = { await TextInserter.typeCharacters($0) }
     var confirmationLimit: Double = TextInserter.confirmationLimit
+    var lateConfirmationLimit: Double = TextInserter.lateConfirmationLimit
     var clipboardHold: Double = TextInserter.clipboardHold
 }
 
@@ -176,6 +177,9 @@ enum TextInserter {
     static let fieldReadLimit = 0.3
     /// Relecture du champ après ⌘V. Elle suit l'envoi : le spectre de traitement a déjà disparu.
     static let confirmationLimit = 1.0
+    /// L'app a lu la dictée mais son champ paraît encore identique : une app Electron chargée (Antigravity,
+    /// 22 novembre 2026) montre le texte collé à l'accessibilité plus d'une seconde après. Relecture jusqu'à ce délai.
+    static let lateConfirmationLimit = 2.5
     /// Sans lecture du presse-papiers par l'app, le texte y reste au plus ce temps après ⌘V : une app occupée
     /// (page web chargée, Electron) peut le lire tard ; le restaurer avant ferait coller l'ancien contenu.
     static let clipboardHold = 1.5
@@ -337,6 +341,7 @@ enum TextInserter {
         let locate = system.locate
         Task { @MainActor in InputZoneTracker.note(await locate(pid), pid: pid) }
         let deadline = sentAt.addingTimeInterval(system.confirmationLimit)
+        let lateDeadline = sentAt.addingTimeInterval(max(system.confirmationLimit, system.lateConfirmationLimit))
         var unchangedTarget = false
         var confirmed = false
         repeat {
@@ -354,8 +359,9 @@ enum TextInserter {
                 break
             }
             try? await Task.sleep(nanoseconds: 40_000_000)
-        } while Date() < deadline
+        } while Date() < deadline || (unchangedTarget && transaction.wasRead && Date() < lateDeadline)
         // Même champ, toujours lisible et inchangé une seconde après ⌘V : le texte n'est pas arrivé.
+        // Presse-papiers lu par l'app : l'attente va jusqu'à lateConfirmationLimit, son champ peut se mettre à jour tard.
         // Un champ illisible (apps Electron, éditeurs dessinés) ne prouve rien : collage envoyé, sans alerte.
         var status: InsertionStatus = confirmed ? .inserted : unchangedTarget ? .failed : .pasteSent
         // Dans Codex, un champ opaque peut vraiment prendre ⌘V. Attendre toute la fenêtre de lecture avant
@@ -368,11 +374,23 @@ enum TextInserter {
         if !confirmed {
             log.notice("collage non confirmé : champ_inchangé=\(unchangedTarget, privacy: .public) statut=\(status.rawValue, privacy: .public)")
         }
-        if !confirmed, unchangedTarget, kind == .text, shouldProceed(), !Task.isCancelled,
-           await writeDirectly(joined, into: field, pid: pid, keystrokes: keystrokes, pasteRead: transaction.wasRead,
-                               shouldProceed: shouldProceed, system: system) {
-            confirmed = true
-            status = .inserted
+        if !confirmed, unchangedTarget, kind == .text, shouldProceed(), !Task.isCancelled {
+            switch await writeDirectly(joined, into: field, pid: pid, keystrokes: keystrokes, pasteRead: transaction.wasRead,
+                                       shouldProceed: shouldProceed, system: system) {
+            case .written, .arrivedLate:
+                confirmed = true
+                status = .inserted
+            case .changedLate:
+                // L'app a lu la dictée et son champ a bougé, sans que le texte s'y reconnaisse tel quel (mise en forme
+                // de l'éditeur) : rien ne prouve un échec. Sans lecture du presse-papiers, l'échec reste signalé.
+                if transaction.wasRead { status = .pasteSent }
+            case .notWritten:
+                break
+            }
+        }
+        if status == .failed {
+            // La carte « Texte prêt » s'écarte du champ tel qu'il est maintenant : il a pu grandir depuis ⌘V.
+            InputZoneTracker.note(await system.locate(pid), pid: pid)
         }
         // Un texte non confirmé ne doit jamais servir à inventer une espace à la dictée suivante.
         last = confirmed ? Memory(pid: pid, element: field.element, text: joined, keystrokes: keystrokes, at: Date()) : nil
@@ -396,35 +414,57 @@ enum TextInserter {
         if tail === done { tail = nil }
     }
 
+    /// Issue de l'écriture de secours.
+    enum BackupWrite: Equatable {
+        /// Le texte est arrivé par l'accessibilité ou la frappe.
+        case written
+        /// Le collage est arrivé tard dans le champ, juste avant l'écriture de secours : rien n'a été écrit en plus.
+        case arrivedLate
+        /// Le champ a changé depuis ⌘V sans que le texte s'y reconnaisse : rien n'a été écrit.
+        case changedLate
+        /// Rien n'a été écrit (champ non modifiable, focus ou app changés, frappe, écriture sans effet).
+        case notWritten
+    }
+
     /// ⌘V envoyé, et le champ lisible est resté identique : l'app n'a pas pris le collage (page qui intercepte le
     /// collage ou le raccourci, ⌘V perdu). Le 5 novembre 2026, deux dictées dans un champ de Chrome finissaient ainsi en
     /// « Texte prêt ». Le texte est écrit une seule fois dans ce même champ, autrement : remplacement de la sélection
     /// par l'accessibilité si le champ l'accepte, sinon frappe des caractères. Jamais si l'utilisateur a tapé depuis, si
-    /// le focus ou l'app a changé, si le champ a bougé, est sécurisé ou ne se déclare pas modifiable.
+    /// le focus ou l'app a changé, si le champ a bougé, est sécurisé ou ne se déclare pas modifiable. Un collage arrivé
+    /// tard (le champ contient maintenant le texte) compte comme écrit, sans seconde écriture.
     static func writeDirectly(_ text: String, into field: InsertionField, pid: pid_t, keystrokes: Int, pasteRead: Bool,
-                              shouldProceed: @MainActor () -> Bool, system: InsertionSystem) async -> Bool {
-        guard let element = field.element, !field.isSecure, !text.isEmpty else { return false }
-        guard await system.editable(element) else { return false }
+                              shouldProceed: @MainActor () -> Bool, system: InsertionSystem) async -> BackupWrite {
+        guard let element = field.element, !field.isSecure, !text.isEmpty else { return .notWritten }
+        guard await system.editable(element) else { return .notWritten }
         // Dernière vérification juste avant d'écrire : même app, même champ, toujours identique, aucune frappe.
-        func untouched() async -> Bool {
+        // Le champ a changé : le collage est peut-être arrivé tard, et rien ne doit s'écrire en double.
+        func untouched() async -> BackupWrite? {
             guard shouldProceed(), !Task.isCancelled, KeyboardTap.keystrokes == keystrokes,
-                  system.frontmostPID() == pid else { return false }
+                  system.frontmostPID() == pid else { return .notWritten }
             let now = await system.read(pid)
-            return !now.isSecure && field.sameElement(as: now) && now.value == field.value
+            guard !now.isSecure, field.sameElement(as: now) else { return .notWritten }
+            guard now.value != field.value else { return nil }
+            if field.confirmsReplacement(in: now, inserted: text) ||
+                InsertionCheck.confirms(before: field.value, after: now.value, inserted: text) {
+                log.notice("collage arrivé tard (presse-papiers lu : \(pasteRead, privacy: .public)) : aucune écriture de secours")
+                return .arrivedLate
+            }
+            return .changedLate
         }
-        guard await untouched() else { return false }
+        if let stop = await untouched() { return stop }
         if await system.replaceSelection(element, text), await confirmsWrite(text, in: field, pid: pid, within: 0.3, system: system) {
             log.notice("collage ignoré par l'app (presse-papiers lu : \(pasteRead, privacy: .public)) : écrit par l'accessibilité")
-            return true
+            return .written
         }
         // L'accessibilité n'a rien changé (ou le champ la refuse) : frappe, si rien n'a bougé entre-temps.
-        guard await untouched(), await system.typeText(text),
+        if let stop = await untouched() { return stop == .arrivedLate ? .arrivedLate : .notWritten }
+        guard await system.typeText(text),
               await confirmsWrite(text, in: field, pid: pid, within: system.confirmationLimit, system: system) else {
             log.notice("collage ignoré par l'app (presse-papiers lu : \(pasteRead, privacy: .public)) : écriture de secours sans effet")
-            return false
+            return .notWritten
         }
         log.notice("collage ignoré par l'app (presse-papiers lu : \(pasteRead, privacy: .public)) : écrit par la frappe")
-        return true
+        return .written
     }
 
     private static func confirmsWrite(_ text: String, in field: InsertionField, pid: pid_t, within seconds: Double,

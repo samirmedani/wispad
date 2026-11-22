@@ -61,6 +61,7 @@ private final class InsertionFixture {
         s.remember = { _, _, _ in }
         s.pasteboard = board
         s.confirmationLimit = 0.09
+        s.lateConfirmationLimit = 0.3
         s.clipboardHold = hold
         return s
     }
@@ -398,6 +399,71 @@ struct TextInsertionTests {
         #expect(await f.insert() == .inserted)
         #expect(f.keys == 1 && f.axWrites.count == 1 && f.typed == ["Bonjour."])
         #expect(f.field.value == "Avant Bonjour.")
+    }
+
+    /// Antigravity, 22 novembre 2026 : l'app lit la dictée, mais son champ ne la montre à l'accessibilité qu'après la
+    /// seconde de confirmation. Le texte est confirmé sans carte ni seconde écriture.
+    @Test func aPasteReadButShownLateIsConfirmedWithoutABackupWrite() async {
+        let f = InsertionFixture(); defer { f.dispose() }
+        f.axWorks = true
+        f.typingWorks = true
+        var system = f.system
+        system.lateConfirmationLimit = 0.8
+        var sentAt: Date?
+        system.postPaste = { _ in
+            f.keys += 1
+            _ = f.board.string(forType: .string)
+            sentAt = Date()
+            return true
+        }
+        system.read = { _ in
+            if let sentAt, Date().timeIntervalSince(sentAt) > 0.25 { f.field.value = "Avant Bonjour." }
+            return f.field
+        }
+        #expect(await f.insert(system: system) == .inserted)
+        #expect(f.keys == 1 && f.axWrites.isEmpty && f.typed.isEmpty)
+        #expect(f.field.value == "Avant Bonjour.")
+    }
+
+    /// Le collage arrive juste avant l'écriture de secours : rien n'est écrit en double, et aucune carte.
+    @Test func aPasteArrivingJustBeforeTheBackupWriteIsNotWrittenTwice() async {
+        let f = InsertionFixture(); defer { f.dispose() }
+        f.deliver = false
+        f.axWorks = true
+        f.typingWorks = true
+        var system = f.system
+        system.editable = { _ in
+            f.field.value = "Avant Bonjour."
+            return true
+        }
+        #expect(await f.insert(system: system) == .inserted)
+        #expect(f.axWrites.isEmpty && f.typed.isEmpty)
+        #expect(f.field.value == "Avant Bonjour.")
+    }
+
+    /// Le champ bouge sans que la dictée s'y reconnaisse : collage envoyé si l'app a lu le presse-papiers, échec sinon.
+    /// Rien n'est écrit en plus dans les deux cas.
+    @Test func aFieldChangedOtherwiseIsNotAFailureOnceThePasteWasRead() async {
+        let f = InsertionFixture(); defer { f.dispose() }
+        f.deliver = false
+        f.axWorks = true
+        f.typingWorks = true
+        var system = f.system
+        system.editable = { _ in
+            f.field.value = "Avant B"
+            return true
+        }
+        #expect(await f.insert(system: system) == .failed)
+        #expect(f.axWrites.isEmpty && f.typed.isEmpty)
+
+        f.field.value = "Avant "
+        system.postPaste = { _ in
+            f.keys += 1
+            _ = f.board.string(forType: .string)
+            return true
+        }
+        #expect(await f.insert(system: system) == .pasteSent)
+        #expect(f.axWrites.isEmpty && f.typed.isEmpty)
     }
 
     /// Champ qui ne se déclare pas modifiable, ou focus parti dans une autre app : aucune écriture de secours.
