@@ -165,7 +165,9 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   macOS 26 ou si la transparence est réduite, il est mat et uni. À gauche, une petite icône ; un anneau fin se vide
   pendant le décompte. Pointeur sur la bulle, sans clic préalable : le décompte (anneau compris) s'arrête et reprend
   où il en était à la sortie ; sur une ligne, la pastille devient la ✕, sur une carte la ✕ paraît en haut à droite.
-  Rien ne bouge. Un message qui paraît sous le pointeur attend aussi. La ✕ ferme le message tout de suite, sans
+  Rien ne bouge. Un message qui paraît sous un pointeur immobile (carte posée sur la zone où l'on vient de cliquer)
+  décompte quand même, sans ✕, et les clics passent à l'app en dessous ; dès que le pointeur bouge dessus, il est
+  survolé comme les autres. La ✕ ferme le message tout de suite, sans
   prendre le focus ni le premier plan à l'app active. La bulle d'enregistrement (spectre, finalisation) n'a ni ✕ ni
   décompte.
 - **Style de la bulle** (Réglages › Bulle) : trois cartes montrent la vraie bulle sur une page claire et un fond
@@ -1136,7 +1138,7 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
   (titre de 14 points), avec sous le titre la seule raison (12 points) et des boutons de 30 points sur une ligne
   séparée, **Copier** en évidence et **Coller** : « Pas de champ où écrire » (focus sur une liste, un bouton, un
   menu, une page web hors de ses champs, ou le bureau et les fenêtres du Finder, avant l'envoi), « Le texte n'est pas arrivé dans le champ » (champ
-  lisible resté identique 1 s après ⌘V), « Le curseur a quitté le champ » (voir ci-dessous), « Accessibilité non
+  lisible resté identique 1 s après ⌘V, 2,5 s si l'app a lu le presse-papiers), « Le curseur a quitté le champ » (voir ci-dessous), « Accessibilité non
   autorisée » (accessibilité retirée dans Réglages
   Système, ou jamais donnée : ni ⌘V ni lecture du champ), « Collage impossible » (app cible fermée ou qui a perdu le
   premier plan, presse-papiers non modifiable, ⌘V non envoyé), « Champ sécurisé ». Le menu de Wispad et le bandeau
@@ -1190,12 +1192,17 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
   quand aucun champ probable n'est sûr.
 - Champ qui ignore ⌘V : le collage est envoyé dans un champ de texte reconnu, lisible et modifiable, et ce champ est
   resté identique pendant la seconde de confirmation (page qui intercepte le collage ou le raccourci, ⌘V perdu ; deux
-  dictées dans Chrome le 5 novembre 2026). Wispad écrit alors le texte une seule fois dans ce même champ, autrement :
+  dictées dans Chrome le 5 novembre 2026). Si l'app a lu le presse-papiers, la relecture continue jusqu'à 2,5 s après
+  ⌘V : une app Electron chargée (Antigravity, 22 novembre 2026) montre le texte collé à l'accessibilité plus d'une
+  seconde après, et la carte s'affichait alors que le texte était arrivé. Wispad écrit alors le texte une seule fois dans ce même champ, autrement :
   d'abord en remplaçant la sélection par l'accessibilité, puis, si rien n'a changé en 0,3 s, en tapant les caractères
   (un retour à la ligne part en ⇧↩, qui ne fait pas envoyer un message). Juste avant chaque écriture, il vérifie que
   la même app est au premier plan, que le focus est sur le même champ, toujours identique, et qu'aucune touche n'a
-  été tapée depuis ⌘V. Sinon, ou si le champ ne se déclare pas modifiable, est sécurisé ou reste identique après
-  la frappe, la carte « Le texte n'est pas arrivé dans le champ » s'affiche comme avant. Le journal note quel moyen a
+  été tapée depuis ⌘V. Champ qui contient maintenant la dictée : le collage est arrivé tard, rien n'est écrit en plus
+  et aucune carte ne s'affiche ; champ qui a bougé autrement après un presse-papiers lu : collage envoyé, sans carte.
+  Sinon, ou si le champ ne se déclare pas modifiable, est sécurisé ou reste identique après
+  la frappe, la carte « Le texte n'est pas arrivé dans le champ » s'affiche comme avant, placée d'après le champ relu
+  à ce moment (il a pu grandir depuis ⌘V). Le journal note quel moyen a
   écrit et si l'app avait lu le presse-papiers, jamais le texte.
 - Page web hors de ses champs (Chrome, apps Electron comme Codex) : le focus est la page elle-même (`AXWebArea`),
   à laquelle Chrome prête un curseur de texte même quand rien n'y est modifiable. Ce curseur seul ne fait pas un

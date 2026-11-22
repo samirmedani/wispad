@@ -197,6 +197,12 @@ enum OverlayLayout {
         let local = CGPoint(x: point.x - panel.minX, y: panel.maxY - point.y)
         return pill.insetBy(dx: -slack, dy: -slack).contains(local)
     }
+
+    /// Le pointeur a-t-il bougé depuis l'apparition du message ? Resté immobile, il était là avant lui : le message
+    /// paru dessous n'est pas survolé et son décompte court (carte posée sur la zone de saisie, 22 novembre 2026).
+    static func pointerMoved(from resting: CGPoint, to point: CGPoint, tolerance: CGFloat = 3) -> Bool {
+        abs(point.x - resting.x) > tolerance || abs(point.y - resting.y) > tolerance
+    }
 }
 
 enum OverlayStyle {
@@ -1042,6 +1048,8 @@ final class OverlayController {
     /// Invalide les retraits en attente quand la bulle revient avant la fin de sa disparition.
     private var presentation = 0
     private var monitors: [Any] = []
+    /// Pointeur à l'apparition du message affiché, tant qu'il n'a pas bougé : pas de survol avant un mouvement.
+    private var restingPointer: CGPoint?
     private var visibilityTask: Task<Void, Never>?
     private var visibilityRecoveries = 0
     nonisolated(unsafe) private var spaceObserver: NSObjectProtocol?
@@ -1364,6 +1372,7 @@ final class OverlayController {
         withTransaction(Self.modeTransaction(appearing: appearing, reduceMotion: reduceMotion)) {
             state.mode = mode
         }
+        restingPointer = mode.isMessage ? pointer() : nil
     }
 
     /// Lit les fenêtres à l'écran pour savoir si le Dock est affiché sur cet écran (1 à 3 ms une fois
@@ -1397,7 +1406,10 @@ final class OverlayController {
 
     private func updateMouse() {
         guard let panel, isMonitoringMouse else { return }
-        let inside = OverlayLayout.pill(state.pillFrame, in: panel.frame, contains: NSEvent.mouseLocation)
+        let location = pointer()
+        if let resting = restingPointer, OverlayLayout.pointerMoved(from: resting, to: location) { restingPointer = nil }
+        // Message paru sous un pointeur immobile : ni ✕, ni pause, et les clics passent à l'app en dessous.
+        let inside = restingPointer == nil && OverlayLayout.pill(state.pillFrame, in: panel.frame, contains: location)
         if state.isHovered != inside { state.isHovered = inside }
         // Le décompte d'un message attend tant que le pointeur est dessus ; la bulle d'enregistrement n'en a pas.
         model?.coordinator.holdMessages(inside && state.mode.isMessage)
