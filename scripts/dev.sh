@@ -1,10 +1,10 @@
 #!/bin/zsh
 # Boucle de développement rapide (incrémentale) : compile en Debug sur l'architecture active
-# (sans relancer xcodegen si project.yml n'a pas changé) et, avec --install, met à jour
-# /Applications/Wispad.app avec le même certificat Developer ID pour garder les autorisations macOS
+# (sans relancer xcodegen si project.yml n'a pas changé) et, avec --install, signe avec le même
+# certificat Developer ID et remplace /Applications/Wispad.app pour garder les autorisations macOS
 # (micro, accessibilité, surveillance des entrées) sans couper la dictée.
-#   scripts/dev.sh                 compile le build Debug incrémental (sans toucher à l'app installée)
-#   scripts/dev.sh --install       compile en Debug, signe comme l'app installée et relance /Applications/Wispad.app
+#   scripts/dev.sh                    compile le build Debug incrémental (sans toucher à l'app installée)
+#   scripts/dev.sh --install          compile en Debug, signe en Developer ID et relance /Applications/Wispad.app
 #   scripts/dev.sh --install --show   idem et ouvre la fenêtre
 #   scripts/dev.sh --install --watch  surveille Sources/ et met à jour automatiquement à chaque sauvegarde
 set -euo pipefail
@@ -40,18 +40,10 @@ rebuild() {
     xcodegen generate --quiet
   fi
 
-  local -a extra_args=(ONLY_ACTIVE_ARCH=YES)
-  if [[ $INSTALL -eq 1 ]]; then
-    local identity=$(dev_sign_identity)
-    if [[ -n "$identity" ]]; then
-      extra_args+=(CODE_SIGN_IDENTITY="$identity" CODE_SIGN_STYLE=Manual)
-    fi
-  fi
-
   local log=$(mktemp -t wispad-dev-build)
   if ! xcodebuild -project Wispad.xcodeproj -scheme Wispad -configuration Debug \
     -destination 'platform=macOS' -derivedDataPath build/DerivedData \
-    "${extra_args[@]}" build > "$log" 2>&1; then
+    ONLY_ACTIVE_ARCH=YES build > "$log" 2>&1; then
     grep -E "error:|BUILD FAILED" "$log" | head -30 >&2
     rm -f "$log"
     return 1
@@ -68,6 +60,16 @@ rebuild() {
   local staged="${DEST%.app}.dev.app"
   rm -rf "$staged"
   ditto "$BUILT" "$staged"
+
+  local identity=$(dev_sign_identity)
+  if [[ -n "$identity" ]]; then
+    for nested in "$staged"/Contents/MacOS/*.dylib(N) "$staged"/Contents/Frameworks/*(N); do
+      codesign --force --options runtime --timestamp=none --sign "$identity" "$nested"
+    done
+    codesign --force --options runtime --timestamp=none \
+      --entitlements Sources/Wispad/Wispad.entitlements --sign "$identity" "$staged"
+    codesign --verify --deep --strict "$staged"
+  fi
 
   osascript -e 'tell application id "com.yatofix.wispad" to quit' 2>/dev/null || true
   for _ in {1..16}; do pgrep -xq Wispad || break; sleep 0.15; done
