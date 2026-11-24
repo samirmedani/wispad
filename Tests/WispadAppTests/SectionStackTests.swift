@@ -97,4 +97,29 @@ struct SectionStackTests {
         #expect(model.fallbackSummary(for: .today, now: now).total == 1)
         #expect(model.usageSummary(for: .today, now: now).totalUSD > 0)
     }
+
+    @Test func derivedHistoryCachesFollowHistoryChanges() throws {
+        let (model, directory) = try model()
+        defer { model.coordinator.cancel(); try? FileManager.default.removeItem(at: directory) }
+        let now = Date()
+        #expect(model.sidebarDigest(now: now).wordsToday == 0)
+        #expect(model.homeSnapshot(for: .days7, now: now).summary.words == 0)
+        #expect(model.historyDayGroups(query: "", filter: nil).isEmpty)
+
+        let record = DictationRecord(
+            id: "rec-cache-1", createdAt: now, finalText: "Bonjour le monde.", rawText: "Bonjour le monde",
+            durationSeconds: 3, wordCount: 3, provider: "xai", model: "grok",
+            targetApp: "Notes", targetBundle: "com.apple.Notes", insertionStatus: "inserted"
+        )
+        model.history = [record]
+
+        #expect(model.sidebarDigest(now: now).wordsToday == 3)
+        let snap = model.homeSnapshot(for: .days7, now: now)
+        #expect(snap.summary.words == 3)
+        #expect(snap.topApps.first?.name == "Notes")
+        let groups = model.historyDayGroups(query: "bonjour", filter: nil)
+        #expect(groups.count == 1)
+        #expect(groups[0].records.count == 1)
+        #expect(model.historyDayGroups(query: "inexistant", filter: nil).isEmpty)
+    }
 }

@@ -15,10 +15,14 @@ final class AppModel {
         // Le cache des lignes ne garde ni dictée supprimée ni copie de l'historique relu.
         didSet {
             HistoryRowCache.shared.follow(history, previous: oldValue)
+            historyDerived.removeAll()
             insightsInputsRevision &+= 1
             historyRevision &+= 1
         }
     }
+    /// Calculs dérivés de l'historique (barre latérale, Accueil, regroupement par jour) : évite de tout reparcourir
+    /// sur le fil principal à chaque clic d'onglet, survol ou redimensionnement.
+    @ObservationIgnored private var historyDerived: [String: Any] = [:]
     /// Change à chaque relecture de l'historique : le Profil se recalcule alors en arrière-plan (`ProfileLoader`).
     private(set) var historyRevision = 0
     var dictionary: [DictionaryEntry] = [] {
@@ -1608,6 +1612,112 @@ final class AppModel {
             )
         }
         return StatsCalculator.filter(samples: all, period: period, now: Date())
+    }
+
+    /// Résumé de la barre latérale mis en cache par révision d'historique et par jour.
+    func sidebarDigest(now: Date = Date(), calendar: Calendar = .current) -> SidebarDigest {
+        _ = historyRevision
+        let dayStamp = Int(calendar.startOfDay(for: now).timeIntervalSinceReferenceDate)
+        let key = "sidebar|\(historyRevision)|\(dayStamp)|\(calendar.timeZone.identifier)"
+        if let cached = historyDerived[key] as? SidebarDigest { return cached }
+        let digest = SidebarDigest.make(records: history, now: now, calendar: calendar)
+        historyDerived[key] = digest
+        return digest
+    }
+
+    /// Données d'Accueil calculées en une passe et mises en cache par période et par minute.
+    func homeSnapshot(for period: StatsPeriod, now: Date = Date(), calendar: Calendar = .current) -> HomeSnapshot {
+        _ = historyRevision
+        let typingWPM = settings.typingWPM
+        let minute = Int(now.timeIntervalSinceReferenceDate / 60)
+        let key = "home|\(historyRevision)|\(period.rawValue)|\(Int(typingWPM.rounded()))|\(minute)|\(calendar.timeZone.identifier)"
+        if let cached = historyDerived[key] as? HomeSnapshot { return cached }
+        let snapshot = HomeSnapshot.make(history: history, period: period, typingWPM: typingWPM, now: now, calendar: calendar)
+        historyDerived[key] = snapshot
+        return snapshot
+    }
+
+    /// Groupes journaliers de l'Historique mis en cache par recherche et filtre actif.
+    func historyDayGroups(query: String, filter: HistoryFilter?) -> [DayGroup] {
+        _ = historyRevision
+        let needle = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        let filterKey = filter.map { "\($0.title):\($0.dictations.count):\($0.dictations.sorted().joined(separator: ","))" } ?? ""
+        let key = "history|\(historyRevision)|\(needle)|\(filterKey)"
+        if let cached = historyDerived[key] as? [DayGroup] { return cached }
+        let scoped = filter.map { active in history.filter { active.dictations.contains($0.id) } } ?? history
+        let filtered = needle.isEmpty ? scoped : scoped.filter { $0.matches(search: needle) }
+        let groups = DayGroup.make(filtered)
+        historyDerived[key] = groups
+        return groups
+    }
+}
+
+/// Instantané précalculé de l'écran Accueil : zéro boucle sur tout l'historique dans `HomeView.body`.
+struct HomeSnapshot {
+    struct BarPoint: Identifiable {
+        var date: Date
+        var words: Int
+        var label: String
+        var id: Date { date }
+    }
+
+    struct AppShare: Identifiable {
+        var id: String
+        var name: String
+        var bundleID: String?
+        var count: Int
+    }
+
+    var summary: StatsSummary
+    var recordsCount: Int
+    var bars: [BarPoint]
+    var peakWords: Int
+    var topApps: [AppShare]
+    var span: UsageSpan?
+
+    static func make(history: [DictationRecord], period: StatsPeriod, typingWPM: Double,
+                     now: Date = Date(), calendar: Calendar = .current) -> HomeSnapshot {
+        let start = period.startDate(now: now, calendar: calendar)
+        let records = start.map { cutoff in history.filter { $0.createdAt >= cutoff } } ?? history
+        let samples = records.map {
+            DictationSample(
+                createdAt: $0.createdAt,
+                wordCount: $0.wordCount,
+                durationSeconds: $0.durationSeconds,
+                usageCategory: $0.usageCategory
+            )
+        }
+        let summary = StatsCalculator.summary(samples: samples, typingWordsPerMinute: typingWPM)
+        let axis = TimeAxis(period: period, earliest: records.last?.createdAt, now: now, calendar: calendar)
+        var totals: [Date: Int] = [:]
+        var appCounts: [String: AppShare] = [:]
+        for record in records {
+            if let bucket = axis.bucket(of: record.createdAt) {
+                totals[bucket, default: 0] += record.wordCount
+            }
+            let appKey = record.targetBundle ?? record.targetApp ?? "?"
+            if appCounts[appKey] == nil {
+                appCounts[appKey] = AppShare(
+                    id: appKey,
+                    name: record.targetApp ?? String(localized: "Application inconnue"),
+                    bundleID: record.targetBundle,
+                    count: 0
+                )
+            }
+            appCounts[appKey]?.count += 1
+        }
+        let labelFormat = axis.labelFormat
+        let bars = axis.starts.map { date in
+            BarPoint(date: date, words: totals[date] ?? 0, label: date.formatted(labelFormat))
+        }
+        let peak = bars.map(\.words).max() ?? 0
+        let topApps = appCounts.values
+            .sorted { $0.count == $1.count ? $0.name < $1.name : $0.count > $1.count }
+            .prefix(5)
+            .map { $0 }
+        let span = history.last.map { UsageSpan.make(firstUse: $0.createdAt, now: now) }
+        return HomeSnapshot(summary: summary, recordsCount: records.count, bars: bars,
+                            peakWords: peak, topApps: topApps, span: span)
     }
 }
 

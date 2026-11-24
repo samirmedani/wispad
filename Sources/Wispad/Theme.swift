@@ -2,31 +2,66 @@ import SwiftUI
 import AppKit
 import WispadCore
 
-/// Jetons de design de la fenêtre principale : une seule source pour les couleurs, rayons et animations.
+/// Jetons de design de la fenêtre principale : direction monochrome carbone façon T3 Code,
+/// avec le rouge réservé à la voix et à l'écoute.
 enum Theme {
-    /// Même rouge que la bulle de dictée : réservé à l'écoute et à la marque (icône, bulle).
-    static let brand = Color(red: 1, green: 0.23, blue: 0.21)
-    /// Couleur d'accent choisie dans Réglages Système : sélection, liens, graphiques et boutons de la fenêtre.
-    static let accent = Color.accentColor
-    static let canvas = Color.adaptive(light: NSColor(white: 0.965, alpha: 1), dark: NSColor(white: 0.105, alpha: 1))
-    static let card = Color.adaptive(light: .white, dark: NSColor(white: 0.15, alpha: 1))
-    static let cardBorder = Color.adaptive(light: NSColor(white: 0, alpha: 0.05), dark: NSColor(white: 1, alpha: 0.045))
-    static let subtleFill = Color.adaptive(light: NSColor(white: 0, alpha: 0.05), dark: NSColor(white: 1, alpha: 0.07))
-    static let raised = Color.adaptive(light: .white, dark: NSColor(white: 0.28, alpha: 1))
+    /// Rouge spectre : réservé à l'écoute, au micro actif et à la marque.
+    static let brand = Color(red: 1, green: 0.231, blue: 0.188)
+    /// Accent monochrome : encre franche, sans bleu système criard.
+    static let accent = Color.adaptive(
+        light: NSColor(red: 0.08, green: 0.08, blue: 0.095, alpha: 1),
+        dark: NSColor(red: 0.925, green: 0.925, blue: 0.94, alpha: 1)
+    )
+    /// Texte ou icône posés sur un fond `Theme.accent`.
+    static let accentInk = Color.adaptive(
+        light: .white,
+        dark: NSColor(red: 0.043, green: 0.043, blue: 0.052, alpha: 1)
+    )
+    /// Coque extérieure et barre latérale (carbone mat sombre / gris clair neutre).
+    static let chrome = Color.adaptive(
+        light: NSColor(red: 0.953, green: 0.953, blue: 0.962, alpha: 1),
+        dark: NSColor(red: 0.043, green: 0.043, blue: 0.052, alpha: 1)
+    )
+    /// Panneau principal encadré.
+    static let canvas = Color.adaptive(
+        light: .white,
+        dark: NSColor(red: 0.071, green: 0.071, blue: 0.082, alpha: 1)
+    )
+    /// Surface de carte et de panneau.
+    static let card = Color.adaptive(
+        light: NSColor(red: 0.98, green: 0.98, blue: 0.985, alpha: 1),
+        dark: NSColor(red: 0.092, green: 0.092, blue: 0.106, alpha: 1)
+    )
+    static let cardBorder = Color.adaptive(
+        light: NSColor(white: 0, alpha: 0.08),
+        dark: NSColor(white: 1, alpha: 0.075)
+    )
+    static let cardBorderStrong = Color.adaptive(
+        light: NSColor(white: 0, alpha: 0.14),
+        dark: NSColor(white: 1, alpha: 0.13)
+    )
+    static let subtleFill = Color.adaptive(
+        light: NSColor(white: 0, alpha: 0.045),
+        dark: NSColor(white: 1, alpha: 0.055)
+    )
+    static let raised = Color.adaptive(
+        light: .white,
+        dark: NSColor(red: 0.135, green: 0.135, blue: 0.155, alpha: 1)
+    )
     /// Cartes posées à plat : un filet très léger suffit, sans ombre.
     static let cardShadow = Color.clear
     /// Touches dessinées : face à peine dégradée, contour fin et lèvre plus sombre en bas, pour un léger relief.
-    static let keyTop = Color.adaptive(light: .white, dark: NSColor(white: 0.31, alpha: 1))
-    static let keyBottom = Color.adaptive(light: NSColor(white: 0.955, alpha: 1), dark: NSColor(white: 0.255, alpha: 1))
-    static let keyBorder = Color.adaptive(light: NSColor(white: 0, alpha: 0.13), dark: NSColor(white: 1, alpha: 0.09))
-    static let keyEdge = Color.adaptive(light: NSColor(white: 0, alpha: 0.22), dark: NSColor(white: 0, alpha: 0.6))
+    static let keyTop = Color.adaptive(light: .white, dark: NSColor(red: 0.17, green: 0.17, blue: 0.195, alpha: 1))
+    static let keyBottom = Color.adaptive(light: NSColor(white: 0.955, alpha: 1), dark: NSColor(red: 0.13, green: 0.13, blue: 0.15, alpha: 1))
+    static let keyBorder = Color.adaptive(light: NSColor(white: 0, alpha: 0.13), dark: NSColor(white: 1, alpha: 0.11))
+    static let keyEdge = Color.adaptive(light: NSColor(white: 0, alpha: 0.22), dark: NSColor(white: 0, alpha: 0.65))
 
-    static let radius: CGFloat = 14
-    static let sidebarWidth: CGFloat = 244
-    static let spring = Animation.spring(response: 0.32, dampingFraction: 0.86)
-    static let quick = Animation.easeOut(duration: 0.14)
-    static let hover = Animation.easeOut(duration: 0.18)
-    static let privacy = Animation.easeInOut(duration: 0.24)
+    static let radius: CGFloat = 10
+    static let sidebarWidth: CGFloat = 240
+    static let spring = Animation.spring(response: 0.28, dampingFraction: 0.88)
+    static let quick = Animation.easeOut(duration: 0.12)
+    static let hover = Animation.easeOut(duration: 0.14)
+    static let privacy = Animation.easeInOut(duration: 0.2)
 }
 
 private struct InteractionPreviewHoverKey: EnvironmentKey {
@@ -96,7 +131,7 @@ private struct HoverButtonBody: View {
 
     @ViewBuilder private var label: some View {
         if treatment == .filled {
-            configuration.label.foregroundStyle(.white)
+            configuration.label.foregroundStyle(tint == Theme.accent ? Theme.accentInk : Color.white)
         } else {
             configuration.label
         }
@@ -264,27 +299,31 @@ struct VisualEffectBackground: NSViewRepresentable {
     }
 }
 
-/// En-tête commun : grand titre, sous-titre, et contrôles à droite.
+/// En-tête commun : titre net, sous-titre discret et contrôles à droite.
 struct ScreenHeader<Trailing: View>: View {
     var title: String
     var subtitle: String?
     @ViewBuilder var trailing: Trailing
 
     var body: some View {
-        HStack(alignment: .center, spacing: 16) {
-            VStack(alignment: .leading, spacing: 4) {
-                // Titre d'écran à la manière de Réglages Système et de Superwhisper : net, sans être une affiche.
-                Text(title)
-                    .font(.system(size: 22, weight: .semibold))
-                if let subtitle {
-                    Text(subtitle)
-                        .font(.system(size: 12.5))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center, spacing: 16) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.system(size: 18, weight: .semibold))
+                        .tracking(-0.2)
+                    if let subtitle {
+                        Text(subtitle)
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
                 }
+                Spacer(minLength: 12)
+                trailing
             }
-            Spacer(minLength: 12)
-            trailing
+            Divider()
+                .overlay(Theme.cardBorder)
         }
     }
 }
@@ -303,12 +342,12 @@ struct ScreenScroll<Content: View>: View {
         ScrollView {
             // Pile paresseuse : à l'ouverture d'un écran, seules les cartes visibles sont construites et mesurées ;
             // les suivantes le sont au défilement. Une longue page (Consommation, Profil) s'ouvre sans tout calculer.
-            LazyVStack(alignment: .leading, spacing: 20) {
+            LazyVStack(alignment: .leading, spacing: 16) {
                 content
             }
-            .padding(.horizontal, 32)
-            .padding(.top, 14)
-            .padding(.bottom, 32)
+            .padding(.horizontal, 26)
+            .padding(.top, 18)
+            .padding(.bottom, 28)
             .frame(maxWidth: 920, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
@@ -316,7 +355,7 @@ struct ScreenScroll<Content: View>: View {
     }
 }
 
-/// Sélecteur compact à pastille glissante.
+/// Sélecteur segmenté monochrome à pastille glissante.
 struct PillPicker<Value: Hashable>: View {
     var options: [Value]
     @Binding var selection: Value
@@ -332,25 +371,29 @@ struct PillPicker<Value: Hashable>: View {
                     withAnimation(reduceMotion ? nil : Theme.spring) { selection = item }
                 } label: {
                     Text(title(item))
-                        .font(.system(size: 12, weight: selected ? .semibold : .medium))
+                        .font(.system(size: 11.5, weight: selected ? .semibold : .medium))
                         .foregroundStyle(selected ? Color.primary : Color.secondary)
-                        .padding(.horizontal, 11)
-                        .frame(height: 24)
+                        .padding(.horizontal, 10)
+                        .frame(height: 23)
                         .background {
                             if selected {
-                                Capsule()
+                                RoundedRectangle(cornerRadius: 5.5, style: .continuous)
                                     .fill(Theme.raised)
-                                    .shadow(color: .black.opacity(0.12), radius: 2, y: 1)
+                                    .overlay {
+                                        RoundedRectangle(cornerRadius: 5.5, style: .continuous)
+                                            .strokeBorder(Theme.cardBorder, lineWidth: 1)
+                                    }
                                     .matchedGeometryEffect(id: "pill", in: pill)
                             }
                         }
-                        .contentShape(Capsule())
+                        .contentShape(RoundedRectangle(cornerRadius: 5.5, style: .continuous))
                 }
                 .buttonStyle(HoverButtonStyle())
             }
         }
-        .padding(3)
-        .background(Capsule().fill(Theme.subtleFill))
+        .padding(2.5)
+        .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Theme.card))
+        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Theme.cardBorder, lineWidth: 1))
         .fixedSize()
     }
 }
@@ -361,7 +404,7 @@ extension PillPicker where Value == StatsPeriod {
     }
 }
 
-/// Pastille d'icône teintée.
+/// Pastille d'icône sobre.
 struct IconBadge: View {
     var symbol: String
     var tint: Color
@@ -369,14 +412,18 @@ struct IconBadge: View {
 
     var body: some View {
         Image(systemName: symbol)
-            .font(.system(size: size * 0.46, weight: .semibold))
+            .font(.system(size: size * 0.46, weight: .medium))
             .foregroundStyle(tint)
             .frame(width: size, height: size)
-            .background(tint.opacity(0.14), in: RoundedRectangle(cornerRadius: size * 0.3, style: .continuous))
+            .background(Theme.subtleFill, in: RoundedRectangle(cornerRadius: size * 0.28, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
+                    .strokeBorder(Theme.cardBorder, lineWidth: 1)
+            }
     }
 }
 
-/// Chiffre clé avec transition numérique.
+/// Chiffre clé monochrome avec transition numérique.
 struct MetricTile: View {
     var symbol: String
     var tint: Color
@@ -384,23 +431,26 @@ struct MetricTile: View {
     var value: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                IconBadge(symbol: symbol, tint: tint, size: 24)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 7) {
+                Image(systemName: symbol)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 14)
                 Text(title)
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.system(size: 11.5, weight: .medium))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
             Text(value)
-                .font(.system(size: 24, weight: .semibold, design: .rounded))
+                .font(.system(size: 22, weight: .semibold, design: .monospaced))
                 .monospacedDigit()
                 .contentTransition(.numericText())
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
+        .padding(13)
         .card()
     }
 }

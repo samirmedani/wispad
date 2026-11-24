@@ -134,7 +134,6 @@ final class SectionContainer: NSView {
         host.frame = bounds
         addSubview(host, positioned: .below, relativeTo: nil)
         host.layoutSubtreeIfNeeded()
-        host.displayIfNeeded()
         if current != section { host.removeFromSuperview() } else { host.alphaValue = 1 }
         scheduleWarmUp(after: Self.warmUpSpacing)
     }

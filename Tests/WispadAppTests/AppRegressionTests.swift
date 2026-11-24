@@ -2868,15 +2868,17 @@ struct AppRegressionTests {
             #expect(image.isTemplate)
             #expect(image.size == NSSize(width: 18, height: 18))
         }
-        // Bord gauche net : colonne pleine contre colonne vide, en Retina comme en @1x.
+        // Barres du spectre nettes : colonne pleine contre gouttière vide, en Retina (@2x) comme en @1x.
         let retina = try menuBarAlpha(listening: false, scale: 2)
-        #expect(retina(2, 21) > 250 && retina(1, 21) < 5)
+        // Barre centrale (index 3 : x = 8,5…10 pt → pixels 17…19) encadrée par des gouttières vides (16 et 20).
+        #expect(retina(18, 18) > 250 && retina(16, 18) < 5 && retina(20, 18) < 5)
         let standard = try menuBarAlpha(listening: false, scale: 1)
-        #expect(standard(1, 11) > 250 && standard(0, 11) < 5)
-        // En écoute, la tête devient pleine et le W y est découpé.
+        // Barre centrale en @1x (x = 8 pt) encadrée par des colonnes vides (7 et 9).
+        #expect(standard(8, 9) > 250 && standard(7, 9) < 5 && standard(9, 9) < 5)
+        // En écoute, la pilule est pleine et les barres du spectre y sont découpées (centre vide, fond de pilule plein).
         let listening = try menuBarAlpha(listening: true, scale: 2)
-        #expect(retina(18, 14) < 5 && listening(18, 14) > 250)
-        #expect(retina(18, 20) > 250 && listening(18, 20) < 5)
+        #expect(retina(16, 18) < 5 && listening(16, 18) > 250)
+        #expect(retina(18, 18) > 250 && listening(18, 18) < 5)
     }
 }
 

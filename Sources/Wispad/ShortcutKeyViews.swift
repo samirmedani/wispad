@@ -359,7 +359,7 @@ private struct DiagramKey: View {
             .overlay {
                 Text(label)
                     .font(.system(size: unit * 0.34, weight: lit ? .semibold : .regular))
-                    .foregroundStyle(lit ? Color.white : Color.secondary)
+                    .foregroundStyle(lit ? Theme.accentInk : Color.secondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
             }

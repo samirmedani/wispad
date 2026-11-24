@@ -16,9 +16,9 @@ struct HistoryView: View {
     @State private var scrollActivity = HistoryScrollActivity()
 
     var body: some View {
-        let groups = DayGroup.make(filtered)
+        let groups = model.historyDayGroups(query: appliedQuery, filter: model.historyFilter)
         VStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 12) {
                 ScreenHeader(title: String(localized: "Historique"), subtitle: subtitle) {
                     Button(role: .destructive) {
                         pendingDeleteAll = true
@@ -48,8 +48,8 @@ struct HistoryView: View {
                     .background(Capsule().fill(Theme.accent.opacity(0.1)))
                 }
             }
-            .padding(.horizontal, 32)
-            .padding(.top, 14)
+            .padding(.horizontal, 26)
+            .padding(.top, 18)
             .padding(.bottom, 10)
             .frame(maxWidth: 920)
             .frame(maxWidth: .infinity)
@@ -86,8 +86,8 @@ struct HistoryView: View {
                         }
                     }
                     .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { rowWidth = $0 }
-                    .padding(.horizontal, 32)
-                    .padding(.bottom, 32)
+                    .padding(.horizontal, 26)
+                    .padding(.bottom, 28)
                     .frame(maxWidth: 920)
                     .frame(maxWidth: .infinity)
                 }

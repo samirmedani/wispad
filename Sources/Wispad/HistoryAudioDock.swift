@@ -43,7 +43,7 @@ private struct HistoryAudioControls: View {
                 Button(action: player.togglePlayPause) {
                     Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Theme.accentInk)
                         .frame(width: 32, height: 32)
                         .background(Circle().fill(Theme.accent))
                         .contentShape(Circle())

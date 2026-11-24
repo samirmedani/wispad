@@ -290,35 +290,31 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 
 ## Fenêtre
 
-- Aspect d'une app Mac : sélection, liens, graphiques, onglets et boutons prennent la couleur d'accent choisie dans
-  Réglages Système ; le rouge de Wispad reste à la marque (icône, micro, Voix) et à l'écoute. Les sections non
-  sélectionnées, les vignettes d'apparence et les commandes partagées réagissent au survol avec un fond discret, sans
-  déplacer le contenu. Le fond change sans animation si macOS réduit les animations. Titres d'écran de 22 points
-  semi-gras, sous-titre de 12,5 points ; cartes posées à plat, filet très léger et sans ombre. Fenêtre de 820 × 600
-  points au moins.
-- **Barre latérale « Épurée + chiffres »** (0.8.31), sur le matériau de barre latérale de macOS :
-  - en haut, une carte : l'icône, « Wispad » et l'état de la dictée (« Prêt », « À l'écoute »…, une ligne), un bouton
-    micro rouge qui lance une dictée mains libres (comme deux appuis sur le raccourci, ou « Dicter (mains libres) » du
-    menu de la barre des menus) puis l'arrête (Maj tenue : Entrée part après le collage) ; les mots dictés aujourd'hui
-    et une barre par jour sur les sept derniers jours (aujourd'hui en couleur d'accent) ; la dernière dictée réussie
-    (app, moment, début du texte sur une ligne). Son texte est flouté tant que le pointeur ne le survole pas (0.8.32).
-    Un clic sur la case, ou sur son icône, copie le texte (l'icône devient une coche, « Texte copié. » s'affiche) ; la
-    petite croix masque cette dictée, retenue sur l'appareil (jamais exportée) : la suivante s'affiche de nouveau.
-    L'icône copier et la croix sont deux boutons, avec le survol commun des petites icônes (voir « Survol des petites
-    icônes ») ;
+- Direction artistique monochrome carbone (sombre par défaut sur macOS sombre, version claire assortie) : coque
+  extérieure mate (`Theme.chrome`) portant la barre latérale, et panneau principal encadré (`Theme.canvas`) avec
+  filets discrets de 1 point. Le rouge spectre de Wispad reste réservé à la marque (icône Spectre Pur dans le Dock,
+  pilule en écoute dans la barre des menus) et à l'écoute active ; les points d'état gardent le vert/orange/rouge.
+  Les sections non sélectionnées, les vignettes d'apparence et les commandes partagées réagissent au survol avec un
+  fond discret, sans déplacer le contenu. Le fond change sans animation si macOS réduit les animations. Fenêtre de
+  820 × 600 points au moins.
+- **Barre latérale monochrome** sur la coque mate :
+  - en haut, une carte compacte : l'icône Spectre Pur, « Wispad », l'état de la dictée (« Prêt », « À l'écoute »…,
+    une ligne) et un bouton micro discret (monochrome au repos, rouge spectre uniquement pendant l'écoute) qui lance
+    une dictée mains libres (comme deux appuis sur le raccourci, ou « Dicter (mains libres) » du menu de la barre des
+    menus) puis l'arrête (Maj tenue : Entrée part après le collage). Lorsqu'elle n'a pas été masquée, la dernière
+    dictée réussie apparaît dessous, floutée tant que le pointeur ne la survole pas ; un clic (ou son icône) copie le
+    texte, la croix la masque jusqu'à la dictée suivante ;
   - les sections en trois groupes : Dictée (Accueil, Historique), Toi (Profil, Dictionnaire), Services (Fournisseurs,
-    Consommation). Symboles sobres ; la section ouverte a un fond doux, un trait d'accent sur le bord et son symbole
-    en couleur d'accent. Chaque rangée porte son chiffre du moment, rien s'il n'y a rien à dire : mots du jour,
-    dictées du jour, série de jours d'affilée (dès 2 jours, en finissant aujourd'hui ou hier), suggestions du
-    Dictionnaire à valider (pastille d'accent, sinon le nombre de mots), état des fournisseurs (point vert « Prêt »,
-    « Relais », « À régler », « Sans clé », comme la vue d'ensemble de Fournisseurs) ;
-  - en bas, Réglages (point orange si une autorisation manque), le montant des dépenses API des 30 derniers jours,
-    puis le pied (étoile, version, apparence, liens). Le montant indique « Au moins » si les coûts sont incomplets.
-    Un clic ouvre Consommation, où la carte des abonnements compare le coût mensuel à Wispr Flow Pro.
+    Consommation). Symboles monochromes sobres ; la section ouverte prend un fond discret sans filet coloré. Chaque
+    rangée affiche son chiffre du moment en chasse fixe : mots du jour, dictées du jour, série de jours d'affilée (dès
+    2 jours, en finissant aujourd'hui ou hier), suggestions du Dictionnaire à valider (badge monochrome, sinon le nombre
+    de mots), point d'état des fournisseurs (vert, relais, orange ou rouge) et dépenses API des 30 derniers jours sur
+    Consommation ;
+  - en bas, Réglages (point orange si une autorisation manque), puis le pied (étoile, version, apparence, liens).
   - Ordre des raccourcis ⌘1 à ⌘7 et du menu Présentation : celui de la barre latérale (Accueil, Historique, Profil,
-    Dictionnaire, Fournisseurs, Consommation, Réglages). Tout est calculé sur ce Mac depuis l'historique ; une dictée
-    sans texte ne compte pas. Les raccourcis de la dictée restent une rangée de touches en bas de l'Accueil (carte
-    « Raccourcis »).
+    Dictionnaire, Fournisseurs, Consommation, Réglages). Les résumés de la barre latérale, de l'Accueil et les
+    groupes journaliers de l'Historique sont mis en cache par révision d'historique pour éviter tout recalcul au fil
+    des clics. Les raccourcis de la dictée restent une rangée de touches en bas de l'Accueil (carte « Raccourcis »).
 - Une fois affichée, c'est une fenêtre ordinaire : passer à une autre app, cliquer sur le bureau ou changer de
   bureau la laisse à sa place et sur son bureau, simplement derrière l'app active.
 - **Apparence** : Système (par défaut, suit macOS, y compris son passage automatique du clair au sombre), Clair ou

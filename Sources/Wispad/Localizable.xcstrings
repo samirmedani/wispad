@@ -16437,6 +16437,16 @@
         }
       }
     },
+    "%lld j" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lldd"
+          }
+        }
+      }
+    },
     "%lld j de suite" : {
       "localizations" : {
         "en" : {

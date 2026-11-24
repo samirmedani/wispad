@@ -74,19 +74,27 @@ struct RootView: View {
     }
 
     private var main: some View {
-        // Barre latérale native de macOS : sélection, matériau et largeur gérés par le système, comme dans Finder
-        // ou Réglages Système. Elle reste toujours visible : l'app n'a qu'une colonne de contenu.
+        // Cadre carbone mat façon T3 Code : barre latérale sur la coque extérieure, panneau de contenu encadré.
         HStack(spacing: 0) {
             Sidebar()
                 .frame(width: Theme.sidebarWidth)
-            Divider().ignoresSafeArea()
             SectionStack(section: model.selectedSection, make: section, onShow: { [weak model] in model?.noteSectionShown($0) },
                          canWarmUp: { [weak model] in model?.coordinator.phase == .idle })
-                // Jusque sous la barre de titre transparente ; chaque écran garde ses marges (zone sûre d'AppKit).
-                .ignoresSafeArea()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Theme.canvas)
+                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .strokeBorder(Theme.cardBorder, lineWidth: 1)
+                        .allowsHitTesting(false)
+                }
                 .overlay(alignment: .bottom) { BannerToast() }
+                .padding(.top, 7)
+                .padding(.trailing, 7)
+                .padding(.bottom, 7)
+                .ignoresSafeArea(edges: .top)
         }
+        .background(Theme.chrome.ignoresSafeArea())
         .frame(minWidth: 820, minHeight: 600)
         // Alerte de la barre latérale : relue hors du fil principal, qui dessine la fenêtre qui s'ouvre.
         // Le Profil se calcule aussi en arrière-plan : il s'ouvre ensuite sans attente.
@@ -159,25 +167,25 @@ enum SidebarGroup: CaseIterable, Identifiable {
     }
 }
 
-/// Barre latérale « Épurée + chiffres » : la carte de dictée (état, micro, mots du jour, dernière dictée), les sections
-/// en trois groupes avec leur chiffre du moment, puis Réglages, la dépense et le pied (étoile, version, liens).
+/// Barre latérale monochrome façon T3 Code : carte compacte Wispad + micro, sections sobres avec chiffres
+/// en chasse fixe, puis Réglages et pied de page.
 struct Sidebar: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        let digest = SidebarDigest.make(records: model.history)
+        let digest = model.sidebarDigest()
         VStack(spacing: 0) {
             DictateCard(digest: digest)
-                .padding(.horizontal, 12)
+                .padding(.horizontal, 10)
                 .padding(.top, 4)
             ScrollView {
                 VStack(alignment: .leading, spacing: 1) {
                     ForEach(SidebarGroup.allCases) { group in
                         Text(group.title)
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(.system(size: 10.5, weight: .medium))
                             .foregroundStyle(.tertiary)
-                            .padding(.horizontal, 10)
-                            .padding(.top, 12)
+                            .padding(.horizontal, 9)
+                            .padding(.top, 13)
                             .padding(.bottom, 3)
                             .accessibilityAddTraits(.isHeader)
                         ForEach(group.sections) { section in
@@ -185,28 +193,28 @@ struct Sidebar: View {
                         }
                     }
                 }
-                .padding(.horizontal, 12)
+                .padding(.horizontal, 10)
                 .padding(.bottom, 8)
             }
             .scrollIndicators(.never)
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 6) {
+                Divider()
+                    .overlay(Theme.cardBorder)
+                    .padding(.bottom, 2)
                 SidebarRow(section: .settings, selected: model.selectedSection == .settings, digest: digest)
-                SpendLine()
-                    .padding(.horizontal, 10)
                 ProjectFooter()
-                    .padding(.horizontal, 6)
+                    .padding(.horizontal, 4)
             }
-            .padding(.horizontal, 12)
-            .padding(.top, 6)
-            .padding(.bottom, 12)
+            .padding(.horizontal, 10)
+            .padding(.top, 4)
+            .padding(.bottom, 10)
         }
         .frame(maxHeight: .infinity, alignment: .top)
-        .background(VisualEffectBackground(material: .sidebar).ignoresSafeArea())
+        .background(Theme.chrome.ignoresSafeArea())
     }
 }
 
-/// Rangée de section : symbole discret (couleur d'accent quand elle est ouverte), titre, chiffre du moment à droite.
-/// La section ouverte a un fond doux et un trait d'accent sur le bord.
+/// Rangée de section monochrome : sélection douce sans filet coloré, chiffres discrets à droite.
 struct SidebarRow: View {
     @Environment(AppModel.self) private var model
     @Environment(\.interactionPreviewHover) private var previewHover
@@ -224,38 +232,28 @@ struct SidebarRow: View {
         Button {
             model.selectedSection = section
         } label: {
-            HStack(spacing: 10) {
+            HStack(spacing: 9) {
                 Image(systemName: section.symbol)
-                    .font(.system(size: 13, weight: .regular))
-                    .foregroundStyle(selected ? Theme.accent : Color.secondary)
-                    .frame(width: 18)
+                    .font(.system(size: 12.5, weight: selected ? .medium : .regular))
+                    .foregroundStyle(selected ? Color.primary : Color.secondary)
+                    .frame(width: 16)
                     .accessibilityHidden(true)
                 Text(section.title)
-                    .font(.system(size: 13, weight: selected ? .medium : .regular))
-                    .foregroundStyle(selected ? Color.primary : Color.primary.opacity(0.82))
+                    .font(.system(size: 12.5, weight: selected ? .medium : .regular))
+                    .foregroundStyle(selected ? Color.primary : Color.primary.opacity(0.74))
                     .lineLimit(1)
                     .layoutPriority(1)
                 Spacer(minLength: 4)
                 SidebarRowDetail(section: section, digest: digest)
             }
-            .padding(.horizontal, 10)
-            .frame(height: 28)
+            .padding(.horizontal, 9)
+            .frame(height: 27)
             .contentShape(Rectangle())
             .background {
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .fill(Color.primary.opacity(selected ? (contrast == .increased ? 0.16 : 0.08)
-                                                : highlighted ? (contrast == .increased ? 0.12 : 0.05) : 0))
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(Color.primary.opacity(selected ? (contrast == .increased ? 0.16 : 0.085)
+                                                : highlighted ? (contrast == .increased ? 0.10 : 0.045) : 0))
                     .animation(reduceMotion ? nil : Theme.hover, value: highlighted)
-            }
-            .overlay(alignment: .leading) {
-                if selected {
-                    UnevenRoundedRectangle(cornerRadii: .init(bottomTrailing: 2, topTrailing: 2), style: .continuous)
-                        .fill(Theme.accent)
-                        .frame(width: 3)
-                        .padding(.vertical, 7)
-                        .offset(x: -12)
-                        .accessibilityHidden(true)
-                }
             }
         }
         .buttonStyle(.plain)
@@ -275,23 +273,24 @@ struct SidebarRowDetail: View {
     var body: some View {
         switch section {
         case .home:
-            if digest.wordsToday > 0 { meta(String(localized: "\(digest.wordsToday) mots")) }
+            if digest.wordsToday > 0 { meta("\(digest.wordsToday)") }
         case .history:
             if digest.dictationsToday > 0 {
-                meta(String(localized: "\(digest.dictationsToday) auj."))
+                meta("\(digest.dictationsToday)")
                     .help(String(localized: "Dictées aujourd'hui"))
             }
         case .profile:
-            if digest.streak >= 2 { meta(String(localized: "\(digest.streak) j de suite")) }
+            if digest.streak >= 2 { meta(String(localized: "\(digest.streak) j")) }
         case .dictionary:
             let pending = model.dictionaryInsights.suggestions.count
             if pending > 0 {
                 Text(verbatim: "\(pending)")
-                    .font(.system(size: 10.5, weight: .semibold).monospacedDigit())
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 6)
+                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, 5)
                     .frame(minWidth: 18, minHeight: 16)
-                    .background(Capsule().fill(Theme.accent))
+                    .background(RoundedRectangle(cornerRadius: 4, style: .continuous).fill(Theme.raised))
+                    .overlay(RoundedRectangle(cornerRadius: 4, style: .continuous).strokeBorder(Theme.cardBorderStrong, lineWidth: 1))
                     .help(String(localized: "Suggestions à valider"))
                     .accessibilityLabel(String(localized: "\(pending) suggestions à valider"))
             } else if !model.dictionary.isEmpty {
@@ -300,10 +299,14 @@ struct SidebarRowDetail: View {
         case .providers:
             ProvidersHealthDot()
         case .usage:
-            EmptyView()
+            let summary = model.usageSummary(for: .days30)
+            if summary.totalUSD > 0 {
+                meta(MoneyFormat.usd(summary.totalUSD))
+                    .help(String(localized: "Dépenses API · 30 derniers jours"))
+            }
         case .settings:
             if model.missingPermissions {
-                Circle().fill(Color.orange).frame(width: 7, height: 7)
+                Circle().fill(Color.orange).frame(width: 6, height: 6)
                     .help(String(localized: "Une autorisation manque"))
             }
         }
@@ -311,41 +314,36 @@ struct SidebarRowDetail: View {
 
     private func meta(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 11.5).monospacedDigit())
+            .font(.system(size: 11, design: .monospaced))
             .foregroundStyle(.tertiary)
             .lineLimit(1)
             .fixedSize()
     }
 }
 
-/// État des fournisseurs en un point et un mot, comme la vue d'ensemble de l'écran Fournisseurs.
+/// État des fournisseurs en un point sobre.
 struct ProvidersHealthDot: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
         let _ = model.health
         let overview = ProvidersOverview.make(ProvidersSnapshot(model: model), paused: model.relayLines())
-        let (text, color): (String, Color) = switch overview.tone {
-        case .ready: (String(localized: "Prêt"), .green)
-        case .relay: (String(localized: "Relais"), OverlayStyle.relay)
-        case .attention: (String(localized: "À régler"), .orange)
-        case .blocked: (String(localized: "Sans clé"), .red)
+        let color: Color = switch overview.tone {
+        case .ready: .green
+        case .relay: OverlayStyle.relay
+        case .attention: .orange
+        case .blocked: .red
         }
-        HStack(spacing: 5) {
-            Circle().fill(color).frame(width: 6, height: 6)
-            Text(text)
-                .font(.system(size: 11.5))
-                .foregroundStyle(.tertiary)
-                .lineLimit(1)
-        }
-        .fixedSize()
-        .help(overview.title)
-        .accessibilityElement(children: .combine)
+        Circle()
+            .fill(color)
+            .frame(width: 6, height: 6)
+            .help(overview.title)
+            .accessibilityLabel(overview.title)
     }
 }
 
-/// Carte du haut : l'app et son état, le bouton micro (dictée mains libres), les mots du jour avec les sept derniers
-/// jours, et la dernière dictée (floutée, un clic la copie, la croix la masque).
+/// Carte compacte du haut : icône Spectre Pur, nom, état et bouton micro (monochrome au repos, rouge à l'écoute),
+/// plus la dernière dictée copiée en un clic lorsqu'elle est visible.
 struct DictateCard: View {
     @Environment(AppModel.self) private var model
     @Environment(\.colorSchemeContrast) private var contrast
@@ -353,53 +351,39 @@ struct DictateCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 10) {
+            HStack(spacing: 9) {
                 Image(nsImage: NSApplication.shared.applicationIconImage)
                     .resizable()
                     .interpolation(.high)
-                    .frame(width: 32, height: 32)
+                    .frame(width: 28, height: 28)
                     .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Wispad").font(.system(size: 14, weight: .semibold))
+                VStack(alignment: .leading, spacing: 1.5) {
+                    Text("Wispad")
+                        .font(.system(size: 13, weight: .semibold))
                     DictationStatusLine()
                 }
                 Spacer(minLength: 4)
                 MicButton()
             }
-            Divider().padding(.vertical, 9)
-            HStack(alignment: .bottom, spacing: 8) {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(digest.wordsToday, format: .number)
-                        .font(.system(size: 19, weight: .semibold).monospacedDigit())
-                        .contentTransition(.numericText())
-                    Text("mots aujourd'hui")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                }
-                Spacer(minLength: 4)
-                WeekBars(values: digest.wordsByDay)
-            }
-            .accessibilityElement(children: .combine)
             if let last = digest.last, last.id != model.settings.dismissedLastDictationID {
                 LastDictationButton(last: last)
-                    .padding(.top, 9)
+                    .padding(.top, 8)
             }
         }
-        .padding(11)
+        .padding(9)
         .background {
-            RoundedRectangle(cornerRadius: 13, style: .continuous)
-                .fill(Color(nsColor: .controlBackgroundColor))
-                .shadow(color: .black.opacity(0.12), radius: 6, y: 3)
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .fill(Theme.card)
         }
         .overlay {
-            RoundedRectangle(cornerRadius: 13, style: .continuous)
-                .strokeBorder(Color.primary.opacity(contrast == .increased ? 0.25 : 0.07), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .strokeBorder(contrast == .increased ? Theme.cardBorderStrong : Theme.cardBorder, lineWidth: 1)
         }
         .animation(Theme.quick, value: digest)
     }
 }
 
-/// Bouton micro : lance une dictée mains libres comme deux appuis sur le raccourci, puis l'arrête.
+/// Bouton micro : monochrome discret au repos, rouge spectre uniquement pendant l'écoute.
 struct MicButton: View {
     @Environment(AppModel.self) private var model
     @Environment(\.interactionReduceMotion) private var reduceMotion
@@ -410,15 +394,18 @@ struct MicButton: View {
             model.toggleHandsFreeDictation()
         } label: {
             Image(systemName: listening ? "stop.fill" : "mic.fill")
-                .font(.system(size: listening ? 11 : 13, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 30, height: 30)
-                .background(Circle().fill(Theme.brand.gradient))
-                .overlay {
-                    Circle().strokeBorder(Theme.brand.opacity(listening ? 0.28 : 0), lineWidth: 4)
-                        .padding(-4)
+                .font(.system(size: listening ? 10 : 12, weight: .semibold))
+                .foregroundStyle(listening ? Color.white : Color.primary)
+                .frame(width: 28, height: 28)
+                .background {
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .fill(listening ? Theme.brand : Theme.raised)
                 }
-                .contentShape(Circle())
+                .overlay {
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .strokeBorder(listening ? Theme.brand.opacity(0.45) : Theme.cardBorderStrong, lineWidth: 1)
+                }
+                .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
                 .contentTransition(.symbolEffect(.replace))
         }
         .buttonStyle(.plain)
