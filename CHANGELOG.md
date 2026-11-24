@@ -3,6 +3,14 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.8.40 — 24 novembre 2026
+
+Wispad 0.8.40 fond la barre latérale en cinq entrées et rend le défilement des dictées parfaitement fluide.
+
+**Amélioré**
+- **Barre latérale à 5 entrées** : Dictées, Statistiques (sous-onglets Profil et Consommation), Dictionnaire, Fournisseurs, Réglages. L'historique rejoint le fil continu des Dictées.
+- **Fil continu fluide** : chargement par tranches de 80 lignes, aucun flou GPU tant que le texte est visible, et les boutons d'action n'apparaissent que sur la ligne survolée. Mesuré : aucune image au-dessus de 16 ms sur 240 pas de défilement avec 1 000 dictées (moyenne ~4,7 ms).
+
 ## 0.8.39 — 22 novembre 2026
 
 - **Fausse alerte « Texte prêt à copier ».** Dans les apps qui mettent du temps à afficher le texte collé (comme Antigravity), Wispad attend un peu plus longtemps avant de conclure à un échec. Si le texte arrive juste avant la seconde tentative, il n'est plus écrit deux fois et la carte ne s'affiche pas.
