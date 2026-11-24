@@ -46,7 +46,11 @@ struct DisplayChoicesTests {
         let mixed = try decode(#"{"homePeriod": "inconnue", "usagePeriod": "days30", "lastSection": "usage"}"#)
         #expect(mixed.homePeriod == .days7)
         #expect(mixed.usagePeriod == .days30)
-        #expect(mixed.lastSection == .usage)
+        #expect(mixed.lastSection == .profile)
+        #expect(mixed.statsTab == .usage)
+
+        let legacyHistory = try decode(#"{"lastSection": "history"}"#)
+        #expect(legacyHistory.lastSection == .home)
     }
 
     /// Aller-retour : les choix enregistrés reviennent tels quels, les deux périodes restent indépendantes.
@@ -79,13 +83,13 @@ struct DisplayChoicesTests {
         dependencies.loadKey = { _ in nil }
         var settings = AppSettings()
         settings.onboardingCompleted = true
-        settings.lastSection = .usage
+        settings.lastSection = .profile
         let model = try AppModel(supportDirectory: directory, settings: settings, dependencies: dependencies)
         defer { model.coordinator.cancel() }
-        #expect(model.selectedSection == .usage)
+        #expect(model.selectedSection == .profile)
 
-        model.selectedSection = .history
-        #expect(model.settings.lastSection == .history)
+        model.selectedSection = .home
+        #expect(model.settings.lastSection == .home)
         model.setDisplayChoice(\.homePeriod, .days30)
         #expect(model.settings.homePeriod == .days30)
         #expect(model.settings.usagePeriod == .today)

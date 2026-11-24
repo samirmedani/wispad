@@ -16,6 +16,7 @@ enum ProfileRenderingObserver {
 /// par `ProfileLoader`, qui garde le dernier calcul : rouvrir le Profil est immédiat.
 struct ProfileView: View {
     @Environment(AppModel.self) private var model
+    var embedded = false
     @State private var selectedWord: Int?
     @State private var customizing = false
     private var loader: ProfileLoader { .shared }
@@ -23,15 +24,26 @@ struct ProfileView: View {
     var body: some View {
         let request = ProfileRequest(model: model)
         ScreenScroll {
-            ScreenHeader(title: String(localized: "Profil"),
-                         subtitle: String(localized: "Ce que tes dictées disent de toi. Calculé sur ce Mac, rien n'est envoyé.")) {
-                // Sous la période, comme la durée d'utilisation de l'Accueil : l'en-tête garde sa largeur.
-                VStack(alignment: .trailing, spacing: 6) {
+            if embedded {
+                HStack(alignment: .center, spacing: 12) {
                     PillPicker(selection: Binding(
                         get: { model.settings.profilePeriod },
                         set: { model.setDisplayChoice(\.profilePeriod, $0) }
                     ))
+                    Spacer(minLength: 8)
                     customizeButton
+                }
+            } else {
+                ScreenHeader(title: String(localized: "Profil"),
+                             subtitle: String(localized: "Ce que tes dictées disent de toi. Calculé sur ce Mac, rien n'est envoyé.")) {
+                    // Sous la période, comme la durée d'utilisation de l'Accueil : l'en-tête garde sa largeur.
+                    VStack(alignment: .trailing, spacing: 6) {
+                        PillPicker(selection: Binding(
+                            get: { model.settings.profilePeriod },
+                            set: { model.setDisplayChoice(\.profilePeriod, $0) }
+                        ))
+                        customizeButton
+                    }
                 }
             }
             if let snapshot = loader.snapshot, snapshot.profile.dictations > 0 {

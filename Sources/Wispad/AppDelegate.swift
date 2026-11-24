@@ -134,11 +134,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
 
     /// Section à ouvrir au lancement (« --section usage ») ; jamais après une mise à jour (« --updated »), même si
-    /// l'ancienne version, qui avait sa fenêtre ouverte, l'a demandée.
+    /// l'ancienne version, qui avait sa fenêtre ouverte, l'a demandée. Les anciens noms (« usage », « history »)
+    /// sont traduits vers la section courante.
     static func launchSection(_ arguments: [String]) -> AppSection? {
         guard !arguments.contains("--updated"), let index = arguments.firstIndex(of: "--section"),
               arguments.indices.contains(index + 1) else { return nil }
-        return AppSection(rawValue: arguments[index + 1])
+        let raw = arguments[index + 1]
+        switch raw {
+        case "usage", "stats": return .profile
+        case "history", "home": return .home
+        default: return AppSection(rawValue: raw)
+        }
     }
 
     /// Fichier ouvert avec Wispad (Finder, « open -a Wispad fichier.json », agent) : une configuration est montrée
@@ -281,8 +287,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
 
     /// « Ouvrir Wispad » : la dernière section ouverte, retrouvée après une relance.
     @objc private func openWindow() { show(section: model?.selectedSection ?? .home) }
-    @objc private func openUsage() { show(section: .usage) }
-    @objc private func openHistory() { show(section: .history) }
+    @objc private func openUsage() {
+        model?.setDisplayChoice(\.statsTab, .usage)
+        show(section: .profile)
+    }
+    @objc private func openHistory() { show(section: .home) }
     @objc private func openDictionary() { show(section: .dictionary) }
     @objc func openSettings() { show(section: .settings) }
 

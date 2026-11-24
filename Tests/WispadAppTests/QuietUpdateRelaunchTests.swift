@@ -7,7 +7,7 @@ struct QuietUpdateRelaunchTests {
     @Test func anUpdateNeverReopensTheWindow() {
         #expect(AppDelegate.launchSection(["Wispad", "--updated", "--section", "home"]) == nil)
         #expect(AppDelegate.launchSection(["Wispad", "--updated"]) == nil)
-        #expect(AppDelegate.launchSection(["Wispad", "--section", "usage"]) == .usage)
+        #expect(AppDelegate.launchSection(["Wispad", "--section", "usage"]) == .profile)
         #expect(AppDelegate.launchSection(["Wispad", "--section"]) == nil)
     }
 }

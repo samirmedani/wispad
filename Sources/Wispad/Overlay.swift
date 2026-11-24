@@ -803,7 +803,7 @@ struct MessageBubble: View {
             MessageLine(kind: .error, message: message, countdown: countdown, onDismiss: coordinator.closeMessage, actions: [
                 MessageAction(title: String(localized: "Historique")) {
                     coordinator.dismissFailure()
-                    model.open(.history)
+                    model.open(.home)
                 },
             ])
         }

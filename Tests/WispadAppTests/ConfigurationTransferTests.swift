@@ -43,7 +43,7 @@ struct ConfigurationTransferTests {
             settings.bubbleSize = 1.3
             settings.bubbleStyle = .glass
             settings.dateFormat.separator = .dot
-            settings.lastSection = .usage
+            settings.lastSection = .profile
         }
         install.keys = ["xai": "xai-cle-de-test-0000", "deepseek": "sk-cle-de-test-1111"]
         try install.model.store.addTerm("Wispad", origin: .user)
@@ -95,7 +95,7 @@ struct ConfigurationTransferTests {
         #expect(settings.launchAtLogin == false)
         #expect(settings.disabledKeys.isEmpty)
         #expect(settings.localModelURL.isEmpty)
-        #expect(settings.lastSection != .usage)
+        #expect(settings.lastSection != .profile)
         #expect(result.terms == 1)
         let seedance = try #require(target.model.dictionary.first { $0.term == "Seedance" })
         #expect(seedance.origin == .learned(judge))

@@ -482,6 +482,8 @@ final class HistoryScrollActivity {
     private var scrolling = false
     private var stoppedAt: ContinuousClock.Instant?
 
+    var isScrolling: Bool { scrolling }
+
     func update(scrolling: Bool) {
         if self.scrolling, !scrolling { stoppedAt = .now }
         self.scrolling = scrolling
@@ -502,7 +504,7 @@ final class HistoryScrollActivity {
     }
 }
 
-private struct HistoryScrollPhase: ViewModifier {
+struct HistoryScrollPhase: ViewModifier {
     let activity: HistoryScrollActivity
 
     func body(content: Content) -> some View {

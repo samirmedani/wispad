@@ -3,27 +3,38 @@ import os
 import WispadCore
 
 enum AppSection: String, CaseIterable, Identifiable, Codable {
-    // Ordre de la barre latérale et des raccourcis ⌘1 à ⌘7 : Dictée (Accueil, Historique), Toi (Profil,
-    // Dictionnaire), Services (Fournisseurs, Consommation), puis Réglages.
+    // Ordre de la barre latérale et des raccourcis ⌘1 à ⌘5 : Dictées (fil continu + historique), Statistiques
+    // (sous-onglets Profil et Consommation), Dictionnaire, Fournisseurs, puis Réglages.
     case home
-    case history
     case profile
     case dictionary
     case providers
-    case usage
     case settings
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .home: return String(localized: "Accueil")
-        case .history: return String(localized: "Historique")
-        case .profile: return String(localized: "Profil")
-        case .usage: return String(localized: "Consommation")
+        case .home: return String(localized: "Dictées")
+        case .profile: return String(localized: "Statistiques")
         case .dictionary: return String(localized: "Dictionnaire")
         case .providers: return String(localized: "Fournisseurs")
         case .settings: return String(localized: "Réglages")
+        }
+    }
+}
+
+/// Sous-onglets de Statistiques : Profil et Consommation réunis dans un seul écran.
+enum StatsTab: String, CaseIterable, Identifiable, Codable {
+    case profile
+    case usage
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .profile: return String(localized: "Profil")
+        case .usage: return String(localized: "Consommation")
         }
     }
 }
@@ -160,6 +171,8 @@ struct AppSettings: Codable, Equatable {
     /// Taxe ajoutée aux prix comparés dans Consommation › Tout, en pourcentage (20 % par défaut, la TVA française).
     var usageTaxRate = SalesTax.defaultRate
     var lastSection: AppSection = .home
+    /// Sous-onglet actif de Statistiques (Profil ou Consommation).
+    var statsTab: StatsTab = .profile
     /// Dernier onglet ouvert dans Réglages.
     var settingsTab: SettingsTab = .general
     /// Clés API coupées dans Fournisseurs (comptes) : gardées, mais jamais utilisées.
@@ -255,7 +268,18 @@ struct AppSettings: Codable, Equatable {
         profileCards = value(.profileCards, defaults.profileCards)
         localModelURL = value(.localModelURL, defaults.localModelURL)
         usageTaxRate = number(.usageTaxRate, defaults.usageTaxRate, in: SalesTax.range)
-        lastSection = value(.lastSection, defaults.lastSection)
+        let rawSection = try? container.decodeIfPresent(String.self, forKey: .lastSection)
+        switch rawSection {
+        case "history":
+            lastSection = .home
+            statsTab = value(.statsTab, defaults.statsTab)
+        case "usage":
+            lastSection = .profile
+            statsTab = value(.statsTab, .usage)
+        default:
+            lastSection = value(.lastSection, defaults.lastSection)
+            statsTab = value(.statsTab, defaults.statsTab)
+        }
         settingsTab = value(.settingsTab, defaults.settingsTab)
         disabledKeys = value(.disabledKeys, defaults.disabledKeys)
         dictionaryOriginFilter = value(.dictionaryOriginFilter, defaults.dictionaryOriginFilter)

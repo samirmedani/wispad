@@ -5,10 +5,8 @@ import WispadCore
 extension AppSection {
     var symbol: String {
         switch self {
-        case .home: return "house"
-        case .history: return "clock.arrow.circlepath"
-        case .profile: return "brain.head.profile"
-        case .usage: return "chart.bar.xaxis"
+        case .home: return "waveform"
+        case .profile: return "chart.bar.xaxis"
         case .dictionary: return "character.book.closed"
         case .providers: return "key.horizontal"
         case .settings: return "gearshape"
@@ -19,9 +17,7 @@ extension AppSection {
     var color: Color {
         switch self {
         case .home: return Theme.brand
-        case .history: return .blue
         case .profile: return .purple
-        case .usage: return .green
         case .dictionary: return .orange
         case .providers: return .indigo
         case .settings: return .gray
@@ -128,9 +124,7 @@ struct SectionScreen: View {
     var body: some View {
         switch section {
         case .home: HomeView()
-        case .history: HistoryView()
-        case .profile: ProfileView()
-        case .usage: UsageView()
+        case .profile: StatsView()
         case .dictionary: DictionaryView()
         case .providers: ProvidersView()
         case .settings: SettingsView()
@@ -138,25 +132,59 @@ struct SectionScreen: View {
     }
 }
 
-/// Groupes de la barre latérale. Réglages vit à part, en bas.
+/// Écran Statistiques : réunit Profil et Consommation sous deux sous-onglets sobres en haut.
+struct StatsView: View {
+    @Environment(AppModel.self) private var model
+
+    private var tab: StatsTab { model.settings.statsTab }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .center, spacing: 18) {
+                Text("Statistiques")
+                    .font(.system(size: 18, weight: .semibold))
+                    .tracking(-0.2)
+                PillPicker(
+                    options: StatsTab.allCases,
+                    selection: Binding(
+                        get: { model.settings.statsTab },
+                        set: { model.setDisplayChoice(\.statsTab, $0) }
+                    ),
+                    title: \.title
+                )
+                Spacer(minLength: 12)
+            }
+            .padding(.horizontal, 26)
+            .padding(.top, 18)
+            .padding(.bottom, 12)
+            .frame(maxWidth: 920)
+            .frame(maxWidth: .infinity)
+            Rectangle().fill(Theme.cardBorder).frame(height: 1)
+            switch tab {
+            case .profile: ProfileView(embedded: true)
+            case .usage: UsageView(embedded: true)
+            }
+        }
+    }
+}
+
+/// Groupes de la barre latérale (5 entrées au total : Dictées, Statistiques, Dictionnaire · Fournisseurs · Réglages).
 enum SidebarGroup: CaseIterable, Identifiable {
-    case dictation, you, services
+    case main, services
 
     var id: Self { self }
 
     var title: String {
         switch self {
-        case .dictation: return String(localized: "Dictée")
-        case .you: return String(localized: "Toi")
+        case .main: return String(localized: "Dictée")
         case .services: return String(localized: "Services")
         }
     }
 
     var sections: [AppSection] {
         switch self {
-        case .dictation: return [.home, .history]
-        case .you: return [.profile, .dictionary]
-        case .services: return [.providers, .usage]
+        case .main: return [.home, .profile, .dictionary]
+        case .services: return [.providers]
         }
     }
 }
@@ -218,7 +246,7 @@ struct SidebarRow: View {
     var selected: Bool
     var digest: SidebarDigest
 
-    private var highlighted: Bool { !selected && (hovering || (previewHover && section == .history)) }
+    private var highlighted: Bool { !selected && (hovering || (previewHover && section == .profile)) }
     private var shortcutIndex: Int { (AppSection.allCases.firstIndex(of: section) ?? 0) + 1 }
 
     var body: some View {
@@ -266,14 +294,18 @@ struct SidebarRowDetail: View {
     var body: some View {
         switch section {
         case .home:
-            if digest.wordsToday > 0 { meta("\(digest.wordsToday)") }
-        case .history:
             if digest.dictationsToday > 0 {
                 meta("\(digest.dictationsToday)")
                     .help(String(localized: "Dictées aujourd'hui"))
             }
         case .profile:
-            if digest.streak >= 2 { meta(String(localized: "\(digest.streak) j")) }
+            let summary = model.usageSummary(for: .days30)
+            if summary.totalUSD > 0 {
+                meta(MoneyFormat.usd(summary.totalUSD))
+                    .help(String(localized: "Dépenses API · 30 derniers jours"))
+            } else if digest.streak >= 2 {
+                meta(String(localized: "\(digest.streak) j"))
+            }
         case .dictionary:
             let pending = model.dictionaryInsights.suggestions.count
             if pending > 0 {
@@ -291,12 +323,6 @@ struct SidebarRowDetail: View {
             }
         case .providers:
             ProvidersHealthDot()
-        case .usage:
-            let summary = model.usageSummary(for: .days30)
-            if summary.totalUSD > 0 {
-                meta(MoneyFormat.usd(summary.totalUSD))
-                    .help(String(localized: "Dépenses API · 30 derniers jours"))
-            }
         case .settings:
             if model.missingPermissions {
                 Circle().fill(Color.orange).frame(width: 6, height: 6)
@@ -563,7 +589,7 @@ struct SpendLine: View {
         let amount = MoneyFormat.usd(summary.totalUSD)
         let incomplete = summary.hasUnpricedCalls || model.usageLoadFailed
         Button {
-            model.selectedSection = .usage
+            model.openUsage()
         } label: {
             VStack(alignment: .leading, spacing: 3) {
                 Text("Dépenses API · 30 derniers jours")

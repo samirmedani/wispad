@@ -57,7 +57,7 @@ private final class HistoryAudioIntegrationFixture {
             historyPlayer: player
         )
         model.overlay.displaysPanel = false
-        model.selectedSection = .history
+        model.selectedSection = .home
     }
 
     func record(id: String, expiresAt: Date? = nil) throws -> DictationRecord {
@@ -97,10 +97,10 @@ struct HistoryAudioIntegrationTests {
         fixture.model.play(record)
         #expect(fixture.log.active?.isPlaying == true)
 
-        fixture.model.selectedSection = .history
+        fixture.model.selectedSection = .home
         #expect(fixture.model.historyPlayer.isPlaying)
         #expect(fixture.log.stops == 0)
-        fixture.model.selectedSection = .usage
+        fixture.model.selectedSection = .profile
 
         #expect(!fixture.model.historyPlayer.isPlaying)
         #expect(fixture.model.historyPlayer.recordID == nil)

@@ -218,7 +218,7 @@ struct BrainSection: View {
             footer: showsTopics && analysis != nil ? AnyView(TopicsResult(topics: topics, service: service)) : nil,
             openHistory: { filter in
                 model.historyFilter = filter
-                model.selectedSection = .history
+                model.selectedSection = .home
             }
         )
         .task(id: request) {

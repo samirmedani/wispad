@@ -79,7 +79,7 @@ final class AppModel {
     /// Section affichée, retrouvée au lancement suivant (`AppSettings.lastSection`).
     var selectedSection: AppSection = .home {
         didSet {
-            if selectedSection != .history {
+            if selectedSection != .home {
                 historyPlayer.close()
                 // Le filtre d'un sujet ne vaut que pour l'ouverture depuis le cerveau.
                 historyFilter = nil
@@ -106,10 +106,16 @@ final class AppModel {
             guard let self else { return }
             switch section {
             case .settings: settingsVisits += 1
-            case .usage: usageVisits += 1
+            case .profile: usageVisits += 1
             default: break
             }
         }
+    }
+
+    /// Ouvre Statistiques directement sur l'onglet Consommation.
+    func openUsage() {
+        setDisplayChoice(\.statsTab, .usage)
+        open(.profile)
     }
 
     var isRecordingShortcut = false {
@@ -1649,6 +1655,40 @@ final class AppModel {
         let groups = DayGroup.make(filtered)
         historyDerived[key] = groups
         return groups
+    }
+
+    /// Liste plate (en-têtes journaliers + dictées) mise en cache pour un défilement fluide sans `Section` imbriquée.
+    func historyStreamEntries(query: String, filter: HistoryFilter?) -> [StreamEntry] {
+        _ = historyRevision
+        let needle = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        let filterKey = filter.map { "\($0.title):\($0.dictations.count):\($0.dictations.sorted().joined(separator: ","))" } ?? ""
+        let key = "stream|\(historyRevision)|\(needle)|\(filterKey)"
+        if let cached = historyDerived[key] as? [StreamEntry] { return cached }
+        let groups = historyDayGroups(query: query, filter: filter)
+        var entries: [StreamEntry] = []
+        entries.reserveCapacity(groups.reduce(groups.count) { $0 + $1.records.count })
+        for group in groups {
+            entries.append(.header(day: group.day, title: group.title, count: group.records.count))
+            let lastIndex = group.records.count - 1
+            for (index, record) in group.records.enumerated() {
+                entries.append(.record(record: record, isLastInDay: index == lastIndex))
+            }
+        }
+        historyDerived[key] = entries
+        return entries
+    }
+}
+
+/// Élément plat du fil des dictées : un seul `ForEach` dans un `LazyVStack` sans en-têtes épinglés coûteux.
+enum StreamEntry: Identifiable, Equatable {
+    case header(day: Date, title: String, count: Int)
+    case record(record: DictationRecord, isLastInDay: Bool)
+
+    var id: String {
+        switch self {
+        case .header(let day, _, _): return "day-\(Int(day.timeIntervalSinceReferenceDate))"
+        case .record(let record, _): return record.id
+        }
     }
 }
 

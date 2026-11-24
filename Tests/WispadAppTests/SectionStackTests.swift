@@ -33,24 +33,24 @@ struct SectionStackTests {
         let counter = Counter()
         let stack = container(counter)
         stack.show(.home)
-        stack.show(.history)
+        stack.show(.profile)
         stack.show(.home)
-        stack.show(.history)
-        #expect(counter.built == [.home, .history])
-        #expect(stack.current == .history)
+        stack.show(.profile)
+        #expect(counter.built == [.home, .profile])
+        #expect(stack.current == .profile)
         // Un seul écran dans la fenêtre : l'autre est détaché, sans être détruit.
         #expect(stack.subviews.count == 1)
-        #expect(stack.builtSections == [.home, .history])
+        #expect(stack.builtSections == [.home, .profile])
     }
 
     @Test func goingToAnotherAppKeepsOnlyTheShownSection() {
         let counter = Counter()
         let stack = container(counter)
-        for section in [AppSection.home, .usage, .settings] { stack.show(section) }
+        for section in [AppSection.home, .profile, .settings] { stack.show(section) }
         NotificationCenter.default.post(name: NSApplication.didResignActiveNotification, object: NSApp)
         #expect(stack.builtSections == [.settings])
-        stack.show(.usage)
-        #expect(counter.built == [.home, .usage, .settings, .usage])
+        stack.show(.profile)
+        #expect(counter.built == [.home, .profile, .settings, .profile])
     }
 
     @Test func eachArrivalIsAnnounced() {
@@ -59,9 +59,9 @@ struct SectionStackTests {
         stack.onShow = { shown.append($0) }
         stack.show(.settings)
         stack.show(.settings)
-        stack.show(.usage)
+        stack.show(.profile)
         stack.show(.settings)
-        #expect(shown == [.settings, .usage, .settings])
+        #expect(shown == [.settings, .profile, .settings])
     }
 
     private func model() throws -> (AppModel, URL) {
@@ -79,10 +79,10 @@ struct SectionStackTests {
         defer { model.coordinator.cancel(); try? FileManager.default.removeItem(at: directory) }
         let woken = Woken()
         withObservationTracking { _ = model.settings } onChange: { woken.set() }
-        model.selectedSection = .history
+        model.selectedSection = .dictionary
         #expect(!woken.value)
         // Toujours retrouvée au lancement suivant.
-        #expect(model.settings.lastSection == .history)
+        #expect(model.settings.lastSection == .dictionary)
     }
 
     @Test func usageFiguresFollowANewCall() throws {

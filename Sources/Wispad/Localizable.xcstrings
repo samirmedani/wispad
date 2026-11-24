@@ -16477,6 +16477,16 @@
         }
       }
     },
+    "Statistiques" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Statistics"
+          }
+        }
+      }
+    },
     "%lld j" : {
       "localizations" : {
         "en" : {

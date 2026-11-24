@@ -2,33 +2,47 @@ import SwiftUI
 import AppKit
 import WispadCore
 
-// MARK: - Accueil (Fil continu, sans encadrements)
+// MARK: - Dictées (Fil continu unifié, optimisé pour un défilement parfaitement fluide)
 
-/// Écran d'ouverture « Fil continu » : zéro carte encadrée. En haut, une seule ligne de synthèse
-/// (mots, cadence, temps gagné, coût, mini spectre et bouton Dicter), suivie d'un champ de recherche
-/// minimaliste et du fil vivant de tes dictées, directement posé sur la page.
+/// Écran principal « Dictées » : réunit le fil continu et tout l'historique sans encadrements imbriqués.
+/// Pour un défilement sans saccades même avec des milliers de dictées :
+/// - liste plate précalculée (`StreamEntry`) sans `Section` imbriquées ni en-têtes épinglés ;
+/// - fenêtrage progressif (80 entrées au départ, +80 à l'approche du bas) ;
+/// - survol suspendu pendant le défilement (`HistoryScrollPhase`) et boutons d'action montés uniquement sur la ligne survolée ;
+/// - aucun filtre `.blur` GPU monté lorsque le texte est visible ;
+/// - lignes `Equatable` pures, sans lecture directe de `@Environment(AppModel.self)`.
 struct HomeView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.historyRowDidRender) private var didRender
     @Environment(\.interactionReduceMotion) private var reduceMotion
     @State private var query = ""
     @State private var appliedQuery = ""
     @State private var detailRecord: DictationRecord?
+    @State private var pendingDeleteAll = false
+    @State private var visibleLimit = Self.pageSize
+    @State private var scrollActivity = HistoryScrollActivity()
     @FocusState private var searchFocused: Bool
 
+    private static let pageSize = 80
     private var period: StatsPeriod { model.settings.homePeriod }
 
     var body: some View {
         let snap = model.homeSnapshot(for: period)
         let usage = model.usageSummary(for: period)
-        let groups = model.historyDayGroups(query: appliedQuery, filter: nil)
+        let allEntries = model.historyStreamEntries(query: appliedQuery, filter: model.historyFilter)
+        let visibleCount = min(allEntries.count, visibleLimit)
+        let visibleEntries = allEntries.prefix(visibleCount)
         let blurred = model.settings.blurRecentDictations
+        let activeAudioID = model.historyPlayer.recordID
 
         VStack(spacing: 0) {
-            // Ruban supérieur de synthèse + recherche, sans aucune boîte.
             VStack(alignment: .leading, spacing: 14) {
                 summaryRibbon(snap: snap, spendUSD: usage.totalUSD)
                 Rectangle().fill(Theme.cardBorder).frame(height: 1)
                 flatSearchBar(blurred: blurred)
+                if let filter = model.historyFilter {
+                    filterBanner(filter)
+                }
             }
             .padding(.horizontal, 32)
             .padding(.top, 20)
@@ -36,7 +50,7 @@ struct HomeView: View {
             .frame(maxWidth: 780)
             .frame(maxWidth: .infinity)
 
-            if groups.isEmpty {
+            if allEntries.isEmpty {
                 EmptyState(
                     symbol: appliedQuery.isEmpty ? "waveform" : "magnifyingglass",
                     title: appliedQuery.isEmpty ? String(localized: "Aucune dictée") : String(localized: "Aucun résultat"),
@@ -47,43 +61,41 @@ struct HomeView: View {
                 Spacer()
             } else {
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
-                        ForEach(groups) { group in
-                            Section {
-                                ForEach(group.records) { record in
-                                    StreamDictationRow(
-                                        record: record,
-                                        blurred: blurred,
-                                        onCopy: { model.copy(record.finalText) },
-                                        onPlay: record.audioPath != nil ? { model.play(record) } : nil,
-                                        onDetails: { detailRecord = record }
-                                    )
-                                    if record.id != group.records.last?.id {
-                                        Rectangle()
-                                            .fill(Theme.cardBorder)
-                                            .frame(height: 1)
-                                            .padding(.leading, 56)
-                                    }
+                    LazyVStack(alignment: .leading, spacing: 0) {
+                        ForEach(visibleEntries) { entry in
+                            switch entry {
+                            case .header(day: let _day, title: let title, count: let count):
+                                StreamDayHeader(title: title, count: count)
+                            case let .record(record, isLastInDay):
+                                let item = HistoryRowCache.shared.item(for: record)
+                                StreamDictationRow(
+                                    item: item,
+                                    isLastInDay: isLastInDay,
+                                    blurred: blurred,
+                                    playingThis: activeAudioID == record.id,
+                                    scrollActivity: scrollActivity,
+                                    onCopy: { model.copy(record.finalText) },
+                                    onPlay: item.hasAudio ? { model.play(record) } : nil,
+                                    onRetranscribe: item.hasAudio ? { Task { await model.coordinator.retranscribe(record) } } : nil,
+                                    onDetails: { detailRecord = record },
+                                    onDelete: { model.deleteHistory(record) }
+                                )
+                                .equatable()
+                                .onAppear {
+                                    didRender?(record.id)
                                 }
-                            } header: {
-                                HStack {
-                                    Text(group.title)
-                                        .font(.system(size: 11.5, weight: .semibold))
-                                        .foregroundStyle(.secondary)
-                                    Spacer()
-                                    Text(group.records.count == 1
-                                         ? String(localized: "1 dictée")
-                                         : String(localized: "\(group.records.count) dictées"))
-                                        .font(.system(size: 10.5, design: .monospaced))
-                                        .foregroundStyle(.tertiary)
-                                }
-                                .padding(.top, 16)
-                                .padding(.bottom, 6)
-                                .background(Theme.canvas)
                             }
                         }
-                        shortcutsFootnote
-                            .padding(.top, 22)
+                        if visibleCount < allEntries.count {
+                            Color.clear
+                                .frame(height: 1)
+                                .onAppear {
+                                    visibleLimit = min(allEntries.count, visibleLimit + Self.pageSize)
+                                }
+                        } else {
+                            shortcutsFootnote
+                                .padding(.top, 22)
+                        }
                     }
                     .padding(.horizontal, 32)
                     .padding(.bottom, 28)
@@ -91,6 +103,7 @@ struct HomeView: View {
                     .frame(maxWidth: .infinity)
                 }
                 .scrollIndicators(.automatic)
+                .modifier(HistoryScrollPhase(activity: scrollActivity))
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) { HistoryAudioDock() }
@@ -100,9 +113,16 @@ struct HomeView: View {
                 guard !Task.isCancelled else { return }
             }
             appliedQuery = query
+            visibleLimit = Self.pageSize
         }
+        .onChange(of: model.historyFilter) { visibleLimit = Self.pageSize }
         .sheet(item: $detailRecord) { record in
             DictationDetailView(record: record)
+        }
+        .confirmationDialog("Supprimer tout l'historique ?", isPresented: $pendingDeleteAll) {
+            Button("Supprimer", role: .destructive) {
+                withAnimation(reduceMotion ? nil : Theme.spring) { model.deleteAllHistory() }
+            }
         }
     }
 
@@ -133,6 +153,11 @@ struct HomeView: View {
                         .transition(.opacity)
                 }
                 Spacer()
+                if !model.history.isEmpty {
+                    HoverIconButton(symbol: "trash", help: String(localized: "Tout supprimer"), tint: .secondary) {
+                        pendingDeleteAll = true
+                    }
+                }
             }
         }
     }
@@ -160,7 +185,7 @@ struct HomeView: View {
         } label: {
             HStack(spacing: 6) {
                 Circle()
-                    .fill(Theme.brand)
+                    .fill(listening ? Color.white : Theme.brand)
                     .frame(width: 6.5, height: 6.5)
                 Text(listening ? String(localized: "Arrêter") : String(localized: "Dicter"))
                     .font(.system(size: 11.5, weight: .medium))
@@ -217,6 +242,26 @@ struct HomeView: View {
         }
     }
 
+    private func filterBanner(_ filter: HistoryFilter) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "brain.head.profile").foregroundStyle(.secondary)
+            Text("Dictées de « \(filter.title) »").fontWeight(.medium)
+            Text(filter.dictations.count == 1 ? String(localized: "1 dictée") : String(localized: "\(filter.dictations.count) dictées"))
+                .foregroundStyle(.secondary)
+            Spacer()
+            Button {
+                model.historyFilter = nil
+            } label: {
+                Label(String(localized: "Toutes les dictées"), systemImage: "xmark.circle.fill")
+            }
+            .buttonStyle(.borderless)
+        }
+        .font(.system(size: 12))
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
+        .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Theme.subtleFill))
+    }
+
     private var shortcutsFootnote: some View {
         let key = KeyLabels.describe(keyCode: model.settings.keyCode, modifiers: model.settings.modifierFlags)
         return HStack(spacing: 14) {
@@ -227,6 +272,26 @@ struct HomeView: View {
         }
         .font(.system(size: 10.5, design: .monospaced))
         .foregroundStyle(.tertiary)
+    }
+}
+
+/// En-tête journalier plat et léger.
+private struct StreamDayHeader: View {
+    let title: String
+    let count: Int
+
+    var body: some View {
+        HStack {
+            Text(title)
+                .font(.system(size: 11.5, weight: .semibold))
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text(count == 1 ? String(localized: "1 dictée") : String(localized: "\(count) dictées"))
+                .font(.system(size: 10.5, design: .monospaced))
+                .foregroundStyle(.tertiary)
+        }
+        .padding(.top, 18)
+        .padding(.bottom, 6)
     }
 }
 
@@ -253,19 +318,33 @@ private struct MiniSpectrumBars: View {
     }
 }
 
-/// Une entrée du Fil continu : heure en chasse fixe à gauche, texte respirant au centre, actions discrètes au survol.
-private struct StreamDictationRow: View {
-    @Environment(\.interactionReduceMotion) private var reduceMotion
+/// Ligne ultra-légère du fil : `Equatable`, zéro lecture `AppModel`, boutons d'action montés uniquement au survol
+/// (et jamais pendant un défilement actif) pour garder 60–120 ips.
+private struct StreamDictationRow: View, @preconcurrency Equatable {
+    let item: HistoryRowItem
+    let isLastInDay: Bool
+    let blurred: Bool
+    let playingThis: Bool
+    let scrollActivity: HistoryScrollActivity
+    let onCopy: () -> Void
+    let onPlay: (() -> Void)?
+    let onRetranscribe: (() -> Void)?
+    let onDetails: () -> Void
+    let onDelete: () -> Void
+
     @State private var hovering = false
+    @State private var expanded = false
     @State private var copied = false
-    var record: DictationRecord
-    var blurred: Bool
-    var onCopy: () -> Void
-    var onPlay: (() -> Void)?
-    var onDetails: () -> Void
+
+    nonisolated static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.item == rhs.item
+            && lhs.isLastInDay == rhs.isLastInDay
+            && lhs.blurred == rhs.blurred
+            && lhs.playingThis == rhs.playingThis
+    }
 
     var body: some View {
-        let item = HistoryRowCache.shared.item(for: record)
+        let showActions = hovering || copied || playingThis
         HStack(alignment: .top, spacing: 14) {
             Text(item.time)
                 .font(.system(size: 11, design: .monospaced))
@@ -273,7 +352,7 @@ private struct StreamDictationRow: View {
                 .frame(width: 42, alignment: .leading)
                 .padding(.top, 2)
             VStack(alignment: .leading, spacing: 5) {
-                RecentDictationText(text: item.text, blurred: blurred)
+                StreamText(text: item.text, blurred: blurred, expanded: expanded)
                 HStack(spacing: 6) {
                     Text(item.meta)
                         .font(.system(size: 10.5, design: .monospaced))
@@ -285,33 +364,111 @@ private struct StreamDictationRow: View {
                     Text(item.status.text)
                         .font(.system(size: 10.5, weight: .medium))
                         .foregroundStyle(item.status.tint)
+                    if item.mayOverflow {
+                        Button(expanded ? String(localized: "Réduire") : String(localized: "Afficher tout")) {
+                            expanded.toggle()
+                        }
+                        .buttonStyle(.plain)
+                        .font(.system(size: 10.5, weight: .medium))
+                        .foregroundStyle(.secondary)
+                    }
                 }
             }
             Spacer(minLength: 8)
-            HStack(spacing: 2) {
-                if !item.text.isEmpty {
-                    HoverIconButton(symbol: copied ? "checkmark" : "doc.on.doc",
-                                    help: copied ? String(localized: "Copié") : String(localized: "Copier"),
-                                    tint: copied ? .green : .secondary) {
-                        onCopy()
-                        copied = true
-                        Task { @MainActor in
-                            try? await Task.sleep(for: .milliseconds(1_200))
-                            copied = false
+            // Boutons montés seulement quand cette ligne est survolée (ou en cours de lecture/copie) :
+            // aucune hiérarchie de boutons animés instanciée pendant le défilement.
+            if showActions {
+                HStack(spacing: 2) {
+                    if !item.text.isEmpty {
+                        rowAction(symbol: copied ? "checkmark" : "doc.on.doc",
+                                  help: copied ? String(localized: "Copié") : String(localized: "Copier"),
+                                  tint: copied ? .green : .secondary) {
+                            onCopy()
+                            copied = true
+                            Task { @MainActor in
+                                try? await Task.sleep(for: .milliseconds(1_200))
+                                copied = false
+                            }
                         }
                     }
+                    if let onPlay {
+                        rowAction(symbol: playingThis ? "speaker.wave.2.fill" : "play.fill",
+                                  help: String(localized: "Écouter l'audio"),
+                                  tint: playingThis ? .primary : .secondary,
+                                  action: onPlay)
+                    }
+                    if let onRetranscribe {
+                        rowAction(symbol: "arrow.clockwise",
+                                  help: String(localized: "Retranscrire"),
+                                  tint: .secondary,
+                                  action: onRetranscribe)
+                    }
+                    rowAction(symbol: "info.circle",
+                              help: String(localized: "Détails de la dictée"),
+                              tint: .secondary,
+                              action: onDetails)
+                    rowAction(symbol: "trash",
+                              help: String(localized: "Supprimer"),
+                              tint: .secondary,
+                              action: onDelete)
                 }
-                if let onPlay {
-                    HoverIconButton(symbol: "play.fill", help: String(localized: "Écouter l'audio"), action: onPlay)
-                }
-                HoverIconButton(symbol: "info.circle", help: String(localized: "Détails de la dictée"), action: onDetails)
             }
-            .opacity(hovering || copied ? 1 : 0.35)
-            .animation(reduceMotion ? nil : Theme.hover, value: hovering)
         }
         .padding(.vertical, 12)
+        .overlay(alignment: .bottom) {
+            if !isLastInDay {
+                Rectangle()
+                    .fill(Theme.cardBorder)
+                    .frame(height: 1)
+                    .padding(.leading, 56)
+            }
+        }
         .contentShape(Rectangle())
-        .onHover { hovering = $0 }
+        .onHover { inside in
+            if scrollActivity.isScrolling {
+                if !inside && hovering { hovering = false }
+                return
+            }
+            hovering = inside
+        }
+    }
+
+    private func rowAction(symbol: String, help: String, tint: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 11.5, weight: .medium))
+                .foregroundStyle(tint)
+                .frame(width: 24, height: 24)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(help)
+        .accessibilityLabel(help)
+    }
+}
+
+/// Texte d'une dictée dans le fil : n'ajoute la passe GPU `.blur` QUE si le floutage est actif.
+private struct StreamText: View {
+    var text: String
+    var blurred: Bool
+    var expanded: Bool
+
+    var body: some View {
+        let hidden = blurred && !text.isEmpty
+        let label = Text(text.isEmpty ? String(localized: "Audio à retranscrire") : text)
+            .font(.system(size: 13))
+            .lineSpacing(2)
+            .foregroundStyle(text.isEmpty ? .secondary : .primary)
+            .lineLimit(expanded ? nil : 3)
+            .fixedSize(horizontal: false, vertical: true)
+        if hidden {
+            label
+                .blur(radius: 6, opaque: false)
+                .opacity(0.58)
+                .accessibilityHidden(true)
+        } else {
+            label
+        }
     }
 }
 
@@ -446,23 +603,12 @@ struct AppsCard: View {
     }
 }
 
-/// Un composant stable : seul le rayon et l'opacité changent, jamais la place de la ligne.
+/// Conservé pour les composants d'aperçu existants.
 struct RecentDictationText: View {
-    @Environment(\.interactionReduceMotion) private var reduceMotion
     var text: String
     var blurred: Bool
 
     var body: some View {
-        let hidden = blurred && !text.isEmpty
-        Text(text.isEmpty ? String(localized: "Audio à retranscrire") : text)
-            .font(.system(size: 13))
-            .lineSpacing(2)
-            .foregroundStyle(text.isEmpty ? .secondary : .primary)
-            .lineLimit(3)
-            // Aucun rectangle ne coupe les contours diffus autour des glyphes.
-            .blur(radius: hidden ? 6 : 0, opaque: false)
-            .opacity(hidden ? 0.58 : 1)
-            .animation(reduceMotion ? nil : Theme.privacy, value: hidden)
-            .accessibilityHidden(hidden)
+        StreamText(text: text, blurred: blurred, expanded: false)
     }
 }

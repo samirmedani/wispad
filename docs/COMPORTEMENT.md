@@ -297,24 +297,24 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   Les sections non sélectionnées, les vignettes d'apparence et les commandes partagées réagissent au survol avec un
   fond discret, sans déplacer le contenu. Le fond change sans animation si macOS réduit les animations. Fenêtre de
   820 × 600 points au moins.
-- **Barre latérale plate** :
+- **Barre latérale plate** (5 entrées) :
   - en haut, sans boîte ni encadrement : l'icône Spectre Pur, « Wispad » et un point d'état discret (« Prêt »,
     « À l'écoute »…, détaillé au survol) ;
-  - les sections en trois groupes séparés par de simples blancs : Dictée (Accueil, Historique), Toi (Profil,
-    Dictionnaire), Services (Fournisseurs, Consommation). Symboles monochromes sobres ; la section ouverte prend un
-    fond discret. Chaque rangée affiche son chiffre du moment en chasse fixe : mots du jour, dictées du jour, série de
-    jours d'affilée (dès 2 jours, en finissant aujourd'hui ou hier), suggestions du Dictionnaire à valider, point d'état
-    des fournisseurs et dépenses API des 30 derniers jours sur Consommation ;
-  - en bas, un fin filet, Réglages (point orange si une autorisation manque), puis le pied minimal (étoile, version,
-    apparence, liens).
-- **Accueil « Fil continu »** : s'ouvre directement sur tes dictées sans empilement de cartes :
+  - les sections en deux groupes séparés par un simple blanc : **Dictées** (fil continu + historique), **Statistiques**
+    (sous-onglets **Profil** et **Consommation**), **Dictionnaire** ; puis **Fournisseurs** ;
+  - en bas, un fin filet, **Réglages** (point orange si une autorisation manque), puis le pied minimal (étoile,
+    version, apparence, liens).
+- **Dictées (Fil continu unifié)** : s'ouvre directement sur tes dictées sans empilement de cartes :
   - en tête, un ruban en une ligne : mots dictés, cadence (m/min), temps économisé, coût, mini spectre des 7 derniers
-    jours (barre active en rouge) et bouton Dicter (mains libres), avec le sélecteur de période en texte souligné ;
-  - dessous, un champ de recherche à filet inférieur fin avec bouton floutage discret, puis le fil vivant des dictées
-    regroupées par jour avec copie, écoute audio et accès au détail.
-- Ordre des raccourcis ⌘1 à ⌘7 et du menu Présentation : celui de la barre latérale (Accueil, Historique, Profil,
-  Dictionnaire, Fournisseurs, Consommation, Réglages). Les résumés de la barre latérale, de l'Accueil et les groupes
-  journaliers de l'Historique sont mis en cache par révision d'historique pour éviter tout recalcul au fil des clics.
+    jours (barre active en rouge), sélecteur de période en texte souligné, bouton Dicter (mains libres) et corbeille ;
+  - dessous, un champ de recherche à filet inférieur fin avec bouton floutage discret, le bandeau de filtre si ouvert
+    depuis le cerveau de Profil, puis une liste plate (fenêtrée par tranches de 80 lignes) avec dépliage des longues
+    dictées, copie, écoute audio, retranscription, suppression et accès au détail.
+- **Statistiques** : réunit **Profil** et **Consommation** sous deux sous-onglets en haut de l'écran (onglet mémorisé
+  dans `statsTab` ; une ancienne préférence `lastSection: "usage"` ou `"history"` se convertit sans perte).
+- Ordre des raccourcis ⌘1 à ⌘5 et du menu Présentation : celui de la barre latérale (Dictées, Statistiques,
+  Dictionnaire, Fournisseurs, Réglages). Les résumés de la barre latérale, de Dictées et la liste plate des entrées
+  sont mis en cache par révision d'historique pour un défilement fluide.
 - Une fois affichée, c'est une fenêtre ordinaire : passer à une autre app, cliquer sur le bureau ou changer de
   bureau la laisse à sa place et sur son bureau, simplement derrière l'app active.
 - **Apparence** : Système (par défaut, suit macOS, y compris son passage automatique du clair au sombre), Clair ou
