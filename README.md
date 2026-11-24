@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/hero.jpg" alt="Wispad sur macOS : l'écran Accueil au premier plan, l'Historique et la Consommation derrière" width="100%">
+  <img src="docs/images/hero.jpg" alt="Wispad sur macOS : le fil des Dictées au premier plan, avec les Statistiques derrière" width="100%">
 </p>
 
 <p align="center">
@@ -82,18 +82,18 @@ curseur : messagerie, e-mail, éditeur de code, terminal, navigateur.
 <table>
   <tr>
     <td colspan="2" align="center">
-      <img src="docs/images/ecran-home.png" alt="Écran Accueil de Wispad : mots dictés par jour, mots par minute, temps économisé, applications et dernières dictées">
-      <br><b>Accueil</b> · ton activité en un coup d'œil : mots dictés, mots par minute, temps économisé, apps les plus dictées.
+      <img src="docs/images/ecran-home.png" alt="Écran Dictées de Wispad : fil continu des dictées classées par jour, avec l'app, le nombre de mots et le statut">
+      <br><b>Dictées</b> · tout est gardé sur ton Mac dans un fil continu, cherchable ; une longue dictée s'ouvre en entier au survol, une dictée ratée se retranscrit. Le défilement reste fluide même avec des milliers d'entrées.
     </td>
   </tr>
   <tr>
     <td width="50%" align="center">
-      <img src="docs/images/ecran-history.png" alt="Écran Historique : dictées classées par jour avec l'app, le nombre de mots et le statut">
-      <br><b>Historique</b> · tout est gardé sur ton Mac, cherchable ; une longue dictée s'ouvre en entier au survol, une dictée ratée se retranscrit.
+      <img src="docs/images/ecran-profile.png" alt="Statistiques, onglet Profil : rythme, mots et tics, et carte Ton cerveau en 3D avec un portrait écrit">
+      <br><b>Statistiques · Profil</b> · tes chiffres, ton rythme, tes mots et tes tics ; en option, ton cerveau en 3D, par mots ou par sujets lus par une IA, avec le coût annoncé avant.
     </td>
     <td width="50%" align="center">
-      <img src="docs/images/ecran-usage.png" alt="Écran Consommation : dépense des 7 derniers jours, part de chaque fournisseur, coût par mois face aux abonnements">
-      <br><b>Consommation</b> · ce que tu as dépensé, chez qui, et combien tu économises face aux abonnements ; chaque appel s'exporte en CSV.
+      <img src="docs/images/ecran-usage.png" alt="Statistiques, onglet Consommation : dépense des 7 derniers jours, part de chaque fournisseur, coût par mois face aux abonnements">
+      <br><b>Statistiques · Consommation</b> · ce que tu as dépensé, chez qui, et combien tu économises face aux abonnements ; chaque appel s'exporte en CSV.
     </td>
   </tr>
   <tr>
@@ -104,12 +104,6 @@ curseur : messagerie, e-mail, éditeur de code, terminal, navigateur.
     <td width="50%" align="center">
       <img src="docs/images/ecran-providers.png" alt="Écran Fournisseurs : une vue d'ensemble, le modèle de la voix et celui de la correction, puis les clés API">
       <br><b>Fournisseurs</b> · ce qui marche et ce qui manque d'un coup d'œil ; chaque modèle se choisit sur une carte, avec son prix.
-    </td>
-  </tr>
-  <tr>
-    <td colspan="2" align="center">
-      <img src="docs/images/ecran-profile.png" alt="Profil, carte Ton cerveau : sujets de démonstration (Code, Travail, Voyages, Cuisine) reliés en 3D, avec un portrait écrit et le coût de l'analyse" width="72%">
-      <br><b>Profil</b> · tes chiffres, ton rythme, tes mots et tes tics ; en option, ton cerveau en 3D, par mots ou par sujets lus par une IA, avec le coût annoncé avant.
     </td>
   </tr>
 </table>
