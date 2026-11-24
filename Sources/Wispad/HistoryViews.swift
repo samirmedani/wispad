@@ -146,29 +146,21 @@ enum HistoryCardShape {
     }
 }
 
-/// Une carte journalière continue, sans conteneur qui force le rendu des lignes hors écran.
-/// Pas de masque sur la ligne entière : le fond de carte et le fond de survol portent déjà sa forme,
-/// et un masque par ligne obligerait à recomposer chaque ligne à chaque image du défilement.
+/// Ligne posée directement sur le fond, séparée de la suivante par un fin filet horizontal (zéro boîte encadrée).
 private struct HistoryCardRow: ViewModifier {
     var first: Bool
     var last: Bool
 
-    private var shape: UnevenRoundedRectangle { HistoryCardShape.make(first: first, last: last) }
-
     func body(content: Content) -> some View {
         content
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(shape.fill(Theme.card))
-            .overlay {
-                // Seuls les bords externes de la journée sont visibles.
-                shape.strokeBorder(Theme.cardBorder, lineWidth: 1)
-                    .padding(.top, first ? 0 : -2)
-                    .padding(.bottom, last ? 0 : -2)
-                    .clipped()
-                    .allowsHitTesting(false)
-            }
             .overlay(alignment: .bottom) {
-                if !last { Divider().padding(.leading, 70) }
+                if !last {
+                    Rectangle()
+                        .fill(Theme.cardBorder)
+                        .frame(height: 1)
+                        .padding(.leading, 56)
+                }
             }
             .padding(.bottom, last ? 10 : 0)
     }

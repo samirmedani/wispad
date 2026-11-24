@@ -290,31 +290,31 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 
 ## Fenêtre
 
-- Direction artistique monochrome carbone (sombre par défaut sur macOS sombre, version claire assortie) : coque
-  extérieure mate (`Theme.chrome`) portant la barre latérale, et panneau principal encadré (`Theme.canvas`) avec
-  filets discrets de 1 point. Le rouge spectre de Wispad reste réservé à la marque (icône Spectre Pur dans le Dock,
-  pilule en écoute dans la barre des menus) et à l'écoute active ; les points d'état gardent le vert/orange/rouge.
+- Direction artistique monochrome carbone sans encadrements imbriqués (sombre sur macOS sombre, version claire
+  assortie) : barre latérale plate sur `Theme.chrome`, un seul filet vertical de 1 point, et contenu posé directement
+  sur `Theme.canvas`. Le rouge spectre de Wispad reste réservé à la marque (icône Spectre Pur dans le Dock, pilule en
+  écoute dans la barre des menus), au bouton Dicter et à la barre du jour ; les points d'état gardent le vert/orange/rouge.
   Les sections non sélectionnées, les vignettes d'apparence et les commandes partagées réagissent au survol avec un
   fond discret, sans déplacer le contenu. Le fond change sans animation si macOS réduit les animations. Fenêtre de
   820 × 600 points au moins.
-- **Barre latérale monochrome** sur la coque mate :
-  - en haut, une carte compacte : l'icône Spectre Pur, « Wispad », l'état de la dictée (« Prêt », « À l'écoute »…,
-    une ligne) et un bouton micro discret (monochrome au repos, rouge spectre uniquement pendant l'écoute) qui lance
-    une dictée mains libres (comme deux appuis sur le raccourci, ou « Dicter (mains libres) » du menu de la barre des
-    menus) puis l'arrête (Maj tenue : Entrée part après le collage). Lorsqu'elle n'a pas été masquée, la dernière
-    dictée réussie apparaît dessous, floutée tant que le pointeur ne la survole pas ; un clic (ou son icône) copie le
-    texte, la croix la masque jusqu'à la dictée suivante ;
-  - les sections en trois groupes : Dictée (Accueil, Historique), Toi (Profil, Dictionnaire), Services (Fournisseurs,
-    Consommation). Symboles monochromes sobres ; la section ouverte prend un fond discret sans filet coloré. Chaque
-    rangée affiche son chiffre du moment en chasse fixe : mots du jour, dictées du jour, série de jours d'affilée (dès
-    2 jours, en finissant aujourd'hui ou hier), suggestions du Dictionnaire à valider (badge monochrome, sinon le nombre
-    de mots), point d'état des fournisseurs (vert, relais, orange ou rouge) et dépenses API des 30 derniers jours sur
-    Consommation ;
-  - en bas, Réglages (point orange si une autorisation manque), puis le pied (étoile, version, apparence, liens).
-  - Ordre des raccourcis ⌘1 à ⌘7 et du menu Présentation : celui de la barre latérale (Accueil, Historique, Profil,
-    Dictionnaire, Fournisseurs, Consommation, Réglages). Les résumés de la barre latérale, de l'Accueil et les
-    groupes journaliers de l'Historique sont mis en cache par révision d'historique pour éviter tout recalcul au fil
-    des clics. Les raccourcis de la dictée restent une rangée de touches en bas de l'Accueil (carte « Raccourcis »).
+- **Barre latérale plate** :
+  - en haut, sans boîte ni encadrement : l'icône Spectre Pur, « Wispad » et un point d'état discret (« Prêt »,
+    « À l'écoute »…, détaillé au survol) ;
+  - les sections en trois groupes séparés par de simples blancs : Dictée (Accueil, Historique), Toi (Profil,
+    Dictionnaire), Services (Fournisseurs, Consommation). Symboles monochromes sobres ; la section ouverte prend un
+    fond discret. Chaque rangée affiche son chiffre du moment en chasse fixe : mots du jour, dictées du jour, série de
+    jours d'affilée (dès 2 jours, en finissant aujourd'hui ou hier), suggestions du Dictionnaire à valider, point d'état
+    des fournisseurs et dépenses API des 30 derniers jours sur Consommation ;
+  - en bas, un fin filet, Réglages (point orange si une autorisation manque), puis le pied minimal (étoile, version,
+    apparence, liens).
+- **Accueil « Fil continu »** : s'ouvre directement sur tes dictées sans empilement de cartes :
+  - en tête, un ruban en une ligne : mots dictés, cadence (m/min), temps économisé, coût, mini spectre des 7 derniers
+    jours (barre active en rouge) et bouton Dicter (mains libres), avec le sélecteur de période en texte souligné ;
+  - dessous, un champ de recherche à filet inférieur fin avec bouton floutage discret, puis le fil vivant des dictées
+    regroupées par jour avec copie, écoute audio et accès au détail.
+- Ordre des raccourcis ⌘1 à ⌘7 et du menu Présentation : celui de la barre latérale (Accueil, Historique, Profil,
+  Dictionnaire, Fournisseurs, Consommation, Réglages). Les résumés de la barre latérale, de l'Accueil et les groupes
+  journaliers de l'Historique sont mis en cache par révision d'historique pour éviter tout recalcul au fil des clics.
 - Une fois affichée, c'est une fenêtre ordinaire : passer à une autre app, cliquer sur le bureau ou changer de
   bureau la laisse à sa place et sur son bureau, simplement derrière l'app active.
 - **Apparence** : Système (par défaut, suit macOS, y compris son passage automatique du clair au sombre), Clair ou

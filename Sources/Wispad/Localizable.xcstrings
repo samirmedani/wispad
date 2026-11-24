@@ -16437,6 +16437,46 @@
         }
       }
     },
+    "mots" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "words"
+          }
+        }
+      }
+    },
+    "m/min" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "wpm"
+          }
+        }
+      }
+    },
+    "gagnées" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "saved"
+          }
+        }
+      }
+    },
+    "Dicter" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dictate"
+          }
+        }
+      }
+    },
     "%lld j" : {
       "localizations" : {
         "en" : {

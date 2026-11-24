@@ -74,27 +74,21 @@ struct RootView: View {
     }
 
     private var main: some View {
-        // Cadre carbone mat façon T3 Code : barre latérale sur la coque extérieure, panneau de contenu encadré.
+        // Plan unique sans encadrements imbriqués : barre latérale plate, un filet fin de 1 pt, contenu plein cadre.
         HStack(spacing: 0) {
             Sidebar()
                 .frame(width: Theme.sidebarWidth)
+            Rectangle()
+                .fill(Theme.cardBorder)
+                .frame(width: 1)
+                .ignoresSafeArea()
             SectionStack(section: model.selectedSection, make: section, onShow: { [weak model] in model?.noteSectionShown($0) },
                          canWarmUp: { [weak model] in model?.coordinator.phase == .idle })
+                .ignoresSafeArea()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Theme.canvas)
-                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .strokeBorder(Theme.cardBorder, lineWidth: 1)
-                        .allowsHitTesting(false)
-                }
                 .overlay(alignment: .bottom) { BannerToast() }
-                .padding(.top, 7)
-                .padding(.trailing, 7)
-                .padding(.bottom, 7)
-                .ignoresSafeArea(edges: .top)
         }
-        .background(Theme.chrome.ignoresSafeArea())
+        .background(Theme.canvas.ignoresSafeArea())
         .frame(minWidth: 820, minHeight: 600)
         // Alerte de la barre latérale : relue hors du fil principal, qui dessine la fenêtre qui s'ouvre.
         // Le Profil se calcule aussi en arrière-plan : il s'ouvre ensuite sans attente.
@@ -167,8 +161,8 @@ enum SidebarGroup: CaseIterable, Identifiable {
     }
 }
 
-/// Barre latérale monochrome façon T3 Code : carte compacte Wispad + micro, sections sobres avec chiffres
-/// en chasse fixe, puis Réglages et pied de page.
+/// Barre latérale plate et sans encadrement : logo + nom + point d'état posés à même le fond, navigation sobre
+/// espacée par de simples blancs, puis Réglages et pied discret.
 struct Sidebar: View {
     @Environment(AppModel.self) private var model
 
@@ -176,18 +170,15 @@ struct Sidebar: View {
         let digest = model.sidebarDigest()
         VStack(spacing: 0) {
             DictateCard(digest: digest)
-                .padding(.horizontal, 10)
-                .padding(.top, 4)
+                .padding(.horizontal, 14)
+                .padding(.top, 8)
+                .padding(.bottom, 12)
             ScrollView {
-                VStack(alignment: .leading, spacing: 1) {
-                    ForEach(SidebarGroup.allCases) { group in
-                        Text(group.title)
-                            .font(.system(size: 10.5, weight: .medium))
-                            .foregroundStyle(.tertiary)
-                            .padding(.horizontal, 9)
-                            .padding(.top, 13)
-                            .padding(.bottom, 3)
-                            .accessibilityAddTraits(.isHeader)
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(Array(SidebarGroup.allCases.enumerated()), id: \.element.id) { index, group in
+                        if index > 0 {
+                            Spacer().frame(height: 12)
+                        }
                         ForEach(group.sections) { section in
                             SidebarRow(section: section, selected: section == model.selectedSection, digest: digest)
                         }
@@ -198,16 +189,18 @@ struct Sidebar: View {
             }
             .scrollIndicators(.never)
             VStack(alignment: .leading, spacing: 6) {
-                Divider()
-                    .overlay(Theme.cardBorder)
-                    .padding(.bottom, 2)
+                Rectangle()
+                    .fill(Theme.cardBorder)
+                    .frame(height: 1)
+                    .padding(.horizontal, 4)
+                    .padding(.bottom, 4)
                 SidebarRow(section: .settings, selected: model.selectedSection == .settings, digest: digest)
                 ProjectFooter()
-                    .padding(.horizontal, 4)
+                    .padding(.horizontal, 6)
             }
             .padding(.horizontal, 10)
             .padding(.top, 4)
-            .padding(.bottom, 10)
+            .padding(.bottom, 12)
         }
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Theme.chrome.ignoresSafeArea())
@@ -342,44 +335,42 @@ struct ProvidersHealthDot: View {
     }
 }
 
-/// Carte compacte du haut : icône Spectre Pur, nom, état et bouton micro (monochrome au repos, rouge à l'écoute),
-/// plus la dernière dictée copiée en un clic lorsqu'elle est visible.
+/// En-tête de barre latérale sans boîte : icône Spectre Pur, nom Wispad et un seul point d'état discret.
 struct DictateCard: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.colorSchemeContrast) private var contrast
     var digest: SidebarDigest
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 9) {
-                Image(nsImage: NSApplication.shared.applicationIconImage)
-                    .resizable()
-                    .interpolation(.high)
-                    .frame(width: 28, height: 28)
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 1.5) {
-                    Text("Wispad")
-                        .font(.system(size: 13, weight: .semibold))
-                    DictationStatusLine()
-                }
-                Spacer(minLength: 4)
-                MicButton()
-            }
-            if let last = digest.last, last.id != model.settings.dismissedLastDictationID {
-                LastDictationButton(last: last)
-                    .padding(.top, 8)
-            }
+        let status = self.status
+        HStack(spacing: 8) {
+            Image(nsImage: NSApplication.shared.applicationIconImage)
+                .resizable()
+                .interpolation(.high)
+                .frame(width: 24, height: 24)
+                .accessibilityHidden(true)
+            Text("Wispad")
+                .font(.system(size: 13.5, weight: .semibold))
+                .tracking(-0.15)
+            Spacer(minLength: 4)
+            Circle()
+                .fill(status.color)
+                .frame(width: 7, height: 7)
+                .help(status.text)
+                .accessibilityLabel(status.text)
         }
-        .padding(9)
-        .background {
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .fill(Theme.card)
+        .frame(height: 28)
+    }
+
+    private var status: (text: String, color: Color) {
+        switch model.coordinator.phase {
+        case .idle:
+            if let warning = model.setupWarning { return (warning, .orange) }
+            return model.relayLines().isEmpty ? (String(localized: "Prêt"), .green) : (String(localized: "Prêt · relais actif"), OverlayStyle.relay)
+        case .starting: return (String(localized: "Démarrage…"), .orange)
+        case .listening(let mode): return (mode == .toggle ? String(localized: "Mains libres") : String(localized: "À l'écoute"), Theme.brand)
+        case .finishing: return (String(localized: "Transcription…"), .blue)
+        case .failure: return (String(localized: "Erreur"), .orange)
         }
-        .overlay {
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .strokeBorder(contrast == .increased ? Theme.cardBorderStrong : Theme.cardBorder, lineWidth: 1)
-        }
-        .animation(Theme.quick, value: digest)
     }
 }
 
@@ -737,11 +728,8 @@ struct VersionChip: View {
                 UpdateCheckButton(status: status)
             }
         }
-        .padding(.leading, 9)
-        .padding(.trailing, showsCheck ? 2 : 9)
-        .frame(height: 24)
-        .background(Capsule().fill(tint.opacity(0.1)))
-        .overlay(Capsule().strokeBorder(tint.opacity(0.22), lineWidth: 1))
+        .padding(.horizontal, 4)
+        .frame(height: 22)
         .help(helpText)
         .animation(Theme.quick, value: status.display)
     }

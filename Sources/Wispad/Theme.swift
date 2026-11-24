@@ -57,7 +57,7 @@ enum Theme {
     static let keyEdge = Color.adaptive(light: NSColor(white: 0, alpha: 0.22), dark: NSColor(white: 0, alpha: 0.65))
 
     static let radius: CGFloat = 10
-    static let sidebarWidth: CGFloat = 240
+    static let sidebarWidth: CGFloat = 238
     static let spring = Animation.spring(response: 0.28, dampingFraction: 0.88)
     static let quick = Animation.easeOut(duration: 0.12)
     static let hover = Animation.easeOut(duration: 0.14)
@@ -355,7 +355,7 @@ struct ScreenScroll<Content: View>: View {
     }
 }
 
-/// Sélecteur segmenté monochrome à pastille glissante.
+/// Sélecteur de période sobre en texte seul avec fin soulignement, sans encadrement.
 struct PillPicker<Value: Hashable>: View {
     var options: [Value]
     @Binding var selection: Value
@@ -364,36 +364,31 @@ struct PillPicker<Value: Hashable>: View {
     @Environment(\.interactionReduceMotion) private var reduceMotion
 
     var body: some View {
-        HStack(spacing: 2) {
+        HStack(spacing: 14) {
             ForEach(options, id: \.self) { item in
                 let selected = item == selection
                 Button {
                     withAnimation(reduceMotion ? nil : Theme.spring) { selection = item }
                 } label: {
-                    Text(title(item))
-                        .font(.system(size: 11.5, weight: selected ? .semibold : .medium))
-                        .foregroundStyle(selected ? Color.primary : Color.secondary)
-                        .padding(.horizontal, 10)
-                        .frame(height: 23)
-                        .background {
+                    VStack(spacing: 4) {
+                        Text(title(item))
+                            .font(.system(size: 11.5, weight: selected ? .semibold : .regular))
+                            .foregroundStyle(selected ? Color.primary : Color.secondary)
+                        ZStack {
+                            Color.clear.frame(height: 1.5)
                             if selected {
-                                RoundedRectangle(cornerRadius: 5.5, style: .continuous)
-                                    .fill(Theme.raised)
-                                    .overlay {
-                                        RoundedRectangle(cornerRadius: 5.5, style: .continuous)
-                                            .strokeBorder(Theme.cardBorder, lineWidth: 1)
-                                    }
+                                Capsule()
+                                    .fill(Color.primary)
+                                    .frame(height: 1.5)
                                     .matchedGeometryEffect(id: "pill", in: pill)
                             }
                         }
-                        .contentShape(RoundedRectangle(cornerRadius: 5.5, style: .continuous))
+                    }
+                    .contentShape(Rectangle())
                 }
-                .buttonStyle(HoverButtonStyle())
+                .buttonStyle(.plain)
             }
         }
-        .padding(2.5)
-        .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Theme.card))
-        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Theme.cardBorder, lineWidth: 1))
         .fixedSize()
     }
 }
