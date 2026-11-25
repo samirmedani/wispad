@@ -257,6 +257,7 @@ enum MainWindow {
         window.collectionBehavior = settledBehavior
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
+        window.backgroundColor = NSColor(Theme.canvas)
         window.contentView = NSHostingView(rootView: RootView()
             .environment(model)
             .environment(\.historyRowDidRender, historyRowDidRender)

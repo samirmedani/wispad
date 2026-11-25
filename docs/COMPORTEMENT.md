@@ -311,8 +311,9 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
   - en tête, un ruban en une ligne : mots dictés, cadence (m/min), temps économisé, coût, mini spectre des 7 derniers
     jours (barre active en rouge), sélecteur de période en texte souligné, bouton Dicter (mains libres) et corbeille ;
   - dessous, un champ de recherche à filet inférieur fin avec bouton floutage discret, le bandeau de filtre si ouvert
-    depuis le cerveau de Profil, puis une liste plate (fenêtrée par tranches de 80 lignes) avec dépliage des longues
-    dictées, copie, écoute audio, retranscription, suppression et accès au détail.
+    depuis le cerveau de Profil, puis une liste plate paresseuse (sans découpage artificiel, barre de défilement exacte
+    dès l'ouverture) avec dépliage des longues dictées, copie, écoute audio, retranscription, suppression et accès au
+    détail (boutons posés en surimpression sans jamais faire bouger le texte).
 - **Statistiques** : réunit **Profil** et **Consommation** sous deux sous-onglets en haut de l'écran (onglet mémorisé
   dans `statsTab` ; une ancienne préférence `lastSection: "usage"` ou `"history"` se convertit sans perte).
 - Ordre des raccourcis ⌘1 à ⌘5 et du menu Présentation : celui de la barre latérale (Dictées, Statistiques,

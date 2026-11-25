@@ -7,8 +7,9 @@ import WispadCore
 /// Écran principal « Dictées » : réunit le fil continu et tout l'historique sans encadrements imbriqués.
 /// Pour un défilement sans saccades même avec des milliers de dictées :
 /// - liste plate précalculée (`StreamEntry`) sans `Section` imbriquées ni en-têtes épinglés ;
-/// - fenêtrage progressif (80 entrées au départ, +80 à l'approche du bas) ;
-/// - survol suspendu pendant le défilement (`HistoryScrollPhase`) et boutons d'action montés uniquement sur la ligne survolée ;
+/// - `LazyVStack` ne construit que les lignes visibles tout en gardant une barre de défilement exacte et sans sauts ;
+/// - survol suspendu pendant le défilement (`HistoryScrollPhase`) et boutons d'action posés en surimpression sans
+///   jamais modifier la largeur ou la hauteur du texte ;
 /// - aucun filtre `.blur` GPU monté lorsque le texte est visible ;
 /// - lignes `Equatable` pures, sans lecture directe de `@Environment(AppModel.self)`.
 struct HomeView: View {
@@ -19,19 +20,15 @@ struct HomeView: View {
     @State private var appliedQuery = ""
     @State private var detailRecord: DictationRecord?
     @State private var pendingDeleteAll = false
-    @State private var visibleLimit = Self.pageSize
     @State private var scrollActivity = HistoryScrollActivity()
     @FocusState private var searchFocused: Bool
 
-    private static let pageSize = 80
     private var period: StatsPeriod { model.settings.homePeriod }
 
     var body: some View {
         let snap = model.homeSnapshot(for: period)
         let usage = model.usageSummary(for: period)
         let allEntries = model.historyStreamEntries(query: appliedQuery, filter: model.historyFilter)
-        let visibleCount = min(allEntries.count, visibleLimit)
-        let visibleEntries = allEntries.prefix(visibleCount)
         let blurred = model.settings.blurRecentDictations
         let activeAudioID = model.historyPlayer.recordID
 
@@ -62,9 +59,9 @@ struct HomeView: View {
             } else {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0) {
-                        ForEach(visibleEntries) { entry in
+                        ForEach(allEntries) { entry in
                             switch entry {
-                            case .header(day: let _day, title: let title, count: let count):
+                            case .header(day: _, title: let title, count: let count):
                                 StreamDayHeader(title: title, count: count)
                             case let .record(record, isLastInDay):
                                 let item = HistoryRowCache.shared.item(for: record)
@@ -86,16 +83,8 @@ struct HomeView: View {
                                 }
                             }
                         }
-                        if visibleCount < allEntries.count {
-                            Color.clear
-                                .frame(height: 1)
-                                .onAppear {
-                                    visibleLimit = min(allEntries.count, visibleLimit + Self.pageSize)
-                                }
-                        } else {
-                            shortcutsFootnote
-                                .padding(.top, 22)
-                        }
+                        shortcutsFootnote
+                            .padding(.top, 22)
                     }
                     .padding(.horizontal, 32)
                     .padding(.bottom, 28)
@@ -113,9 +102,7 @@ struct HomeView: View {
                 guard !Task.isCancelled else { return }
             }
             appliedQuery = query
-            visibleLimit = Self.pageSize
         }
-        .onChange(of: model.historyFilter) { visibleLimit = Self.pageSize }
         .sheet(item: $detailRecord) { record in
             DictationDetailView(record: record)
         }
@@ -374,9 +361,13 @@ private struct StreamDictationRow: View, Equatable {
                     }
                 }
             }
-            Spacer(minLength: 8)
-            // Boutons montés seulement quand cette ligne est survolée (ou en cours de lecture/copie) :
-            // aucune hiérarchie de boutons animés instanciée pendant le défilement.
+            .frame(maxWidth: .infinity, alignment: .leading)
+            // Colonne réservée fixe : les actions posées en surimpression ne font jamais bouger la hauteur de la ligne.
+            Color.clear
+                .frame(width: 124, height: 1)
+        }
+        .padding(.vertical, 12)
+        .overlay(alignment: .topTrailing) {
             if showActions {
                 HStack(spacing: 2) {
                     if !item.text.isEmpty {
@@ -412,9 +403,9 @@ private struct StreamDictationRow: View, Equatable {
                               tint: .secondary,
                               action: onDelete)
                 }
+                .padding(.top, 10)
             }
         }
-        .padding(.vertical, 12)
         .overlay(alignment: .bottom) {
             if !isLastInDay {
                 Rectangle()
