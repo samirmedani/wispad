@@ -320,7 +320,7 @@ private struct MiniSpectrumBars: View {
 
 /// Ligne ultra-légère du fil : `Equatable`, zéro lecture `AppModel`, boutons d'action montés uniquement au survol
 /// (et jamais pendant un défilement actif) pour garder 60–120 ips.
-private struct StreamDictationRow: View, @preconcurrency Equatable {
+private struct StreamDictationRow: View, Equatable {
     let item: HistoryRowItem
     let isLastInDay: Bool
     let blurred: Bool

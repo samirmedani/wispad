@@ -3,13 +3,17 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
-## 0.8.40 — 24 novembre 2026
+## 0.8.40 — 25 novembre 2026
 
-Wispad 0.8.40 fond la barre latérale en cinq entrées et rend le défilement des dictées parfaitement fluide.
+Wispad 0.8.40 adopte une interface monochrome sans encadrements imbriqués, une nouvelle icône Spectre Pur et un fil de dictées parfaitement fluide.
 
 **Amélioré**
-- **Barre latérale à 5 entrées** : Dictées, Statistiques (sous-onglets Profil et Consommation), Dictionnaire, Fournisseurs, Réglages. L'historique rejoint le fil continu des Dictées.
-- **Fil continu fluide** : chargement par tranches de 80 lignes, aucun flou GPU tant que le texte est visible, et les boutons d'action n'apparaissent que sur la ligne survolée. Mesuré : aucune image au-dessus de 16 ms sur 240 pas de défilement avec 1 000 dictées (moyenne ~4,7 ms).
+- **Interface monochrome carbone & icône Spectre Pur** : fin des boîtes imbriquées, palette sombre/claire épurée où le rouge reste réservé à la voix, nouvelle icône d'app et de barre des menus.
+- **Barre latérale à 5 entrées** : Dictées, Statistiques (sous-onglets Profil et Consommation), Dictionnaire, Fournisseurs, Réglages, complétée par le résumé plat du jour (mots, mini spectre, copie en un clic de la dernière dictée) et la chaîne active (voix, correction, micro, raccourci).
+- **Fil continu fluide** : l'historique rejoint directement Dictées, chargement par tranches de 80 lignes, aucun flou GPU tant que le texte est visible et boutons d'action montés au survol uniquement.
+
+**Corrigé**
+- **« v » / « v. » devant un nom propre** : rétabli en « vers » lorsqu'une transcription abrège le mot devant un nom ou un modèle (sans toucher à « la v. 2 » ni « touche v »).
 
 ## 0.8.39 — 22 novembre 2026
 

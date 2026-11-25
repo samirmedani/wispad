@@ -16686,6 +16686,106 @@
           }
         }
       }
+    },
+    "%@ gagnées" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ saved"
+          }
+        }
+      }
+    },
+    "Changer le raccourci" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change shortcut"
+          }
+        }
+      }
+    },
+    "Chaîne active" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Active pipeline"
+          }
+        }
+      }
+    },
+    "Choisir le micro" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose microphone"
+          }
+        }
+      }
+    },
+    "Dernière · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Latest · %@"
+          }
+        }
+      }
+    },
+    "Dernière · %@ · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Latest · %1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "Local" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Local"
+          }
+        }
+      }
+    },
+    "Ouvrir Fournisseurs" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Providers"
+          }
+        }
+      }
+    },
+    "Prêt à dicter" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ready to dictate"
+          }
+        }
+      }
+    },
+    "mot" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "word"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

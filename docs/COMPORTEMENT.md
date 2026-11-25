@@ -302,6 +302,9 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
     « À l'écoute »…, détaillé au survol) ;
   - les sections en deux groupes séparés par un simple blanc : **Dictées** (fil continu + historique), **Statistiques**
     (sous-onglets **Profil** et **Consommation**), **Dictionnaire** ; puis **Fournisseurs** ;
+  - dessous, séparés par un filet fin sans boîte : **Aujourd'hui** (mots du jour, temps gagné, série, mini spectre sur
+    7 jours et dernière dictée copiable en un clic, floutée si le floutage est actif) puis **Chaîne active** (voix,
+    correction, micro lu hors du fil principal et raccourci, chacun cliquable vers son réglage) ;
   - en bas, un fin filet, **Réglages** (point orange si une autorisation manque), puis le pied minimal (étoile,
     version, apparence, liens).
 - **Dictées (Fil continu unifié)** : s'ouvre directement sur tes dictées sans empilement de cartes :

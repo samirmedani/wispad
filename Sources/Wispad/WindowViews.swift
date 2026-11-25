@@ -189,8 +189,8 @@ enum SidebarGroup: CaseIterable, Identifiable {
     }
 }
 
-/// Barre latérale plate et sans encadrement : logo + nom + point d'état posés à même le fond, navigation sobre
-/// espacée par de simples blancs, puis Réglages et pied discret.
+/// Barre latérale plate et sans encadrement : logo + nom + point d'état, navigation sobre, activité du jour,
+/// chaîne active, puis Réglages et pied discret.
 struct Sidebar: View {
     @Environment(AppModel.self) private var model
 
@@ -202,18 +202,28 @@ struct Sidebar: View {
                 .padding(.top, 8)
                 .padding(.bottom, 12)
             ScrollView {
-                VStack(alignment: .leading, spacing: 2) {
-                    ForEach(Array(SidebarGroup.allCases.enumerated()), id: \.element.id) { index, group in
-                        if index > 0 {
-                            Spacer().frame(height: 12)
-                        }
-                        ForEach(group.sections) { section in
-                            SidebarRow(section: section, selected: section == model.selectedSection, digest: digest)
+                VStack(alignment: .leading, spacing: 0) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(Array(SidebarGroup.allCases.enumerated()), id: \.element.id) { index, group in
+                            if index > 0 {
+                                Spacer().frame(height: 10)
+                            }
+                            ForEach(group.sections) { section in
+                                SidebarRow(section: section, selected: section == model.selectedSection, digest: digest)
+                            }
                         }
                     }
+
+                    sidebarDivider
+
+                    SidebarTodaySection(digest: digest)
+
+                    sidebarDivider
+
+                    SidebarPipelineSection()
                 }
                 .padding(.horizontal, 10)
-                .padding(.bottom, 8)
+                .padding(.bottom, 12)
             }
             .scrollIndicators(.never)
             VStack(alignment: .leading, spacing: 6) {
@@ -232,6 +242,344 @@ struct Sidebar: View {
         }
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Theme.chrome.ignoresSafeArea())
+    }
+
+    private var sidebarDivider: some View {
+        Rectangle()
+            .fill(Theme.cardBorder)
+            .frame(height: 1)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 12)
+    }
+}
+
+/// Résumé plat de la journée dans la barre latérale : mots, temps gagné, mini spectre 7 jours et dernière dictée
+/// copiable en un clic, sans boîte ni encadrement.
+private struct SidebarTodaySection: View {
+    @Environment(AppModel.self) private var model
+    var digest: SidebarDigest
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Aujourd'hui")
+                .font(.system(size: 9.5, weight: .semibold))
+                .tracking(0.6)
+                .textCase(.uppercase)
+                .foregroundStyle(.tertiary)
+                .padding(.horizontal, 8)
+
+            HStack(alignment: .bottom, spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text(digest.wordsToday.formatted(.number.locale(appLocale)))
+                            .font(.system(size: 14.5, weight: .semibold, design: .monospaced))
+                            .monospacedDigit()
+                            .contentTransition(.numericText())
+                        Text(digest.wordsToday == 1 ? String(localized: "mot") : String(localized: "mots"))
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    }
+                    Text(subtitle)
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 4)
+                SidebarWeekBars(values: digest.wordsByDay)
+            }
+            .padding(.horizontal, 8)
+
+            if let last = digest.last, last.id != model.settings.dismissedLastDictationID {
+                SidebarLastDictationRow(last: last)
+                    .padding(.top, 2)
+            }
+        }
+    }
+
+    private var subtitle: String {
+        let saved = digest.savedSecondsToday(typingWordsPerMinute: model.settings.typingWPM)
+        var parts: [String] = []
+        if saved >= 60 {
+            parts.append(String(localized: "\(DurationFormat.saved(saved)) gagnées"))
+        } else if digest.dictationsToday > 0 {
+            parts.append(digest.dictationsToday == 1
+                ? String(localized: "1 dictée")
+                : String(localized: "\(digest.dictationsToday) dictées"))
+        }
+        if digest.streak >= 2 {
+            parts.append(String(localized: "\(digest.streak) j"))
+        }
+        if parts.isEmpty {
+            return String(localized: "Prêt à dicter")
+        }
+        return parts.joined(separator: " · ")
+    }
+}
+
+/// Sept fines barres verticales (les 7 derniers jours), aujourd'hui en rouge spectre.
+private struct SidebarWeekBars: View {
+    var values: [Int]
+
+    var body: some View {
+        let top = max(1, values.max() ?? 1)
+        HStack(alignment: .bottom, spacing: 2.5) {
+            ForEach(Array(values.enumerated()), id: \.offset) { index, value in
+                let isToday = index == values.count - 1
+                RoundedRectangle(cornerRadius: 1.25, style: .continuous)
+                    .fill(isToday && value > 0 ? Theme.brand : Color.primary.opacity(value > 0 ? 0.24 : 0.10))
+                    .frame(width: 3.5, height: max(2.5, 22 * CGFloat(value) / CGFloat(top)))
+            }
+        }
+        .frame(height: 22, alignment: .bottom)
+        .accessibilityLabel(String(localized: "Mots des sept derniers jours"))
+        .accessibilityValue(values.map(String.init).joined(separator: ", "))
+    }
+}
+
+/// Dernière dictée posée à plat dans la barre latérale : un clic copie le texte, aucun cadre au repos.
+private struct SidebarLastDictationRow: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.interactionReduceMotion) private var reduceMotion
+    @State private var hovering = false
+    @State private var copied = false
+    var last: SidebarDigest.LastDictation
+
+    private var blurred: Bool { model.settings.blurRecentDictations && !hovering }
+
+    var body: some View {
+        Button(action: copy) {
+            VStack(alignment: .leading, spacing: 2.5) {
+                HStack(spacing: 4) {
+                    TimelineView(.periodic(from: .now, by: 60)) { context in
+                        Text(caption(now: context.date))
+                            .font(.system(size: 10))
+                            .foregroundStyle(.tertiary)
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 4)
+                    if copied {
+                        Text("Copié")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.green)
+                    } else if hovering {
+                        Text("Copier")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                if blurred {
+                    Text(last.text)
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(Color.primary.opacity(0.62))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .blur(radius: 4.5, opaque: false)
+                } else {
+                    Text(last.text)
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(Color.primary.opacity(0.84))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background {
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(Color.primary.opacity(hovering ? 0.055 : 0))
+                    .animation(reduceMotion ? nil : Theme.hover, value: hovering)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .help(copied ? String(localized: "Copié") : String(localized: "Copier la dernière dictée"))
+        .accessibilityLabel(String(localized: "Copier la dernière dictée"))
+        .accessibilityValue(last.text)
+    }
+
+    private func copy() {
+        model.copy(last.text)
+        copied = true
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(1_600))
+            copied = false
+        }
+    }
+
+    private func caption(now: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.locale = appLocale
+        formatter.unitsStyle = .short
+        let moment = now.timeIntervalSince(last.date) < 60
+            ? String(localized: "à l'instant")
+            : formatter.localizedString(for: last.date, relativeTo: now)
+        if let app = last.app, !app.isEmpty {
+            return String(localized: "Dernière · \(app) · \(moment)")
+        }
+        return String(localized: "Dernière · \(moment)")
+    }
+}
+
+/// Chaîne active posée à plat dans la barre latérale : voix, correction, micro et raccourci, chacun cliquable vers
+/// son écran de réglage. Le nom du micro est lu hors du fil principal pour ne jamais freiner l'interface.
+private struct SidebarPipelineSection: View {
+    @Environment(AppModel.self) private var model
+    @State private var microphoneLabel: String?
+
+    var body: some View {
+        let _ = model.keysLoadedAt
+        let _ = model.health
+        let snapshot = ProvidersSnapshot(model: model)
+        let key = KeyLabels.describe(keyCode: model.settings.keyCode, modifiers: model.settings.modifierFlags)
+        VStack(alignment: .leading, spacing: 5) {
+            Text("Chaîne active")
+                .font(.system(size: 9.5, weight: .semibold))
+                .tracking(0.6)
+                .textCase(.uppercase)
+                .foregroundStyle(.tertiary)
+                .padding(.horizontal, 8)
+                .padding(.bottom, 1)
+
+            SidebarPipelineRow(
+                label: String(localized: "Voix"),
+                value: voiceText(snapshot),
+                warning: !snapshot.voiceReady,
+                help: String(localized: "Ouvrir Fournisseurs")
+            ) {
+                model.selectedSection = .providers
+            }
+
+            SidebarPipelineRow(
+                label: String(localized: "Correction"),
+                value: correctionText(snapshot),
+                warning: snapshot.cleanupEnabled && (snapshot.chosenCleanupKeyMissing || snapshot.services.isEmpty),
+                help: String(localized: "Ouvrir Fournisseurs")
+            ) {
+                model.selectedSection = .providers
+            }
+
+            SidebarPipelineRow(
+                label: String(localized: "Micro"),
+                value: microphoneLabel ?? String(localized: "Système"),
+                warning: false,
+                help: String(localized: "Choisir le micro")
+            ) {
+                model.setDisplayChoice(\.settingsTab, .dictation)
+                model.selectedSection = .settings
+            }
+
+            SidebarPipelineRow(
+                label: String(localized: "Raccourci"),
+                value: "\(key) \(key)",
+                warning: false,
+                keyCap: true,
+                help: String(localized: "Changer le raccourci")
+            ) {
+                model.setDisplayChoice(\.settingsTab, .general)
+                model.selectedSection = .settings
+            }
+        }
+        .task(id: model.settings.microphoneUID) {
+            let saved = model.settings.microphoneUID
+            let resolved = await Task.detached(priority: .utility) {
+                let name: String?
+                if !saved.isEmpty, let match = AudioInputDevices.all().first(where: { $0.uid == saved }) {
+                    name = match.name
+                } else {
+                    name = AudioInputDevices.systemDefault()?.name
+                }
+                return Self.compactMicrophoneName(name)
+            }.value
+            microphoneLabel = resolved
+        }
+    }
+
+    private func voiceText(_ snapshot: ProvidersSnapshot) -> String {
+        switch snapshot.voice.provider {
+        case .xai: return "xAI · Grok"
+        case .openAI: return "OpenAI"
+        }
+    }
+
+    private func correctionText(_ snapshot: ProvidersSnapshot) -> String {
+        guard snapshot.cleanupEnabled else { return String(localized: "Coupée") }
+        if snapshot.cleanupChoice == .automatic {
+            guard let first = snapshot.services.first else { return String(localized: "Aucune clé") }
+            return first.account.map(shortProviderName) ?? first.provider
+        }
+        guard let account = snapshot.cleanupChoice.account else { return String(localized: "Automatique") }
+        return shortProviderName(account)
+    }
+
+    private func shortProviderName(_ account: String) -> String {
+        if account == CleanupModel.localAccount { return String(localized: "Local") }
+        return ProviderName.of(account)
+    }
+
+    private nonisolated static func compactMicrophoneName(_ raw: String?) -> String {
+        guard var name = raw?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty else {
+            return String(localized: "Système")
+        }
+        for prefix in ["Micro ", "Microphone ", "Micro du ", "Micro de "] {
+            if name.hasPrefix(prefix), name.count > prefix.count + 2 {
+                name = String(name.dropFirst(prefix.count))
+                break
+            }
+        }
+        return name
+    }
+}
+
+private struct SidebarPipelineRow: View {
+    @Environment(\.interactionReduceMotion) private var reduceMotion
+    @State private var hovering = false
+    var label: String
+    var value: String
+    var warning: Bool
+    var keyCap: Bool = false
+    var help: String
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Text(label)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+                Spacer(minLength: 6)
+                if keyCap {
+                    Text(verbatim: value)
+                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .foregroundStyle(Color.primary.opacity(0.82))
+                        .padding(.horizontal, 5.5)
+                        .padding(.vertical, 1.5)
+                        .background(RoundedRectangle(cornerRadius: 4, style: .continuous).fill(Theme.subtleFill))
+                        .overlay(RoundedRectangle(cornerRadius: 4, style: .continuous).strokeBorder(Theme.cardBorder, lineWidth: 1))
+                        .lineLimit(1)
+                        .fixedSize()
+                } else {
+                    Text(value)
+                        .font(.system(size: 10.5, design: .monospaced))
+                        .foregroundStyle(warning ? Color.orange : Color.primary.opacity(0.82))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+            }
+            .padding(.horizontal, 8)
+            .frame(height: 22)
+            .background {
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .fill(Color.primary.opacity(hovering ? 0.05 : 0))
+                    .animation(reduceMotion ? nil : Theme.hover, value: hovering)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .help(help)
     }
 }
 

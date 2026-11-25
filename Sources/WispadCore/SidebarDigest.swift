@@ -13,11 +13,34 @@ public struct SidebarDigest: Equatable, Sendable {
 
     public var wordsToday: Int
     public var dictationsToday: Int
+    /// Durée d'audio dictée aujourd'hui (secondes), pour le temps gagné du jour.
+    public var durationToday: Double
     /// Mots dictés par jour, du plus ancien à aujourd'hui (sept valeurs).
     public var wordsByDay: [Int]
     /// Jours d'affilée avec au moins une dictée, en finissant aujourd'hui, ou hier si aujourd'hui est encore vide.
     public var streak: Int
     public var last: LastDictation?
+
+    public init(
+        wordsToday: Int,
+        dictationsToday: Int,
+        durationToday: Double = 0,
+        wordsByDay: [Int],
+        streak: Int,
+        last: LastDictation?
+    ) {
+        self.wordsToday = wordsToday
+        self.dictationsToday = dictationsToday
+        self.durationToday = durationToday
+        self.wordsByDay = wordsByDay
+        self.streak = streak
+        self.last = last
+    }
+
+    public func savedSecondsToday(typingWordsPerMinute: Double) -> Double {
+        let typingSeconds = typingWordsPerMinute > 0 ? Double(wordsToday) / typingWordsPerMinute * 60 : 0
+        return max(0, typingSeconds - durationToday)
+    }
 
     public static let days = 7
 
@@ -27,6 +50,7 @@ public struct SidebarDigest: Equatable, Sendable {
         let firstDay = calendar.date(byAdding: .day, value: -(days - 1), to: today) ?? today
         var wordsByDay = Array(repeating: 0, count: days)
         var dictationsToday = 0
+        var durationToday = 0.0
         var dayStarts = Set<Date>()
         var last: DictationRecord?
         for record in records where !record.finalText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -36,13 +60,17 @@ public struct SidebarDigest: Equatable, Sendable {
             if day >= firstDay, let offset = calendar.dateComponents([.day], from: firstDay, to: day).day,
                wordsByDay.indices.contains(offset) {
                 wordsByDay[offset] += max(0, record.wordCount)
-                if day == today { dictationsToday += 1 }
+                if day == today {
+                    dictationsToday += 1
+                    durationToday += max(0, record.durationSeconds)
+                }
             }
             if last.map({ record.createdAt > $0.createdAt }) ?? true { last = record }
         }
         return SidebarDigest(
             wordsToday: wordsByDay[days - 1],
             dictationsToday: dictationsToday,
+            durationToday: durationToday,
             wordsByDay: wordsByDay,
             streak: streak(dayStarts, today: today, calendar: calendar),
             last: last.map { record in
