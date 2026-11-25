@@ -368,7 +368,7 @@ private struct OnboardingProgress: View {
                 Image(systemName: "checkmark").font(.system(size: 10, weight: .bold)).foregroundStyle(.white)
             case .current:
                 Circle().fill(Theme.accent)
-                Text("\(step.index + 1)").font(.system(size: 11, weight: .bold, design: .rounded)).foregroundStyle(.white)
+                Text("\(step.index + 1)").font(.system(size: 11, weight: .bold, design: .rounded)).foregroundStyle(Theme.accentInk)
             case .problem:
                 Circle().fill(Color.red)
                 Image(systemName: "xmark").font(.system(size: 10, weight: .bold)).foregroundStyle(.white)

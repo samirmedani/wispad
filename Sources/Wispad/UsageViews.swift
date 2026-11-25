@@ -10,6 +10,7 @@ import WispadCore
 /// des appels. Tout vient des appels enregistrés de la période.
 struct UsageView: View {
     @Environment(AppModel.self) private var model
+    var embedded = false
     @State private var refreshing = false
 
     private var period: StatsPeriod { model.settings.usagePeriod }
@@ -21,9 +22,8 @@ struct UsageView: View {
         let incomplete = summary.hasUnpricedCalls || model.usageLoadFailed
         let span = model.usage.last.map { UsageSpan.make(firstUse: $0.createdAt, now: now) }
         ScreenScroll {
-            ScreenHeader(title: String(localized: "Consommation"),
-                         subtitle: String(localized: "Le coût de tes dictées, service par service.")) {
-                VStack(alignment: .trailing, spacing: 6) {
+            if embedded {
+                HStack(alignment: .center, spacing: 12) {
                     PillPicker(selection: Binding(
                         get: { model.settings.usagePeriod },
                         set: { model.setDisplayChoice(\.usagePeriod, $0) }
@@ -31,6 +31,21 @@ struct UsageView: View {
                     if period == .all, let span {
                         PeriodSpanCaption(span: span)
                             .transition(.opacity)
+                    }
+                    Spacer(minLength: 8)
+                }
+            } else {
+                ScreenHeader(title: String(localized: "Consommation"),
+                             subtitle: String(localized: "Le coût de tes dictées, service par service.")) {
+                    VStack(alignment: .trailing, spacing: 6) {
+                        PillPicker(selection: Binding(
+                            get: { model.settings.usagePeriod },
+                            set: { model.setDisplayChoice(\.usagePeriod, $0) }
+                        ))
+                        if period == .all, let span {
+                            PeriodSpanCaption(span: span)
+                                .transition(.opacity)
+                        }
                     }
                 }
             }

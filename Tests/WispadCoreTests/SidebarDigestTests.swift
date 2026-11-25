@@ -28,6 +28,8 @@ final class SidebarDigestTests: XCTestCase {
         ], now: now, calendar: calendar)
         XCTAssertEqual(digest.wordsToday, 15)
         XCTAssertEqual(digest.dictationsToday, 2)
+        XCTAssertEqual(digest.durationToday, 6)
+        XCTAssertEqual(digest.savedSecondsToday(typingWordsPerMinute: 45), 14, accuracy: 0.01)
         XCTAssertEqual(digest.wordsByDay, [3, 0, 0, 0, 0, 7, 15])
     }
 

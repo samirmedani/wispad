@@ -5,10 +5,8 @@ import WispadCore
 extension AppSection {
     var symbol: String {
         switch self {
-        case .home: return "house"
-        case .history: return "clock.arrow.circlepath"
-        case .profile: return "brain.head.profile"
-        case .usage: return "chart.bar.xaxis"
+        case .home: return "waveform"
+        case .profile: return "chart.bar.xaxis"
         case .dictionary: return "character.book.closed"
         case .providers: return "key.horizontal"
         case .settings: return "gearshape"
@@ -19,9 +17,7 @@ extension AppSection {
     var color: Color {
         switch self {
         case .home: return Theme.brand
-        case .history: return .blue
         case .profile: return .purple
-        case .usage: return .green
         case .dictionary: return .orange
         case .providers: return .indigo
         case .settings: return .gray
@@ -74,19 +70,21 @@ struct RootView: View {
     }
 
     private var main: some View {
-        // Barre latérale native de macOS : sélection, matériau et largeur gérés par le système, comme dans Finder
-        // ou Réglages Système. Elle reste toujours visible : l'app n'a qu'une colonne de contenu.
+        // Plan unique sans encadrements imbriqués : barre latérale plate, un filet fin de 1 pt, contenu plein cadre.
         HStack(spacing: 0) {
             Sidebar()
                 .frame(width: Theme.sidebarWidth)
-            Divider().ignoresSafeArea()
+            Rectangle()
+                .fill(Theme.cardBorder)
+                .frame(width: 1)
+                .ignoresSafeArea()
             SectionStack(section: model.selectedSection, make: section, onShow: { [weak model] in model?.noteSectionShown($0) },
                          canWarmUp: { [weak model] in model?.coordinator.phase == .idle })
-                // Jusque sous la barre de titre transparente ; chaque écran garde ses marges (zone sûre d'AppKit).
                 .ignoresSafeArea()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .overlay(alignment: .bottom) { BannerToast() }
         }
+        .background(Theme.canvas.ignoresSafeArea())
         .frame(minWidth: 820, minHeight: 600)
         // Alerte de la barre latérale : relue hors du fil principal, qui dessine la fenêtre qui s'ouvre.
         // Le Profil se calcule aussi en arrière-plan : il s'ouvre ensuite sans attente.
@@ -126,9 +124,7 @@ struct SectionScreen: View {
     var body: some View {
         switch section {
         case .home: HomeView()
-        case .history: HistoryView()
-        case .profile: ProfileView()
-        case .usage: UsageView()
+        case .profile: StatsView()
         case .dictionary: DictionaryView()
         case .providers: ProvidersView()
         case .settings: SettingsView()
@@ -136,77 +132,487 @@ struct SectionScreen: View {
     }
 }
 
-/// Groupes de la barre latérale. Réglages vit à part, en bas.
+/// Écran Statistiques : réunit Profil et Consommation sous deux sous-onglets sobres en haut.
+struct StatsView: View {
+    @Environment(AppModel.self) private var model
+
+    private var tab: StatsTab { model.settings.statsTab }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .center, spacing: 18) {
+                Text("Statistiques")
+                    .font(.system(size: 18, weight: .semibold))
+                    .tracking(-0.2)
+                PillPicker(
+                    options: StatsTab.allCases,
+                    selection: Binding(
+                        get: { model.settings.statsTab },
+                        set: { model.setDisplayChoice(\.statsTab, $0) }
+                    ),
+                    title: \.title
+                )
+                Spacer(minLength: 12)
+            }
+            .padding(.horizontal, 26)
+            .padding(.top, 18)
+            .padding(.bottom, 12)
+            .frame(maxWidth: 920)
+            .frame(maxWidth: .infinity)
+            Rectangle().fill(Theme.cardBorder).frame(height: 1)
+            switch tab {
+            case .profile: ProfileView(embedded: true)
+            case .usage: UsageView(embedded: true)
+            }
+        }
+    }
+}
+
+/// Groupes de la barre latérale (5 entrées au total : Dictées, Statistiques, Dictionnaire · Fournisseurs · Réglages).
 enum SidebarGroup: CaseIterable, Identifiable {
-    case dictation, you, services
+    case main, services
 
     var id: Self { self }
 
     var title: String {
         switch self {
-        case .dictation: return String(localized: "Dictée")
-        case .you: return String(localized: "Toi")
+        case .main: return String(localized: "Dictée")
         case .services: return String(localized: "Services")
         }
     }
 
     var sections: [AppSection] {
         switch self {
-        case .dictation: return [.home, .history]
-        case .you: return [.profile, .dictionary]
-        case .services: return [.providers, .usage]
+        case .main: return [.home, .profile, .dictionary]
+        case .services: return [.providers]
         }
     }
 }
 
-/// Barre latérale « Épurée + chiffres » : la carte de dictée (état, micro, mots du jour, dernière dictée), les sections
-/// en trois groupes avec leur chiffre du moment, puis Réglages, la dépense et le pied (étoile, version, liens).
+/// Barre latérale plate et sans encadrement : logo + nom + point d'état, navigation sobre, activité du jour,
+/// chaîne active, puis Réglages et pied discret.
 struct Sidebar: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        let digest = SidebarDigest.make(records: model.history)
+        let digest = model.sidebarDigest()
         VStack(spacing: 0) {
             DictateCard(digest: digest)
-                .padding(.horizontal, 12)
-                .padding(.top, 4)
+                .padding(.horizontal, 14)
+                .padding(.top, 8)
+                .padding(.bottom, 12)
             ScrollView {
-                VStack(alignment: .leading, spacing: 1) {
-                    ForEach(SidebarGroup.allCases) { group in
-                        Text(group.title)
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(.tertiary)
-                            .padding(.horizontal, 10)
-                            .padding(.top, 12)
-                            .padding(.bottom, 3)
-                            .accessibilityAddTraits(.isHeader)
-                        ForEach(group.sections) { section in
-                            SidebarRow(section: section, selected: section == model.selectedSection, digest: digest)
+                VStack(alignment: .leading, spacing: 0) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(Array(SidebarGroup.allCases.enumerated()), id: \.element.id) { index, group in
+                            if index > 0 {
+                                Spacer().frame(height: 10)
+                            }
+                            ForEach(group.sections) { section in
+                                SidebarRow(section: section, selected: section == model.selectedSection, digest: digest)
+                            }
                         }
                     }
+
+                    sidebarDivider
+
+                    SidebarTodaySection(digest: digest)
+
+                    sidebarDivider
+
+                    SidebarPipelineSection()
                 }
-                .padding(.horizontal, 12)
-                .padding(.bottom, 8)
+                .padding(.horizontal, 10)
+                .padding(.bottom, 12)
             }
             .scrollIndicators(.never)
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 6) {
+                Rectangle()
+                    .fill(Theme.cardBorder)
+                    .frame(height: 1)
+                    .padding(.horizontal, 4)
+                    .padding(.bottom, 4)
                 SidebarRow(section: .settings, selected: model.selectedSection == .settings, digest: digest)
-                SpendLine()
-                    .padding(.horizontal, 10)
                 ProjectFooter()
                     .padding(.horizontal, 6)
             }
-            .padding(.horizontal, 12)
-            .padding(.top, 6)
+            .padding(.horizontal, 10)
+            .padding(.top, 4)
             .padding(.bottom, 12)
         }
         .frame(maxHeight: .infinity, alignment: .top)
-        .background(VisualEffectBackground(material: .sidebar).ignoresSafeArea())
+        .background(Theme.chrome.ignoresSafeArea())
+    }
+
+    private var sidebarDivider: some View {
+        Rectangle()
+            .fill(Theme.cardBorder)
+            .frame(height: 1)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 12)
     }
 }
 
-/// Rangée de section : symbole discret (couleur d'accent quand elle est ouverte), titre, chiffre du moment à droite.
-/// La section ouverte a un fond doux et un trait d'accent sur le bord.
+/// Résumé plat de la journée dans la barre latérale : mots, temps gagné, mini spectre 7 jours et dernière dictée
+/// copiable en un clic, sans boîte ni encadrement.
+private struct SidebarTodaySection: View {
+    @Environment(AppModel.self) private var model
+    var digest: SidebarDigest
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Aujourd'hui")
+                .font(.system(size: 9.5, weight: .semibold))
+                .tracking(0.6)
+                .textCase(.uppercase)
+                .foregroundStyle(.tertiary)
+                .padding(.horizontal, 8)
+
+            HStack(alignment: .bottom, spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text(digest.wordsToday.formatted(.number.locale(appLocale)))
+                            .font(.system(size: 14.5, weight: .semibold, design: .monospaced))
+                            .monospacedDigit()
+                            .contentTransition(.numericText())
+                        Text(digest.wordsToday == 1 ? String(localized: "mot") : String(localized: "mots"))
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    }
+                    Text(subtitle)
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 4)
+                SidebarWeekBars(values: digest.wordsByDay)
+            }
+            .padding(.horizontal, 8)
+
+            if let last = digest.last, last.id != model.settings.dismissedLastDictationID {
+                SidebarLastDictationRow(last: last)
+                    .padding(.top, 2)
+            }
+        }
+    }
+
+    private var subtitle: String {
+        let saved = digest.savedSecondsToday(typingWordsPerMinute: model.settings.typingWPM)
+        var parts: [String] = []
+        if saved >= 60 {
+            parts.append(String(localized: "\(DurationFormat.saved(saved)) gagnées"))
+        } else if digest.dictationsToday > 0 {
+            parts.append(digest.dictationsToday == 1
+                ? String(localized: "1 dictée")
+                : String(localized: "\(digest.dictationsToday) dictées"))
+        }
+        if digest.streak >= 2 {
+            parts.append(String(localized: "\(digest.streak) j"))
+        }
+        if parts.isEmpty {
+            return String(localized: "Prêt à dicter")
+        }
+        return parts.joined(separator: " · ")
+    }
+}
+
+/// Sept fines barres verticales (les 7 derniers jours), aujourd'hui en rouge spectre.
+private struct SidebarWeekBars: View {
+    var values: [Int]
+
+    var body: some View {
+        let top = max(1, values.max() ?? 1)
+        HStack(alignment: .bottom, spacing: 2.5) {
+            ForEach(Array(values.enumerated()), id: \.offset) { index, value in
+                let isToday = index == values.count - 1
+                RoundedRectangle(cornerRadius: 1.25, style: .continuous)
+                    .fill(isToday && value > 0 ? Theme.brand : Color.primary.opacity(value > 0 ? 0.24 : 0.10))
+                    .frame(width: 3.5, height: max(2.5, 22 * CGFloat(value) / CGFloat(top)))
+            }
+        }
+        .frame(height: 22, alignment: .bottom)
+        .accessibilityLabel(String(localized: "Mots des sept derniers jours"))
+        .accessibilityValue(values.map(String.init).joined(separator: ", "))
+    }
+}
+
+/// Dernière dictée posée à plat dans la barre latérale : un clic copie le texte, un discret bouton œil active ou
+/// coupe le floutage doux sur les lettres (jamais en pavé), et le survol révèle le texte avant la copie.
+private struct SidebarLastDictationRow: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.interactionReduceMotion) private var reduceMotion
+    @State private var hovering = false
+    @State private var copied = false
+    var last: SidebarDigest.LastDictation
+
+    private var blurEnabled: Bool { model.settings.blurRecentDictations }
+    private var hidden: Bool { blurEnabled && !hovering }
+
+    var body: some View {
+        Button(action: copy) {
+            VStack(alignment: .leading, spacing: 2.5) {
+                HStack(spacing: 4) {
+                    TimelineView(.periodic(from: .now, by: 60)) { context in
+                        Text(caption(now: context.date))
+                            .font(.system(size: 10))
+                            .foregroundStyle(.tertiary)
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 4)
+                    if copied {
+                        Text("Copié")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.green)
+                    } else if hovering {
+                        Text("Copier")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.secondary)
+                    }
+                    // Place réservée pour le bouton œil posé en surimpression (sans imbriquer deux boutons).
+                    if hovering || blurEnabled {
+                        Color.clear.frame(width: 18, height: 14)
+                    }
+                }
+                if blurEnabled {
+                    // Flou léger sur les glyphes non rognés : illisible au repos tout en gardant la silhouette des mots
+                    // (pas de pavé gris), puis retour net au survol.
+                    Text(last.text)
+                        .font(.system(size: 11.5))
+                        .tracking(hidden ? 0.35 : 0)
+                        .foregroundStyle(Color.primary.opacity(hidden ? 0.72 : 0.84))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .blur(radius: hidden ? 3.1 : 0, opaque: false)
+                        .animation(reduceMotion ? nil : Theme.privacy, value: hidden)
+                } else {
+                    Text(last.text)
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(Color.primary.opacity(0.84))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background {
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(Color.primary.opacity(hovering ? 0.055 : 0))
+                    .animation(reduceMotion ? nil : Theme.hover, value: hovering)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .overlay(alignment: .topTrailing) {
+            if hovering || blurEnabled {
+                Button {
+                    model.settings.blurRecentDictations.toggle()
+                    model.saveSettings()
+                } label: {
+                    Image(systemName: blurEnabled ? "eye.slash" : "eye")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(blurEnabled ? Color.primary.opacity(0.75) : Color.secondary)
+                        .frame(width: 18, height: 16)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 4)
+                .padding(.trailing, 7)
+                .help(blurEnabled ? String(localized: "Afficher le texte") : String(localized: "Flouter le texte"))
+                .accessibilityLabel(blurEnabled ? String(localized: "Afficher le texte") : String(localized: "Flouter le texte"))
+            }
+        }
+        .onHover { hovering = $0 }
+        .help(copied ? String(localized: "Copié") : String(localized: "Copier la dernière dictée"))
+        .accessibilityLabel(String(localized: "Copier la dernière dictée"))
+        .accessibilityValue(last.text)
+    }
+
+    private func copy() {
+        model.copy(last.text)
+        copied = true
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(1_600))
+            copied = false
+        }
+    }
+
+    private func caption(now: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.locale = appLocale
+        formatter.unitsStyle = .short
+        let moment = now.timeIntervalSince(last.date) < 60
+            ? String(localized: "à l'instant")
+            : formatter.localizedString(for: last.date, relativeTo: now)
+        if let app = last.app, !app.isEmpty {
+            return String(localized: "Dernière · \(app) · \(moment)")
+        }
+        return String(localized: "Dernière · \(moment)")
+    }
+}
+
+/// Chaîne active posée à plat dans la barre latérale : voix, correction, micro et raccourci, chacun cliquable vers
+/// son écran de réglage. Le nom du micro est lu hors du fil principal pour ne jamais freiner l'interface.
+private struct SidebarPipelineSection: View {
+    @Environment(AppModel.self) private var model
+    @State private var microphoneLabel: String?
+
+    var body: some View {
+        let _ = model.keysLoadedAt
+        let _ = model.health
+        let snapshot = ProvidersSnapshot(model: model)
+        let key = KeyLabels.describe(keyCode: model.settings.keyCode, modifiers: model.settings.modifierFlags)
+        VStack(alignment: .leading, spacing: 5) {
+            Text("Chaîne active")
+                .font(.system(size: 9.5, weight: .semibold))
+                .tracking(0.6)
+                .textCase(.uppercase)
+                .foregroundStyle(.tertiary)
+                .padding(.horizontal, 8)
+                .padding(.bottom, 1)
+
+            SidebarPipelineRow(
+                label: String(localized: "Voix"),
+                value: voiceText(snapshot),
+                warning: !snapshot.voiceReady,
+                help: String(localized: "Ouvrir Fournisseurs")
+            ) {
+                model.selectedSection = .providers
+            }
+
+            SidebarPipelineRow(
+                label: String(localized: "Correction"),
+                value: correctionText(snapshot),
+                warning: snapshot.cleanupEnabled && (snapshot.chosenCleanupKeyMissing || snapshot.services.isEmpty),
+                help: String(localized: "Ouvrir Fournisseurs")
+            ) {
+                model.selectedSection = .providers
+            }
+
+            SidebarPipelineRow(
+                label: String(localized: "Micro"),
+                value: microphoneLabel ?? String(localized: "Système"),
+                warning: false,
+                help: String(localized: "Choisir le micro")
+            ) {
+                model.setDisplayChoice(\.settingsTab, .dictation)
+                model.selectedSection = .settings
+            }
+
+            SidebarPipelineRow(
+                label: String(localized: "Raccourci"),
+                value: "\(key) \(key)",
+                warning: false,
+                keyCap: true,
+                help: String(localized: "Changer le raccourci")
+            ) {
+                model.setDisplayChoice(\.settingsTab, .general)
+                model.selectedSection = .settings
+            }
+        }
+        .task(id: model.settings.microphoneUID) {
+            let saved = model.settings.microphoneUID
+            let resolved = await Task.detached(priority: .utility) {
+                let name: String?
+                if !saved.isEmpty, let match = AudioInputDevices.all().first(where: { $0.uid == saved }) {
+                    name = match.name
+                } else {
+                    name = AudioInputDevices.systemDefault()?.name
+                }
+                return Self.compactMicrophoneName(name)
+            }.value
+            microphoneLabel = resolved
+        }
+    }
+
+    private func voiceText(_ snapshot: ProvidersSnapshot) -> String {
+        switch snapshot.voice.provider {
+        case .xai: return "xAI · Grok"
+        case .openAI: return "OpenAI"
+        }
+    }
+
+    private func correctionText(_ snapshot: ProvidersSnapshot) -> String {
+        guard snapshot.cleanupEnabled else { return String(localized: "Coupée") }
+        if snapshot.cleanupChoice == .automatic {
+            guard let first = snapshot.services.first else { return String(localized: "Aucune clé") }
+            return first.account.map(shortProviderName) ?? first.provider
+        }
+        guard let account = snapshot.cleanupChoice.account else { return String(localized: "Automatique") }
+        return shortProviderName(account)
+    }
+
+    private func shortProviderName(_ account: String) -> String {
+        if account == CleanupModel.localAccount { return String(localized: "Local") }
+        return ProviderName.of(account)
+    }
+
+    private nonisolated static func compactMicrophoneName(_ raw: String?) -> String {
+        guard var name = raw?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty else {
+            return String(localized: "Système")
+        }
+        for prefix in ["Micro ", "Microphone ", "Micro du ", "Micro de "] {
+            if name.hasPrefix(prefix), name.count > prefix.count + 2 {
+                name = String(name.dropFirst(prefix.count))
+                break
+            }
+        }
+        return name
+    }
+}
+
+private struct SidebarPipelineRow: View {
+    @Environment(\.interactionReduceMotion) private var reduceMotion
+    @State private var hovering = false
+    var label: String
+    var value: String
+    var warning: Bool
+    var keyCap: Bool = false
+    var help: String
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Text(label)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+                Spacer(minLength: 6)
+                if keyCap {
+                    Text(verbatim: value)
+                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .foregroundStyle(Color.primary.opacity(0.82))
+                        .padding(.horizontal, 5.5)
+                        .padding(.vertical, 1.5)
+                        .background(RoundedRectangle(cornerRadius: 4, style: .continuous).fill(Theme.subtleFill))
+                        .overlay(RoundedRectangle(cornerRadius: 4, style: .continuous).strokeBorder(Theme.cardBorder, lineWidth: 1))
+                        .lineLimit(1)
+                        .fixedSize()
+                } else {
+                    Text(value)
+                        .font(.system(size: 10.5, design: .monospaced))
+                        .foregroundStyle(warning ? Color.orange : Color.primary.opacity(0.82))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+            }
+            .padding(.horizontal, 8)
+            .frame(height: 22)
+            .background {
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .fill(Color.primary.opacity(hovering ? 0.05 : 0))
+                    .animation(reduceMotion ? nil : Theme.hover, value: hovering)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .help(help)
+    }
+}
+
+/// Rangée de section monochrome : sélection douce sans filet coloré, chiffres discrets à droite.
 struct SidebarRow: View {
     @Environment(AppModel.self) private var model
     @Environment(\.interactionPreviewHover) private var previewHover
@@ -217,45 +623,35 @@ struct SidebarRow: View {
     var selected: Bool
     var digest: SidebarDigest
 
-    private var highlighted: Bool { !selected && (hovering || (previewHover && section == .history)) }
+    private var highlighted: Bool { !selected && (hovering || (previewHover && section == .profile)) }
     private var shortcutIndex: Int { (AppSection.allCases.firstIndex(of: section) ?? 0) + 1 }
 
     var body: some View {
         Button {
             model.selectedSection = section
         } label: {
-            HStack(spacing: 10) {
+            HStack(spacing: 9) {
                 Image(systemName: section.symbol)
-                    .font(.system(size: 13, weight: .regular))
-                    .foregroundStyle(selected ? Theme.accent : Color.secondary)
-                    .frame(width: 18)
+                    .font(.system(size: 12.5, weight: selected ? .medium : .regular))
+                    .foregroundStyle(selected ? Color.primary : Color.secondary)
+                    .frame(width: 16)
                     .accessibilityHidden(true)
                 Text(section.title)
-                    .font(.system(size: 13, weight: selected ? .medium : .regular))
-                    .foregroundStyle(selected ? Color.primary : Color.primary.opacity(0.82))
+                    .font(.system(size: 12.5, weight: selected ? .medium : .regular))
+                    .foregroundStyle(selected ? Color.primary : Color.primary.opacity(0.74))
                     .lineLimit(1)
                     .layoutPriority(1)
                 Spacer(minLength: 4)
                 SidebarRowDetail(section: section, digest: digest)
             }
-            .padding(.horizontal, 10)
-            .frame(height: 28)
+            .padding(.horizontal, 9)
+            .frame(height: 27)
             .contentShape(Rectangle())
             .background {
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .fill(Color.primary.opacity(selected ? (contrast == .increased ? 0.16 : 0.08)
-                                                : highlighted ? (contrast == .increased ? 0.12 : 0.05) : 0))
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(Color.primary.opacity(selected ? (contrast == .increased ? 0.16 : 0.085)
+                                                : highlighted ? (contrast == .increased ? 0.10 : 0.045) : 0))
                     .animation(reduceMotion ? nil : Theme.hover, value: highlighted)
-            }
-            .overlay(alignment: .leading) {
-                if selected {
-                    UnevenRoundedRectangle(cornerRadii: .init(bottomTrailing: 2, topTrailing: 2), style: .continuous)
-                        .fill(Theme.accent)
-                        .frame(width: 3)
-                        .padding(.vertical, 7)
-                        .offset(x: -12)
-                        .accessibilityHidden(true)
-                }
             }
         }
         .buttonStyle(.plain)
@@ -275,23 +671,28 @@ struct SidebarRowDetail: View {
     var body: some View {
         switch section {
         case .home:
-            if digest.wordsToday > 0 { meta(String(localized: "\(digest.wordsToday) mots")) }
-        case .history:
             if digest.dictationsToday > 0 {
-                meta(String(localized: "\(digest.dictationsToday) auj."))
+                meta("\(digest.dictationsToday)")
                     .help(String(localized: "Dictées aujourd'hui"))
             }
         case .profile:
-            if digest.streak >= 2 { meta(String(localized: "\(digest.streak) j de suite")) }
+            let summary = model.usageSummary(for: .days30)
+            if summary.totalUSD > 0 {
+                meta(MoneyFormat.usd(summary.totalUSD))
+                    .help(String(localized: "Dépenses API · 30 derniers jours"))
+            } else if digest.streak >= 2 {
+                meta(String(localized: "\(digest.streak) j"))
+            }
         case .dictionary:
             let pending = model.dictionaryInsights.suggestions.count
             if pending > 0 {
                 Text(verbatim: "\(pending)")
-                    .font(.system(size: 10.5, weight: .semibold).monospacedDigit())
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 6)
+                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, 5)
                     .frame(minWidth: 18, minHeight: 16)
-                    .background(Capsule().fill(Theme.accent))
+                    .background(RoundedRectangle(cornerRadius: 4, style: .continuous).fill(Theme.raised))
+                    .overlay(RoundedRectangle(cornerRadius: 4, style: .continuous).strokeBorder(Theme.cardBorderStrong, lineWidth: 1))
                     .help(String(localized: "Suggestions à valider"))
                     .accessibilityLabel(String(localized: "\(pending) suggestions à valider"))
             } else if !model.dictionary.isEmpty {
@@ -299,11 +700,9 @@ struct SidebarRowDetail: View {
             }
         case .providers:
             ProvidersHealthDot()
-        case .usage:
-            EmptyView()
         case .settings:
             if model.missingPermissions {
-                Circle().fill(Color.orange).frame(width: 7, height: 7)
+                Circle().fill(Color.orange).frame(width: 6, height: 6)
                     .help(String(localized: "Une autorisation manque"))
             }
         }
@@ -311,95 +710,74 @@ struct SidebarRowDetail: View {
 
     private func meta(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 11.5).monospacedDigit())
+            .font(.system(size: 11, design: .monospaced))
             .foregroundStyle(.tertiary)
             .lineLimit(1)
             .fixedSize()
     }
 }
 
-/// État des fournisseurs en un point et un mot, comme la vue d'ensemble de l'écran Fournisseurs.
+/// État des fournisseurs en un point sobre.
 struct ProvidersHealthDot: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
         let _ = model.health
         let overview = ProvidersOverview.make(ProvidersSnapshot(model: model), paused: model.relayLines())
-        let (text, color): (String, Color) = switch overview.tone {
-        case .ready: (String(localized: "Prêt"), .green)
-        case .relay: (String(localized: "Relais"), OverlayStyle.relay)
-        case .attention: (String(localized: "À régler"), .orange)
-        case .blocked: (String(localized: "Sans clé"), .red)
+        let color: Color = switch overview.tone {
+        case .ready: .green
+        case .relay: OverlayStyle.relay
+        case .attention: .orange
+        case .blocked: .red
         }
-        HStack(spacing: 5) {
-            Circle().fill(color).frame(width: 6, height: 6)
-            Text(text)
-                .font(.system(size: 11.5))
-                .foregroundStyle(.tertiary)
-                .lineLimit(1)
-        }
-        .fixedSize()
-        .help(overview.title)
-        .accessibilityElement(children: .combine)
+        Circle()
+            .fill(color)
+            .frame(width: 6, height: 6)
+            .help(overview.title)
+            .accessibilityLabel(overview.title)
     }
 }
 
-/// Carte du haut : l'app et son état, le bouton micro (dictée mains libres), les mots du jour avec les sept derniers
-/// jours, et la dernière dictée (floutée, un clic la copie, la croix la masque).
+/// En-tête de barre latérale sans boîte : icône Spectre Pur, nom Wispad et un seul point d'état discret.
 struct DictateCard: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.colorSchemeContrast) private var contrast
     var digest: SidebarDigest
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 10) {
-                Image(nsImage: NSApplication.shared.applicationIconImage)
-                    .resizable()
-                    .interpolation(.high)
-                    .frame(width: 32, height: 32)
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Wispad").font(.system(size: 14, weight: .semibold))
-                    DictationStatusLine()
-                }
-                Spacer(minLength: 4)
-                MicButton()
-            }
-            Divider().padding(.vertical, 9)
-            HStack(alignment: .bottom, spacing: 8) {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(digest.wordsToday, format: .number)
-                        .font(.system(size: 19, weight: .semibold).monospacedDigit())
-                        .contentTransition(.numericText())
-                    Text("mots aujourd'hui")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                }
-                Spacer(minLength: 4)
-                WeekBars(values: digest.wordsByDay)
-            }
-            .accessibilityElement(children: .combine)
-            if let last = digest.last, last.id != model.settings.dismissedLastDictationID {
-                LastDictationButton(last: last)
-                    .padding(.top, 9)
-            }
+        let status = self.status
+        HStack(spacing: 8) {
+            Image(nsImage: NSApplication.shared.applicationIconImage)
+                .resizable()
+                .interpolation(.high)
+                .frame(width: 24, height: 24)
+                .accessibilityHidden(true)
+            Text("Wispad")
+                .font(.system(size: 13.5, weight: .semibold))
+                .tracking(-0.15)
+            Spacer(minLength: 4)
+            Circle()
+                .fill(status.color)
+                .frame(width: 7, height: 7)
+                .help(status.text)
+                .accessibilityLabel(status.text)
         }
-        .padding(11)
-        .background {
-            RoundedRectangle(cornerRadius: 13, style: .continuous)
-                .fill(Color(nsColor: .controlBackgroundColor))
-                .shadow(color: .black.opacity(0.12), radius: 6, y: 3)
+        .frame(height: 28)
+    }
+
+    private var status: (text: String, color: Color) {
+        switch model.coordinator.phase {
+        case .idle:
+            if let warning = model.setupWarning { return (warning, .orange) }
+            return model.relayLines().isEmpty ? (String(localized: "Prêt"), .green) : (String(localized: "Prêt · relais actif"), OverlayStyle.relay)
+        case .starting: return (String(localized: "Démarrage…"), .orange)
+        case .listening(let mode): return (mode == .toggle ? String(localized: "Mains libres") : String(localized: "À l'écoute"), Theme.brand)
+        case .finishing: return (String(localized: "Transcription…"), .blue)
+        case .failure: return (String(localized: "Erreur"), .orange)
         }
-        .overlay {
-            RoundedRectangle(cornerRadius: 13, style: .continuous)
-                .strokeBorder(Color.primary.opacity(contrast == .increased ? 0.25 : 0.07), lineWidth: 1)
-        }
-        .animation(Theme.quick, value: digest)
     }
 }
 
-/// Bouton micro : lance une dictée mains libres comme deux appuis sur le raccourci, puis l'arrête.
+/// Bouton micro : monochrome discret au repos, rouge spectre uniquement pendant l'écoute.
 struct MicButton: View {
     @Environment(AppModel.self) private var model
     @Environment(\.interactionReduceMotion) private var reduceMotion
@@ -410,15 +788,18 @@ struct MicButton: View {
             model.toggleHandsFreeDictation()
         } label: {
             Image(systemName: listening ? "stop.fill" : "mic.fill")
-                .font(.system(size: listening ? 11 : 13, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 30, height: 30)
-                .background(Circle().fill(Theme.brand.gradient))
-                .overlay {
-                    Circle().strokeBorder(Theme.brand.opacity(listening ? 0.28 : 0), lineWidth: 4)
-                        .padding(-4)
+                .font(.system(size: listening ? 10 : 12, weight: .semibold))
+                .foregroundStyle(listening ? Color.white : Color.primary)
+                .frame(width: 28, height: 28)
+                .background {
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .fill(listening ? Theme.brand : Theme.raised)
                 }
-                .contentShape(Circle())
+                .overlay {
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .strokeBorder(listening ? Theme.brand.opacity(0.45) : Theme.cardBorderStrong, lineWidth: 1)
+                }
+                .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
                 .contentTransition(.symbolEffect(.replace))
         }
         .buttonStyle(.plain)
@@ -585,7 +966,7 @@ struct SpendLine: View {
         let amount = MoneyFormat.usd(summary.totalUSD)
         let incomplete = summary.hasUnpricedCalls || model.usageLoadFailed
         Button {
-            model.selectedSection = .usage
+            model.openUsage()
         } label: {
             VStack(alignment: .leading, spacing: 3) {
                 Text("Dépenses API · 30 derniers jours")
@@ -750,11 +1131,8 @@ struct VersionChip: View {
                 UpdateCheckButton(status: status)
             }
         }
-        .padding(.leading, 9)
-        .padding(.trailing, showsCheck ? 2 : 9)
-        .frame(height: 24)
-        .background(Capsule().fill(tint.opacity(0.1)))
-        .overlay(Capsule().strokeBorder(tint.opacity(0.22), lineWidth: 1))
+        .padding(.horizontal, 4)
+        .frame(height: 22)
         .help(helpText)
         .animation(Theme.quick, value: status.display)
     }

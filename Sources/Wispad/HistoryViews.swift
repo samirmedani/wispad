@@ -16,9 +16,9 @@ struct HistoryView: View {
     @State private var scrollActivity = HistoryScrollActivity()
 
     var body: some View {
-        let groups = DayGroup.make(filtered)
+        let groups = model.historyDayGroups(query: appliedQuery, filter: model.historyFilter)
         VStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 12) {
                 ScreenHeader(title: String(localized: "Historique"), subtitle: subtitle) {
                     Button(role: .destructive) {
                         pendingDeleteAll = true
@@ -48,8 +48,8 @@ struct HistoryView: View {
                     .background(Capsule().fill(Theme.accent.opacity(0.1)))
                 }
             }
-            .padding(.horizontal, 32)
-            .padding(.top, 14)
+            .padding(.horizontal, 26)
+            .padding(.top, 18)
             .padding(.bottom, 10)
             .frame(maxWidth: 920)
             .frame(maxWidth: .infinity)
@@ -86,8 +86,8 @@ struct HistoryView: View {
                         }
                     }
                     .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { rowWidth = $0 }
-                    .padding(.horizontal, 32)
-                    .padding(.bottom, 32)
+                    .padding(.horizontal, 26)
+                    .padding(.bottom, 28)
                     .frame(maxWidth: 920)
                     .frame(maxWidth: .infinity)
                 }
@@ -146,29 +146,21 @@ enum HistoryCardShape {
     }
 }
 
-/// Une carte journalière continue, sans conteneur qui force le rendu des lignes hors écran.
-/// Pas de masque sur la ligne entière : le fond de carte et le fond de survol portent déjà sa forme,
-/// et un masque par ligne obligerait à recomposer chaque ligne à chaque image du défilement.
+/// Ligne posée directement sur le fond, séparée de la suivante par un fin filet horizontal (zéro boîte encadrée).
 private struct HistoryCardRow: ViewModifier {
     var first: Bool
     var last: Bool
 
-    private var shape: UnevenRoundedRectangle { HistoryCardShape.make(first: first, last: last) }
-
     func body(content: Content) -> some View {
         content
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(shape.fill(Theme.card))
-            .overlay {
-                // Seuls les bords externes de la journée sont visibles.
-                shape.strokeBorder(Theme.cardBorder, lineWidth: 1)
-                    .padding(.top, first ? 0 : -2)
-                    .padding(.bottom, last ? 0 : -2)
-                    .clipped()
-                    .allowsHitTesting(false)
-            }
             .overlay(alignment: .bottom) {
-                if !last { Divider().padding(.leading, 70) }
+                if !last {
+                    Rectangle()
+                        .fill(Theme.cardBorder)
+                        .frame(height: 1)
+                        .padding(.leading, 56)
+                }
             }
             .padding(.bottom, last ? 10 : 0)
     }
@@ -490,6 +482,8 @@ final class HistoryScrollActivity {
     private var scrolling = false
     private var stoppedAt: ContinuousClock.Instant?
 
+    var isScrolling: Bool { scrolling }
+
     func update(scrolling: Bool) {
         if self.scrolling, !scrolling { stoppedAt = .now }
         self.scrolling = scrolling
@@ -510,7 +504,7 @@ final class HistoryScrollActivity {
     }
 }
 
-private struct HistoryScrollPhase: ViewModifier {
+struct HistoryScrollPhase: ViewModifier {
     let activity: HistoryScrollActivity
 
     func body(content: Content) -> some View {

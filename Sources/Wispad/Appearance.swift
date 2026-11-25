@@ -363,20 +363,24 @@ private struct MiniWindowScene: View {
     }
 
     private var wallpaper: [Color] {
-        dark ? [Color(red: 0.36, green: 0.09, blue: 0.08), Color(red: 0.08, green: 0.03, blue: 0.05)]
-             : [Color(red: 1, green: 0.86, blue: 0.79), Color(red: 1, green: 0.55, blue: 0.45)]
+        dark ? [Color(white: 0.14), Color(white: 0.05)]
+             : [Color(white: 0.90), Color(white: 0.80)]
     }
 
     private func window(width: CGFloat, height: CGFloat) -> some View {
         let unit = width / 80
-        let canvas = dark ? Color(white: 0.11) : Color(white: 0.965)
-        let sidebar = dark ? Color(white: 0.17) : Color(white: 0.9)
-        let card = dark ? Color(white: 0.2) : Color.white
+        let chrome = dark ? Color(red: 0.045, green: 0.045, blue: 0.055) : Color(white: 0.95)
+        let canvas = dark ? Color(red: 0.075, green: 0.075, blue: 0.088) : Color.white
+        let card = dark ? Color(red: 0.11, green: 0.11, blue: 0.13) : Color(white: 0.975)
         let line = dark ? Color.white.opacity(0.22) : Color.black.opacity(0.14)
-        let title = dark ? Color.white.opacity(0.75) : Color.black.opacity(0.6)
+        let title = dark ? Color.white.opacity(0.8) : Color.black.opacity(0.7)
         return ZStack(alignment: .topLeading) {
-            canvas
-            sidebar.frame(width: width * 0.3)
+            chrome
+            RoundedRectangle(cornerRadius: 2.5 * unit, style: .continuous)
+                .fill(canvas)
+                .padding(.leading, width * 0.3)
+                .padding(.vertical, 2 * unit)
+                .padding(.trailing, 2 * unit)
             HStack(spacing: 2.2 * unit) {
                 ForEach([Color(red: 1, green: 0.37, blue: 0.34), Color(red: 1, green: 0.74, blue: 0.18),
                          Color(red: 0.16, green: 0.79, blue: 0.25)], id: \.self) { color in
@@ -386,7 +390,7 @@ private struct MiniWindowScene: View {
             .padding(.leading, 4 * unit)
             .padding(.top, 4 * unit)
             VStack(alignment: .leading, spacing: 3 * unit) {
-                Capsule().fill(Theme.brand.opacity(dark ? 0.9 : 0.85)).frame(width: width * 0.2, height: 3.4 * unit)
+                Capsule().fill(title).frame(width: width * 0.2, height: 3.4 * unit)
                 Capsule().fill(line).frame(width: width * 0.17, height: 2.6 * unit)
                 Capsule().fill(line).frame(width: width * 0.13, height: 2.6 * unit)
                 Capsule().fill(line).frame(width: width * 0.15, height: 2.6 * unit)
@@ -400,7 +404,8 @@ private struct MiniWindowScene: View {
                     .overlay(alignment: .bottomLeading) {
                         HStack(alignment: .bottom, spacing: 1.6 * unit) {
                             ForEach([0.35, 0.6, 0.45, 0.85, 0.55], id: \.self) { level in
-                                RoundedRectangle(cornerRadius: 0.6 * unit).fill(Theme.brand.opacity(0.85))
+                                RoundedRectangle(cornerRadius: 0.6 * unit)
+                                    .fill(level == 0.85 ? title : line)
                                     .frame(width: 2.6 * unit, height: height * 0.2 * level)
                             }
                         }
@@ -413,7 +418,7 @@ private struct MiniWindowScene: View {
                 .frame(height: height * 0.22)
             }
             .padding(.leading, width * 0.3 + 4 * unit)
-            .padding(.trailing, 4 * unit)
+            .padding(.trailing, 5 * unit)
             .padding(.top, 9 * unit)
         }
         .frame(width: width, height: height, alignment: .topLeading)

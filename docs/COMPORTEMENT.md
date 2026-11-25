@@ -290,35 +290,36 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
 
 ## Fenêtre
 
-- Aspect d'une app Mac : sélection, liens, graphiques, onglets et boutons prennent la couleur d'accent choisie dans
-  Réglages Système ; le rouge de Wispad reste à la marque (icône, micro, Voix) et à l'écoute. Les sections non
-  sélectionnées, les vignettes d'apparence et les commandes partagées réagissent au survol avec un fond discret, sans
-  déplacer le contenu. Le fond change sans animation si macOS réduit les animations. Titres d'écran de 22 points
-  semi-gras, sous-titre de 12,5 points ; cartes posées à plat, filet très léger et sans ombre. Fenêtre de 820 × 600
-  points au moins.
-- **Barre latérale « Épurée + chiffres »** (0.8.31), sur le matériau de barre latérale de macOS :
-  - en haut, une carte : l'icône, « Wispad » et l'état de la dictée (« Prêt », « À l'écoute »…, une ligne), un bouton
-    micro rouge qui lance une dictée mains libres (comme deux appuis sur le raccourci, ou « Dicter (mains libres) » du
-    menu de la barre des menus) puis l'arrête (Maj tenue : Entrée part après le collage) ; les mots dictés aujourd'hui
-    et une barre par jour sur les sept derniers jours (aujourd'hui en couleur d'accent) ; la dernière dictée réussie
-    (app, moment, début du texte sur une ligne). Son texte est flouté tant que le pointeur ne le survole pas (0.8.32).
-    Un clic sur la case, ou sur son icône, copie le texte (l'icône devient une coche, « Texte copié. » s'affiche) ; la
-    petite croix masque cette dictée, retenue sur l'appareil (jamais exportée) : la suivante s'affiche de nouveau.
-    L'icône copier et la croix sont deux boutons, avec le survol commun des petites icônes (voir « Survol des petites
-    icônes ») ;
-  - les sections en trois groupes : Dictée (Accueil, Historique), Toi (Profil, Dictionnaire), Services (Fournisseurs,
-    Consommation). Symboles sobres ; la section ouverte a un fond doux, un trait d'accent sur le bord et son symbole
-    en couleur d'accent. Chaque rangée porte son chiffre du moment, rien s'il n'y a rien à dire : mots du jour,
-    dictées du jour, série de jours d'affilée (dès 2 jours, en finissant aujourd'hui ou hier), suggestions du
-    Dictionnaire à valider (pastille d'accent, sinon le nombre de mots), état des fournisseurs (point vert « Prêt »,
-    « Relais », « À régler », « Sans clé », comme la vue d'ensemble de Fournisseurs) ;
-  - en bas, Réglages (point orange si une autorisation manque), le montant des dépenses API des 30 derniers jours,
-    puis le pied (étoile, version, apparence, liens). Le montant indique « Au moins » si les coûts sont incomplets.
-    Un clic ouvre Consommation, où la carte des abonnements compare le coût mensuel à Wispr Flow Pro.
-  - Ordre des raccourcis ⌘1 à ⌘7 et du menu Présentation : celui de la barre latérale (Accueil, Historique, Profil,
-    Dictionnaire, Fournisseurs, Consommation, Réglages). Tout est calculé sur ce Mac depuis l'historique ; une dictée
-    sans texte ne compte pas. Les raccourcis de la dictée restent une rangée de touches en bas de l'Accueil (carte
-    « Raccourcis »).
+- Direction artistique monochrome carbone sans encadrements imbriqués (sombre sur macOS sombre, version claire
+  assortie) : barre latérale plate sur `Theme.chrome`, un seul filet vertical de 1 point, et contenu posé directement
+  sur `Theme.canvas`. Le rouge spectre de Wispad reste réservé à la marque (icône Spectre Pur dans le Dock, pilule en
+  écoute dans la barre des menus), au bouton Dicter et à la barre du jour ; les points d'état gardent le vert/orange/rouge.
+  Les sections non sélectionnées, les vignettes d'apparence et les commandes partagées réagissent au survol avec un
+  fond discret, sans déplacer le contenu. Le fond change sans animation si macOS réduit les animations. Fenêtre de
+  820 × 600 points au moins.
+- **Barre latérale plate** (5 entrées) :
+  - en haut, sans boîte ni encadrement : l'icône Spectre Pur, « Wispad » et un point d'état discret (« Prêt »,
+    « À l'écoute »…, détaillé au survol) ;
+  - les sections en deux groupes séparés par un simple blanc : **Dictées** (fil continu + historique), **Statistiques**
+    (sous-onglets **Profil** et **Consommation**), **Dictionnaire** ; puis **Fournisseurs** ;
+  - dessous, séparés par un filet fin sans boîte : **Aujourd'hui** (mots du jour, temps gagné, série, mini spectre sur
+    7 jours et dernière dictée copiable en un clic, avec son propre bouton œil pour un floutage doux sur les lettres
+    révélé au survol) puis **Chaîne active** (voix, correction, micro lu hors du fil principal et raccourci, chacun
+    cliquable vers son réglage) ;
+  - en bas, un fin filet, **Réglages** (point orange si une autorisation manque), puis le pied minimal (étoile,
+    version, apparence, liens).
+- **Dictées (Fil continu unifié)** : s'ouvre directement sur tes dictées sans empilement de cartes :
+  - en tête, un ruban en une ligne : mots dictés, cadence (m/min), temps économisé, coût, mini spectre des 7 derniers
+    jours (barre active en rouge), sélecteur de période en texte souligné, bouton Dicter (mains libres) et corbeille ;
+  - dessous, un champ de recherche à filet inférieur fin avec bouton floutage discret, le bandeau de filtre si ouvert
+    depuis le cerveau de Profil, puis une liste plate paresseuse (sans découpage artificiel, barre de défilement exacte
+    dès l'ouverture) avec dépliage des longues dictées, copie, écoute audio, retranscription, suppression et accès au
+    détail (boutons posés en surimpression sans jamais faire bouger le texte).
+- **Statistiques** : réunit **Profil** et **Consommation** sous deux sous-onglets en haut de l'écran (onglet mémorisé
+  dans `statsTab` ; une ancienne préférence `lastSection: "usage"` ou `"history"` se convertit sans perte).
+- Ordre des raccourcis ⌘1 à ⌘5 et du menu Présentation : celui de la barre latérale (Dictées, Statistiques,
+  Dictionnaire, Fournisseurs, Réglages). Les résumés de la barre latérale, de Dictées et la liste plate des entrées
+  sont mis en cache par révision d'historique pour un défilement fluide.
 - Une fois affichée, c'est une fenêtre ordinaire : passer à une autre app, cliquer sur le bureau ou changer de
   bureau la laisse à sa place et sur son bureau, simplement derrière l'app active.
 - **Apparence** : Système (par défaut, suit macOS, y compris son passage automatique du clair au sombre), Clair ou

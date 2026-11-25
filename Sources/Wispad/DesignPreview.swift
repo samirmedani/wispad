@@ -110,17 +110,30 @@ enum DesignPreview {
             return
         }
         if !performanceProbe, let index = arguments.firstIndex(of: "--section"),
-           arguments.indices.contains(index + 1),
-           let section = AppSection(rawValue: arguments[index + 1]) {
-            model.selectedSection = section
+           arguments.indices.contains(index + 1) {
+            let raw = arguments[index + 1]
+            if raw == "history" {
+                model.selectedSection = .home
+            } else if raw == "usage" {
+                model.settings.statsTab = .usage
+                model.selectedSection = .profile
+            } else if let section = AppSection(rawValue: raw) {
+                model.selectedSection = section
+            }
         }
         if audioPreview, let record = model.history.first(where: { $0.audioPath != nil }) {
-            model.selectedSection = .history
+            model.selectedSection = .home
             model.play(record)
             model.historyPlayer.stop()
         }
-        if arguments.contains("--fallback-preview") || arguments.contains("--usage-accuracy-preview") { model.selectedSection = .usage }
-        if arguments.contains("--profile-preview") { model.selectedSection = .profile }
+        if arguments.contains("--fallback-preview") || arguments.contains("--usage-accuracy-preview") {
+            model.settings.statsTab = .usage
+            model.selectedSection = .profile
+        }
+        if arguments.contains("--profile-preview") {
+            model.settings.statsTab = .profile
+            model.selectedSection = .profile
+        }
         if arguments.contains("--remote-keys-preview") {
             KeySourceRow.previewCommand = "ssh mon-serveur 'cat ~/.secrets/{name}'"
         }
@@ -141,7 +154,7 @@ enum DesignPreview {
         }
         if arguments.contains("--history-filter-preview") {
             model.historyFilter = HistoryFilter(title: "Application Wispad", dictations: Set(model.history.prefix(60).map(\.id)))
-            model.selectedSection = .history
+            model.selectedSection = .home
         }
         // « --local-model-url http://127.0.0.1:18434/v1 » : modèle local branché sur ce serveur.
         if let index = arguments.firstIndex(of: "--local-model-url"), arguments.indices.contains(index + 1) {
@@ -261,7 +274,8 @@ enum DesignPreview {
                     lastTopUp: .init(date: Date().addingTimeInterval(-6 * 86_400), usd: 5, automatic: true)
                 )
             )
-            model.selectedSection = .usage
+            model.settings.statsTab = .usage
+            model.selectedSection = .profile
         }
         if let index = arguments.firstIndex(of: "--shortcut-preview"), arguments.indices.contains(index + 1) {
             previewShortcuts(model, state: arguments[index + 1])
@@ -422,7 +436,7 @@ enum DesignPreview {
                                             renderedRows: HistoryProbeRenderCount, scrollSteps: Int,
                                             allSections: Bool = false) {
         // `--sections-probe` : chaque écran deux fois (première ouverture, puis retour), sans défilement.
-        let sections: [AppSection] = allSections ? AppSection.allCases + AppSection.allCases : [.history, .home, .history]
+        let sections: [AppSection] = allSections ? AppSection.allCases + AppSection.allCases : [.home, .profile, .home]
         func measure(_ index: Int) {
             guard let view = window.contentView else {
                 try? FileManager.default.removeItem(at: directory)

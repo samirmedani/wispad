@@ -52,7 +52,7 @@ enum StatusMenu {
         _ = add("\(spent) · \(count)", "openUsage")
         items.append(.separator())
         _ = add(String(localized: "Ouvrir Wispad"), "openWindow")
-        _ = add(String(localized: "Historique"), "openHistory")
+        _ = add(String(localized: "Dictées"), "openHistory")
         _ = add(String(localized: "Dictionnaire"), "openDictionary")
         _ = add(String(localized: "Réglages…"), "openSettings", key: ",")
         items.append(.separator())

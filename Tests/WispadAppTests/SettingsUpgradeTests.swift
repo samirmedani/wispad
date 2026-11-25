@@ -101,6 +101,7 @@ struct SettingsUpgradeTests {
         settings.localModelURL = "http://localhost:11434/v1"
         settings.usageTaxRate = 8.1
         settings.lastSection = .dictionary
+        settings.statsTab = .usage
         settings.settingsTab = .permissions
         settings.disabledKeys = ["typesafe"]
         settings.dictionaryOriginFilter = .learned
@@ -264,14 +265,14 @@ struct SettingsUpgradeTests {
         #expect(settings.overlayPlacement.anchors == ["info": OverlayAnchor(x: 0.3, y: 0.4)])
         #expect(settings.tones == ["notes": .casual])
 
-        settings.lastSection = .usage
+        settings.lastSection = .profile
         settings.save(to: fixture.defaults)
 
         let after = try fixture.storedObject()
         for (key, value) in before where key != "lastSection" {
             #expect(StoredJSON.same(try #require(after[key]), value), "\(key)")
         }
-        #expect(after["lastSection"] as? String == "usage")
+        #expect(after["lastSection"] as? String == "profile")
         #expect(AppSettings.load(from: fixture.defaults) == settings)
     }
 

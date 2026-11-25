@@ -15,12 +15,12 @@ struct FormScreen<Accessory: View, Content: View>: View {
     var body: some View {
         VStack(spacing: 0) {
             ScreenHeader(title: title, subtitle: subtitle)
-                .padding(.horizontal, 32)
-                .padding(.top, 14)
+                .padding(.horizontal, 26)
+                .padding(.top, 18)
                 .frame(maxWidth: 920)
                 .frame(maxWidth: .infinity)
             accessory
-                .padding(.horizontal, 32)
+                .padding(.horizontal, 26)
                 .frame(maxWidth: 920, alignment: .leading)
                 .frame(maxWidth: .infinity)
             Form { content }

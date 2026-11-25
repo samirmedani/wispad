@@ -67,18 +67,23 @@ struct ListeningVoteTests {
     }
 }
 
-/// « v. » de la mise en forme française d'xAI : « vers ». Exemples inventés.
+/// « v. » ou « v » de la mise en forme française d'xAI : « vers ». Exemples inventés.
 struct SpokenAbbreviationsTests {
     @Test func aStandaloneVBecomesVers() {
         #expect(SpokenAbbreviations.restore("Il marche v. la gare ?") == "Il marche vers la gare ?")
         #expect(SpokenAbbreviations.restore("On se retrouve v. la place, v. midi.") == "On se retrouve vers la place, vers midi.")
         #expect(SpokenAbbreviations.restore("On l'a eu v. 300 € la semaine dernière.") == "On l'a eu vers 300 € la semaine dernière.")
+        #expect(SpokenAbbreviations.restore("Il y a un basculement v Nova 2.4.") == "Il y a un basculement vers Nova 2.4.")
+        #expect(SpokenAbbreviations.restore("Il y a un basculement v. Nova 2.4.") == "Il y a un basculement vers Nova 2.4.")
+        #expect(SpokenAbbreviations.restore("Tire la fenêtre v le bas.") == "Tire la fenêtre vers le bas.")
         #expect(FranglaisNormalizer.normalize("Il faut aller v. la gare.") == "Il faut aller vers la gare.")
+        #expect(FranglaisNormalizer.normalize("La requête part v Lyon demain.") == "La requête part vers Lyon demain.")
     }
 
     @Test func otherUsesStay() {
         for text in ["Il a noté la v. 2 du fichier.", "Signé Victor V. demain.", "La lettre v. Puis la suite.",
-                     "It was Apple v. Google in the end, you know.", "Le niveau v.2 est prêt.", "On garde le prév. pour lundi."] {
+                     "It was Apple v. Google in the end, you know.", "Le niveau v.2 est prêt.", "On garde le prév. pour lundi.",
+                     "Appuie sur la touche v pour coller.", "C'est un pull à col en v bleu.", "Ça redirige vers le site v de Paul."] {
             #expect(SpokenAbbreviations.restore(text) == text, "\(text)")
         }
     }
