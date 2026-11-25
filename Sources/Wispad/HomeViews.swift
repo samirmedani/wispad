@@ -339,7 +339,7 @@ private struct StreamDictationRow: View, Equatable {
                 .frame(width: 42, alignment: .leading)
                 .padding(.top, 2)
             VStack(alignment: .leading, spacing: 5) {
-                StreamText(text: item.text, blurred: blurred, expanded: expanded)
+                StreamText(text: item.text, blurred: blurred && !hovering, expanded: expanded)
                 HStack(spacing: 6) {
                     Text(item.meta)
                         .font(.system(size: 10.5, design: .monospaced))
@@ -439,6 +439,7 @@ private struct StreamDictationRow: View, Equatable {
 }
 
 /// Texte d'une dictée dans le fil : n'ajoute la passe GPU `.blur` QUE si le floutage est actif.
+/// Flou calibré sur les glyphes (sans pavé opaque) pour garder la silhouette naturelle des mots.
 private struct StreamText: View {
     var text: String
     var blurred: Bool
@@ -448,14 +449,15 @@ private struct StreamText: View {
         let hidden = blurred && !text.isEmpty
         let label = Text(text.isEmpty ? String(localized: "Audio à retranscrire") : text)
             .font(.system(size: 13))
+            .tracking(hidden ? 0.35 : 0)
             .lineSpacing(2)
             .foregroundStyle(text.isEmpty ? .secondary : .primary)
             .lineLimit(expanded ? nil : 3)
             .fixedSize(horizontal: false, vertical: true)
         if hidden {
             label
-                .blur(radius: 6, opaque: false)
-                .opacity(0.58)
+                .blur(radius: 3.6, opaque: false)
+                .opacity(0.72)
                 .accessibilityHidden(true)
         } else {
             label

@@ -9,7 +9,7 @@ Wispad 0.8.40 adopte une interface monochrome sans encadrements imbriqués, une 
 
 **Amélioré**
 - **Interface monochrome carbone & icône Spectre Pur** : fin des boîtes imbriquées, palette sombre/claire épurée où le rouge reste réservé à la voix, nouvelle icône d'app et de barre des menus.
-- **Barre latérale à 5 entrées** : Dictées, Statistiques (sous-onglets Profil et Consommation), Dictionnaire, Fournisseurs, Réglages, complétée par le résumé plat du jour (mots, mini spectre, copie en un clic de la dernière dictée) et la chaîne active (voix, correction, micro, raccourci).
+- **Barre latérale à 5 entrées** : Dictées, Statistiques (sous-onglets Profil et Consommation), Dictionnaire, Fournisseurs, Réglages, complétée par le résumé plat du jour (mots, mini spectre, copie en un clic de la dernière dictée avec bouton œil de floutage doux sur les lettres) et la chaîne active (voix, correction, micro, raccourci).
 - **Fil continu fluide** : l'historique rejoint directement Dictées dans une liste plate paresseuse sans découpage artificiel ni sauts de barre de défilement, aucun flou GPU tant que le texte est visible et boutons d'action en surimpression au survol sans décaler le texte.
 
 **Corrigé**

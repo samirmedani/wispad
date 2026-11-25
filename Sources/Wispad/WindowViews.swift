@@ -336,7 +336,8 @@ private struct SidebarWeekBars: View {
     }
 }
 
-/// Dernière dictée posée à plat dans la barre latérale : un clic copie le texte, aucun cadre au repos.
+/// Dernière dictée posée à plat dans la barre latérale : un clic copie le texte, un discret bouton œil active ou
+/// coupe le floutage doux sur les lettres (jamais en pavé), et le survol révèle le texte avant la copie.
 private struct SidebarLastDictationRow: View {
     @Environment(AppModel.self) private var model
     @Environment(\.interactionReduceMotion) private var reduceMotion
@@ -344,7 +345,8 @@ private struct SidebarLastDictationRow: View {
     @State private var copied = false
     var last: SidebarDigest.LastDictation
 
-    private var blurred: Bool { model.settings.blurRecentDictations && !hovering }
+    private var blurEnabled: Bool { model.settings.blurRecentDictations }
+    private var hidden: Bool { blurEnabled && !hovering }
 
     var body: some View {
         Button(action: copy) {
@@ -366,14 +368,22 @@ private struct SidebarLastDictationRow: View {
                             .font(.system(size: 10, weight: .medium))
                             .foregroundStyle(.secondary)
                     }
+                    // Place réservée pour le bouton œil posé en surimpression (sans imbriquer deux boutons).
+                    if hovering || blurEnabled {
+                        Color.clear.frame(width: 18, height: 14)
+                    }
                 }
-                if blurred {
+                if blurEnabled {
+                    // Flou léger sur les glyphes non rognés : illisible au repos tout en gardant la silhouette des mots
+                    // (pas de pavé gris), puis retour net au survol.
                     Text(last.text)
                         .font(.system(size: 11.5))
-                        .foregroundStyle(Color.primary.opacity(0.62))
+                        .tracking(hidden ? 0.35 : 0)
+                        .foregroundStyle(Color.primary.opacity(hidden ? 0.72 : 0.84))
                         .lineLimit(1)
                         .truncationMode(.tail)
-                        .blur(radius: 4.5, opaque: false)
+                        .blur(radius: hidden ? 3.1 : 0, opaque: false)
+                        .animation(reduceMotion ? nil : Theme.privacy, value: hidden)
                 } else {
                     Text(last.text)
                         .font(.system(size: 11.5))
@@ -393,6 +403,25 @@ private struct SidebarLastDictationRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .overlay(alignment: .topTrailing) {
+            if hovering || blurEnabled {
+                Button {
+                    model.settings.blurRecentDictations.toggle()
+                    model.saveSettings()
+                } label: {
+                    Image(systemName: blurEnabled ? "eye.slash" : "eye")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(blurEnabled ? Color.primary.opacity(0.75) : Color.secondary)
+                        .frame(width: 18, height: 16)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 4)
+                .padding(.trailing, 7)
+                .help(blurEnabled ? String(localized: "Afficher le texte") : String(localized: "Flouter le texte"))
+                .accessibilityLabel(blurEnabled ? String(localized: "Afficher le texte") : String(localized: "Flouter le texte"))
+            }
+        }
         .onHover { hovering = $0 }
         .help(copied ? String(localized: "Copié") : String(localized: "Copier la dernière dictée"))
         .accessibilityLabel(String(localized: "Copier la dernière dictée"))
