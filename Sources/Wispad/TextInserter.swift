@@ -136,6 +136,8 @@ struct InsertionSystem {
     }
     /// Tape le texte comme au clavier, dans l'app au premier plan.
     var typeText: @MainActor (String) async -> Bool = { await TextInserter.typeCharacters($0) }
+    /// Compteur de frappes et clics réels : une frappe ou un Entrée après lecture du presse-papiers change le champ.
+    var keystrokes: () -> Int = { KeyboardTap.keystrokes }
     var confirmationLimit: Double = TextInserter.confirmationLimit
     var lateConfirmationLimit: Double = TextInserter.lateConfirmationLimit
     var clipboardHold: Double = TextInserter.clipboardHold
@@ -313,7 +315,7 @@ enum TextInserter {
             try? await Task.sleep(nanoseconds: 40_000_000)
         }
         let joined = SmartJoin.adjust(SmartJoin.fit(text, before: before, after: field.after), before: before)
-        let keystrokes = KeyboardTap.keystrokes
+        let keystrokes = system.keystrokes()
         guard let transaction = PasteboardTransaction(text: joined, pasteboard: system.pasteboard) else {
             log.notice("collage impossible : presse-papiers non modifiable")
             return .failed
@@ -347,19 +349,41 @@ enum TextInserter {
         repeat {
             // Relire immédiatement : une insertion déjà visible n'attend aucun minuteur.
             // Chaque lecture système est elle-même bornée à fieldReadLimit.
-            guard system.frontmostPID() == pid else { break }
+            guard system.frontmostPID() == pid else {
+                // App quittée avant la fin de la relecture : un instantané antérieur ne prouve pas un échec.
+                unchangedTarget = false
+                break
+            }
+            if transaction.wasRead, system.keystrokes() != keystrokes {
+                // L'app a lu le presse-papiers et l'utilisateur a déjà agi (ex. Entrée pour envoyer, ce qui vide le champ).
+                unchangedTarget = false
+                break
+            }
             let after = await system.read(pid)
-            guard !after.isSecure else { break }
+            guard !after.isSecure else {
+                unchangedTarget = false
+                break
+            }
             // Un composant web peut recréer son nœud après input : le focus est relu à chaque fois.
             let sameTarget = field.sameElement(as: after)
-            unchangedTarget = sameTarget && field.value != nil && after.value == field.value
+            let selectionMoved = sameTarget && transaction.wasRead
+                && field.selection != nil && after.selection != nil && after.selection != field.selection
+            unchangedTarget = sameTarget && field.value != nil && after.value == field.value && !selectionMoved
             if field.confirmsReplacement(in: after, inserted: joined) ||
-                ((sameTarget || field.element == nil) && InsertionCheck.confirms(before: field.value, after: after.value, inserted: joined)) {
+                ((sameTarget || field.element == nil) && InsertionCheck.confirms(before: field.value, after: after.value, inserted: joined)) ||
+                (sameTarget && InsertionCheck.confirmsBeforeCursor(before: field.before, after: after.before, inserted: joined)) {
                 confirmed = true
+                break
+            }
+            if transaction.wasRead, system.keystrokes() != keystrokes {
+                unchangedTarget = false
                 break
             }
             try? await Task.sleep(nanoseconds: 40_000_000)
         } while Date() < deadline || (unchangedTarget && transaction.wasRead && Date() < lateDeadline)
+        if !confirmed, unchangedTarget, transaction.wasRead, system.keystrokes() != keystrokes {
+            unchangedTarget = false
+        }
         // Même champ, toujours lisible et inchangé une seconde après ⌘V : le texte n'est pas arrivé.
         // Presse-papiers lu par l'app : l'attente va jusqu'à lateConfirmationLimit, son champ peut se mettre à jour tard.
         // Un champ illisible (apps Electron, éditeurs dessinés) ne prouve rien : collage envoyé, sans alerte.
@@ -368,7 +392,7 @@ enum TextInserter {
         // d'afficher la carte ; ne jamais réessayer automatiquement un collage déjà lu ou incertain.
         if isCodex, kind == .unknown, status == .pasteSent,
            await restoring.value, shouldProceed(), !Task.isCancelled,
-           system.frontmostPID() == pid, KeyboardTap.keystrokes == keystrokes {
+           system.frontmostPID() == pid, system.keystrokes() == keystrokes {
             status = .failed
         }
         if !confirmed {
@@ -439,7 +463,7 @@ enum TextInserter {
         // Dernière vérification juste avant d'écrire : même app, même champ, toujours identique, aucune frappe.
         // Le champ a changé : le collage est peut-être arrivé tard, et rien ne doit s'écrire en double.
         func untouched() async -> BackupWrite? {
-            guard shouldProceed(), !Task.isCancelled, KeyboardTap.keystrokes == keystrokes,
+            guard shouldProceed(), !Task.isCancelled, system.keystrokes() == keystrokes,
                   system.frontmostPID() == pid else { return .notWritten }
             let now = await system.read(pid)
             guard !now.isSecure, field.sameElement(as: now) else { return .notWritten }

@@ -3,6 +3,19 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.8.41 (26 novembre 2026)
+
+Wispad 0.8.41 garde le floutage actif au survol, évite les faux échecs de collage après envoi et ouvre les notes de version depuis la barre latérale.
+
+**Corrigé**
+- **Bouton œil du floutage** : quand le floutage est activé dans la barre latérale ou dans Dictées, le texte reste masqué même au survol pour copier en un clic sans rien dévoiler ; une fois l'œil désactivé, le texte s'affiche normalement.
+- **Faux échecs de collage** : appuyer tout de suite sur Entrée pour envoyer un message après le collage, changer d'application pendant la vérification ou dicter dans un éditeur riche dont `AXValue` reste vide ne déclenche plus de fausse carte « Le texte n'est pas arrivé dans le champ ».
+- **Icône de vérification en build de développement** : des commits en retard sur `main` affichent une icône de branche en orange plutôt qu'une flèche de téléchargement.
+
+**Amélioré**
+- **Notes de version accessibles en un clic** : cliquer sur la pastille « À jour » en bas de la barre latérale ouvre directement les nouveautés de la version installée.
+- **Nettoyage interne** : suppression des anciennes vues de barre latérale inutilisées depuis la refonte 0.8.40.
+
 ## 0.8.40 — 25 novembre 2026
 
 Wispad 0.8.40 adopte une interface monochrome sans encadrements imbriqués, une nouvelle icône Spectre Pur et un fil de dictées parfaitement fluide.

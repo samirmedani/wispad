@@ -304,14 +304,16 @@ dans le Finder). Sur un clavier AZERTY ou QWERTZ, c'est la même touche V.
     (sous-onglets **Profil** et **Consommation**), **Dictionnaire** ; puis **Fournisseurs** ;
   - dessous, séparés par un filet fin sans boîte : **Aujourd'hui** (mots du jour, temps gagné, série, mini spectre sur
     7 jours et dernière dictée copiable en un clic, avec son propre bouton œil pour un floutage doux sur les lettres
-    révélé au survol) puis **Chaîne active** (voix, correction, micro lu hors du fil principal et raccourci, chacun
+    qui reste actif même au survol afin de copier sans rien dévoiler, et affiche le texte normalement quand l'œil est
+    coupé) puis **Chaîne active** (voix, correction, micro lu hors du fil principal et raccourci, chacun
     cliquable vers son réglage) ;
   - en bas, un fin filet, **Réglages** (point orange si une autorisation manque), puis le pied minimal (étoile,
     version, apparence, liens).
 - **Dictées (Fil continu unifié)** : s'ouvre directement sur tes dictées sans empilement de cartes :
   - en tête, un ruban en une ligne : mots dictés, cadence (m/min), temps économisé, coût, mini spectre des 7 derniers
     jours (barre active en rouge), sélecteur de période en texte souligné, bouton Dicter (mains libres) et corbeille ;
-  - dessous, un champ de recherche à filet inférieur fin avec bouton floutage discret, le bandeau de filtre si ouvert
+  - dessous, un champ de recherche à filet inférieur fin avec bouton floutage discret (quand il est actif, le texte
+    des dictées reste flouté même au survol pour copier sans rien révéler), le bandeau de filtre si ouvert
     depuis le cerveau de Profil, puis une liste plate paresseuse (sans découpage artificiel, barre de défilement exacte
     dès l'ouverture) avec dépliage des longues dictées, copie, écoute audio, retranscription, suppression et accès au
     détail (boutons posés en surimpression sans jamais faire bouger le texte).
@@ -1205,6 +1207,11 @@ fait et les résultats locaux ne constituent pas une mesure de la qualité de Je
   la frappe, la carte « Le texte n'est pas arrivé dans le champ » s'affiche comme avant, placée d'après le champ relu
   à ce moment (il a pu grandir depuis ⌘V). Le journal note quel moyen a
   écrit et si l'app avait lu le presse-papiers, jamais le texte.
+- Faux échecs évités pendant la confirmation : si l'utilisateur change d'app avant la fin de la relecture, ou appuie
+  sur une touche (par exemple Entrée pour envoyer un message, ce qui vide aussitôt le champ) après que l'app a lu le
+  presse-papiers, Wispad conclut en « Collage envoyé » sans fausse alerte ni écriture en double. Dans un éditeur riche
+  dont `AXValue` reste vide, la confirmation reconnaît aussi le texte avant le curseur (`AXStringForRange`) et le
+  déplacement du curseur après lecture du presse-papiers.
 - Page web hors de ses champs (Chrome, apps Electron comme Codex) : le focus est la page elle-même (`AXWebArea`),
   à laquelle Chrome prête un curseur de texte même quand rien n'y est modifiable. Ce curseur seul ne fait pas un
   champ : il faut que la page se déclare modifiable (valeur modifiable ou ancêtre modifiable, comme un document en
@@ -1584,7 +1591,7 @@ Wispad ; les cas ordinaires gardent exactement leur résultat.
   clé posée par le script de release plutôt que l'absence de signature Developer ID : explicite et testable, couverte
   par la signature de l'app, et un contributeur qui signe son build avec son propre certificat Developer ID reste un
   build de développement.
-- **Release** : la version seule (« 0.1.1 »), puis « À jour », ou « → 0.1.2 » (un clic ouvre la
+- **Release** : la version seule (« 0.1.1 »), puis « À jour » (cliquable pour ouvrir les notes de la version installée), ou « → 0.1.2 » (un clic ouvre la
   fenêtre de mise à jour ; « Wispad 0.1.2 est disponible » au survol) et, dessous, le bouton « Mettre à jour », qui
   ouvre aussi cette fenêtre : l'installation
   ne démarre qu'après lecture des notes, avec son bouton « Mettre à jour ». Le tag de la dernière release

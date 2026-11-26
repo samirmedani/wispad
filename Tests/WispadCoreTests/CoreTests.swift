@@ -299,6 +299,22 @@ final class AudioAndStoreTests: XCTestCase {
         XCTAssertFalse(InsertionCheck.confirms(before: "OK merci", after: "OK merci !", inserted: "OK"))
     }
 
+    func testInsertionCheckConfirmsBeforeCursorWhenValueIsStale() {
+        XCTAssertTrue(InsertionCheck.confirmsBeforeCursor(before: "", after: "Réunion jeudi matin.", inserted: "Réunion jeudi matin."))
+        // Texte plus long que la fenêtre de 32 caractères avant le curseur : la fin suffit.
+        XCTAssertTrue(InsertionCheck.confirmsBeforeCursor(
+            before: "",
+            after: "dernier extrait du texte collé.",
+            inserted: "Début fictif beaucoup plus long que la fenêtre lue avant dernier extrait du texte collé."
+        ))
+        // Typographie normalisée par un éditeur riche.
+        XCTAssertTrue(InsertionCheck.confirmsBeforeCursor(before: "", after: "C’est\u{00A0}noté.", inserted: "C'est noté."))
+        // Inchangé ou différent : pas de confirmation.
+        XCTAssertFalse(InsertionCheck.confirmsBeforeCursor(before: "Bonjour.", after: "Bonjour.", inserted: "Bonjour."))
+        XCTAssertFalse(InsertionCheck.confirmsBeforeCursor(before: "", after: "Autre phrase.", inserted: "Bonjour."))
+        XCTAssertFalse(InsertionCheck.confirmsBeforeCursor(before: nil, after: nil, inserted: "Bonjour."))
+    }
+
     func testOpenAIDeltasThenCompleted() {
         var assembler = TranscriptAssembler()
         assembler.apply(OpenAITranscriptEvent.delta("On "))
