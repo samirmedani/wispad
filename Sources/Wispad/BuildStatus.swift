@@ -281,7 +281,8 @@ enum ManualCheckOutcome: Equatable {
     var symbol: String {
         switch self {
         case .upToDate: return "checkmark.circle.fill"
-        case .available, .behind: return "arrow.down.circle.fill"
+        case .available: return "arrow.down.circle.fill"
+        case .behind: return "arrow.triangle.branch"
         case .failed, .rateLimited: return "exclamationmark.circle.fill"
         }
     }
@@ -289,8 +290,8 @@ enum ManualCheckOutcome: Equatable {
     var tint: Color {
         switch self {
         case .upToDate: return .green
-        case .available, .behind: return Theme.accent
-        case .failed, .rateLimited: return .orange
+        case .available: return Theme.accent
+        case .behind, .failed, .rateLimited: return .orange
         }
     }
 }

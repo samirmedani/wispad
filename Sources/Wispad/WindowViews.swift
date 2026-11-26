@@ -337,7 +337,8 @@ private struct SidebarWeekBars: View {
 }
 
 /// Dernière dictée posée à plat dans la barre latérale : un clic copie le texte, un discret bouton œil active ou
-/// coupe le floutage doux sur les lettres (jamais en pavé), et le survol révèle le texte avant la copie.
+/// coupe le floutage doux sur les lettres (jamais en pavé). Quand l'œil masque le texte, il reste flouté même au
+/// survol (le bouton Copier reste accessible sans rien dévoiler).
 private struct SidebarLastDictationRow: View {
     @Environment(AppModel.self) private var model
     @Environment(\.interactionReduceMotion) private var reduceMotion
@@ -346,7 +347,6 @@ private struct SidebarLastDictationRow: View {
     var last: SidebarDigest.LastDictation
 
     private var blurEnabled: Bool { model.settings.blurRecentDictations }
-    private var hidden: Bool { blurEnabled && !hovering }
 
     var body: some View {
         Button(action: copy) {
@@ -374,16 +374,15 @@ private struct SidebarLastDictationRow: View {
                     }
                 }
                 if blurEnabled {
-                    // Flou léger sur les glyphes non rognés : illisible au repos tout en gardant la silhouette des mots
-                    // (pas de pavé gris), puis retour net au survol.
+                    // Flou léger sur les glyphes non rognés : illisible tant que l'œil est actif, y compris au survol,
+                    // tout en gardant la silhouette des mots (pas de pavé gris).
                     Text(last.text)
                         .font(.system(size: 11.5))
-                        .tracking(hidden ? 0.35 : 0)
-                        .foregroundStyle(Color.primary.opacity(hidden ? 0.72 : 0.84))
+                        .tracking(0.35)
+                        .foregroundStyle(Color.primary.opacity(0.72))
                         .lineLimit(1)
                         .truncationMode(.tail)
-                        .blur(radius: hidden ? 3.1 : 0, opaque: false)
-                        .animation(reduceMotion ? nil : Theme.privacy, value: hidden)
+                        .blur(radius: 3.1, opaque: false)
                 } else {
                     Text(last.text)
                         .font(.system(size: 11.5))
@@ -777,243 +776,6 @@ struct DictateCard: View {
     }
 }
 
-/// Bouton micro : monochrome discret au repos, rouge spectre uniquement pendant l'écoute.
-struct MicButton: View {
-    @Environment(AppModel.self) private var model
-    @Environment(\.interactionReduceMotion) private var reduceMotion
-
-    var body: some View {
-        let listening: Bool = if case .listening = model.coordinator.phase { true } else { false }
-        Button {
-            model.toggleHandsFreeDictation()
-        } label: {
-            Image(systemName: listening ? "stop.fill" : "mic.fill")
-                .font(.system(size: listening ? 10 : 12, weight: .semibold))
-                .foregroundStyle(listening ? Color.white : Color.primary)
-                .frame(width: 28, height: 28)
-                .background {
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .fill(listening ? Theme.brand : Theme.raised)
-                }
-                .overlay {
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .strokeBorder(listening ? Theme.brand.opacity(0.45) : Theme.cardBorderStrong, lineWidth: 1)
-                }
-                .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-                .contentTransition(.symbolEffect(.replace))
-        }
-        .buttonStyle(.plain)
-        .disabled(model.coordinator.phase == .starting)
-        .animation(reduceMotion ? nil : Theme.spring, value: listening)
-        .help(listening ? String(localized: "Terminer la dictée") : String(localized: "Dicter (mains libres)"))
-        .accessibilityLabel(listening ? String(localized: "Terminer la dictée") : String(localized: "Dicter (mains libres)"))
-    }
-}
-
-/// Mots des sept derniers jours en petites barres ; aujourd'hui en couleur d'accent.
-struct WeekBars: View {
-    var values: [Int]
-
-    var body: some View {
-        let top = max(1, values.max() ?? 1)
-        HStack(alignment: .bottom, spacing: 3) {
-            ForEach(Array(values.enumerated()), id: \.offset) { index, value in
-                RoundedRectangle(cornerRadius: 1.5, style: .continuous)
-                    .fill(index == values.count - 1 ? Theme.accent : Theme.accent.opacity(0.35))
-                    .frame(width: 6, height: max(2, 26 * CGFloat(value) / CGFloat(top)))
-            }
-        }
-        .frame(height: 26, alignment: .bottom)
-        .accessibilityLabel(String(localized: "Mots des sept derniers jours"))
-        .accessibilityValue(values.map(String.init).joined(separator: ", "))
-    }
-}
-
-/// Dernière dictée réussie : app et moment, puis le début du texte, flouté tant que le pointeur ne le survole pas. Un
-/// clic (ou l'icône) copie le texte ; la croix masque cette dictée, la suivante s'affichera.
-struct LastDictationButton: View {
-    @Environment(AppModel.self) private var model
-    @Environment(\.interactionReduceMotion) private var reduceMotion
-    @State private var hovering = false
-    @State private var copied = false
-    var last: SidebarDigest.LastDictation
-
-    private var hidden: Bool { !hovering }
-
-    var body: some View {
-        Button(action: copy) {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 4) {
-                    TimelineView(.periodic(from: .now, by: 60)) { context in
-                        Text(caption(now: context.date))
-                            .font(.system(size: 10.5))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                    Spacer(minLength: 4)
-                    // Place des icônes copier et masquer, posées par-dessus (un bouton ne peut pas en contenir un autre).
-                    Color.clear.frame(width: 2 * CardIconStyle.size + 4, height: 16)
-                }
-                Text(last.text)
-                    .font(.system(size: 12))
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    // Aucun rectangle ne coupe les contours diffus autour des glyphes.
-                    .blur(radius: hidden ? 5 : 0, opaque: false)
-                    .opacity(hidden ? 0.6 : 1)
-                    .animation(reduceMotion ? nil : Theme.privacy, value: hidden)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.leading, 9)
-            .padding(.trailing, 5)
-            .padding(.vertical, 6)
-            .background {
-                RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .fill(Color.primary.opacity(hovering ? 0.09 : 0.055))
-                    .animation(reduceMotion ? nil : Theme.hover, value: hovering)
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .overlay(alignment: .topTrailing) {
-            HStack(spacing: 4) {
-                Button(action: copy) {
-                    Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                        .font(.system(size: 10, weight: .semibold))
-                        .contentTransition(reduceMotion ? .identity : .symbolEffect(.replace))
-                }
-                .buttonStyle(CardIconStyle(tint: copied ? .green : nil))
-                .help(copied ? String(localized: "Copié") : String(localized: "Copier la dernière dictée"))
-                .accessibilityLabel(String(localized: "Copier la dernière dictée"))
-                Button(action: dismiss) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 9, weight: .bold))
-                }
-                .buttonStyle(CardIconStyle())
-                .help(String(localized: "Masquer cette dictée"))
-                .accessibilityLabel(String(localized: "Masquer cette dictée"))
-            }
-            .padding(.top, 4)
-            .padding(.trailing, 3)
-        }
-        .onHover { hovering = $0 }
-        .help(copied ? String(localized: "Copié") : String(localized: "Copier la dernière dictée"))
-        .accessibilityLabel(String(localized: "Copier la dernière dictée"))
-        .accessibilityValue(last.text)
-    }
-
-    private func copy() {
-        model.copy(last.text)
-        copied = true
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(1_600))
-            copied = false
-        }
-    }
-
-    private func dismiss() {
-        model.settings.dismissedLastDictationID = last.id
-        model.saveSettings()
-    }
-
-    private func caption(now: Date) -> String {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.locale = appLocale
-        formatter.unitsStyle = .short
-        let moment = now.timeIntervalSince(last.date) < 60
-            ? String(localized: "à l'instant")
-            : formatter.localizedString(for: last.date, relativeTo: now)
-        guard let app = last.app, !app.isEmpty else { return moment }
-        return app + " · " + moment
-    }
-}
-
-/// Petite icône de la carte de dictée, avec le survol commun (`IconHoverEffect`). `tint` remplace la couleur, par
-/// exemple le vert de la copie confirmée.
-struct CardIconStyle: ButtonStyle {
-    static let size: CGFloat = 20
-    var tint: Color?
-
-    func makeBody(configuration: Configuration) -> some View {
-        CardIconBody(configuration: configuration, tint: tint)
-    }
-}
-
-private struct CardIconBody: View {
-    var configuration: ButtonStyleConfiguration
-    var tint: Color?
-    @Environment(\.interactionPreviewHover) private var previewHover
-    @State private var hovering = false
-
-    private var highlighted: Bool { hovering || previewHover }
-
-    var body: some View {
-        configuration.label
-            .foregroundStyle(tint ?? Color.secondary)
-            .frame(width: CardIconStyle.size, height: CardIconStyle.size)
-            .modifier(IconHoverEffect(highlighted: highlighted, pressed: configuration.isPressed))
-            .onHover { hovering = $0 }
-    }
-}
-
-/// Dépenses d'API des 30 derniers jours et raccourci vers leur détail.
-struct SpendLine: View {
-    @Environment(AppModel.self) private var model
-
-    var body: some View {
-        let summary = model.usageSummary(for: .days30)
-        let amount = MoneyFormat.usd(summary.totalUSD)
-        let incomplete = summary.hasUnpricedCalls || model.usageLoadFailed
-        Button {
-            model.openUsage()
-        } label: {
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Dépenses API · 30 derniers jours")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                Text(incomplete ? String(localized: "Au moins \(amount)") : amount)
-                    .font(.system(size: 13, weight: .semibold).monospacedDigit())
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .help(String(localized: "Ouvrir Consommation"))
-    }
-}
-
-struct DictationStatusLine: View {
-    @Environment(AppModel.self) private var model
-
-    var body: some View {
-        let status = self.status
-        HStack(spacing: 5) {
-            Circle().fill(status.color).frame(width: 6, height: 6)
-            Text(status.text)
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .contentTransition(.opacity)
-        }
-        .help(status.text)
-        .animation(Theme.quick, value: status.text)
-    }
-
-    private var status: (text: String, color: Color) {
-        switch model.coordinator.phase {
-        case .idle:
-            if let warning = model.setupWarning { return (warning, .orange) }
-            return model.relayLines().isEmpty ? (String(localized: "Prêt"), .green) : (String(localized: "Prêt · relais actif"), OverlayStyle.relay)
-        case .starting: return (String(localized: "Démarrage…"), .orange)
-        case .listening(let mode): return (mode == .toggle ? String(localized: "Mains libres") : String(localized: "À l'écoute"), Theme.brand)
-        case .finishing: return (String(localized: "Transcription…"), .blue)
-        case .failure: return (String(localized: "Erreur"), .orange)
-        }
-    }
-}
-
 /// Bandeau « étoile » du bas de la barre latérale : proposé tant qu'il n'a pas été cliqué, puis un bref merci.
 enum StarBanner: Equatable {
     case offer
@@ -1142,6 +904,9 @@ struct VersionChip: View {
         case .available(let release):
             Button { model.showUpdate(release) } label: { label }
                 .buttonStyle(HoverButtonStyle(treatment: .quiet, tint: Theme.accent))
+        case .upToDate:
+            Button { Task { await model.showWhatsNew() } } label: { label }
+                .buttonStyle(HoverButtonStyle(treatment: .quiet))
         case .development(.behind):
             Button { NSWorkspace.shared.open(BuildFreshnessCheck.commitsURL) } label: { label }
                 .buttonStyle(HoverButtonStyle(treatment: .quiet, tint: .orange))
@@ -1289,50 +1054,6 @@ private struct StarBannerButton: View {
         }
         .buttonStyle(HoverButtonStyle(treatment: .quiet, tint: .primary))
         .help(BuildFreshnessCheck.repositoryURL.absoluteString)
-    }
-}
-
-/// Raccourcis de la dictée, en bas de l'Accueil : une rangée de touches dessinées, comme la fenêtre d'enregistrement
-/// de Superwhisper (« Stop ⌥ Space · Cancel esc »).
-struct ShortcutCard: View {
-    @Environment(AppModel.self) private var model
-
-    var body: some View {
-        let key = KeyLabels.describe(keyCode: model.settings.keyCode, modifiers: model.settings.modifierFlags)
-        VStack(alignment: .leading, spacing: 10) {
-            CardTitle(String(localized: "Raccourcis"))
-            FlowLayout(spacing: 18) {
-            row(keys: [key, key], label: String(localized: "Mains libres"))
-            row(keys: [key], label: String(localized: "Parler (maintenu)"))
-            if model.settings.sendWithShift {
-                row(keys: [key, "⇧"], label: String(localized: "Finir et envoyer"))
-                    .help(String(localized: "Maj pour envoyer : le texte est collé, puis envoyé"))
-            }
-            row(keys: ["esc"], label: String(localized: "Annuler"))
-            let paste = model.settings.pasteLastShortcut
-            if paste.enabled {
-                row(keys: [KeyLabels.describe(paste, compact: true)], label: String(localized: "Coller la dernière"))
-                    .help(String(localized: "Coller la dernière dictée"))
-            }
-            }
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .card()
-    }
-
-    private func row(keys: [String], label: String) -> some View {
-        HStack(spacing: 7) {
-            HStack(spacing: 3) {
-                ForEach(Array(keys.enumerated()), id: \.offset) { _, key in
-                    KeyCap(label: key)
-                }
-            }
-            Text(label)
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-        }
     }
 }
 

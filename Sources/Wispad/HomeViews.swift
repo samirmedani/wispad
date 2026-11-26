@@ -339,7 +339,7 @@ private struct StreamDictationRow: View, Equatable {
                 .frame(width: 42, alignment: .leading)
                 .padding(.top, 2)
             VStack(alignment: .leading, spacing: 5) {
-                StreamText(text: item.text, blurred: blurred && !hovering, expanded: expanded)
+                StreamText(text: item.text, blurred: blurred, expanded: expanded)
                 HStack(spacing: 6) {
                     Text(item.meta)
                         .font(.system(size: 10.5, design: .monospaced))

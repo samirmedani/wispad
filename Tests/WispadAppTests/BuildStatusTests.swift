@@ -191,6 +191,8 @@ struct BuildStatusTests {
         #expect(await status.checkNow() == nil)
         #expect(status.manualPhase == .finished(.behind))
         #expect(status.display == .development(.behind(2)))
+        #expect(ManualCheckOutcome.behind.symbol == "arrow.triangle.branch")
+        #expect(ManualCheckOutcome.available.symbol == "arrow.down.circle.fill")
     }
 
     /// Une limitation de l'API arrête aussi le diagnostic secondaire et la seconde demande à la main.

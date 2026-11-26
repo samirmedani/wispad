@@ -23,6 +23,7 @@ private final class InsertionFixture {
     var typingWorks = false
     var axWrites: [String] = []
     var typed: [String] = []
+    var keystrokeCount = 0
     var system: InsertionSystem {
         var s = InsertionSystem()
         s.trusted = { true }
@@ -52,6 +53,7 @@ private final class InsertionFixture {
             if self.typingWorks { self.field.value = (self.field.value ?? "") + text }
             return true
         }
+        s.keystrokes = { self.keystrokeCount }
         // Jamais la vraie fenêtre, la vraie souris ni la vraie mémoire des champs.
         s.findProbableInput = { _ in nil }
         s.focusProbableInput = { _, _, _ in false }
@@ -479,10 +481,65 @@ struct TextInsertionTests {
         f.editable = true
         var system = f.system
         var reads = 0
-        // Après ⌘V, l'utilisateur passe dans une autre app : rien n'est écrit nulle part.
+        // Après ⌘V, l'utilisateur passe dans une autre app : rien n'est écrit nulle part, ni signalé en échec.
         system.frontmostPID = { reads > 1 ? 7_777 : 42_424 }
         system.read = { _ in reads += 1; return f.field }
-        #expect(await f.insert(system: system) != .inserted)
+        #expect(await f.insert(system: system) == .pasteSent)
+        #expect(f.axWrites.isEmpty && f.typed.isEmpty)
+    }
+
+    /// L'app a lu le presse-papiers puis l'utilisateur appuie sur Entrée (champ vidé aussitôt) : pas de faux échec.
+    @Test func aKeystrokeAfterTheAppReadThePasteDoesNotReportAFailure() async {
+        let f = InsertionFixture(); defer { f.dispose() }
+        f.field.value = ""
+        f.field.before = ""
+        f.field.selection = NSRange(location: 0, length: 0)
+        f.deliver = false
+        f.axWorks = true
+        f.typingWorks = true
+        var system = f.system
+        system.postPaste = { _ in
+            f.keys += 1
+            _ = f.board.string(forType: .string)
+            f.keystrokeCount += 1
+            return true
+        }
+        #expect(await f.insert(system: system) == .pasteSent)
+        #expect(f.axWrites.isEmpty && f.typed.isEmpty)
+    }
+
+    /// Éditeur riche dont `AXValue` reste vide : confirmation via le texte avant le curseur, ou sans faux échec si
+    /// le presse-papiers a été lu et que le curseur a avancé.
+    @Test func aRichEditorWithStaleValueConfirmsThroughBeforeCursorOrMovedSelection() async {
+        let f = InsertionFixture(); defer { f.dispose() }
+        f.field.value = ""
+        f.field.before = ""
+        f.field.selection = NSRange(location: 0, length: 0)
+        f.deliver = false
+        f.axWorks = true
+        f.typingWorks = true
+        var system = f.system
+        system.postPaste = { _ in
+            f.keys += 1
+            let pasted = f.board.string(forType: .string) ?? ""
+            f.field.before = pasted
+            f.field.selection = NSRange(location: pasted.count, length: 0)
+            return true
+        }
+        #expect(await f.insert(system: system) == .inserted)
+        #expect(f.axWrites.isEmpty && f.typed.isEmpty)
+
+        // Même `AXValue` vide et `before` indisponible, mais presse-papiers lu et curseur déplacé : pas d'échec ni doublon.
+        f.field.value = ""
+        f.field.before = nil
+        f.field.selection = NSRange(location: 0, length: 0)
+        system.postPaste = { _ in
+            f.keys += 1
+            let pasted = f.board.string(forType: .string) ?? ""
+            f.field.selection = NSRange(location: pasted.count, length: 0)
+            return true
+        }
+        #expect(await f.insert(system: system) == .pasteSent)
         #expect(f.axWrites.isEmpty && f.typed.isEmpty)
     }
 

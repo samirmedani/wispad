@@ -59,6 +59,20 @@ public enum InsertionCheck {
         return occurrences(of: probe, in: normalize(after)) > occurrences(of: probe, in: normalize(before ?? ""))
     }
 
+    /// Repli quand `AXValue` reste vide ou figé dans un éditeur riche (Electron, contenteditable) alors que le texte
+    /// juste avant le curseur (`AXStringForRange`, 32 caractères au plus) se met à jour : vrai si cet extrait a changé
+    /// et se termine par la fin du texte collé (typographie normalisée).
+    public static func confirmsBeforeCursor(before: String?, after: String?, inserted text: String) -> Bool {
+        guard let after, after != before else { return false }
+        let normalizedInserted = normalize(text)
+        guard !normalizedInserted.isEmpty else { return false }
+        let probe = String(normalizedInserted.suffix(24))
+        let normalizedAfter = normalize(after)
+        guard normalizedAfter.hasSuffix(probe) else { return false }
+        let normalizedBefore = normalize(before ?? "")
+        return normalizedAfter != normalizedBefore
+    }
+
     private static func normalize(_ value: String) -> String {
         String(value.lowercased().filter { $0.isLetter || $0.isNumber })
     }
