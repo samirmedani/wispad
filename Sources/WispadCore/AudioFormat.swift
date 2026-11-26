@@ -70,7 +70,7 @@ public final class WAVStream: @unchecked Sendable {
         self.sampleRate = sampleRate
         let directory = url.deletingLastPathComponent()
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        FileManager.default.createFile(atPath: url.path, contents: nil)
+        FileManager.default.createFile(atPath: url.path, contents: nil, attributes: [.posixPermissions: 0o600])
         handle = try FileHandle(forWritingTo: url)
         try handle.write(contentsOf: WAVHeader.make(dataBytes: 0, sampleRate: sampleRate))
     }

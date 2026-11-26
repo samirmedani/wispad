@@ -16786,6 +16786,886 @@
           }
         }
       }
+    },
+    "Synchro" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync"
+          }
+        }
+      }
+    },
+    "Réunions" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Meetings"
+          }
+        }
+      }
+    },
+    "Autre appareil" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Another device"
+          }
+        }
+      }
+    },
+    "un autre appareil" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "another device"
+          }
+        }
+      }
+    },
+    "Enregistré sur %@ : l'audio reste sur cet appareil." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recorded on %@: audio stays on that device."
+          }
+        }
+      }
+    },
+    "Enregistré sur %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recorded on %@"
+          }
+        }
+      }
+    },
+    "Seul le texte est synchronisé. Pour réécouter ou retranscrire l'audio, ouvre Wispad sur %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only text is synced. To replay or retranscribe the audio, open Wispad on %@."
+          }
+        }
+      }
+    },
+    "Synchronisation configurée : synchronisation lancée." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync configured: syncing now."
+          }
+        }
+      }
+    },
+    "Lien d'appairage invalide ou incomplet." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invalid or incomplete pairing link."
+          }
+        }
+      }
+    },
+    "Tout est déjà à jour." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Everything is already up to date."
+          }
+        }
+      }
+    },
+    "Reçu : %lld · Envoyé : %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Received: %1$lld · Sent: %2$lld"
+          }
+        }
+      }
+    },
+    "Configuration incomplète : vérifie les champs requis." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Incomplete configuration: check the required fields."
+          }
+        }
+      }
+    },
+    "Accès refusé : vérifie tes identifiants de stockage." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Access denied: check your storage credentials."
+          }
+        }
+      }
+    },
+    "Le serveur distant a répondu HTTP %lld." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remote server returned HTTP %lld."
+          }
+        }
+      }
+    },
+    "Ce stockage contient un autre coffre Wispad (clé différente)." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This storage contains a different Wispad vault (different key)."
+          }
+        }
+      }
+    },
+    "Ce coffre nécessite une version plus récente de Wispad." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This vault requires a newer version of Wispad."
+          }
+        }
+      }
+    },
+    "Clé de synchronisation incorrecte : déchiffrement impossible." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wrong sync key: decryption failed."
+          }
+        }
+      }
+    },
+    "Open source, sans compte, chiffré de bout en bout" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open source, no account, end-to-end encrypted"
+          }
+        }
+      }
+    },
+    "Wispad est entièrement gratuit et n'héberge aucun serveur central. La synchronisation est facultative et utilise ton propre stockage (dossier iCloud/OneDrive, Cloudflare R2 gratuit ou WebDAV), chiffré localement en AES-256-GCM." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wispad is completely free and hosts no central server. Sync is optional and uses your own storage (iCloud/OneDrive folder, free Cloudflare R2, or WebDAV), encrypted locally with AES-256-GCM."
+          }
+        }
+      }
+    },
+    "Texte seul (quelques kilo-octets) : tes dictées, notes de réunion, dictionnaire et réglages d'écriture suivent tous tes appareils. L'audio reste sur l'appareil qui l'a enregistré pour éviter de saturer ton stockage et ton débit. Tes clés API ne sont jamais synchronisées." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text only (a few kilobytes): your dictations, meeting notes, dictionary, and writing settings follow all your devices. Audio stays on the device that recorded it to save storage and bandwidth. Your API keys are never synced."
+          }
+        }
+      }
+    },
+    "Activation" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Activation"
+          }
+        }
+      }
+    },
+    "Activer la synchronisation" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enable sync"
+          }
+        }
+      }
+    },
+    "Nom de cet appareil" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This device's name"
+          }
+        }
+      }
+    },
+    "Synchroniser les réglages d'écriture (langue, correction, tons)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync writing settings (language, cleanup, tones)"
+          }
+        }
+      }
+    },
+    "Stockage (BYOS)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Storage (BYOS)"
+          }
+        }
+      }
+    },
+    "Mode de stockage" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Storage mode"
+          }
+        }
+      }
+    },
+    "Dossier synchronisé (iCloud, OneDrive…)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synced folder (iCloud, OneDrive…)"
+          }
+        }
+      }
+    },
+    "Cloudflare R2 / S3" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cloudflare R2 / S3"
+          }
+        }
+      }
+    },
+    "WebDAV (Nextcloud, NAS)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WebDAV (Nextcloud, NAS)"
+          }
+        }
+      }
+    },
+    "État et actions" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Status and actions"
+          }
+        }
+      }
+    },
+    "Tester la connexion" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Test connection"
+          }
+        }
+      }
+    },
+    "Synchroniser maintenant" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync now"
+          }
+        }
+      }
+    },
+    "Connecter un iPhone, un PC Windows ou un autre Mac" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connect an iPhone, Windows PC, or another Mac"
+          }
+        }
+      }
+    },
+    "Masquer le QR code" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide QR code"
+          }
+        }
+      }
+    },
+    "Afficher le QR code" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show QR code"
+          }
+        }
+      }
+    },
+    "Lien copié" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Link copied"
+          }
+        }
+      }
+    },
+    "Copier le lien d'appairage" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy pairing link"
+          }
+        }
+      }
+    },
+    "Scanne ce QR code depuis Wispad iOS, ou colle le lien sur Wispad Windows." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scan this QR code from Wispad iOS, or paste the link in Wispad Windows."
+          }
+        }
+      }
+    },
+    "Ce lien contient ta clé de chiffrement locale : ne le partage jamais publiquement." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This link contains your local encryption key: never share it publicly."
+          }
+        }
+      }
+    },
+    "Complète d'abord la configuration du stockage ci-dessus pour générer un QR code d'appairage." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Complete the storage setup above first to generate a pairing QR code."
+          }
+        }
+      }
+    },
+    "Rejoindre un coffre existant" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Join an existing vault"
+          }
+        }
+      }
+    },
+    "Connecter" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connect"
+          }
+        }
+      }
+    },
+    "Coffre connecté : synchronisation lancée." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vault connected: syncing now."
+          }
+        }
+      }
+    },
+    "Configuration en un clic" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "One-click setup"
+          }
+        }
+      }
+    },
+    "Chemin du dossier" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Folder path"
+          }
+        }
+      }
+    },
+    "Choisir…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose…"
+          }
+        }
+      }
+    },
+    "Tous les fichiers écrits dans ce dossier sont chiffrés localement avant d'être synchronisés par iCloud Drive, OneDrive, Dropbox ou Syncthing." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Every file written in this folder is encrypted locally before being synced by iCloud Drive, OneDrive, Dropbox, or Syncthing."
+          }
+        }
+      }
+    },
+    "Cloudflare R2 offre 10 Go gratuits sans frais de sortie (suffisant pour des millions de dictées texte)." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cloudflare R2 offers 10 GB free with zero egress fees (enough for millions of text dictations)."
+          }
+        }
+      }
+    },
+    "Ouvrir Cloudflare R2" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Cloudflare R2"
+          }
+        }
+      }
+    },
+    "Endpoint S3 personnalisé (Backblaze B2, MinIO, AWS)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Custom S3 endpoint (Backblaze B2, MinIO, AWS)"
+          }
+        }
+      }
+    },
+    "ID de compte Cloudflare" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cloudflare Account ID"
+          }
+        }
+      }
+    },
+    "Endpoint S3 (https://…)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "S3 endpoint (https://…)"
+          }
+        }
+      }
+    },
+    "Région (ex. auto, us-east-1)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Region (e.g. auto, us-east-1)"
+          }
+        }
+      }
+    },
+    "Nom du bucket" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bucket name"
+          }
+        }
+      }
+    },
+    "Access Key ID" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Access Key ID"
+          }
+        }
+      }
+    },
+    "Secret Access Key" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Secret Access Key"
+          }
+        }
+      }
+    },
+    "URL WebDAV (ex. https://cloud.exemple.org/remote.php/dav/files/nom/WispadSync)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WebDAV URL (e.g. https://cloud.example.org/remote.php/dav/files/user/WispadSync)"
+          }
+        }
+      }
+    },
+    "Identifiant" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Username"
+          }
+        }
+      }
+    },
+    "Mot de passe ou mot de passe d'application" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Password or app password"
+          }
+        }
+      }
+    },
+    "Synchronisation…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Syncing…"
+          }
+        }
+      }
+    },
+    "Dernière synchro : %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last sync: %@"
+          }
+        }
+      }
+    },
+    "Connecté" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connected"
+          }
+        }
+      }
+    },
+    "Choisir" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose"
+          }
+        }
+      }
+    },
+    "Notes rapides" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quick notes"
+          }
+        }
+      }
+    },
+    "Synthèse IA" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI summary"
+          }
+        }
+      }
+    },
+    "Nouvelle réunion" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New meeting"
+          }
+        }
+      }
+    },
+    "Aucune réunion" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No meetings"
+          }
+        }
+      }
+    },
+    "Prends des notes rapides et laisse l'IA les enrichir avec la transcription." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jot down quick bullet notes and let AI enrich them with the transcript."
+          }
+        }
+      }
+    },
+    "Réunion sans titre" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Untitled meeting"
+          }
+        }
+      }
+    },
+    "Titre de la réunion" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Meeting title"
+          }
+        }
+      }
+    },
+    "Micro + Audio système" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mic + System audio"
+          }
+        }
+      }
+    },
+    "Transcription en cours…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transcribing…"
+          }
+        }
+      }
+    },
+    "Audio système" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "System audio"
+          }
+        }
+      }
+    },
+    "Note tes points clés ici pendant la réunion (puces, décisions, noms propres)…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Write key bullets during the meeting (notes, decisions, proper names)…"
+          }
+        }
+      }
+    },
+    "Aucune synthèse IA pour le moment" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No AI summary yet"
+          }
+        }
+      }
+    },
+    "Enregistre la réunion ou ajoute quelques puces, puis clique sur « Enrichir avec l'IA »." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Record the meeting or add a few bullets, then click “Enhance with AI”."
+          }
+        }
+      }
+    },
+    "La transcription apparaîtra ici après l'enregistrement." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The transcript will appear here after recording."
+          }
+        }
+      }
+    },
+    "Enrichir avec l'IA" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enhance with AI"
+          }
+        }
+      }
+    },
+    "Supprimer cette réunion" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete this meeting"
+          }
+        }
+      }
+    },
+    "Notes de réunion sans bot" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bot-free meeting notes"
+          }
+        }
+      }
+    },
+    "Capture ta voix et l'audio de l'appel directement sur ton Mac, sans inviter de bot dans Zoom, Meet ou Teams." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capture your voice and call audio directly on your Mac, with no bot joining Zoom, Meet, or Teams."
+          }
+        }
+      }
+    },
+    "Réunion du %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Meeting on %@"
+          }
+        }
+      }
+    },
+    "Ajoute une clé API (xAI ou OpenAI) dans Fournisseurs pour transcrire." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add an API key (xAI or OpenAI) in Providers to transcribe."
+          }
+        }
+      }
+    },
+    "Transcription terminée (l'audio temporaire a été supprimé)." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transcription complete (temporary audio deleted)."
+          }
+        }
+      }
+    },
+    "Échec de la transcription : vérifie ta clé ou ta connexion." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transcription failed: check your key or connection."
+          }
+        }
+      }
+    },
+    "Aucune synthèse reçue : vérifie tes clés de correction dans Fournisseurs." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No summary received: check your cleanup keys in Providers."
+          }
+        }
+      }
+    },
+    "Synthèse IA enregistrée et prête à synchroniser." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI summary saved and ready to sync."
+          }
+        }
+      }
+    },
+    "Format audio indisponible." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audio format unavailable."
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

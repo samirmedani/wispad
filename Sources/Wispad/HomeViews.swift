@@ -12,10 +12,25 @@ import WispadCore
 ///   jamais modifier la largeur ou la hauteur du texte ;
 /// - aucun filtre `.blur` GPU monté lorsque le texte est visible ;
 /// - lignes `Equatable` pures, sans lecture directe de `@Environment(AppModel.self)`.
+/// Sous-onglets de l'écran Dictées : fil des dictées ou notes de réunion (style Granola).
+private enum HomeSubTab: String, CaseIterable, Identifiable {
+    case dictations
+    case meetings
+
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .dictations: return String(localized: "Dictées")
+        case .meetings: return String(localized: "Réunions")
+        }
+    }
+}
+
 struct HomeView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.historyRowDidRender) private var didRender
     @Environment(\.interactionReduceMotion) private var reduceMotion
+    @State private var subTab: HomeSubTab = .dictations
     @State private var query = ""
     @State private var appliedQuery = ""
     @State private var detailRecord: DictationRecord?
@@ -31,8 +46,21 @@ struct HomeView: View {
         let allEntries = model.historyStreamEntries(query: appliedQuery, filter: model.historyFilter)
         let blurred = model.settings.blurRecentDictations
         let activeAudioID = model.historyPlayer.recordID
+        let localDeviceID = model.sync.config.deviceId
 
         VStack(spacing: 0) {
+            if subTab == .meetings {
+                VStack(spacing: 0) {
+                    HStack(spacing: 14) {
+                        PillPicker(options: HomeSubTab.allCases, selection: $subTab, title: \.title)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 26)
+                    .padding(.vertical, 14)
+                    Rectangle().fill(Theme.cardBorder).frame(height: 1)
+                    MeetingsView()
+                }
+            } else {
             VStack(alignment: .leading, spacing: 14) {
                 summaryRibbon(snap: snap, spendUSD: usage.totalUSD)
                 Rectangle().fill(Theme.cardBorder).frame(height: 1)
@@ -64,7 +92,7 @@ struct HomeView: View {
                             case .header(day: _, title: let title, count: let count):
                                 StreamDayHeader(title: title, count: count)
                             case let .record(record, isLastInDay):
-                                let item = HistoryRowCache.shared.item(for: record)
+                                let item = HistoryRowCache.shared.item(for: record, localDeviceID: localDeviceID)
                                 StreamDictationRow(
                                     item: item,
                                     isLastInDay: isLastInDay,
@@ -93,6 +121,7 @@ struct HomeView: View {
                 }
                 .scrollIndicators(.automatic)
                 .modifier(HistoryScrollPhase(activity: scrollActivity))
+            }
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) { HistoryAudioDock() }
@@ -131,6 +160,7 @@ struct HomeView: View {
                 dictateTrigger
             }
             HStack(alignment: .center, spacing: 12) {
+                PillPicker(options: HomeSubTab.allCases, selection: $subTab, title: \.title)
                 PillPicker(selection: Binding(
                     get: { model.settings.homePeriod },
                     set: { model.setDisplayChoice(\.homePeriod, $0) }
@@ -351,6 +381,19 @@ private struct StreamDictationRow: View, Equatable {
                     Text(item.status.text)
                         .font(.system(size: 10.5, weight: .medium))
                         .foregroundStyle(item.status.tint)
+                    if item.isRemoteDevice, let deviceName = item.sourceDeviceName {
+                        HStack(spacing: 3) {
+                            Image(systemName: item.sourceDeviceSymbol ?? "laptopcomputer")
+                                .font(.system(size: 9.5))
+                            Text(deviceName)
+                                .font(.system(size: 10, weight: .medium))
+                        }
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 1.5)
+                        .background(Capsule().fill(Theme.subtleFill))
+                        .help(item.remoteAudioHelp ?? "")
+                    }
                     if item.mayOverflow {
                         Button(expanded ? String(localized: "Réduire") : String(localized: "Afficher tout")) {
                             expanded.toggle()
@@ -387,6 +430,12 @@ private struct StreamDictationRow: View, Equatable {
                                   help: String(localized: "Écouter l'audio"),
                                   tint: playingThis ? .primary : .secondary,
                                   action: onPlay)
+                    } else if let remoteHelp = item.remoteAudioHelp {
+                        Image(systemName: "speaker.slash")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(.tertiary)
+                            .frame(width: 24, height: 24)
+                            .help(remoteHelp)
                     }
                     if let onRetranscribe {
                         rowAction(symbol: "arrow.clockwise",

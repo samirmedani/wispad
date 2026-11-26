@@ -9,6 +9,7 @@ step() { print -P "%B== $1%b" }
 
 step "Tests locaux"
 test_log=$(mktemp -t wispad-tests)
+trap 'rm -f "$test_log"' EXIT
 if ! scripts/test.sh > "$test_log" 2>&1; then
   grep -E "Test run with|tests skipped|error:|✘" "$test_log" | sort -u
   # Plantage du compilateur : sa trace (« While … », « Stack dump ») nomme le fichier et la déclaration en cause.
@@ -24,8 +25,8 @@ if [[ "${1:-}" != "--fast" ]]; then
   step "Compilation Release (sans outils de développement)"
   xcodegen generate --quiet
   xcodebuild -project Wispad.xcodeproj -scheme Wispad -configuration Release -destination 'platform=macOS' \
-    -derivedDataPath build/DerivedData build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)" | sort -u
-  if nm build/DerivedData/Build/Products/Release/Wispad.app/Contents/MacOS/Wispad | grep -qE 'DesignPreview|DevTools'; then
+    -derivedDataPath build/DerivedData build 2>&1 | grep -E "error:|warning:|BUILD (SUCCEEDED|FAILED)" | sort -u
+  if nm build/DerivedData/Build/Products/Release/Wispad.app/Contents/MacOS/Wispad | grep -qE 'DesignPreview|DevTools|BubbleGallery|BubbleProbe|InsertionBench|InsertionSelfTest|AudioStartupProbe|OverlayDemo|ProbeHandoff'; then
     print -u2 "Outils de développement présents dans la version Release."
     exit 1
   fi

@@ -76,6 +76,25 @@ struct DictationDetailView: View {
                         Text(status.text).foregroundStyle(status.tint)
                     }
                     .font(.callout)
+                    if current.isFromRemoteDevice(localDeviceID: model.sync.config.deviceId) {
+                        let origin = current.sourceDeviceName ?? String(localized: "un autre appareil")
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: "speaker.slash")
+                                .font(.system(size: 14))
+                                .foregroundStyle(.secondary)
+                                .padding(.top, 1)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("Enregistré sur \(origin)")
+                                    .font(.subheadline.weight(.semibold))
+                                Text("Seul le texte est synchronisé. Pour réécouter ou retranscrire l'audio, ouvre Wispad sur \(origin).")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Theme.subtleFill, in: RoundedRectangle(cornerRadius: 10))
+                    }
                     if traces.isEmpty {
                         VStack(alignment: .leading, spacing: 6) {
                             Text(loadFailed ? String(localized: "Mesures indisponibles") : String(localized: "Pas de mesures pour cette dictée")).font(.headline)

@@ -1748,3 +1748,30 @@ tentatives. Aucun texte dicté, audio, contexte, chemin ni clé. Rien n'est envo
 diagnostic » (Aide et retours) met le même rapport dans le presse-papiers, dans un bloc repliable `<details>` titré
 par les versions de Wispad et de macOS ; au-delà de 40 000 octets (un ticket GitHub accepte 65 536 caractères), les
 tentatives les plus anciennes sont retirées, et une phrase le dit.
+
+## Synchronisation multiplateforme (BYOS)
+
+Réglages › Synchro : entièrement facultative, 100 % open source, sans compte ni serveur central Yatofix.
+
+- **Texte seul chiffré de bout en bout (AES-256-GCM)** : synchronise uniquement le texte et ses métadonnées (dictées,
+  notes de réunion, dictionnaire personnel, refus d'apprentissage et réglages d'écriture portables). Aucun fichier
+  audio WAV ni aucune clé API ne sont synchronisés.
+- **Provenance de l'appareil** : une dictée enregistrée sur un autre appareil (Mac, iPhone, PC Windows) affiche un
+  badge discret avec le nom de cet appareil et précise « Enregistré sur <Nom> : l'audio reste sur cet appareil ». Les
+  boutons Écouter et Retranscrire ne sont montrés que si le fichier audio existe localement.
+- **Trois supports BYOS** : dossier synchronisé (iCloud Drive, OneDrive, Dropbox, Google Drive, Syncthing avec
+  détection en un clic), bucket compatible S3 (Cloudflare R2 via ID de compte ou endpoint S3 personnalisé) ou WebDAV.
+- **Appairage rapide** : génération de QR code et lien `wispad-sync://v1?data=…` (également ouvert directement par
+  macOS) ; les identifiants de synchro restent dans `sync-config.json` (permissions `0600`), jamais dans `AppSettings`
+  ni dans les exports de configuration.
+
+## Notes de réunion (sans bot)
+
+Sous-onglet « Réunions » dans l'écran Dictées :
+
+- Capture la voix du microphone et, sur macOS 14.2+ si autorisé, l'audio système via CoreAudio Process Tap (avec repli
+  automatique sur le micro seul), sans jamais inviter de bot dans les appels.
+- L'audio temporaire est transcrit via la clé de voix déjà configurée puis supprimé ; l'utilisateur prend des notes
+  rapides en puces et demande une synthèse Markdown IA (« Enrichir avec l'IA ») via le modèle de correction configuré.
+- Les réunions (titre, notes rapides, transcription et synthèse IA) sont enregistrées dans `HistoryStore` et
+  synchronisées en texte seul par WispadSync.

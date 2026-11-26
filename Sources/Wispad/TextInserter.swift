@@ -426,7 +426,7 @@ enum TextInserter {
             // Le statut part tout de suite ; le tour suivant attend la restauration du presse-papiers.
             releasesLater = true
             Task { @MainActor in
-                await restoring.value
+                _ = await restoring.value
                 finishTurn(done)
             }
         }

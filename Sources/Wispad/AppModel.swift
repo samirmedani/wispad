@@ -28,6 +28,8 @@ final class AppModel {
     var dictionary: [DictionaryEntry] = [] {
         didSet { insightsInputsRevision &+= 1 }
     }
+    /// Notes de réunion (style Granola), synchronisables en texte seul.
+    var meetings: [MeetingRecord] = []
     /// Suggestions et usage de l'écran Dictionnaire, calculés hors du fil principal (`refreshDictionaryInsights`).
     private(set) var dictionaryInsights = DictionaryInsights.Report()
     /// Change avec l'historique, le dictionnaire ou les refus : l'écran Dictionnaire recalcule alors ses suggestions.
@@ -137,6 +139,7 @@ final class AppModel {
     let dependencies: AppDependencies
     private let persistsSettings: Bool
     let store: HistoryStore
+    let sync: SyncController
     let coordinator: DictationCoordinator
     let historyPlayer: HistoryAudioPlayer
     let overlay = OverlayController()
@@ -160,6 +163,7 @@ final class AppModel {
         persistsSettings = supportDirectory == nil
         supportURL = try supportDirectory ?? AppPaths.supportDirectory()
         store = try HistoryStore(path: supportURL.appendingPathComponent(AppIdentity.databaseName).path)
+        sync = SyncController(supportURL: supportURL, persists: persistsSettings)
         settings = initialSettings ?? AppSettings.load()
         coordinator = DictationCoordinator()
         coordinator.model = self
@@ -277,6 +281,7 @@ final class AppModel {
     func reload() {
         reloadHistory()
         reloadDictionary()
+        reloadMeetings()
         reloadUsage()
     }
 
@@ -301,6 +306,22 @@ final class AppModel {
 
     func reloadDictionary() {
         do { dictionary = try store.dictionary() } catch { Self.storageLog.error("lecture du dictionnaire impossible") }
+    }
+
+    func reloadMeetings() {
+        do { meetings = try store.meetings() } catch { Self.storageLog.error("lecture des réunions impossible") }
+    }
+
+    func saveMeeting(_ meeting: MeetingRecord) {
+        persist("enregistrement d'une réunion") { try store.upsertMeeting(meeting) }
+        reloadMeetings()
+        sync.scheduleSyncIfEnabled(model: self)
+    }
+
+    func deleteMeeting(_ meeting: MeetingRecord) {
+        persist("suppression d'une réunion") { try store.deleteMeeting(id: meeting.id) }
+        meetings.removeAll { $0.id == meeting.id }
+        sync.scheduleSyncIfEnabled(model: self)
     }
 
     /// Jugement en cours sur des mots corrigés (exposé pour les tests).
@@ -1338,9 +1359,12 @@ final class AppModel {
         return selection
     }
 
-    /// Correction par un fournisseur : impossible hors connexion.
+    /// Correction joignable : un modèle local fonctionne aussi hors connexion.
     var correctionReachable: Bool {
-        settings.cleanupEnabled && dependencies.isOnline()
+        guard settings.cleanupEnabled else { return false }
+        if dependencies.isOnline() { return true }
+        return settings.cleanupChoice.account == CleanupModel.localAccount
+            && !settings.localModelURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     /// Service qui corrige maintenant : le modèle choisi dans Fournisseurs s'il a sa clé, sinon l'ordre automatique
@@ -1417,11 +1441,13 @@ final class AppModel {
     func addTerm(_ term: String) {
         persist("ajout au dictionnaire") { try store.addTerm(term, origin: .user) }
         reloadDictionary()
+        sync.scheduleSyncIfEnabled(model: self)
     }
 
     func deleteTerm(_ entry: DictionaryEntry) {
         persist("retrait du dictionnaire") { try store.deleteTerm(id: entry.id) }
         dictionary.removeAll { $0.id == entry.id }
+        sync.scheduleSyncIfEnabled(model: self)
     }
 
     func deleteHistory(_ record: DictationRecord) {
@@ -1431,6 +1457,7 @@ final class AppModel {
         }
         persist("suppression d'une dictée") { try store.deleteDictation(id: record.id) }
         history.removeAll { $0.id == record.id }
+        sync.scheduleSyncIfEnabled(model: self)
     }
 
     func deleteAllHistory() {
@@ -1442,6 +1469,7 @@ final class AppModel {
         }
         persist("suppression de l'historique") { try store.deleteAllDictations() }
         history.removeAll()
+        sync.scheduleSyncIfEnabled(model: self)
     }
 
     /// Note ce qui a vraiment été dit, avec ce que Wispad a entendu et écrit et une copie de l'audio.

@@ -45,6 +45,7 @@ enum SettingsTab: String, CaseIterable, Identifiable, Codable {
     case dictation
     case formatting
     case bubble
+    case sync
     case privacy
     case permissions
     case help
@@ -57,6 +58,7 @@ enum SettingsTab: String, CaseIterable, Identifiable, Codable {
         case .dictation: return String(localized: "Dictée")
         case .formatting: return String(localized: "Mise en forme")
         case .bubble: return String(localized: "Bulle")
+        case .sync: return String(localized: "Synchro")
         case .privacy: return String(localized: "Confidentialité")
         case .permissions: return String(localized: "Autorisations")
         case .help: return String(localized: "Aide")
@@ -69,6 +71,7 @@ enum SettingsTab: String, CaseIterable, Identifiable, Codable {
         case .dictation: return "waveform"
         case .formatting: return "textformat"
         case .bubble: return "bubble.left"
+        case .sync: return "arrow.triangle.2.circlepath"
         case .privacy: return "hand.raised"
         case .permissions: return "checkmark.shield"
         case .help: return "questionmark.circle"

@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "Wispad",
-    platforms: [.macOS(.v14)],
+    platforms: [.macOS(.v14), .iOS(.v17)],
     products: [
         .library(name: "WispadCore", targets: ["WispadCore"])
     ],

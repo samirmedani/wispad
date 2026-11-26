@@ -69,7 +69,9 @@ extension DictationCoordinator {
         }
 
         let streamText = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !context.fieldRead { context.apply(await current.field.value) }
+        if !context.fieldRead, case .some(let snapshot) = await Self.value(of: current.field, within: Self.contextWait) {
+            context.apply(snapshot)
+        }
         // Le fichier peut être revenu pendant la finalisation du flux. Le choix est alors déjà connu :
         // inutile de corriger le flux, puis d'attendre cette correction pour finalement corriger le fichier.
         if let attempt = ledger.completion.attempt, !attempt.failed,
@@ -336,7 +338,9 @@ extension DictationCoordinator {
         model: AppModel,
         local: String? = nil
     ) async -> CorrectionRequest {
-        if !context.fieldRead { context.apply(await field.value) }
+        if !context.fieldRead, case .some(let snapshot) = await Self.value(of: field, within: Self.contextWait) {
+            context.apply(snapshot)
+        }
         var windowText: String?
         if let window, case .some(let text) = await Self.value(of: window, within: Self.windowWait) {
             windowText = text
@@ -388,6 +392,32 @@ extension DictationCoordinator {
         let audioMs = max(0, Int((audioSeconds * 1_000).rounded()))
         let fileLabel = fileMs.map(String.init) ?? "absent"
         Self.transcriptionLog.notice("source=\(source.rawValue, privacy: .public) raison=\(reason.rawValue, privacy: .public) audio=\(audioMs, privacy: .public) ms flux=\(streamMs, privacy: .public) ms fichier=\(fileLabel, privacy: .public) ms")
+    }
+
+    /// Attend la fin du flux en direct ; si le fichier parallèle a déjà réussi et que le flux ne répond toujours pas
+    /// après `graceSeconds`, abandonne le flux figé pour éviter 2,5 à 12 s d'attente inutile.
+    @MainActor
+    static func awaitStreamOrReadyFile<T: Sendable>(
+        streamTask: Task<T, Never>,
+        fileLedger: FileLedger,
+        graceSeconds: Double
+    ) async -> T? {
+        let winner = AsyncResult<T?>()
+        let streamWatcher = Task { @MainActor in
+            winner.resolve(.success(await streamTask.value))
+        }
+        let fileWatcher = Task { @MainActor in
+            let attempt = await fileLedger.task.value
+            guard !Task.isCancelled, !attempt.failed,
+                  !TranscriptEquivalence.normalize(attempt.text).isEmpty else { return }
+            try? await Task.sleep(nanoseconds: UInt64(max(0, graceSeconds) * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            winner.resolve(.success(nil))
+        }
+        let result = (try? await winner.value()) ?? nil
+        streamWatcher.cancel()
+        fileWatcher.cancel()
+        return result
     }
 
     /// Premier résultat : le fichier, l'échéance, ou une annulation. Le fichier lui-même continue.

@@ -170,9 +170,15 @@ final class AudioCapture: @unchecked Sendable {
     }
 
     /// Moteur muet : un moteur neuf, même micro voulu, même fichier. Sans écoute en cours, rien n'est ouvert.
+    /// Un redémarrage arrivé après un abandon ou pendant la dictée suivante n'interrompt jamais celle-ci.
     func restart() async throws {
+        let ticket = tickets.withLock { $0.issued }
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             control.async {
+                guard !self.isAbandoned(ticket), self.tickets.withLock({ $0.issued == ticket }) else {
+                    continuation.resume(throwing: CancellationError())
+                    return
+                }
                 do {
                     try self.restartEngine()
                     continuation.resume()

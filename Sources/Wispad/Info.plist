@@ -26,11 +26,24 @@
 			</array>
 		</dict>
 	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.yatofix.wispad.sync</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>wispad-sync</string>
+			</array>
+		</dict>
+	</array>
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Wispad utilise le microphone uniquement pendant une dictée, pour la transcrire avec le fournisseur choisi.</string>
+	<key>NSAudioCaptureUsageDescription</key>
+	<string>Wispad peut capturer l'audio système pendant une réunion sans bot pour le transcrire localement avec ta voix.</string>
 </dict>
 </plist>

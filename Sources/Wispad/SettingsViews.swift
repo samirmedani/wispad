@@ -69,6 +69,7 @@ struct SettingsView: View {
                 SpeakerAgreementSection()
                 ToneSection()
             case .bubble: OverlayPlacementSection()
+            case .sync: SyncSettingsView()
             case .privacy: privacy
             case .permissions: permissions
             case .help:

@@ -223,7 +223,7 @@ enum APIKeys {
 
         static func write(_ account: String, _ secret: String) async -> Bool {
             guard canWrite, let name = names(for: account).first else { return false }
-            let (status, _) = await run(["put", name], input: secret)
+            let (status, _) = await run(["put", name], input: secret, timeout: remoteTimeout)
             return status == 0
         }
 
@@ -266,7 +266,15 @@ enum APIKeys {
                         continuation.resume(returning: (-1, ""))
                         return
                     }
-                    let deadline = DispatchWorkItem { if process.isRunning { process.terminate() } }
+                    let deadline = DispatchWorkItem {
+                        if process.isRunning {
+                            process.terminate()
+                            let pid = process.processIdentifier
+                            DispatchQueue.global().asyncAfter(deadline: .now() + 0.5) {
+                                if process.isRunning, pid > 0 { kill(pid, SIGKILL) }
+                            }
+                        }
+                    }
                     DispatchQueue.global().asyncAfter(deadline: .now() + remoteTimeout, execute: deadline)
                     let data = output.fileHandleForReading.readDataToEndOfFile()
                     process.waitUntilExit()
@@ -301,7 +309,15 @@ enum APIKeys {
                         // La clé passe par l'entrée standard, jamais en argument de commande.
                         send(input, to: stdin.fileHandleForWriting)
                     }
-                    let deadline = DispatchWorkItem { if process.isRunning { process.terminate() } }
+                    let deadline = DispatchWorkItem {
+                        if process.isRunning {
+                            process.terminate()
+                            let pid = process.processIdentifier
+                            DispatchQueue.global().asyncAfter(deadline: .now() + 0.5) {
+                                if process.isRunning, pid > 0 { kill(pid, SIGKILL) }
+                            }
+                        }
+                    }
                     if let timeout {
                         DispatchQueue.global().asyncAfter(deadline: .now() + timeout, execute: deadline)
                     }

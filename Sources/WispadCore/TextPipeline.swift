@@ -273,13 +273,15 @@ public enum CorrectionPrompt {
         let layout = request.structureDictation
             ? (english ? englishStructureInstructions : structureInstructions)
             : (english ? englishPlainInstructions : plainInstructions)
-        let paragraphRule = paragraphs ? "" : "\n" + (english ? englishNoParagraphs : noParagraphs)
-        let base = (english ? englishSystem : system) + "\n" + layout + paragraphRule
+        // Préfixe stable pour le cache de préfixe des fournisseurs : la règle de paragraphes, qui varie à 40 mots,
+        // arrive après tout le socle fixe tout en gardant le ton en fin de consigne pour les dictées courtes.
+        let base = (english ? englishSystem : system) + "\n" + layout
         var dated = base + "\n" + request.dateFormat.instructions(english: english)
             + "\n" + request.numberFormat.instructions(english: english)
         dated += "\n" + (english ? englishAgreementInstructions : agreementInstructions)
         let agreement = request.speakerAgreement.instructions(english: english)
         if !agreement.isEmpty { dated += "\n" + agreement }
+        if !paragraphs { dated += "\n" + (english ? englishNoParagraphs : noParagraphs) }
         if !tone.isEmpty { dated += "\n" + tone }
         // Le ton et le découpage gardent leur priorité en fin de consigne.
         return paragraphs ? dated + "\n" + (english ? englishParagraphInstructions : paragraphInstructions) : dated
@@ -452,6 +454,12 @@ public enum CorrectionPrompt {
         }
         let label = language(for: request) == .english ? Labels.english : Labels.french
         var lines: [String] = []
+        // Vocabulaire technique (fixe) puis dictionnaire (stable entre dictées) en tête : favorise le cache de préfixe.
+        lines.append("\(label.vocabulary): \(TechVocabulary.correction.joined(separator: ", "))")
+        let terms = KeytermList.sanitize(request.dictionary, limit: 80, maxCharacters: 50)
+        if !terms.isEmpty {
+            lines.append("\(label.dictionary): \(terms.joined(separator: ", "))")
+        }
         if let appName = request.appName, !appName.isEmpty {
             lines.append("\(label.application): \(appName)")
         }
@@ -486,11 +494,6 @@ public enum CorrectionPrompt {
                 lines.append("\(label.previous): \(earlier.joined(separator: " | "))")
             }
         }
-        let terms = KeytermList.sanitize(request.dictionary, limit: 80, maxCharacters: 50)
-        if !terms.isEmpty {
-            lines.append("\(label.dictionary): \(terms.joined(separator: ", "))")
-        }
-        lines.append("\(label.vocabulary): \(TechVocabulary.correction.joined(separator: ", "))")
         if let other = request.alternativeTranscript?.trimmingCharacters(in: .whitespacesAndNewlines), !other.isEmpty {
             lines.append("\(label.alternative): \(other)")
         }
