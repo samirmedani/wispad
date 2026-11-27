@@ -1,16 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="640" viewBox="0 0 960 640" role="img" aria-labelledby="titre desc" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" style="font-variant-numeric: tabular-nums">
-<title id="titre">Téléchargements de Wispad</title><desc id="desc">202 téléchargements de Wispad, 92 versions, 6 étoiles.</desc>
+<title id="titre">Téléchargements de Wispad</title><desc id="desc">207 téléchargements de Wispad, 92 versions, 6 étoiles.</desc>
 <defs><linearGradient id="aire" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff3b36" stop-opacity="0.30"/><stop offset="1" stop-color="#ff3b36" stop-opacity="0"/></linearGradient></defs>
 <rect x="0.5" y="0.5" width="959" height="639" rx="16" fill="#ffffff" stroke="#d1d9e0"/>
 <text x="32.0" y="58.0" font-size="15" font-weight="600" fill="#59636e" text-anchor="start">Téléchargements</text>
-<text x="30.0" y="114.0" font-size="54" font-weight="700" fill="#1f2328" text-anchor="start">202</text>
+<text x="30.0" y="114.0" font-size="54" font-weight="700" fill="#1f2328" text-anchor="start">207</text>
 <text x="32.0" y="142.0" font-size="13" font-weight="400" fill="#59636e" text-anchor="start">Wispad.dmg, toutes versions confondues</text>
 <rect x="458" y="36" width="150" height="70" rx="12" fill="#f6f8fa" stroke="#d1d9e0"/>
 <text x="474.0" y="62.0" font-size="12" font-weight="500" fill="#59636e" text-anchor="start">Version v0.9.0</text>
-<text x="474.0" y="91.0" font-size="23" font-weight="700" fill="#1f2328" text-anchor="start">0</text>
+<text x="474.0" y="91.0" font-size="23" font-weight="700" fill="#1f2328" text-anchor="start">4</text>
 <rect x="618" y="36" width="150" height="70" rx="12" fill="#f6f8fa" stroke="#d1d9e0"/>
 <text x="634.0" y="62.0" font-size="12" font-weight="500" fill="#59636e" text-anchor="start">7 derniers jours</text>
-<text x="634.0" y="91.0" font-size="23" font-weight="700" fill="#1f2328" text-anchor="start">+18</text>
+<text x="634.0" y="91.0" font-size="23" font-weight="700" fill="#1f2328" text-anchor="start">+19</text>
 <rect x="778" y="36" width="150" height="70" rx="12" fill="#f6f8fa" stroke="#d1d9e0"/>
 <text x="794.0" y="62.0" font-size="12" font-weight="500" fill="#59636e" text-anchor="start">Étoiles GitHub</text>
 <text x="794.0" y="91.0" font-size="23" font-weight="700" fill="#1f2328" text-anchor="start">★ 6</text>
@@ -23,10 +23,10 @@
 <text x="60.0" y="272.0" font-size="12" font-weight="400" fill="#59636e" text-anchor="end">200</text>
 <line x1="72" y1="216.0" x2="928" y2="216.0" stroke="#d1d9e0" stroke-dasharray="3 5"/>
 <text x="60.0" y="220.0" font-size="12" font-weight="400" fill="#59636e" text-anchor="end">300</text>
-<path d="M72.0,355.4 L75.6,354.8 L77.1,354.8 L83.7,354.3 L84.3,354.3 L84.9,353.8 L88.4,334.6 L97.4,334.0 L105.4,334.0 L127.9,334.0 L131.8,332.5 L132.5,330.9 L133.6,329.4 L137.1,327.8 L138.4,326.2 L140.0,326.2 L143.1,324.7 L152.5,324.7 L153.2,323.1 L153.9,322.1 L155.1,321.0 L156.0,319.5 L156.6,319.0 L158.3,317.4 L158.9,317.4 L159.3,316.4 L159.8,316.4 L164.1,315.3 L166.8,315.3 L168.8,314.3 L171.1,314.3 L173.2,312.7 L192.9,312.7 L195.6,311.7 L196.7,311.7 L198.1,310.6 L198.4,310.6 L199.9,309.1 L201.2,309.1 L208.0,308.0 L221.7,308.0 L222.2,307.0 L229.1,306.0 L246.2,306.0 L248.3,305.4 L249.8,305.4 L251.8,303.9 L254.9,303.4 L255.7,303.4 L263.5,301.8 L284.3,301.8 L286.9,300.8 L299.6,300.8 L306.1,299.7 L307.9,299.7 L310.1,299.2 L310.8,298.2 L311.6,297.1 L312.2,296.1 L312.7,295.6 L313.3,295.6 L313.6,295.0 L321.7,294.5 L351.2,294.5 L364.4,294.5 L364.9,293.5 L366.0,292.4 L367.0,291.4 L367.5,290.4 L367.8,290.4 L368.6,288.8 L376.4,288.3 L393.6,288.3 L396.1,287.2 L431.2,287.2 L463.3,286.7 L473.4,286.7 L507.1,286.7 L538.8,286.2 L543.9,285.7 L547.1,284.6 L548.5,284.1 L548.9,282.6 L549.4,281.5 L549.7,280.5 L550.4,278.9 L556.0,277.9 L561.9,276.8 L594.6,276.8 L629.7,276.8 L650.6,276.8 L651.4,276.3 L685.3,276.3 L724.9,276.3 L733.3,276.3 L734.4,274.2 L751.1,273.2 L785.4,273.2 L790.6,273.2 L792.7,272.2 L825.5,271.6 L857.6,271.6 L879.0,271.6 L881.6,270.6 L881.7,270.6 L892.6,270.1 L903.4,269.6 L928.0,267.0 L928.0,372 L72.0,372 Z" fill="url(#aire)"/>
-<path d="M72.0,355.4 L75.6,354.8 L77.1,354.8 L83.7,354.3 L84.3,354.3 L84.9,353.8 L88.4,334.6 L97.4,334.0 L105.4,334.0 L127.9,334.0 L131.8,332.5 L132.5,330.9 L133.6,329.4 L137.1,327.8 L138.4,326.2 L140.0,326.2 L143.1,324.7 L152.5,324.7 L153.2,323.1 L153.9,322.1 L155.1,321.0 L156.0,319.5 L156.6,319.0 L158.3,317.4 L158.9,317.4 L159.3,316.4 L159.8,316.4 L164.1,315.3 L166.8,315.3 L168.8,314.3 L171.1,314.3 L173.2,312.7 L192.9,312.7 L195.6,311.7 L196.7,311.7 L198.1,310.6 L198.4,310.6 L199.9,309.1 L201.2,309.1 L208.0,308.0 L221.7,308.0 L222.2,307.0 L229.1,306.0 L246.2,306.0 L248.3,305.4 L249.8,305.4 L251.8,303.9 L254.9,303.4 L255.7,303.4 L263.5,301.8 L284.3,301.8 L286.9,300.8 L299.6,300.8 L306.1,299.7 L307.9,299.7 L310.1,299.2 L310.8,298.2 L311.6,297.1 L312.2,296.1 L312.7,295.6 L313.3,295.6 L313.6,295.0 L321.7,294.5 L351.2,294.5 L364.4,294.5 L364.9,293.5 L366.0,292.4 L367.0,291.4 L367.5,290.4 L367.8,290.4 L368.6,288.8 L376.4,288.3 L393.6,288.3 L396.1,287.2 L431.2,287.2 L463.3,286.7 L473.4,286.7 L507.1,286.7 L538.8,286.2 L543.9,285.7 L547.1,284.6 L548.5,284.1 L548.9,282.6 L549.4,281.5 L549.7,280.5 L550.4,278.9 L556.0,277.9 L561.9,276.8 L594.6,276.8 L629.7,276.8 L650.6,276.8 L651.4,276.3 L685.3,276.3 L724.9,276.3 L733.3,276.3 L734.4,274.2 L751.1,273.2 L785.4,273.2 L790.6,273.2 L792.7,272.2 L825.5,271.6 L857.6,271.6 L879.0,271.6 L881.6,270.6 L881.7,270.6 L892.6,270.1 L903.4,269.6 L928.0,267.0" fill="none" stroke="#ff3b36" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-<circle cx="928.0" cy="267.0" r="5" fill="#ff3b36" stroke="#ffffff" stroke-width="2.5"/>
-<text x="918.0" y="255.0" font-size="13" font-weight="700" fill="#1f2328" text-anchor="end" stroke="#ffffff" stroke-width="8" stroke-linejoin="round" paint-order="stroke">202</text>
+<path d="M72.0,355.4 L75.6,354.8 L77.1,354.8 L83.6,354.3 L84.2,354.3 L84.8,353.8 L88.3,334.6 L97.3,334.0 L105.2,334.0 L127.5,334.0 L131.4,332.5 L132.1,330.9 L133.2,329.4 L136.6,327.8 L138.0,326.2 L139.5,326.2 L142.7,324.7 L152.0,324.7 L152.6,323.1 L153.4,322.1 L154.6,321.0 L155.5,319.5 L156.0,319.0 L157.7,317.4 L158.3,317.4 L158.7,316.4 L159.2,316.4 L163.5,315.3 L166.2,315.3 L168.1,314.3 L170.4,314.3 L172.5,312.7 L192.0,312.7 L194.7,311.7 L195.8,311.7 L197.2,310.6 L197.5,310.6 L199.0,309.1 L200.3,309.1 L207.1,308.0 L220.7,308.0 L221.2,307.0 L228.1,306.0 L245.0,306.0 L247.1,305.4 L248.6,305.4 L250.6,303.9 L253.7,303.4 L254.4,303.4 L262.1,301.8 L282.8,301.8 L285.5,300.8 L298.1,300.8 L304.5,299.7 L306.3,299.7 L308.4,299.2 L309.1,298.2 L310.0,297.1 L310.5,296.1 L311.1,295.6 L311.6,295.6 L311.9,295.0 L320.0,294.5 L349.3,294.5 L362.4,294.5 L362.9,293.5 L364.0,292.4 L365.0,291.4 L365.4,290.4 L365.8,290.4 L366.6,288.8 L374.4,288.3 L391.4,288.3 L393.9,287.2 L428.7,287.2 L460.6,286.7 L470.6,286.7 L504.1,286.7 L535.6,286.2 L540.6,285.7 L543.8,284.6 L545.2,284.1 L545.6,282.6 L546.2,281.5 L546.4,280.5 L547.1,278.9 L552.7,277.9 L558.5,276.8 L591.0,276.8 L625.9,276.8 L646.6,276.8 L647.4,276.3 L681.0,276.3 L720.4,276.3 L728.8,276.3 L729.9,274.2 L746.5,273.2 L780.5,273.2 L785.6,273.2 L787.7,272.2 L820.3,271.6 L852.2,271.6 L873.5,271.6 L876.0,270.6 L876.1,270.6 L886.9,270.1 L897.7,269.6 L922.1,267.0 L928.0,264.4 L928.0,372 L72.0,372 Z" fill="url(#aire)"/>
+<path d="M72.0,355.4 L75.6,354.8 L77.1,354.8 L83.6,354.3 L84.2,354.3 L84.8,353.8 L88.3,334.6 L97.3,334.0 L105.2,334.0 L127.5,334.0 L131.4,332.5 L132.1,330.9 L133.2,329.4 L136.6,327.8 L138.0,326.2 L139.5,326.2 L142.7,324.7 L152.0,324.7 L152.6,323.1 L153.4,322.1 L154.6,321.0 L155.5,319.5 L156.0,319.0 L157.7,317.4 L158.3,317.4 L158.7,316.4 L159.2,316.4 L163.5,315.3 L166.2,315.3 L168.1,314.3 L170.4,314.3 L172.5,312.7 L192.0,312.7 L194.7,311.7 L195.8,311.7 L197.2,310.6 L197.5,310.6 L199.0,309.1 L200.3,309.1 L207.1,308.0 L220.7,308.0 L221.2,307.0 L228.1,306.0 L245.0,306.0 L247.1,305.4 L248.6,305.4 L250.6,303.9 L253.7,303.4 L254.4,303.4 L262.1,301.8 L282.8,301.8 L285.5,300.8 L298.1,300.8 L304.5,299.7 L306.3,299.7 L308.4,299.2 L309.1,298.2 L310.0,297.1 L310.5,296.1 L311.1,295.6 L311.6,295.6 L311.9,295.0 L320.0,294.5 L349.3,294.5 L362.4,294.5 L362.9,293.5 L364.0,292.4 L365.0,291.4 L365.4,290.4 L365.8,290.4 L366.6,288.8 L374.4,288.3 L391.4,288.3 L393.9,287.2 L428.7,287.2 L460.6,286.7 L470.6,286.7 L504.1,286.7 L535.6,286.2 L540.6,285.7 L543.8,284.6 L545.2,284.1 L545.6,282.6 L546.2,281.5 L546.4,280.5 L547.1,278.9 L552.7,277.9 L558.5,276.8 L591.0,276.8 L625.9,276.8 L646.6,276.8 L647.4,276.3 L681.0,276.3 L720.4,276.3 L728.8,276.3 L729.9,274.2 L746.5,273.2 L780.5,273.2 L785.6,273.2 L787.7,272.2 L820.3,271.6 L852.2,271.6 L873.5,271.6 L876.0,270.6 L876.1,270.6 L886.9,270.1 L897.7,269.6 L922.1,267.0 L928.0,264.4" fill="none" stroke="#ff3b36" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="928.0" cy="264.4" r="5" fill="#ff3b36" stroke="#ffffff" stroke-width="2.5"/>
+<text x="918.0" y="252.4" font-size="13" font-weight="700" fill="#1f2328" text-anchor="end" stroke="#ffffff" stroke-width="8" stroke-linejoin="round" paint-order="stroke">207</text>
 <text x="72.0" y="394.0" font-size="12" font-weight="400" fill="#59636e" text-anchor="start">28 oct.</text>
 <text x="286.0" y="394.0" font-size="12" font-weight="400" fill="#59636e" text-anchor="middle">5 nov.</text>
 <text x="500.0" y="394.0" font-size="12" font-weight="400" fill="#59636e" text-anchor="middle">12 nov.</text>
@@ -35,65 +35,65 @@
 <text x="32.0" y="432.0" font-size="15" font-weight="600" fill="#1f2328" text-anchor="start">Par version</text>
 <text x="928.0" y="432.0" font-size="12" font-weight="400" fill="#59636e" text-anchor="end">20 dernières versions sur 92</text>
 <line x1="72" y1="572" x2="928" y2="572" stroke="#d1d9e0"/>
-<rect x="80.6" y="557.4" width="25.7" height="14.6" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
-<text x="93.4" y="550.4" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">1</text>
+<rect x="80.6" y="559.2" width="25.7" height="12.8" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
+<text x="93.4" y="552.2" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">1</text>
 <text x="93.4" y="592.0" font-size="11.5" font-weight="400" fill="#59636e" text-anchor="middle">0.8.23</text>
-<rect x="123.4" y="542.9" width="25.7" height="29.1" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
-<text x="136.2" y="535.9" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">2</text>
+<rect x="123.4" y="546.5" width="25.7" height="25.5" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
+<text x="136.2" y="539.5" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">2</text>
 <text x="136.2" y="592.0" font-size="11.5" font-weight="400" fill="#59636e" text-anchor="middle">0.8.24</text>
-<rect x="166.2" y="542.9" width="25.7" height="29.1" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
-<text x="179.0" y="535.9" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">2</text>
+<rect x="166.2" y="546.5" width="25.7" height="25.5" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
+<text x="179.0" y="539.5" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">2</text>
 <text x="179.0" y="592.0" font-size="11.5" font-weight="400" fill="#59636e" text-anchor="middle">0.8.25</text>
-<rect x="209.0" y="542.9" width="25.7" height="29.1" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
-<text x="221.8" y="535.9" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">2</text>
+<rect x="209.0" y="546.5" width="25.7" height="25.5" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
+<text x="221.8" y="539.5" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">2</text>
 <text x="221.8" y="592.0" font-size="11.5" font-weight="400" fill="#59636e" text-anchor="middle">0.8.26</text>
-<rect x="251.8" y="542.9" width="25.7" height="29.1" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
-<text x="264.6" y="535.9" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">2</text>
+<rect x="251.8" y="546.5" width="25.7" height="25.5" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
+<text x="264.6" y="539.5" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">2</text>
 <text x="264.6" y="592.0" font-size="11.5" font-weight="400" fill="#59636e" text-anchor="middle">0.8.27</text>
-<rect x="294.6" y="557.4" width="25.7" height="14.6" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
-<text x="307.4" y="550.4" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">1</text>
+<rect x="294.6" y="559.2" width="25.7" height="12.8" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
+<text x="307.4" y="552.2" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">1</text>
 <text x="307.4" y="592.0" font-size="11.5" font-weight="400" fill="#59636e" text-anchor="middle">0.8.28</text>
-<rect x="337.4" y="542.9" width="25.7" height="29.1" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
-<text x="350.2" y="535.9" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">2</text>
+<rect x="337.4" y="546.5" width="25.7" height="25.5" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
+<text x="350.2" y="539.5" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">2</text>
 <text x="350.2" y="592.0" font-size="11.5" font-weight="400" fill="#59636e" text-anchor="middle">0.8.29</text>
-<rect x="380.2" y="513.7" width="25.7" height="58.3" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
-<text x="393.0" y="506.7" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">4</text>
+<rect x="380.2" y="521.0" width="25.7" height="51.0" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
+<text x="393.0" y="514.0" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">4</text>
 <text x="393.0" y="592.0" font-size="11.5" font-weight="400" fill="#59636e" text-anchor="middle">0.8.30</text>
-<rect x="423.0" y="528.3" width="25.7" height="43.7" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
-<text x="435.8" y="521.3" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">3</text>
+<rect x="423.0" y="533.8" width="25.7" height="38.2" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
+<text x="435.8" y="526.8" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">3</text>
 <text x="435.8" y="592.0" font-size="11.5" font-weight="400" fill="#59636e" text-anchor="middle">0.8.31</text>
-<rect x="465.8" y="528.3" width="25.7" height="43.7" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
-<text x="478.6" y="521.3" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">3</text>
+<rect x="465.8" y="533.8" width="25.7" height="38.2" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
+<text x="478.6" y="526.8" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">3</text>
 <text x="478.6" y="592.0" font-size="11.5" font-weight="400" fill="#59636e" text-anchor="middle">0.8.32</text>
-<rect x="508.6" y="542.9" width="25.7" height="29.1" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
-<text x="521.4" y="535.9" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">2</text>
+<rect x="508.6" y="546.5" width="25.7" height="25.5" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
+<text x="521.4" y="539.5" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">2</text>
 <text x="521.4" y="592.0" font-size="11.5" font-weight="400" fill="#59636e" text-anchor="middle">0.8.33</text>
-<rect x="551.4" y="542.9" width="25.7" height="29.1" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
-<text x="564.2" y="535.9" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">2</text>
+<rect x="551.4" y="546.5" width="25.7" height="25.5" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
+<text x="564.2" y="539.5" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">2</text>
 <text x="564.2" y="592.0" font-size="11.5" font-weight="400" fill="#59636e" text-anchor="middle">0.8.34</text>
-<rect x="594.2" y="528.3" width="25.7" height="43.7" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
-<text x="607.0" y="521.3" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">3</text>
+<rect x="594.2" y="533.8" width="25.7" height="38.2" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
+<text x="607.0" y="526.8" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">3</text>
 <text x="607.0" y="592.0" font-size="11.5" font-weight="400" fill="#59636e" text-anchor="middle">0.8.35</text>
-<rect x="637.0" y="513.7" width="25.7" height="58.3" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
-<text x="649.8" y="506.7" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">4</text>
+<rect x="637.0" y="521.0" width="25.7" height="51.0" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
+<text x="649.8" y="514.0" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">4</text>
 <text x="649.8" y="592.0" font-size="11.5" font-weight="400" fill="#59636e" text-anchor="middle">0.8.36</text>
-<rect x="679.8" y="557.4" width="25.7" height="14.6" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
-<text x="692.6" y="550.4" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">1</text>
+<rect x="679.8" y="559.2" width="25.7" height="12.8" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
+<text x="692.6" y="552.2" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">1</text>
 <text x="692.6" y="592.0" font-size="11.5" font-weight="400" fill="#59636e" text-anchor="middle">0.8.37</text>
-<rect x="722.6" y="484.6" width="25.7" height="87.4" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
-<text x="735.4" y="477.6" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">6</text>
+<rect x="722.6" y="495.5" width="25.7" height="76.5" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
+<text x="735.4" y="488.5" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">6</text>
 <text x="735.4" y="592.0" font-size="11.5" font-weight="400" fill="#59636e" text-anchor="middle">0.8.38</text>
-<rect x="765.4" y="528.3" width="25.7" height="43.7" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
-<text x="778.2" y="521.3" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">3</text>
+<rect x="765.4" y="533.8" width="25.7" height="38.2" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
+<text x="778.2" y="526.8" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">3</text>
 <text x="778.2" y="592.0" font-size="11.5" font-weight="400" fill="#59636e" text-anchor="middle">0.8.39</text>
-<rect x="808.2" y="542.9" width="25.7" height="29.1" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
-<text x="821.0" y="535.9" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">2</text>
+<rect x="808.2" y="546.5" width="25.7" height="25.5" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
+<text x="821.0" y="539.5" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">2</text>
 <text x="821.0" y="592.0" font-size="11.5" font-weight="400" fill="#59636e" text-anchor="middle">0.8.40</text>
 <rect x="851.0" y="470.0" width="25.7" height="102.0" rx="4.0" fill="#ff3b36" fill-opacity="0.5"/>
-<text x="863.8" y="463.0" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">7</text>
+<text x="863.8" y="463.0" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">8</text>
 <text x="863.8" y="592.0" font-size="11.5" font-weight="400" fill="#59636e" text-anchor="middle">0.8.41</text>
-<rect x="893.8" y="570.0" width="25.7" height="2" fill="#59636e" fill-opacity="0.5"/>
-<text x="906.6" y="563.0" font-size="12" font-weight="500" fill="#59636e" text-anchor="middle">0</text>
+<rect x="893.8" y="521.0" width="25.7" height="51.0" rx="4.0" fill="#ff3b36" fill-opacity="1"/>
+<text x="906.6" y="514.0" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">4</text>
 <text x="906.6" y="592.0" font-size="11.5" font-weight="600" fill="#1f2328" text-anchor="middle">0.9.0</text>
-<text x="32.0" y="620.0" font-size="12" font-weight="400" fill="#59636e" text-anchor="start">Relevé toutes les heures depuis l'API GitHub · données du 27 nov. 2026 à 18 h 07 (heure de Paris)</text>
+<text x="32.0" y="620.0" font-size="12" font-weight="400" fill="#59636e" text-anchor="start">Relevé toutes les heures depuis l'API GitHub · données du 27 nov. 2026 à 23 h 08 (heure de Paris)</text>
 </svg>
