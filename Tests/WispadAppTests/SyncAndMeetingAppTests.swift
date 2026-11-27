@@ -81,6 +81,7 @@ struct SyncAndMeetingAppTests {
         #expect(modelB.sync.applyPairingURI(pairingURI))
         modelB.sync.config.deviceName = "MacBook Air"
         modelB.sync.config.folderPath = vaultDir.path
+        modelB.sync.config.enabled = true
 
         try modelA.store.insert(DictationRecord(
             id: "d-sync-1",
