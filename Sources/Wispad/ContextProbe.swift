@@ -221,7 +221,7 @@ enum ContextProbe {
         guard AXUIElementCopyAttributeValue(AXUIElementCreateSystemWide(), kAXFocusedUIElementAttribute as CFString,
                                             &focused) == .success,
               let focused, CFGetTypeID(focused) == AXUIElementGetTypeID() else { return nil }
-        return focused as! AXUIElement
+        return unsafeDowncast(focused, to: AXUIElement.self)
     }
 
     /// Navigateurs Chromium : ils ignorent AXManualAccessibility (réservé à Electron) et n'exposent le champ d'une

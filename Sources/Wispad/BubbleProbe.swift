@@ -1,10 +1,9 @@
+// Outil de développement : absent de la version Release.
+#if DEBUG
 import AppKit
 import ScreenCaptureKit
 import SwiftUI
 import WispadCore
-
-// Outil de développement : absent de la version Release.
-#if DEBUG
 
 /// Capture la vraie bulle (verre d'Apple compris) sans rien montrer à l'écran : la bulle et un fond d'essai sont
 /// posés derrière la fenêtre au premier plan, puis ces deux fenêtres seules sont composées par ScreenCaptureKit.

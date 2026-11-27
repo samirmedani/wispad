@@ -655,6 +655,7 @@ final class DictationCoordinator {
         for job in jobs where !job.pasteSent {
             job.cancelled = true
             job.capture.cancelled = true
+            job.capture.localHearing?.stop()
             job.capture.correctionClaimed = true
             job.task?.cancel()
             job.cancelSideWork()
@@ -768,19 +769,44 @@ final class DictationCoordinator {
         if let fileLedger {
             job.cancelSideWork = { fileLedger.task.cancel() }
         }
-        let started = await current.startTask?.value ?? false
-        var raw = ""
-        var liveBroke = current.session != nil && !started
-        var streamFinish: StreamFinish?
         let streamClock = Date()
-        if let session = current.session, started, !job.cancelled {
-            do {
-                let finish = try await session.finish()
-                streamFinish = finish
-                raw = finish.text
-            } catch {
-                current.streamFailure = APIFailureCause.classify(error)
-                liveBroke = true
+        var raw = ""
+        var liveBroke = false
+        var streamFinish: StreamFinish?
+        var streamAbandonedForReadyFile = false
+        if let session = current.session, !job.cancelled {
+            let startTask = current.startTask
+            // Si la vérification fichier tourne en parallèle et que le flux traîne (handshake ou `transcript.done`),
+            // ne pas retenir la dictée 2,5 à 12 s alors que le fichier WAV peut déjà répondre.
+            let streamTask = Task { @MainActor () -> (started: Bool, finish: StreamFinish?, failure: APIFailureCause?) in
+                let started = await startTask?.value ?? false
+                guard started else { return (false, nil, nil) }
+                do {
+                    return (true, try await session.finish(), nil)
+                } catch {
+                    return (true, nil, APIFailureCause.classify(error))
+                }
+            }
+            if let fileLedger {
+                let outcome = await Self.awaitStreamOrReadyFile(streamTask: streamTask, fileLedger: fileLedger,
+                                                                graceSeconds: 0.9)
+                if let outcome {
+                    liveBroke = !outcome.started || outcome.failure != nil
+                    streamFinish = outcome.finish
+                    raw = outcome.finish?.text ?? ""
+                    if let failure = outcome.failure { current.streamFailure = failure }
+                } else {
+                    streamTask.cancel()
+                    current.streamFailure = .timeout
+                    liveBroke = true
+                    streamAbandonedForReadyFile = true
+                }
+            } else {
+                let outcome = await streamTask.value
+                liveBroke = !outcome.started || outcome.failure != nil
+                streamFinish = outcome.finish
+                raw = outcome.finish?.text ?? ""
+                if let failure = outcome.failure { current.streamFailure = failure }
             }
         }
         let streamMs = Self.milliseconds(since: streamClock)
@@ -793,7 +819,8 @@ final class DictationCoordinator {
             return
         }
         let streamed = !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        if current.session != nil, liveBroke || streamed {
+        // Ne pas pénaliser la santé du fournisseur si le même fournisseur vient de réussir par fichier WAV.
+        if current.session != nil, (liveBroke && !streamAbandonedForReadyFile) || streamed {
             model.recordHealth(ServiceHealth.voice(speech.provider), succeeded: !liveBroke)
             if !liveBroke { announcedRelays.remove(ServiceHealth.voice(speech.provider)) }
         }
@@ -836,7 +863,9 @@ final class DictationCoordinator {
             return
         }
         let cleaned: CleanupOutcome
-        if !context.fieldRead { context.apply(await current.field.value) }
+        if !context.fieldRead, case .some(let snapshot) = await Self.value(of: current.field, within: Self.contextWait) {
+            context.apply(snapshot)
+        }
         let commandSelection = model.commandSelection(for: transcript, context: context)
         if let commandSelection {
             // Consigne sur la sélection : aucune correction préparée ne sert ; elles restent comptées.
@@ -953,6 +982,7 @@ final class DictationCoordinator {
             delete(url)
             return
         }
+        let identity = model.sync.deviceIdentity
         let record = DictationRecord(
             finalText: finalText,
             rawText: transcript,
@@ -966,10 +996,14 @@ final class DictationCoordinator {
                                                     windowTitle: context.windowTitle).rawValue,
             insertionStatus: InsertionStatus.pending.rawValue,
             audioPath: url?.path,
-            alternativeText: heardAlternative
+            alternativeText: heardAlternative,
+            sourceDeviceID: identity.deviceId,
+            sourceDeviceName: identity.deviceName,
+            sourceDevicePlatform: identity.platform.rawValue
         )
         do {
             try model.store.insert(record)
+            model.sync.scheduleSyncIfEnabled(model: model)
         } catch {
             current.run.trace.outcome = .historyFailed
             model.statusBanner = String(localized: "L'enregistrement local a échoué.")
@@ -1020,6 +1054,7 @@ final class DictationCoordinator {
         }
         applyRetention(recordID: record.id, url: url, status: status, model: model)
         model.reloadHistory()
+        model.sync.scheduleSyncIfEnabled(model: model)
         LatencyLog.append(
             LatencyLog.line(current.marks, mode: current.mode, status: status.rawValue),
             to: model.supportURL.appendingPathComponent(LatencyLog.fileName)
@@ -1250,6 +1285,7 @@ final class DictationCoordinator {
                 )
             }
             model.reloadHistory()
+            model.sync.scheduleSyncIfEnabled(model: model)
         }
         switch status {
         case .inserted, .pasteSent:
@@ -1433,6 +1469,7 @@ final class DictationCoordinator {
             run.trace.outcome = .pending
             model.statusBanner = String(localized: "Transcription mise à jour. Utilise Copier pour l'insérer où tu veux.")
             model.reloadHistory()
+            model.sync.scheduleSyncIfEnabled(model: model)
         } catch {
             if run.trace.timings.transcriptionMs == nil {
                 run.trace.timings.transcriptionMs = max(0, KeyboardTap.now() - transcriptionBegan)

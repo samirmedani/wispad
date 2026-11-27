@@ -223,7 +223,7 @@ enum APIKeys {
 
         static func write(_ account: String, _ secret: String) async -> Bool {
             guard canWrite, let name = names(for: account).first else { return false }
-            let (status, _) = await run(["put", name], input: secret)
+            let (status, _) = await run(["put", name], input: secret, timeout: remoteTimeout)
             return status == 0
         }
 
@@ -266,12 +266,23 @@ enum APIKeys {
                         continuation.resume(returning: (-1, ""))
                         return
                     }
-                    let deadline = DispatchWorkItem { if process.isRunning { process.terminate() } }
+                    let timedOut = OSAllocatedUnfairLock(initialState: false)
+                    let deadline = DispatchWorkItem {
+                        timedOut.withLock { $0 = true }
+                        if process.isRunning {
+                            process.terminate()
+                            let pid = process.processIdentifier
+                            DispatchQueue.global().asyncAfter(deadline: .now() + 0.5) {
+                                if process.isRunning, pid > 0 { kill(pid, SIGKILL) }
+                            }
+                        }
+                        try? output.fileHandleForReading.close()
+                    }
                     DispatchQueue.global().asyncAfter(deadline: .now() + remoteTimeout, execute: deadline)
-                    let data = output.fileHandleForReading.readDataToEndOfFile()
+                    let data = (try? output.fileHandleForReading.readToEnd()) ?? Data()
                     process.waitUntilExit()
                     deadline.cancel()
-                    let status = process.terminationReason == .uncaughtSignal ? -2 : process.terminationStatus
+                    let status = (timedOut.withLock { $0 } || process.terminationReason == .uncaughtSignal) ? -2 : process.terminationStatus
                     continuation.resume(returning: (status, String(decoding: data, as: UTF8.self)))
                 }
             }
@@ -301,14 +312,25 @@ enum APIKeys {
                         // La clé passe par l'entrée standard, jamais en argument de commande.
                         send(input, to: stdin.fileHandleForWriting)
                     }
-                    let deadline = DispatchWorkItem { if process.isRunning { process.terminate() } }
+                    let timedOut = OSAllocatedUnfairLock(initialState: false)
+                    let deadline = DispatchWorkItem {
+                        timedOut.withLock { $0 = true }
+                        if process.isRunning {
+                            process.terminate()
+                            let pid = process.processIdentifier
+                            DispatchQueue.global().asyncAfter(deadline: .now() + 0.5) {
+                                if process.isRunning, pid > 0 { kill(pid, SIGKILL) }
+                            }
+                        }
+                        try? output.fileHandleForReading.close()
+                    }
                     if let timeout {
                         DispatchQueue.global().asyncAfter(deadline: .now() + timeout, execute: deadline)
                     }
-                    let data = output.fileHandleForReading.readDataToEndOfFile()
+                    let data = (try? output.fileHandleForReading.readToEnd()) ?? Data()
                     process.waitUntilExit()
                     deadline.cancel()
-                    let status = process.terminationReason == .uncaughtSignal ? -2 : process.terminationStatus
+                    let status = (timedOut.withLock { $0 } || process.terminationReason == .uncaughtSignal) ? -2 : process.terminationStatus
                     continuation.resume(returning: (status, String(decoding: data, as: UTF8.self)))
                 }
             }

@@ -511,7 +511,7 @@ private struct SidebarPipelineSection: View {
         }
         .task(id: model.settings.microphoneUID) {
             let saved = model.settings.microphoneUID
-            let resolved = await Task.detached(priority: .utility) {
+            let resolved = await BlockingQueue.run(label: "wispad.micro-barre", qos: .utility) {
                 let name: String?
                 if !saved.isEmpty, let match = AudioInputDevices.all().first(where: { $0.uid == saved }) {
                     name = match.name
@@ -519,7 +519,7 @@ private struct SidebarPipelineSection: View {
                     name = AudioInputDevices.systemDefault()?.name
                 }
                 return Self.compactMicrophoneName(name)
-            }.value
+            }
             microphoneLabel = resolved
         }
     }

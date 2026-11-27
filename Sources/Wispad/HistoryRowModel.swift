@@ -16,8 +16,12 @@ struct HistoryRowItem: Equatable {
     var status: HistoryStatus
     var targetBundle: String?
     var hasAudio: Bool
+    var sourceDeviceName: String?
+    var sourceDeviceSymbol: String?
+    var isRemoteDevice: Bool
+    var remoteAudioHelp: String?
 
-    init(_ record: DictationRecord, locale: Locale = appLocale) {
+    init(_ record: DictationRecord, localDeviceID: String? = nil, locale: Locale = appLocale) {
         id = record.id
         time = record.createdAt.formatted(.dateTime.hour().minute().locale(locale))
         text = record.finalText
@@ -27,6 +31,21 @@ struct HistoryRowItem: Equatable {
         status = HistoryStatus(record.insertionStatus)
         targetBundle = record.targetBundle
         hasAudio = record.audioPath != nil
+        let remote = localDeviceID.map { record.isFromRemoteDevice(localDeviceID: $0) } ?? false
+        isRemoteDevice = remote
+        sourceDeviceName = remote ? (record.sourceDeviceName ?? String(localized: "Autre appareil")) : nil
+        if remote {
+            switch record.sourceDevicePlatform {
+            case DevicePlatform.ios.rawValue: sourceDeviceSymbol = "iphone"
+            case DevicePlatform.windows.rawValue: sourceDeviceSymbol = "desktopcomputer"
+            default: sourceDeviceSymbol = "laptopcomputer"
+            }
+            let origin = record.sourceDeviceName ?? String(localized: "un autre appareil")
+            remoteAudioHelp = String(localized: "Enregistré sur \(origin) : l'audio reste sur cet appareil.")
+        } else {
+            sourceDeviceSymbol = nil
+            remoteAudioHelp = nil
+        }
     }
 }
 
@@ -65,9 +84,10 @@ final class HistoryRowCache {
     var itemCount: Int { items.count }
     var overflowCount: Int { overflowByID.count }
 
-    func item(for record: DictationRecord) -> HistoryRowItem {
-        if let cached = items[record.id], cached.record == record { return cached.item }
-        let item = HistoryRowItem(record)
+    func item(for record: DictationRecord, localDeviceID: String? = nil) -> HistoryRowItem {
+        let remote = localDeviceID.map { record.isFromRemoteDevice(localDeviceID: $0) } ?? false
+        if let cached = items[record.id], cached.record == record, cached.item.isRemoteDevice == remote { return cached.item }
+        let item = HistoryRowItem(record, localDeviceID: localDeviceID)
         if items[record.id] == nil, items.count >= limit { items.removeAll(keepingCapacity: true) }
         items[record.id] = (record, item)
         return item

@@ -1748,3 +1748,37 @@ tentatives. Aucun texte dicté, audio, contexte, chemin ni clé. Rien n'est envo
 diagnostic » (Aide et retours) met le même rapport dans le presse-papiers, dans un bloc repliable `<details>` titré
 par les versions de Wispad et de macOS ; au-delà de 40 000 octets (un ticket GitHub accepte 65 536 caractères), les
 tentatives les plus anciennes sont retirées, et une phrase le dit.
+
+## Synchronisation multiplateforme (BYOS)
+
+Réglages › Synchro : entièrement facultative, 100 % open source, sans compte ni serveur central Yatofix.
+
+- **Texte seul chiffré de bout en bout (AES-256-GCM)** : synchronise uniquement le texte et ses métadonnées (dictées,
+  notes de réunion, dictionnaire personnel, refus d'apprentissage et réglages d'écriture portables). Aucun fichier
+  audio WAV ni aucune clé API ne sont synchronisés.
+- **Provenance de l'appareil** : une dictée enregistrée sur un autre appareil (Mac, iPhone, PC Windows) affiche un
+  badge discret avec le nom de cet appareil et précise « Enregistré sur <Nom> : l'audio reste sur cet appareil ». Les
+  boutons Écouter et Retranscrire ne sont montrés que si le fichier audio existe localement.
+- **Trois supports BYOS** : dossier synchronisé (iCloud Drive, OneDrive, Dropbox, Google Drive, Syncthing avec
+  détection en un clic), bucket compatible S3 (Cloudflare R2 via ID de compte ou endpoint S3 personnalisé) ou WebDAV.
+- **Appairage rapide et sécurisé** : génération de QR code et lien `wispad-sync://v1?data=…` copié avec les marqueurs
+  presse-papiers masqué/transitoire (`ConcealedType`, `TransientType`). Tout lien `wispad-sync://` ouvert depuis
+  l'extérieur affiche une boîte de confirmation indiquant la cible avant de modifier la configuration. Les identifiants
+  de synchro restent dans `sync-config.json` (écriture atomique en permissions `0600`), jamais dans `AppSettings` ni
+  dans les exports de configuration.
+- **Boîte d'envoi locale (`sync_outbox`)** : seules les mutations locales sont poussées par lots bornés (zéro boucle
+  d'écho entre appareils, zéro perte par dérive d'horloge, zéro résurrection d'éléments supprimés) ; les réglages
+  d'écriture partagés ne sont poussés que lorsqu'ils changent localement.
+
+## Notes de réunion (sans bot)
+
+Sous-onglet « Réunions » dans l'écran Dictées (barre de sous-onglets fixe en tête d'écran) :
+
+- Capture la voix du microphone et, sur macOS 14.2+ si autorisé, l'audio système via CoreAudio Process Tap avec
+  rééchantillonnage fractionnaire 16 kHz (et repli automatique sur le micro seul), sans jamais inviter de bot dans les
+  appels. L'enregistrement est porté par `AppModel` et continue même si l'on quitte l'onglet.
+- L'audio temporaire est découpé automatiquement par morceaux de 16 Mo pour les réunions longues, transcrit via la clé
+  de voix configurée (comptabilisé dans Consommation), puis supprimé en cas de succès. En cas d'échec, l'audio est
+  conservé avec un bouton « Réessayer la transcription ».
+- Les réunions (titre, notes rapides enregistrées avec regroupement de frappe, transcription et synthèse IA) sont
+  stockées dans `HistoryStore` et synchronisées en texte seul par WispadSync.

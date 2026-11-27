@@ -28,6 +28,18 @@ final class AppModel {
     var dictionary: [DictionaryEntry] = [] {
         didSet { insightsInputsRevision &+= 1 }
     }
+    /// Notes de réunion (style Granola), synchronisables en texte seul.
+    var meetings: [MeetingRecord] = []
+    /// Enregistrement de réunion actif (porté par AppModel pour survivre au changement d'onglet).
+    @ObservationIgnored private let meetingRecorder = MeetingAudioRecorder()
+    private(set) var recordingMeetingID: String?
+    private(set) var recordingMeetingMode: MeetingAudioRecorder.SourceMode = .micOnly
+    private(set) var recordingMeetingStartedAt: Date?
+    private(set) var transcribingMeetingID: String?
+    private(set) var meetingTranscribeProgress: String?
+    var pendingRetryMeetingAudio: [String: URL] = [:]
+    var meetingFeedback: String?
+    var isRecordingMeeting: Bool { recordingMeetingID != nil }
     /// Suggestions et usage de l'écran Dictionnaire, calculés hors du fil principal (`refreshDictionaryInsights`).
     private(set) var dictionaryInsights = DictionaryInsights.Report()
     /// Change avec l'historique, le dictionnaire ou les refus : l'écran Dictionnaire recalcule alors ses suggestions.
@@ -137,6 +149,7 @@ final class AppModel {
     let dependencies: AppDependencies
     private let persistsSettings: Bool
     let store: HistoryStore
+    let sync: SyncController
     let coordinator: DictationCoordinator
     let historyPlayer: HistoryAudioPlayer
     let overlay = OverlayController()
@@ -160,6 +173,7 @@ final class AppModel {
         persistsSettings = supportDirectory == nil
         supportURL = try supportDirectory ?? AppPaths.supportDirectory()
         store = try HistoryStore(path: supportURL.appendingPathComponent(AppIdentity.databaseName).path)
+        sync = SyncController(supportURL: supportURL, persists: persistsSettings)
         settings = initialSettings ?? AppSettings.load()
         coordinator = DictationCoordinator()
         coordinator.model = self
@@ -193,6 +207,9 @@ final class AppModel {
 
     func saveSettings() {
         if persistsSettings { settings.save() }
+        if sync.noteSettingsChanged(settings) {
+            sync.scheduleSyncIfEnabled(model: self)
+        }
     }
 
     /// Choix d'affichage (période, section, partie dépliée) : écrit seulement s'il change.
@@ -277,6 +294,7 @@ final class AppModel {
     func reload() {
         reloadHistory()
         reloadDictionary()
+        reloadMeetings()
         reloadUsage()
     }
 
@@ -301,6 +319,143 @@ final class AppModel {
 
     func reloadDictionary() {
         do { dictionary = try store.dictionary() } catch { Self.storageLog.error("lecture du dictionnaire impossible") }
+    }
+
+    func reloadMeetings() {
+        do { meetings = try store.meetings() } catch { Self.storageLog.error("lecture des réunions impossible") }
+    }
+
+    func saveMeeting(_ meeting: MeetingRecord) {
+        persist("enregistrement d'une réunion") { try store.upsertMeeting(meeting) }
+        reloadMeetings()
+        sync.scheduleSyncIfEnabled(model: self)
+    }
+
+    func deleteMeeting(_ meeting: MeetingRecord) {
+        if recordingMeetingID == meeting.id {
+            let stopped = meetingRecorder.stop()
+            if let url = stopped.url { try? FileManager.default.removeItem(at: url) }
+            recordingMeetingID = nil
+            recordingMeetingStartedAt = nil
+        }
+        if let pendingURL = pendingRetryMeetingAudio.removeValue(forKey: meeting.id) {
+            try? FileManager.default.removeItem(at: pendingURL)
+        }
+        persist("suppression d'une réunion") { try store.deleteMeeting(id: meeting.id) }
+        meetings.removeAll { $0.id == meeting.id }
+        sync.scheduleSyncIfEnabled(model: self)
+    }
+
+    func startMeetingRecording(for meetingID: String, includeSystemAudio: Bool) async {
+        guard recordingMeetingID == nil, transcribingMeetingID == nil else { return }
+        guard coordinator.phase == .idle else {
+            meetingFeedback = String(localized: "Termine la dictée en cours avant d'enregistrer une réunion.")
+            return
+        }
+        let granted = await dependencies.requestMicrophone()
+        guard granted else {
+            meetingFeedback = String(localized: "Autorise le microphone dans Réglages pour enregistrer une réunion.")
+            openSettings(.permissions)
+            return
+        }
+        meetingFeedback = nil
+        let dir = supportURL.appendingPathComponent("MeetingsAudio", isDirectory: true)
+        do {
+            let started = try meetingRecorder.start(directory: dir, includeSystemAudio: includeSystemAudio)
+            recordingMeetingID = meetingID
+            recordingMeetingMode = started.mode
+            recordingMeetingStartedAt = Date()
+        } catch {
+            meetingFeedback = error.localizedDescription
+        }
+    }
+
+    func stopMeetingRecording() async {
+        guard let meetingID = recordingMeetingID else { return }
+        let result = meetingRecorder.stop()
+        recordingMeetingID = nil
+        recordingMeetingStartedAt = nil
+        guard let url = result.url else { return }
+        await transcribeMeetingAudio(url: url, duration: result.duration, for: meetingID)
+    }
+
+    func retryMeetingTranscription(for meetingID: String) async {
+        guard transcribingMeetingID == nil, let url = pendingRetryMeetingAudio[meetingID] else { return }
+        let attrs = try? FileManager.default.attributesOfItem(atPath: url.path)
+        let bytes = (attrs?[.size] as? Int) ?? 0
+        let estimatedSeconds = max(0, Double(max(0, bytes - 44)) / Double(16_000 * 2))
+        await transcribeMeetingAudio(url: url, duration: estimatedSeconds, for: meetingID)
+    }
+
+    private func transcribeMeetingAudio(url: URL, duration: TimeInterval, for meetingID: String) async {
+        let speech = speechRequest(context: nil)
+        guard !speech.apiKey.isEmpty else {
+            pendingRetryMeetingAudio[meetingID] = url
+            meetingFeedback = String(localized: "Ajoute une clé API (xAI ou OpenAI) dans Fournisseurs pour transcrire. L'audio est conservé.")
+            return
+        }
+        transcribingMeetingID = meetingID
+        meetingTranscribeProgress = String(localized: "Transcription en cours…")
+        meetingFeedback = nil
+        let began = Date()
+        defer {
+            transcribingMeetingID = nil
+            meetingTranscribeProgress = nil
+        }
+        do {
+            let transcriptText = try await BatchTranscriber.transcribeChunked(
+                fileURL: url,
+                request: speech,
+                onProgress: { [weak self] done, total in
+                    Task { @MainActor [weak self] in
+                        guard let self, total > 1 else { return }
+                        self.meetingTranscribeProgress = String(localized: "Transcription (\(done)/\(total))…")
+                    }
+                }
+            )
+            let latencyMs = max(0, Int(Date().timeIntervalSince(began) * 1_000))
+            recordUsage(UsageEvent.transcription(
+                provider: speech.provider,
+                streaming: false,
+                model: speech.liveModel,
+                billedModel: speech.fileModel,
+                audioSeconds: duration,
+                latencyMs: latencyMs,
+                succeeded: true
+            ))
+            pendingRetryMeetingAudio.removeValue(forKey: meetingID)
+            try? FileManager.default.removeItem(at: url)
+            guard var updated = meetings.first(where: { $0.id == meetingID }) else { return }
+            updated.durationSeconds += duration
+            let piece = transcriptText.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !piece.isEmpty {
+                updated.rawTranscript = updated.rawTranscript.isEmpty ? piece : (updated.rawTranscript + "\n\n" + piece)
+            }
+            updated.updatedAt = Date()
+            saveMeeting(updated)
+            meetingFeedback = String(localized: "Transcription terminée (l'audio temporaire a été supprimé).")
+        } catch {
+            let latencyMs = max(0, Int(Date().timeIntervalSince(began) * 1_000))
+            recordUsage(UsageEvent.transcription(
+                provider: speech.provider,
+                streaming: false,
+                model: speech.liveModel,
+                billedModel: speech.fileModel,
+                audioSeconds: duration,
+                latencyMs: latencyMs,
+                succeeded: false,
+                failureCause: APIFailureCause.classify(error)
+            ))
+            pendingRetryMeetingAudio[meetingID] = url
+            meetingFeedback = String(localized: "Échec de la transcription : l'audio est conservé, tu peux réessayer.")
+        }
+    }
+
+    func stopActiveMeetingRecordingForTermination() {
+        guard recordingMeetingID != nil else { return }
+        _ = meetingRecorder.stop()
+        recordingMeetingID = nil
+        recordingMeetingStartedAt = nil
     }
 
     /// Jugement en cours sur des mots corrigés (exposé pour les tests).
@@ -448,6 +603,7 @@ final class AppModel {
         guard !added.isEmpty else { return }
         recentlyLearned = Array((added.reversed() + recentlyLearned.filter { !added.contains($0) }).prefix(5))
         reloadDictionary()
+        sync.scheduleSyncIfEnabled(model: self)
         coordinator.notifyLearned(added)
     }
 
@@ -455,6 +611,7 @@ final class AppModel {
     func confirmLearnedTerm(_ term: String) {
         persist("confirmation d'un mot") { try store.confirmLearnedTerm(term) }
         reloadDictionary()
+        sync.scheduleSyncIfEnabled(model: self)
     }
 
     /// Retire un mot par son nom (menu de la barre : mot appris à tort).
@@ -469,6 +626,7 @@ final class AppModel {
         removeTerm(named: term)
         persist("refus d'un mot") { try store.rememberRefusal(term) }
         insightsInputsRevision &+= 1
+        sync.scheduleSyncIfEnabled(model: self)
     }
 
     // MARK: Suggestions du dictionnaire
@@ -504,9 +662,11 @@ final class AppModel {
                 try store.addTerm(suggestion.term, origin: .user, heard: heard.first, source: .suggestion)
             }
             reloadDictionary()
+            sync.scheduleSyncIfEnabled(model: self)
         case .spellings:
             persist("ajout au dictionnaire") { try store.addTerm(suggestion.term, origin: .user, source: .suggestion) }
             reloadDictionary()
+            sync.scheduleSyncIfEnabled(model: self)
         }
         dictionaryInsights.suggestions.removeAll { $0.id == suggestion.id }
     }
@@ -516,6 +676,7 @@ final class AppModel {
         persist("refus d'une suggestion") { try store.rememberRefusal(suggestion.term) }
         dictionaryInsights.suggestions.removeAll { $0.id == suggestion.id }
         insightsInputsRevision &+= 1
+        sync.scheduleSyncIfEnabled(model: self)
     }
 
     /// Nouvelle écriture d'une entrée, origine et date gardées. false : vide, ou déjà prise par une autre entrée.
@@ -526,7 +687,10 @@ final class AppModel {
         guard cleaned != entry.term else { return true }
         var renamed = false
         persist("modification d'un mot") { renamed = try store.renameTerm(id: entry.id, to: cleaned) }
-        if renamed { reloadDictionary() }
+        if renamed {
+            reloadDictionary()
+            sync.scheduleSyncIfEnabled(model: self)
+        }
         return renamed
     }
 
@@ -1338,9 +1502,12 @@ final class AppModel {
         return selection
     }
 
-    /// Correction par un fournisseur : impossible hors connexion.
+    /// Correction joignable : un modèle local fonctionne aussi hors connexion.
     var correctionReachable: Bool {
-        settings.cleanupEnabled && dependencies.isOnline()
+        guard settings.cleanupEnabled else { return false }
+        if dependencies.isOnline() { return true }
+        return settings.cleanupChoice.account == CleanupModel.localAccount
+            && !settings.localModelURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     /// Service qui corrige maintenant : le modèle choisi dans Fournisseurs s'il a sa clé, sinon l'ordre automatique
@@ -1417,11 +1584,13 @@ final class AppModel {
     func addTerm(_ term: String) {
         persist("ajout au dictionnaire") { try store.addTerm(term, origin: .user) }
         reloadDictionary()
+        sync.scheduleSyncIfEnabled(model: self)
     }
 
     func deleteTerm(_ entry: DictionaryEntry) {
         persist("retrait du dictionnaire") { try store.deleteTerm(id: entry.id) }
         dictionary.removeAll { $0.id == entry.id }
+        sync.scheduleSyncIfEnabled(model: self)
     }
 
     func deleteHistory(_ record: DictationRecord) {
@@ -1431,6 +1600,7 @@ final class AppModel {
         }
         persist("suppression d'une dictée") { try store.deleteDictation(id: record.id) }
         history.removeAll { $0.id == record.id }
+        sync.scheduleSyncIfEnabled(model: self)
     }
 
     func deleteAllHistory() {
@@ -1442,6 +1612,7 @@ final class AppModel {
         }
         persist("suppression de l'historique") { try store.deleteAllDictations() }
         history.removeAll()
+        sync.scheduleSyncIfEnabled(model: self)
     }
 
     /// Note ce qui a vraiment été dit, avec ce que Wispad a entendu et écrit et une copie de l'audio.

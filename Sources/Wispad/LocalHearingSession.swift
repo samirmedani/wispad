@@ -23,17 +23,21 @@ protocol LocalHearingSession: AnyObject, Sendable {
 
 enum LocalHearingEngine {
     private static let log = Logger.wispad("seconde-ecoute")
-    /// Langues dont le modèle est déjà sur ce Mac, lues une fois au lancement (`prepare`).
-    private static let installed = OSAllocatedUnfairLock<Set<DictationLanguage>>(initialState: [])
+    /// Langues dont le modèle est déjà sur ce Mac, avec la locale exacte installée (`fr-FR`, `fr-CA`, `en-US`, `en-GB`…).
+    private static let installed = OSAllocatedUnfairLock<[DictationLanguage: String]>(initialState: [:])
 
     /// Au lancement, sans rien installer ni demander : quelles langues la seconde écoute peut suivre.
     static func prepare() {
         guard #available(macOS 26.0, *) else { return }
         Task.detached(priority: .utility) {
             let locales = await SpeechTranscriber.installedLocales.map { $0.identifier(.bcp47) }
-            var languages: Set<DictationLanguage> = []
-            if locales.contains(where: { $0.hasPrefix("fr") }) { languages.insert(.french) }
-            if locales.contains(where: { $0.hasPrefix("en") }) { languages.insert(.english) }
+            var languages: [DictationLanguage: String] = [:]
+            if let fr = locales.first(where: { $0.lowercased() == "fr-fr" }) ?? locales.first(where: { $0.lowercased().hasPrefix("fr") }) {
+                languages[.french] = fr
+            }
+            if let en = locales.first(where: { $0.lowercased() == "en-us" }) ?? locales.first(where: { $0.lowercased().hasPrefix("en") }) {
+                languages[.english] = en
+            }
             let found = languages
             installed.withLock { $0 = found }
             log.notice("seconde écoute : \(found.count, privacy: .public) langue(s) disponible(s)")
@@ -41,8 +45,19 @@ enum LocalHearingEngine {
     }
 
     static func make(language: DictationLanguage) -> (any LocalHearingSession)? {
-        guard #available(macOS 26.0, *), installed.withLock({ $0.contains(language) }) else { return nil }
-        return AppleLocalHearing(locale: Locale(identifier: language == .english ? "en-US" : "fr-FR"))
+        guard #available(macOS 26.0, *) else { return nil }
+        let localeID: String? = installed.withLock { map in
+            if language != .auto { return map[language] }
+            // Langue automatique : suivre la langue préférée du système si son modèle est installé, sinon français puis anglais.
+            for preferred in Locale.preferredLanguages {
+                let lower = preferred.lowercased()
+                if lower.hasPrefix("fr"), let fr = map[.french] { return fr }
+                if lower.hasPrefix("en"), let en = map[.english] { return en }
+            }
+            return map[.french] ?? map[.english]
+        }
+        guard let localeID else { return nil }
+        return AppleLocalHearing(locale: Locale(identifier: localeID))
     }
 }
 
@@ -60,16 +75,28 @@ private final class AppleLocalHearing: LocalHearingSession, @unchecked Sendable 
         var spoke = false
         var closedThrough = 0.0
     }
+    private struct FormatState {
+        var converter: AVAudioConverter?
+        var target: AVAudioFormat?
+        /// Paquets arrivés avant la fin de `bestAvailableAudioFormat` : mis en attente (2 s max) au lieu d'être perdus.
+        var buffered: [Data] = []
+        var closed = false
+        var analyzerStarted = false
+        var finishRequested = false
+    }
     private let pauses = OSAllocatedUnfairLock(initialState: Pauses())
+    /// File série dédiée à la conversion audio et à l'envoi vers `AsyncStream` (évite tout accès concurrent à `AVAudioConverter`).
+    private let deliverQueue = DispatchQueue(label: "com.yatofix.wispad.local-hearing.deliver", qos: .userInitiated)
     /// Sous ce niveau (environ -40 dBFS), le paquet est un silence ; mesuré : voix vers -25 dB, pauses sous -50 dB.
     private static let quietLevel = 0.01
     /// Une pause de ce temps après de la voix clôt les phrases ; jamais deux clôtures à moins de 1,5 s.
     private static let pauseSeconds = 0.3
     private static let closeSpacing = 1.5
+    private static let maxBufferedBytes = 64_000
     private let state = OSAllocatedUnfairLock(initialState: State())
     private let input: AsyncStream<AnalyzerInput>.Continuation
     private let source = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: 16_000, channels: 1, interleaved: true)!
-    private let converter = OSAllocatedUnfairLock<(AVAudioConverter?, AVAudioFormat?)>(initialState: (nil, nil))
+    private let formatState = OSAllocatedUnfairLock(initialState: FormatState())
     private var work: Task<Void, Never>?
     private var analyzer: SpeechAnalyzer?
 
@@ -109,7 +136,15 @@ private final class AppleLocalHearing: LocalHearingSession, @unchecked Sendable 
                 try await analyzer.start(inputSequence: stream)
             } catch {
                 results.cancel()
+                Self.close(state)
                 return
+            }
+            let shouldFinalizeNow = self?.formatState.withLock { current -> Bool in
+                current.analyzerStarted = true
+                return current.finishRequested
+            } ?? false
+            if shouldFinalizeNow {
+                try? await analyzer.finalizeAndFinishThroughEndOfInput()
             }
             await withTaskCancellationHandler {
                 _ = await results.value
@@ -121,11 +156,40 @@ private final class AppleLocalHearing: LocalHearingSession, @unchecked Sendable 
 
     private func useFormat(_ format: AVAudioFormat?) {
         let target = format ?? source
-        converter.withLock { $0 = (target == source ? nil : AVAudioConverter(from: source, to: target), target) }
+        let converter = target == source ? nil : AVAudioConverter(from: source, to: target)
+        let (pending, shouldFinish): ([Data], Bool) = formatState.withLock { current in
+            current.converter = converter
+            current.target = target
+            let queued = current.buffered
+            current.buffered.removeAll()
+            return (queued, current.closed)
+        }
+        deliverQueue.async { [weak self] in
+            guard let self else { return }
+            for chunk in pending {
+                self.deliverOnQueue(chunk, converter: converter, target: target)
+            }
+            if shouldFinish { self.input.finish() }
+        }
     }
 
     func feed(_ pcm: Data) {
-        defer { notePause(pcm) }
+        let ready: (AVAudioConverter?, AVAudioFormat)? = formatState.withLock { current in
+            guard !current.closed else { return nil }
+            if let target = current.target { return (current.converter, target) }
+            let queuedBytes = current.buffered.reduce(0) { $0 + $1.count }
+            if queuedBytes + pcm.count <= Self.maxBufferedBytes {
+                current.buffered.append(pcm)
+            }
+            return nil
+        }
+        guard let (converter, target) = ready else { return }
+        deliverQueue.async { [weak self] in
+            self?.deliverOnQueue(pcm, converter: converter, target: target)
+        }
+    }
+
+    private func deliverOnQueue(_ pcm: Data, converter: AVAudioConverter?, target: AVAudioFormat) {
         let frames = AVAudioFrameCount(pcm.count / 2)
         guard frames > 0, let buffer = AVAudioPCMBuffer(pcmFormat: source, frameCapacity: frames) else { return }
         buffer.frameLength = frames
@@ -134,20 +198,23 @@ private final class AppleLocalHearing: LocalHearingSession, @unchecked Sendable 
                 channel[0].update(from: base.assumingMemoryBound(to: Int16.self), count: Int(frames))
             }
         }
-        let (converter, target) = converter.withLock { $0 }
-        guard let target else { return }
-        guard let converter else { input.yield(AnalyzerInput(buffer: buffer)); return }
-        let capacity = AVAudioFrameCount(Double(frames) * target.sampleRate / source.sampleRate + 32)
-        guard let output = AVAudioPCMBuffer(pcmFormat: target, frameCapacity: capacity) else { return }
-        var consumed = false
-        var error: NSError?
-        converter.convert(to: output, error: &error) { _, status in
-            if consumed { status.pointee = .noDataNow; return nil }
-            consumed = true
-            status.pointee = .haveData
-            return buffer
+        if let converter {
+            let capacity = AVAudioFrameCount(Double(frames) * target.sampleRate / source.sampleRate + 32)
+            guard let output = AVAudioPCMBuffer(pcmFormat: target, frameCapacity: capacity) else { return }
+            var consumed = false
+            var error: NSError?
+            converter.convert(to: output, error: &error) { _, status in
+                if consumed { status.pointee = .noDataNow; return nil }
+                consumed = true
+                status.pointee = .haveData
+                return buffer
+            }
+            guard error == nil, output.frameLength > 0 else { return }
+            input.yield(AnalyzerInput(buffer: output))
+        } else {
+            input.yield(AnalyzerInput(buffer: buffer))
         }
-        if error == nil, output.frameLength > 0 { input.yield(AnalyzerInput(buffer: output)) }
+        notePause(pcm)
     }
 
     /// Le réglage précis d'Apple garde tout pour la fin (0,44 s pour 22 s de voix) : clore à chaque pause ne laisse
@@ -175,11 +242,25 @@ private final class AppleLocalHearing: LocalHearingSession, @unchecked Sendable 
     }
 
     func finish() {
-        input.finish()
-        guard let analyzer else { return }
+        let (readyNow, startedNow) = formatState.withLock { current -> (Bool, Bool) in
+            current.closed = true
+            current.finishRequested = true
+            return (current.target != nil, current.analyzerStarted)
+        }
+        if readyNow {
+            deliverQueue.async { [weak self] in
+                self?.input.finish()
+            }
+        }
+        guard let analyzer else { Self.close(state); return }
+        let workTask = work
         let state = state
         Task.detached(priority: .userInitiated) {
-            try? await analyzer.finalizeAndFinishThroughEndOfInput()
+            if startedNow {
+                try? await analyzer.finalizeAndFinishThroughEndOfInput()
+            }
+            // Laisser la boucle `transcriber.results` finir de consommer la dernière phrase avant de réveiller `finalText`.
+            await workTask?.value
             Self.close(state)
         }
     }
@@ -203,7 +284,13 @@ private final class AppleLocalHearing: LocalHearingSession, @unchecked Sendable 
     }
 
     func stop() {
-        input.finish()
+        formatState.withLock { current in
+            current.closed = true
+            current.buffered.removeAll()
+        }
+        deliverQueue.async { [weak self] in
+            self?.input.finish()
+        }
         work?.cancel()
         Self.close(state)
     }

@@ -558,6 +558,9 @@ public final class LiveSpeechSession: NSObject, URLSessionWebSocketDelegate, @un
             return true
         }
         guard timedOut else { return }
+        let (socket, session) = takeCancellation()
+        socket?.cancel(with: .goingAway, reason: nil)
+        session?.invalidateAndCancel()
         readyResult.resolve(.failure(error))
         finishResult.resolve(.failure(error))
     }
@@ -567,6 +570,9 @@ public final class LiveSpeechSession: NSObject, URLSessionWebSocketDelegate, @un
         closed = true
         didFinish = true
         lock.unlock()
+        let (socket, session) = takeCancellation()
+        socket?.cancel(with: .goingAway, reason: nil)
+        session?.invalidateAndCancel()
         readyResult.resolve(.failure(error))
         // Do not accept a partial transcript as a complete recording on failure.
         finishResult.resolve(.failure(error))
@@ -592,6 +598,50 @@ public final class LiveSpeechSession: NSObject, URLSessionWebSocketDelegate, @un
 public enum BatchTranscriber {
     public static func transcribe(fileURL: URL, request: SpeechRequest) async throws -> String {
         try await transcribe(fileURL: fileURL, request: request, transport: TextCleaner.httpTransport)
+    }
+
+    /// Transcrit un fichier audio potentiellement long (> 16 Mo, ex. réunion d'une heure) en le découpant
+    /// automatiquement en tranches WAV PCM 16 kHz sous la limite API de 25 Mo, puis en concaténant les textes.
+    public static func transcribeChunked(
+        fileURL: URL,
+        request: SpeechRequest,
+        maxChunkBytes: Int = WAVChunker.defaultMaxChunkBytes,
+        onProgress: (@Sendable (Int, Int) -> Void)? = nil
+    ) async throws -> String {
+        try await transcribeChunked(
+            fileURL: fileURL,
+            request: request,
+            maxChunkBytes: maxChunkBytes,
+            transport: TextCleaner.httpTransport,
+            onProgress: onProgress
+        )
+    }
+
+    static func transcribeChunked(
+        fileURL: URL,
+        request: SpeechRequest,
+        maxChunkBytes: Int = WAVChunker.defaultMaxChunkBytes,
+        transport: @escaping TextCleaner.HTTPTransport,
+        onProgress: (@Sendable (Int, Int) -> Void)? = nil
+    ) async throws -> String {
+        let split = try await BlockingQueue.run(label: "wispad.audio-decoupe") {
+            try WAVChunker.splitIfNeeded(fileURL: fileURL, maxChunkBytes: maxChunkBytes)
+        }
+        defer {
+            for temp in split.temporaryURLs {
+                try? FileManager.default.removeItem(at: temp)
+            }
+        }
+        var parts: [String] = []
+        let total = split.urls.count
+        for (index, url) in split.urls.enumerated() {
+            try Task.checkCancellation()
+            onProgress?(index + 1, total)
+            let piece = try await transcribe(fileURL: url, request: request, transport: transport)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            if !piece.isEmpty { parts.append(piece) }
+        }
+        return parts.joined(separator: "\n\n")
     }
 
     /// Transport substituable dans les tests, comme pour la correction : aucune clé ni requête réelle. `readFile` : la
@@ -1014,6 +1064,7 @@ public enum TextCleaner {
         // Une longue dictée demande plus de jetons et plus de temps : la correction ne doit jamais la couper.
         let maxTokens = min(4_096, max(400, original.count / 2))
         let extraSeconds = Double(original.count) / 800
+        let language = CorrectionPrompt.language(for: request)
         for (index, route) in routes.enumerated() {
             guard !Task.isCancelled else { break }
             let transition = fallback(for: index, routes: routes, speech: speech, stage: .correction)
@@ -1022,7 +1073,7 @@ public enum TextCleaner {
             let timeout = base + extraSeconds
             do {
                 let reply = try await withTimeout(seconds: timeout) {
-                    try await send(system: CorrectionPrompt.system(for: request), user: CorrectionPrompt.userText(request), route: route, maxTokens: maxTokens, includeReasoning: true, transport: transport, requests: requests, fallback: transition)
+                    try await send(system: CorrectionPrompt.system(for: request), user: CorrectionPrompt.userText(request), route: route, maxTokens: maxTokens, includeReasoning: true, transport: transport, requests: requests, fallback: transition, requestTimeout: timeout)
                 }
                 let fallback = index > 0 || route.isFallback ? route.provider : nil
                 let corrected = CorrectionPrompt.cleanModelOutput(reply.content, fallback: original)
@@ -1037,12 +1088,11 @@ public enum TextCleaner {
                     ].compactMap { $0 },
                     alternative: request.alternativeTranscript,
                     otherHearings: request.localDivergences.map(\.local),
-                    language: CorrectionPrompt.language(for: request),
+                    language: language,
                     keepRegister: request.tone != .polished
                 )
                 var failed = requests.events
                 let usage = failed.popLast()
-                let language = CorrectionPrompt.language(for: request)
                 let coherent = language == .french
                     ? ContinuationAgreement.reapply(in: faithful, after: request.textBeforeCursor)
                     : faithful
@@ -1050,10 +1100,10 @@ public enum TextCleaner {
                 let dated = DateTimeWriter.apply(coherent, format: request.dateFormat, english: language == .english)
                 // Puis les montants, pourcentages, mesures et téléphones, au format choisi.
                 let numbered = NumberWriter.apply(dated, format: request.numberFormat,
-                                                  english: CorrectionPrompt.language(for: request) == .english)
+                                                  english: language == .english)
                 let formatted = request.structureDictation ? DictationStructure.format(numbered) : numbered
                 let settled = DictationStructure.collapseLoneItem(formatted, transcript: original)
-                let finished = completeWrittenGrammar(settled, language: CorrectionPrompt.language(for: request), tone: request.tone)
+                let finished = completeWrittenGrammar(settled, language: language, tone: request.tone)
                 return CleanupOutcome(text: finished, usage: usage, failedUsages: failed, fallback: fallback)
             } catch {
                 if isCancellation(error) { break }
@@ -1078,10 +1128,11 @@ public enum TextCleaner {
         for (index, route) in routes.enumerated() {
             guard !Task.isCancelled else { break }
             let transition = fallback(for: index, routes: routes, speech: speech, stage: .correction)
-            let base = routes.count == 1 ? singleRouteSeconds : perRouteSeconds
+            let base = route.api == .localCleanup ? localRouteSeconds : (routes.count == 1 ? singleRouteSeconds : perRouteSeconds)
+            let timeout = base * 2 + extraSeconds
             do {
-                let reply = try await withTimeout(seconds: base * 2 + extraSeconds) {
-                    try await send(system: CorrectionPrompt.system(for: request), user: CorrectionPrompt.userText(request), route: route, maxTokens: maxTokens, includeReasoning: true, transport: transport, requests: requests, fallback: transition)
+                let reply = try await withTimeout(seconds: timeout) {
+                    try await send(system: CorrectionPrompt.system(for: request), user: CorrectionPrompt.userText(request), route: route, maxTokens: maxTokens, includeReasoning: true, transport: transport, requests: requests, fallback: transition, requestTimeout: timeout)
                 }
                 let text = CorrectionPrompt.cleanModelOutput(reply.content, fallback: selection)
                 var failed = requests.events

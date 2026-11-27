@@ -12,10 +12,25 @@ import WispadCore
 ///   jamais modifier la largeur ou la hauteur du texte ;
 /// - aucun filtre `.blur` GPU monté lorsque le texte est visible ;
 /// - lignes `Equatable` pures, sans lecture directe de `@Environment(AppModel.self)`.
+/// Sous-onglets de l'écran Dictées : fil des dictées ou notes de réunion (style Granola).
+private enum HomeSubTab: String, CaseIterable, Identifiable {
+    case dictations
+    case meetings
+
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .dictations: return String(localized: "Dictées")
+        case .meetings: return String(localized: "Réunions")
+        }
+    }
+}
+
 struct HomeView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.historyRowDidRender) private var didRender
     @Environment(\.interactionReduceMotion) private var reduceMotion
+    @State private var subTab: HomeSubTab = .dictations
     @State private var query = ""
     @State private var appliedQuery = ""
     @State private var detailRecord: DictationRecord?
@@ -26,73 +41,23 @@ struct HomeView: View {
     private var period: StatsPeriod { model.settings.homePeriod }
 
     var body: some View {
-        let snap = model.homeSnapshot(for: period)
-        let usage = model.usageSummary(for: period)
-        let allEntries = model.historyStreamEntries(query: appliedQuery, filter: model.historyFilter)
-        let blurred = model.settings.blurRecentDictations
-        let activeAudioID = model.historyPlayer.recordID
-
         VStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 14) {
-                summaryRibbon(snap: snap, spendUSD: usage.totalUSD)
-                Rectangle().fill(Theme.cardBorder).frame(height: 1)
-                flatSearchBar(blurred: blurred)
-                if let filter = model.historyFilter {
-                    filterBanner(filter)
+            HStack(spacing: 14) {
+                PillPicker(options: HomeSubTab.allCases, selection: $subTab, title: \.title)
+                Spacer()
+                if subTab == .dictations {
+                    dictateTrigger
                 }
             }
-            .padding(.horizontal, 32)
-            .padding(.top, 20)
+            .padding(.horizontal, 26)
+            .padding(.top, 14)
             .padding(.bottom, 10)
-            .frame(maxWidth: 780)
-            .frame(maxWidth: .infinity)
+            Rectangle().fill(Theme.cardBorder).frame(height: 1)
 
-            if allEntries.isEmpty {
-                EmptyState(
-                    symbol: appliedQuery.isEmpty ? "waveform" : "magnifyingglass",
-                    title: appliedQuery.isEmpty ? String(localized: "Aucune dictée") : String(localized: "Aucun résultat"),
-                    message: appliedQuery.isEmpty
-                        ? String(localized: "Maintiens la touche du raccourci et parle : ta première dictée apparaîtra ici.")
-                        : String(localized: "Aucune dictée ne contient « \(appliedQuery) ».")
-                )
-                Spacer()
+            if subTab == .meetings {
+                MeetingsView()
             } else {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 0) {
-                        ForEach(allEntries) { entry in
-                            switch entry {
-                            case .header(day: _, title: let title, count: let count):
-                                StreamDayHeader(title: title, count: count)
-                            case let .record(record, isLastInDay):
-                                let item = HistoryRowCache.shared.item(for: record)
-                                StreamDictationRow(
-                                    item: item,
-                                    isLastInDay: isLastInDay,
-                                    blurred: blurred,
-                                    playingThis: activeAudioID == record.id,
-                                    scrollActivity: scrollActivity,
-                                    onCopy: { model.copy(record.finalText) },
-                                    onPlay: item.hasAudio ? { model.play(record) } : nil,
-                                    onRetranscribe: item.hasAudio ? { Task { await model.coordinator.retranscribe(record) } } : nil,
-                                    onDetails: { detailRecord = record },
-                                    onDelete: { model.deleteHistory(record) }
-                                )
-                                .equatable()
-                                .onAppear {
-                                    didRender?(record.id)
-                                }
-                            }
-                        }
-                        shortcutsFootnote
-                            .padding(.top, 22)
-                    }
-                    .padding(.horizontal, 32)
-                    .padding(.bottom, 28)
-                    .frame(maxWidth: 780)
-                    .frame(maxWidth: .infinity)
-                }
-                .scrollIndicators(.automatic)
-                .modifier(HistoryScrollPhase(activity: scrollActivity))
+                dictationsBody
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) { HistoryAudioDock() }
@@ -113,6 +78,78 @@ struct HomeView: View {
         }
     }
 
+    @ViewBuilder
+    private var dictationsBody: some View {
+        let snap = model.homeSnapshot(for: period)
+        let usage = model.usageSummary(for: period)
+        let allEntries = model.historyStreamEntries(query: appliedQuery, filter: model.historyFilter)
+        let blurred = model.settings.blurRecentDictations
+        let activeAudioID = model.historyPlayer.recordID
+        let localDeviceID = model.sync.config.deviceId
+
+        VStack(alignment: .leading, spacing: 14) {
+            summaryRibbon(snap: snap, spendUSD: usage.totalUSD)
+            Rectangle().fill(Theme.cardBorder).frame(height: 1)
+            flatSearchBar(blurred: blurred)
+            if let filter = model.historyFilter {
+                filterBanner(filter)
+            }
+        }
+        .padding(.horizontal, 32)
+        .padding(.top, 16)
+        .padding(.bottom, 10)
+        .frame(maxWidth: 780)
+        .frame(maxWidth: .infinity)
+
+        if allEntries.isEmpty {
+            EmptyState(
+                symbol: appliedQuery.isEmpty ? "waveform" : "magnifyingglass",
+                title: appliedQuery.isEmpty ? String(localized: "Aucune dictée") : String(localized: "Aucun résultat"),
+                message: appliedQuery.isEmpty
+                    ? String(localized: "Maintiens la touche du raccourci et parle : ta première dictée apparaîtra ici.")
+                    : String(localized: "Aucune dictée ne contient « \(appliedQuery) ».")
+            )
+            Spacer()
+        } else {
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(allEntries) { entry in
+                        switch entry {
+                        case .header(day: _, title: let title, count: let count):
+                            StreamDayHeader(title: title, count: count)
+                        case let .record(record, isLastInDay):
+                            let item = HistoryRowCache.shared.item(for: record, localDeviceID: localDeviceID)
+                            StreamDictationRow(
+                                item: item,
+                                isLastInDay: isLastInDay,
+                                blurred: blurred,
+                                playingThis: activeAudioID == record.id,
+                                scrollActivity: scrollActivity,
+                                onCopy: { model.copy(record.finalText) },
+                                onPlay: item.hasAudio ? { model.play(record) } : nil,
+                                onRetranscribe: item.hasAudio ? { Task { await model.coordinator.retranscribe(record) } } : nil,
+                                onDetails: { detailRecord = record },
+                                onDelete: { model.deleteHistory(record) }
+                            )
+                            .equatable()
+                            .onAppear {
+                                didRender?(record.id)
+                            }
+                        }
+                    }
+                    shortcutsFootnote
+                        .padding(.top, 22)
+                }
+                .padding(.horizontal, 32)
+                .padding(.bottom, 28)
+                .frame(maxWidth: 780)
+                .frame(maxWidth: .infinity)
+            }
+            .scrollIndicators(.automatic)
+            .modifier(HistoryScrollPhase(activity: scrollActivity))
+        }
+    }
+
     private func summaryRibbon(snap: HomeSnapshot, spendUSD: Double) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .center, spacing: 14) {
@@ -128,7 +165,6 @@ struct HomeView: View {
                 }
                 Spacer(minLength: 8)
                 MiniSpectrumBars(bars: snap.bars, peak: snap.peakWords)
-                dictateTrigger
             }
             HStack(alignment: .center, spacing: 12) {
                 PillPicker(selection: Binding(
@@ -351,6 +387,20 @@ private struct StreamDictationRow: View, Equatable {
                     Text(item.status.text)
                         .font(.system(size: 10.5, weight: .medium))
                         .foregroundStyle(item.status.tint)
+                    if item.isRemoteDevice, let deviceName = item.sourceDeviceName {
+                        HStack(spacing: 3) {
+                            Image(systemName: item.sourceDeviceSymbol ?? "laptopcomputer")
+                                .font(.system(size: 9.5))
+                            Text(deviceName)
+                                .font(.system(size: 10, weight: .medium))
+                                .lineLimit(1)
+                        }
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 1.5)
+                        .background(Capsule().fill(Theme.subtleFill))
+                        .help(item.remoteAudioHelp ?? "")
+                    }
                     if item.mayOverflow {
                         Button(expanded ? String(localized: "Réduire") : String(localized: "Afficher tout")) {
                             expanded.toggle()
@@ -387,6 +437,12 @@ private struct StreamDictationRow: View, Equatable {
                                   help: String(localized: "Écouter l'audio"),
                                   tint: playingThis ? .primary : .secondary,
                                   action: onPlay)
+                    } else if let remoteHelp = item.remoteAudioHelp {
+                        Image(systemName: "speaker.slash")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(.tertiary)
+                            .frame(width: 24, height: 24)
+                            .help(remoteHelp)
                     }
                     if let onRetranscribe {
                         rowAction(symbol: "arrow.clockwise",

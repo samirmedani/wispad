@@ -96,6 +96,7 @@ enum WindowTextProbe {
         )
     }
 
+    #if DEBUG
     /// La lecture AX quitte le fil principal avant la première question, pour une file à elle.
     private static func readOffMain(pid: pid_t) -> WindowTextSnapshot {
         let handoff = ProbeHandoff()
@@ -112,6 +113,7 @@ enum WindowTextProbe {
         if value.hasPrefix("-") { return "" }
         return value
     }
+    #endif
 
     private static func focusedWindow(pid: pid_t) -> (window: AXUIElement, focused: AXUIElement?)? {
         let application = AXUIElementCreateApplication(pid)
@@ -193,6 +195,7 @@ enum WindowTextProbe {
     }
 }
 
+#if DEBUG
 /// Passe le résultat de la lecture au fil qui attend, sans exposer le texte.
 private final class ProbeHandoff: @unchecked Sendable {
     private var snapshot: WindowTextSnapshot?
@@ -208,3 +211,4 @@ private final class ProbeHandoff: @unchecked Sendable {
         return snapshot ?? .empty
     }
 }
+#endif

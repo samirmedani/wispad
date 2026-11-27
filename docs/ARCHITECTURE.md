@@ -380,6 +380,12 @@ ne réécrit jamais un fichier abîmé (les clés de sa partie intacte servent).
 (`UpdateInstaller`) aussi : seul le paquet `.app` change, jamais effacé avant que la nouvelle version soit en place
 (`UpdateInstallerTests`).
 
+## Synchronisation BYOS et réunions
+
+- **Moteur multiplateforme (`WispadCore`)** : `SyncCrypto.swift` (HKDF-SHA256 + AES-256-GCM enveloppe `"WSP1"` avec AAD sur le chemin), `SyncModels.swift`, `SyncTransports.swift` (`FolderSyncTransport`, `S3SyncTransport` avec SigV4 pur Swift, `WebDAVSyncTransport`), `SyncEngine.swift` (deltas immuables par appareil dans `devices/<deviceId>/`, fusion LWW + tombstones) et `MeetingEnhancer.swift`. Spécification filaire complète : `docs/SYNC-PROTOCOL.md`.
+- **Intégration macOS (`Wispad`)** : `SyncController.swift` (stockage `0600` `sync-config.json`, QR code `CoreImage`, lien `wispad-sync://v1`, synchro différée + minuteur 60 s dans `AppDelegate`), `SyncSettingsView.swift` (`SettingsTab.sync`), `SystemAudioCapture.swift` (`MeetingAudioRecorder` micro + CoreAudio Process Tap), `MeetingsView.swift` (sous-onglet `Réunions` dans `HomeView`).
+- **Base locale (`HistoryStore`)** : tables `meetings`, `sync_peers`, `sync_tombstones`, index plein texte `dictations_fts` (FTS5), colonnes de provenance sur `dictations`, permissions `0600`, et plafond de 500 traces liées dans `dictation_traces`.
+
 ## Vérifier
 
 - `scripts/test.sh` : tests locaux, sans micro, réseau, clé ni fenêtre visible.

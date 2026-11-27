@@ -3,6 +3,18 @@
 Les versions publiées de Wispad, de la plus récente à la plus ancienne. Le fichier `Wispad.dmg` de chaque version
 est sur la page [Releases](https://github.com/samirmedani/wispad/releases).
 
+## 0.9.0 (27 novembre 2026)
+
+Wispad 0.9.0 ajoute les notes de réunion sans bot, la synchronisation chiffrée multiplateforme (texte seul, sans compte ni serveur) et durcit le pipeline audio et le presse-papiers.
+
+**Nouveau**
+- **Notes de réunion sans bot** : nouvel onglet « Réunions » dans Dictées pour enregistrer micro et audio système localement (CoreAudio sur macOS 14.2+, repli automatique sur le micro seul), prendre des notes rapides en direct, découper automatiquement les longues réunions pour la transcription et générer une synthèse Markdown avec tes clés API.
+- **Synchronisation chiffrée BYOS (texte seul)** : nouvel onglet Réglages › Synchro, 100 % facultatif et sans serveur Yatofix. Chiffrement de bout en bout AES-256-GCM vers un dossier synchronisé (iCloud Drive, OneDrive, Dropbox, Google Drive), Cloudflare R2 ou WebDAV, avec appairage par QR code (`wispad-sync://`) pour retrouver tes dictées, réunions, dictionnaire et réglages sur Mac, Windows 11 et iOS. Seul le texte est synchronisé (quelques Ko) : chaque fichier audio reste local sur l'appareil d'origine.
+
+**Amélioré**
+- **Robustesse audio et presse-papiers** : protection contre les doublons de capture audio, rééchantillonnage fractionnaire 16 kHz propre, restauration fiable des types multiples du presse-papiers et protection du presse-papiers lors de la copie d'un lien d'appairage (`ConcealedType` et `TransientType`).
+- **Sécurité et fiabilité** : boîte d'envoi locale (`sync_outbox`) sans boucle d'écho ni résurrection d'éléments supprimés, écriture atomique en permissions `0600` pour `sync-config.json` et boîte de confirmation avant tout import de lien `wispad-sync://`.
+
 ## 0.8.41 (26 novembre 2026)
 
 Wispad 0.8.41 garde le floutage actif au survol, évite les faux échecs de collage après envoi et ouvre les notes de version depuis la barre latérale.

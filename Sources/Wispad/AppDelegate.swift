@@ -98,13 +98,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                 Task { @MainActor in
                     model?.purgeAudio()
                     await model?.checkDownServices()
-                    if let model { ProfileTopicsController.shared.runIfDue(model: model) }
+                    if let model {
+                        ProfileTopicsController.shared.runIfDue(model: model)
+                        if model.sync.config.enabled {
+                            await model.sync.syncNow(model: model, automatic: true)
+                        }
+                    }
                 }
             }
             // Toujours chaque minute, à quelques secondes près : macOS peut grouper ce réveil avec d'autres au repos.
             retentionTimer?.tolerance = 6
             Task { @MainActor [weak self] in
                 await model.refreshKeys()
+                if model.sync.config.enabled {
+                    Task { @MainActor in
+                        await model.sync.syncNow(model: model, automatic: true)
+                    }
+                }
                 guard !quiet, requested == nil else { return }
                 if model.onboarding != nil {
                     self?.show(section: .home)
@@ -128,6 +138,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
 
     func applicationWillTerminate(_ notification: Notification) {
         retentionTimer?.invalidate()
+        model?.stopActiveMeetingRecordingForTermination()
         model?.historyPlayer.close()
         model?.coordinator.cancel()
         OutputMuter.restore()
@@ -160,6 +171,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
 
     private func openConfiguration(_ url: URL) {
         guard let model else { return }
+        if url.scheme?.lowercased() == "wispad-sync" {
+            model.sync.stagePairingImport(url.absoluteString)
+            model.openSettings(.sync)
+            return
+        }
         show(section: model.selectedSection)
         model.openConfiguration(at: url)
     }

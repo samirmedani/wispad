@@ -80,7 +80,7 @@ plist="$app/Contents/Info.plist"
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist")" == "$version" ]] \
   || fail "la version de l'app n'est pas $version."
 nm "$app/Contents/MacOS/Wispad" > "$out/symboles.txt"
-if grep -qE 'DesignPreview|DevTools' "$out/symboles.txt"; then
+if grep -qE 'DesignPreview|DevTools|BubbleGallery|BubbleProbe|InsertionBench|InsertionSelfTest|AudioStartupProbe|OverlayDemo|ProbeHandoff' "$out/symboles.txt"; then
   fail "outils de développement présents dans la version Release."
 fi
 
