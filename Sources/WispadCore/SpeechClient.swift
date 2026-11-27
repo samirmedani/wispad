@@ -600,6 +600,50 @@ public enum BatchTranscriber {
         try await transcribe(fileURL: fileURL, request: request, transport: TextCleaner.httpTransport)
     }
 
+    /// Transcrit un fichier audio potentiellement long (> 16 Mo, ex. réunion d'une heure) en le découpant
+    /// automatiquement en tranches WAV PCM 16 kHz sous la limite API de 25 Mo, puis en concaténant les textes.
+    public static func transcribeChunked(
+        fileURL: URL,
+        request: SpeechRequest,
+        maxChunkBytes: Int = WAVChunker.defaultMaxChunkBytes,
+        onProgress: (@Sendable (Int, Int) -> Void)? = nil
+    ) async throws -> String {
+        try await transcribeChunked(
+            fileURL: fileURL,
+            request: request,
+            maxChunkBytes: maxChunkBytes,
+            transport: TextCleaner.httpTransport,
+            onProgress: onProgress
+        )
+    }
+
+    static func transcribeChunked(
+        fileURL: URL,
+        request: SpeechRequest,
+        maxChunkBytes: Int = WAVChunker.defaultMaxChunkBytes,
+        transport: @escaping TextCleaner.HTTPTransport,
+        onProgress: (@Sendable (Int, Int) -> Void)? = nil
+    ) async throws -> String {
+        let split = try await BlockingQueue.run(label: "wispad.audio-decoupe") {
+            try WAVChunker.splitIfNeeded(fileURL: fileURL, maxChunkBytes: maxChunkBytes)
+        }
+        defer {
+            for temp in split.temporaryURLs {
+                try? FileManager.default.removeItem(at: temp)
+            }
+        }
+        var parts: [String] = []
+        let total = split.urls.count
+        for (index, url) in split.urls.enumerated() {
+            try Task.checkCancellation()
+            onProgress?(index + 1, total)
+            let piece = try await transcribe(fileURL: url, request: request, transport: transport)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            if !piece.isEmpty { parts.append(piece) }
+        }
+        return parts.joined(separator: "\n\n")
+    }
+
     /// Transport substituable dans les tests, comme pour la correction : aucune clé ni requête réelle. `readFile` : la
     /// lecture de l'audio, remplacée dans les tests.
     static func transcribe(fileURL: URL, request: SpeechRequest, transport: TextCleaner.HTTPTransport,

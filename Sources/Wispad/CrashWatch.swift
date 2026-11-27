@@ -45,9 +45,13 @@ enum CrashWatch {
     }
 
     static func start() {
-        guard shouldWatch(arguments: CommandLine.arguments, kind: BuildKind(info: Bundle.main.infoDictionary)),
+        guard holdPipe == nil,
+              shouldWatch(arguments: CommandLine.arguments, kind: BuildKind(info: Bundle.main.infoDictionary)),
               let support = try? AppPaths.supportDirectory() else { return }
         let pipe = Pipe()
+        // Empêche le bout d'écriture d'être hérité par des sous-processus (ex. coffre de clés),
+        // ce qui maintiendrait la veille bloquée même après un plantage de Wispad.
+        _ = fcntl(pipe.fileHandleForWriting.fileDescriptor, F_SETFD, FD_CLOEXEC)
         holdPipe = pipe
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/sh")

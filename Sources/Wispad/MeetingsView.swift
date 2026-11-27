@@ -3,21 +3,24 @@ import SwiftUI
 import WispadCore
 
 /// Onglet « Réunions » (style Granola, sans bot) intégré dans l'écran Dictées :
-/// capture micro + audio système, prise de notes rapides en direct, transcription par les clés existantes,
+/// capture micro + audio système (gérée par `AppModel` pour survivre au changement d'onglet),
+/// prise de notes rapides en direct (sauvegarde groupée), transcription par morceaux,
 /// synthèse Markdown IA et synchronisation texte seul chiffrée.
 struct MeetingsView: View {
     @Environment(AppModel.self) private var model
     @State private var selectedID: String?
     @State private var editorTab: EditorTab = .notes
-    @State private var recorder = MeetingAudioRecorder()
-    @State private var isRecording = false
-    @State private var recordingMode: MeetingAudioRecorder.SourceMode = .micOnly
     @State private var includeSystemAudio = true
-    @State private var recordingStartedAt: Date?
     @State private var elapsedSeconds: Int = 0
-    @State private var isTranscribing = false
     @State private var isEnhancing = false
-    @State private var feedbackMessage: String?
+
+    // Tampons locaux d'édition : évite d'écrire SQLite et de relancer la synchro à chaque touche.
+    @State private var loadedMeetingID: String?
+    @State private var draftTitle = ""
+    @State private var draftNotes = ""
+    @State private var draftEnhanced = ""
+    @State private var draftDirty = false
+    @State private var saveTask: Task<Void, Never>?
 
     enum EditorTab: String, CaseIterable, Identifiable {
         case notes
@@ -44,7 +47,7 @@ struct MeetingsView: View {
     var body: some View {
         HStack(spacing: 0) {
             meetingList
-                .frame(width: 248)
+                .frame(width: 210)
             Rectangle().fill(Theme.cardBorder).frame(width: 1)
             if let meeting = selectedMeeting {
                 meetingEditor(meeting)
@@ -53,10 +56,31 @@ struct MeetingsView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .task(id: isRecording) {
-            guard isRecording else { return }
-            while !Task.isCancelled && isRecording {
-                if let start = recordingStartedAt {
+        .onAppear {
+            if let m = selectedMeeting { loadDraft(from: m) }
+        }
+        .onChange(of: selectedMeeting?.id) { _, newID in
+            flushDraft()
+            if let id = newID, let m = model.meetings.first(where: { $0.id == id }) {
+                loadDraft(from: m)
+            } else {
+                loadedMeetingID = nil
+            }
+        }
+        .onChange(of: selectedMeeting?.updatedAt) { _, _ in
+            if !draftDirty, let m = selectedMeeting, m.id == loadedMeetingID {
+                draftTitle = m.title
+                draftNotes = m.userNotes
+                draftEnhanced = m.enhancedNotes
+            }
+        }
+        .onDisappear {
+            flushDraft()
+        }
+        .task(id: model.isRecordingMeeting) {
+            guard model.isRecordingMeeting else { elapsedSeconds = 0; return }
+            while !Task.isCancelled && model.isRecordingMeeting {
+                if let start = model.recordingMeetingStartedAt {
                     elapsedSeconds = max(0, Int(Date().timeIntervalSince(start)))
                 }
                 try? await Task.sleep(for: .seconds(1))
@@ -78,7 +102,7 @@ struct MeetingsView: View {
                 }
                 .buttonStyle(.plain)
             }
-            .padding(12)
+            .padding(10)
             Rectangle().fill(Theme.cardBorder).frame(height: 1)
             if model.meetings.isEmpty {
                 VStack(spacing: 8) {
@@ -93,21 +117,28 @@ struct MeetingsView: View {
                         .foregroundStyle(.tertiary)
                         .multilineTextAlignment(.center)
                 }
-                .padding(20)
+                .padding(16)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
                     LazyVStack(spacing: 2) {
                         ForEach(model.meetings) { meeting in
                             let isSelected = selectedMeeting?.id == meeting.id
+                            let isRecordingThis = model.recordingMeetingID == meeting.id
                             Button {
+                                flushDraft()
                                 selectedID = meeting.id
                             } label: {
                                 VStack(alignment: .leading, spacing: 3) {
-                                    Text(meeting.title.isEmpty ? String(localized: "Réunion sans titre") : meeting.title)
-                                        .font(.system(size: 12.5, weight: isSelected ? .semibold : .medium))
-                                        .foregroundStyle(.primary)
-                                        .lineLimit(1)
+                                    HStack(spacing: 5) {
+                                        if isRecordingThis {
+                                            Circle().fill(Theme.brand).frame(width: 6, height: 6)
+                                        }
+                                        Text(meeting.title.isEmpty ? String(localized: "Réunion sans titre") : meeting.title)
+                                            .font(.system(size: 12.5, weight: isSelected ? .semibold : .medium))
+                                            .foregroundStyle(.primary)
+                                            .lineLimit(1)
+                                    }
                                     HStack(spacing: 5) {
                                         Text(meeting.createdAt.formatted(.dateTime.day().month(.abbreviated).hour().minute().locale(appLocale)))
                                         if let origin = meeting.sourceDeviceName,
@@ -139,33 +170,48 @@ struct MeetingsView: View {
     }
 
     private func meetingEditor(_ meeting: MeetingRecord) -> some View {
+        let isRecordingThis = model.recordingMeetingID == meeting.id
+        let isRecordingOther = model.isRecordingMeeting && !isRecordingThis
+        let isTranscribingThis = model.transcribingMeetingID == meeting.id
+        let hasRetryAudio = model.pendingRetryMeetingAudio[meeting.id] != nil
+
         let bindingTitle = Binding<String>(
-            get: { meeting.title },
+            get: { loadedMeetingID == meeting.id ? draftTitle : meeting.title },
             set: { updated in
-                var copy = meeting
-                copy.title = updated
-                copy.updatedAt = Date()
-                model.saveMeeting(copy)
+                if loadedMeetingID != meeting.id { loadDraft(from: meeting) }
+                draftTitle = updated
+                scheduleDraftSave()
             }
         )
         let bindingNotes = Binding<String>(
-            get: { meeting.userNotes },
+            get: { loadedMeetingID == meeting.id ? draftNotes : meeting.userNotes },
             set: { updated in
-                var copy = meeting
-                copy.userNotes = updated
-                copy.updatedAt = Date()
-                model.saveMeeting(copy)
+                if loadedMeetingID != meeting.id { loadDraft(from: meeting) }
+                draftNotes = updated
+                scheduleDraftSave()
             }
         )
         let bindingEnhanced = Binding<String>(
-            get: { meeting.enhancedNotes },
+            get: { loadedMeetingID == meeting.id ? draftEnhanced : meeting.enhancedNotes },
             set: { updated in
-                var copy = meeting
-                copy.enhancedNotes = updated
-                copy.updatedAt = Date()
-                model.saveMeeting(copy)
+                if loadedMeetingID != meeting.id { loadDraft(from: meeting) }
+                draftEnhanced = updated
+                scheduleDraftSave()
             }
         )
+        let effectiveNotes = loadedMeetingID == meeting.id ? draftNotes : meeting.userNotes
+        let effectiveEnhanced = loadedMeetingID == meeting.id ? draftEnhanced : meeting.enhancedNotes
+        let copyText: String = {
+            switch editorTab {
+            case .transcript:
+                return meeting.rawTranscript
+            case .enhanced:
+                return effectiveEnhanced.isEmpty ? effectiveNotes : effectiveEnhanced
+            case .notes:
+                return effectiveNotes.isEmpty ? effectiveEnhanced : effectiveNotes
+            }
+        }()
+
         return VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 10) {
@@ -173,37 +219,56 @@ struct MeetingsView: View {
                         .textFieldStyle(.plain)
                         .font(.system(size: 16, weight: .semibold))
                     Spacer()
-                    recordControls(for: meeting)
+                    recordControls(for: meeting, isRecordingThis: isRecordingThis, isRecordingOther: isRecordingOther, isTranscribingThis: isTranscribingThis)
                 }
                 HStack(spacing: 10) {
                     PillPicker(options: EditorTab.allCases, selection: $editorTab, title: \.title)
                     Spacer()
-                    if isRecording {
+                    if isRecordingThis {
                         HStack(spacing: 5) {
                             Circle().fill(Theme.brand).frame(width: 6, height: 6)
                             Text(formatTimer(elapsedSeconds))
                                 .font(.system(size: 11, design: .monospaced))
-                            Text(recordingMode == .micAndSystem
+                            Text(model.recordingMeetingMode == .micAndSystem
                                  ? String(localized: "Micro + Audio système")
                                  : String(localized: "Micro"))
                                 .font(.system(size: 10.5))
                                 .foregroundStyle(.secondary)
                         }
-                    } else if isTranscribing {
+                    } else if isTranscribingThis {
                         HStack(spacing: 5) {
                             ProgressView().controlSize(.small)
-                            Text("Transcription en cours…")
+                            Text(model.meetingTranscribeProgress ?? String(localized: "Transcription en cours…"))
                                 .font(.system(size: 11))
                                 .foregroundStyle(.secondary)
                         }
-                    } else if !isRecording {
+                    } else if !model.isRecordingMeeting {
                         Toggle(String(localized: "Audio système"), isOn: $includeSystemAudio)
                             .toggleStyle(.checkbox)
                             .font(.system(size: 11))
                             .foregroundStyle(.secondary)
                     }
                 }
-                if let msg = feedbackMessage {
+                if hasRetryAudio, !isTranscribingThis {
+                    HStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.orange)
+                        Text("L'audio de cette réunion a été conservé après l'échec de transcription.")
+                            .font(.system(size: 11.5))
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Button(String(localized: "Réessayer la transcription")) {
+                            Task { await model.retryMeetingTranscription(for: meeting.id) }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Theme.subtleFill, in: RoundedRectangle(cornerRadius: 8))
+                }
+                if let msg = model.meetingFeedback {
                     Text(msg)
                         .font(.system(size: 11.5))
                         .foregroundStyle(.secondary)
@@ -222,7 +287,7 @@ struct MeetingsView: View {
                         .scrollContentBackground(.hidden)
                         .padding(16)
                         .overlay(alignment: .topLeading) {
-                            if meeting.userNotes.isEmpty {
+                            if effectiveNotes.isEmpty {
                                 Text("Note tes points clés ici pendant la réunion (puces, décisions, noms propres)…")
                                     .font(.system(size: 13))
                                     .foregroundStyle(.tertiary)
@@ -231,7 +296,7 @@ struct MeetingsView: View {
                             }
                         }
                 case .enhanced:
-                    if meeting.enhancedNotes.isEmpty {
+                    if effectiveEnhanced.isEmpty {
                         VStack(spacing: 10) {
                             Image(systemName: "sparkles")
                                 .font(.system(size: 24))
@@ -270,7 +335,10 @@ struct MeetingsView: View {
 
             HStack(spacing: 10) {
                 Button {
-                    Task { await enhance(meeting) }
+                    flushDraft()
+                    if let fresh = model.meetings.first(where: { $0.id == meeting.id }) {
+                        Task { await enhance(fresh) }
+                    }
                 } label: {
                     HStack(spacing: 6) {
                         if isEnhancing {
@@ -283,21 +351,22 @@ struct MeetingsView: View {
                     .font(.system(size: 12, weight: .medium))
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(isEnhancing || (meeting.userNotes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && meeting.rawTranscript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
+                .disabled(isEnhancing || (effectiveNotes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && meeting.rawTranscript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
 
                 Button {
-                    let text = meeting.enhancedNotes.isEmpty ? meeting.userNotes : meeting.enhancedNotes
-                    model.copy(text)
+                    model.copy(copyText)
                 } label: {
                     Label(String(localized: "Copier"), systemImage: "doc.on.doc")
                         .font(.system(size: 12))
                 }
                 .buttonStyle(.bordered)
-                .disabled(meeting.enhancedNotes.isEmpty && meeting.userNotes.isEmpty)
+                .disabled(copyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
                 Spacer()
 
                 Button(role: .destructive) {
+                    saveTask?.cancel()
+                    draftDirty = false
                     model.deleteMeeting(meeting)
                     if selectedID == meeting.id { selectedID = model.meetings.first?.id }
                 } label: {
@@ -313,28 +382,29 @@ struct MeetingsView: View {
         }
     }
 
-    private func recordControls(for meeting: MeetingRecord) -> some View {
+    private func recordControls(for meeting: MeetingRecord, isRecordingThis: Bool, isRecordingOther: Bool, isTranscribingThis: Bool) -> some View {
         Button {
-            if isRecording {
-                stopRecording(for: meeting)
+            flushDraft()
+            if isRecordingThis {
+                Task { await model.stopMeetingRecording() }
             } else {
-                startRecording()
+                Task { await model.startMeetingRecording(for: meeting.id, includeSystemAudio: includeSystemAudio) }
             }
         } label: {
             HStack(spacing: 6) {
                 Circle()
-                    .fill(isRecording ? Color.white : Theme.brand)
+                    .fill(isRecordingThis ? Color.white : Theme.brand)
                     .frame(width: 6.5, height: 6.5)
-                Text(isRecording ? String(localized: "Arrêter") : String(localized: "Enregistrer"))
+                Text(isRecordingThis ? String(localized: "Arrêter") : String(localized: "Enregistrer"))
                     .font(.system(size: 11.5, weight: .medium))
-                    .foregroundStyle(isRecording ? Color.white : Color.primary)
+                    .foregroundStyle(isRecordingThis ? Color.white : Color.primary)
             }
             .padding(.horizontal, 11)
             .frame(height: 26)
-            .background(Capsule().fill(isRecording ? Theme.brand : Theme.subtleFill))
+            .background(Capsule().fill(isRecordingThis ? Theme.brand : Theme.subtleFill))
         }
         .buttonStyle(.plain)
-        .disabled(isTranscribing)
+        .disabled(isTranscribingThis || isRecordingOther || model.transcribingMeetingID != nil)
     }
 
     private var emptyDetail: some View {
@@ -357,7 +427,46 @@ struct MeetingsView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    private func loadDraft(from meeting: MeetingRecord) {
+        saveTask?.cancel()
+        loadedMeetingID = meeting.id
+        draftTitle = meeting.title
+        draftNotes = meeting.userNotes
+        draftEnhanced = meeting.enhancedNotes
+        draftDirty = false
+    }
+
+    private func scheduleDraftSave() {
+        draftDirty = true
+        saveTask?.cancel()
+        saveTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled else { return }
+            flushDraft()
+        }
+    }
+
+    private func flushDraft() {
+        saveTask?.cancel()
+        saveTask = nil
+        guard draftDirty, let id = loadedMeetingID,
+              var current = model.meetings.first(where: { $0.id == id }) else {
+            draftDirty = false
+            return
+        }
+        draftDirty = false
+        guard current.title != draftTitle || current.userNotes != draftNotes || current.enhancedNotes != draftEnhanced else {
+            return
+        }
+        current.title = draftTitle
+        current.userNotes = draftNotes
+        current.enhancedNotes = draftEnhanced
+        current.updatedAt = Date()
+        model.saveMeeting(current)
+    }
+
     private func createMeeting() {
+        flushDraft()
         let identity = model.sync.deviceIdentity
         let formatted = Date().formatted(.dateTime.day().month(.abbreviated).hour().minute().locale(appLocale))
         let meeting = MeetingRecord(
@@ -368,64 +477,15 @@ struct MeetingsView: View {
         )
         model.saveMeeting(meeting)
         selectedID = meeting.id
+        loadDraft(from: meeting)
         editorTab = .notes
-        feedbackMessage = nil
-    }
-
-    private func startRecording() {
-        feedbackMessage = nil
-        let dir = model.supportURL.appendingPathComponent("MeetingsAudio", isDirectory: true)
-        do {
-            let started = try recorder.start(directory: dir, includeSystemAudio: includeSystemAudio)
-            recordingMode = started.mode
-            recordingStartedAt = Date()
-            elapsedSeconds = 0
-            isRecording = true
-        } catch {
-            feedbackMessage = error.localizedDescription
-        }
-    }
-
-    private func stopRecording(for meeting: MeetingRecord) {
-        let result = recorder.stop()
-        isRecording = false
-        recordingStartedAt = nil
-        guard let url = result.url else { return }
-        let speech = model.speechRequest(context: nil)
-        guard !speech.apiKey.isEmpty else {
-            try? FileManager.default.removeItem(at: url)
-            feedbackMessage = String(localized: "Ajoute une clé API (xAI ou OpenAI) dans Fournisseurs pour transcrire.")
-            return
-        }
-        isTranscribing = true
-        feedbackMessage = nil
-        let duration = result.duration
-        Task { @MainActor in
-            defer {
-                try? FileManager.default.removeItem(at: url)
-                isTranscribing = false
-            }
-            do {
-                let transcriptText = try await BatchTranscriber.transcribe(fileURL: url, request: speech)
-                var updated = model.meetings.first(where: { $0.id == meeting.id }) ?? meeting
-                updated.durationSeconds += duration
-                let piece = transcriptText.trimmingCharacters(in: .whitespacesAndNewlines)
-                if !piece.isEmpty {
-                    updated.rawTranscript = updated.rawTranscript.isEmpty ? piece : (updated.rawTranscript + "\n\n" + piece)
-                }
-                updated.updatedAt = Date()
-                model.saveMeeting(updated)
-                feedbackMessage = String(localized: "Transcription terminée (l'audio temporaire a été supprimé).")
-            } catch {
-                feedbackMessage = String(localized: "Échec de la transcription : vérifie ta clé ou ta connexion.")
-            }
-        }
+        model.meetingFeedback = nil
     }
 
     private func enhance(_ meeting: MeetingRecord) async {
         let speech = model.speechRequest(context: nil)
         isEnhancing = true
-        feedbackMessage = nil
+        model.meetingFeedback = nil
         defer { isEnhancing = false }
         let result = await TextCleaner.enhanceMeeting(
             title: meeting.title,
@@ -437,16 +497,20 @@ struct MeetingsView: View {
         if let usage = result.usage { model.recordUsage(usage) }
         for failed in result.failedUsages { model.recordUsage(failed) }
         let cleaned = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleaned.isEmpty else {
-            feedbackMessage = String(localized: "Aucune synthèse reçue : vérifie tes clés de correction dans Fournisseurs.")
+        guard result.usage?.succeeded == true, !cleaned.isEmpty else {
+            model.meetingFeedback = String(localized: "Aucune synthèse reçue : vérifie tes clés de correction dans Fournisseurs.")
             return
         }
-        var updated = model.meetings.first(where: { $0.id == meeting.id }) ?? meeting
+        guard var updated = model.meetings.first(where: { $0.id == meeting.id }) else { return }
         updated.enhancedNotes = cleaned
         updated.updatedAt = Date()
         model.saveMeeting(updated)
+        if loadedMeetingID == updated.id {
+            draftEnhanced = cleaned
+            draftDirty = false
+        }
         editorTab = .enhanced
-        feedbackMessage = String(localized: "Synthèse IA enregistrée et prête à synchroniser.")
+        model.meetingFeedback = String(localized: "Synthèse IA enregistrée et prête à synchroniser.")
     }
 
     private func formatTimer(_ total: Int) -> String {

@@ -81,8 +81,12 @@ private final class AppleLocalHearing: LocalHearingSession, @unchecked Sendable 
         /// Paquets arrivés avant la fin de `bestAvailableAudioFormat` : mis en attente (2 s max) au lieu d'être perdus.
         var buffered: [Data] = []
         var closed = false
+        var analyzerStarted = false
+        var finishRequested = false
     }
     private let pauses = OSAllocatedUnfairLock(initialState: Pauses())
+    /// File série dédiée à la conversion audio et à l'envoi vers `AsyncStream` (évite tout accès concurrent à `AVAudioConverter`).
+    private let deliverQueue = DispatchQueue(label: "com.yatofix.wispad.local-hearing.deliver", qos: .userInitiated)
     /// Sous ce niveau (environ -40 dBFS), le paquet est un silence ; mesuré : voix vers -25 dB, pauses sous -50 dB.
     private static let quietLevel = 0.01
     /// Une pause de ce temps après de la voix clôt les phrases ; jamais deux clôtures à moins de 1,5 s.
@@ -135,6 +139,13 @@ private final class AppleLocalHearing: LocalHearingSession, @unchecked Sendable 
                 Self.close(state)
                 return
             }
+            let shouldFinalizeNow = self?.formatState.withLock { current -> Bool in
+                current.analyzerStarted = true
+                return current.finishRequested
+            } ?? false
+            if shouldFinalizeNow {
+                try? await analyzer.finalizeAndFinishThroughEndOfInput()
+            }
             await withTaskCancellationHandler {
                 _ = await results.value
             } onCancel: {
@@ -153,10 +164,13 @@ private final class AppleLocalHearing: LocalHearingSession, @unchecked Sendable 
             current.buffered.removeAll()
             return (queued, current.closed)
         }
-        for chunk in pending {
-            deliver(chunk, converter: converter, target: target)
+        deliverQueue.async { [weak self] in
+            guard let self else { return }
+            for chunk in pending {
+                self.deliverOnQueue(chunk, converter: converter, target: target)
+            }
+            if shouldFinish { self.input.finish() }
         }
-        if shouldFinish { input.finish() }
     }
 
     func feed(_ pcm: Data) {
@@ -170,10 +184,12 @@ private final class AppleLocalHearing: LocalHearingSession, @unchecked Sendable 
             return nil
         }
         guard let (converter, target) = ready else { return }
-        deliver(pcm, converter: converter, target: target)
+        deliverQueue.async { [weak self] in
+            self?.deliverOnQueue(pcm, converter: converter, target: target)
+        }
     }
 
-    private func deliver(_ pcm: Data, converter: AVAudioConverter?, target: AVAudioFormat) {
+    private func deliverOnQueue(_ pcm: Data, converter: AVAudioConverter?, target: AVAudioFormat) {
         let frames = AVAudioFrameCount(pcm.count / 2)
         guard frames > 0, let buffer = AVAudioPCMBuffer(pcmFormat: source, frameCapacity: frames) else { return }
         buffer.frameLength = frames
@@ -226,16 +242,23 @@ private final class AppleLocalHearing: LocalHearingSession, @unchecked Sendable 
     }
 
     func finish() {
-        let readyNow = formatState.withLock { current -> Bool in
+        let (readyNow, startedNow) = formatState.withLock { current -> (Bool, Bool) in
             current.closed = true
-            return current.target != nil
+            current.finishRequested = true
+            return (current.target != nil, current.analyzerStarted)
         }
-        if readyNow { input.finish() }
+        if readyNow {
+            deliverQueue.async { [weak self] in
+                self?.input.finish()
+            }
+        }
         guard let analyzer else { Self.close(state); return }
         let workTask = work
         let state = state
         Task.detached(priority: .userInitiated) {
-            try? await analyzer.finalizeAndFinishThroughEndOfInput()
+            if startedNow {
+                try? await analyzer.finalizeAndFinishThroughEndOfInput()
+            }
             // Laisser la boucle `transcriber.results` finir de consommer la dernière phrase avant de réveiller `finalText`.
             await workTask?.value
             Self.close(state)
@@ -261,7 +284,13 @@ private final class AppleLocalHearing: LocalHearingSession, @unchecked Sendable 
     }
 
     func stop() {
-        input.finish()
+        formatState.withLock { current in
+            current.closed = true
+            current.buffered.removeAll()
+        }
+        deliverQueue.async { [weak self] in
+            self?.input.finish()
+        }
         work?.cancel()
         Self.close(state)
     }

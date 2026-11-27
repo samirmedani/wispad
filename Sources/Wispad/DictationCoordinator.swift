@@ -773,6 +773,7 @@ final class DictationCoordinator {
         var raw = ""
         var liveBroke = false
         var streamFinish: StreamFinish?
+        var streamAbandonedForReadyFile = false
         if let session = current.session, !job.cancelled {
             let startTask = current.startTask
             // Si la vérification fichier tourne en parallèle et que le flux traîne (handshake ou `transcript.done`),
@@ -798,6 +799,7 @@ final class DictationCoordinator {
                     streamTask.cancel()
                     current.streamFailure = .timeout
                     liveBroke = true
+                    streamAbandonedForReadyFile = true
                 }
             } else {
                 let outcome = await streamTask.value
@@ -817,7 +819,8 @@ final class DictationCoordinator {
             return
         }
         let streamed = !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        if current.session != nil, liveBroke || streamed {
+        // Ne pas pénaliser la santé du fournisseur si le même fournisseur vient de réussir par fichier WAV.
+        if current.session != nil, (liveBroke && !streamAbandonedForReadyFile) || streamed {
             model.recordHealth(ServiceHealth.voice(speech.provider), succeeded: !liveBroke)
             if !liveBroke { announcedRelays.remove(ServiceHealth.voice(speech.provider)) }
         }
@@ -1051,6 +1054,7 @@ final class DictationCoordinator {
         }
         applyRetention(recordID: record.id, url: url, status: status, model: model)
         model.reloadHistory()
+        model.sync.scheduleSyncIfEnabled(model: model)
         LatencyLog.append(
             LatencyLog.line(current.marks, mode: current.mode, status: status.rawValue),
             to: model.supportURL.appendingPathComponent(LatencyLog.fileName)
@@ -1281,6 +1285,7 @@ final class DictationCoordinator {
                 )
             }
             model.reloadHistory()
+            model.sync.scheduleSyncIfEnabled(model: model)
         }
         switch status {
         case .inserted, .pasteSent:
@@ -1464,6 +1469,7 @@ final class DictationCoordinator {
             run.trace.outcome = .pending
             model.statusBanner = String(localized: "Transcription mise à jour. Utilise Copier pour l'insérer où tu veux.")
             model.reloadHistory()
+            model.sync.scheduleSyncIfEnabled(model: model)
         } catch {
             if run.trace.timings.transcriptionMs == nil {
                 run.trace.timings.transcriptionMs = max(0, KeyboardTap.now() - transcriptionBegan)

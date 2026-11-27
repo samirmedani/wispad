@@ -101,7 +101,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                     if let model {
                         ProfileTopicsController.shared.runIfDue(model: model)
                         if model.sync.config.enabled {
-                            await model.sync.syncNow(model: model)
+                            await model.sync.syncNow(model: model, automatic: true)
                         }
                     }
                 }
@@ -111,7 +111,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             Task { @MainActor [weak self] in
                 await model.refreshKeys()
                 if model.sync.config.enabled {
-                    await model.sync.syncNow(model: model)
+                    Task { @MainActor in
+                        await model.sync.syncNow(model: model, automatic: true)
+                    }
                 }
                 guard !quiet, requested == nil else { return }
                 if model.onboarding != nil {
@@ -136,6 +138,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
 
     func applicationWillTerminate(_ notification: Notification) {
         retentionTimer?.invalidate()
+        model?.stopActiveMeetingRecordingForTermination()
         model?.historyPlayer.close()
         model?.coordinator.cancel()
         OutputMuter.restore()
@@ -168,11 +171,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
 
     private func openConfiguration(_ url: URL) {
         guard let model else { return }
-        if url.scheme == "wispad-sync" {
-            if model.sync.applyPairingURI(url.absoluteString) {
-                model.statusBanner = String(localized: "Synchronisation configurée : synchronisation lancée.")
-                Task { await model.sync.syncNow(model: model) }
-            }
+        if url.scheme?.lowercased() == "wispad-sync" {
+            model.sync.stagePairingImport(url.absoluteString)
             model.openSettings(.sync)
             return
         }

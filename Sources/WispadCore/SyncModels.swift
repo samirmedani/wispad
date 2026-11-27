@@ -254,9 +254,10 @@ public struct S3SyncConfig: Codable, Equatable, Sendable {
 
     /// Aide 2 clics Cloudflare R2 : construit l'URL endpoint depuis le seul identifiant de compte Cloudflare.
     public static func cloudflareR2Endpoint(accountID: String) -> String {
-        let cleaned = accountID.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleaned = accountID.trimmingCharacters(in: .whitespacesAndNewlines).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         guard !cleaned.isEmpty else { return "" }
         if cleaned.hasPrefix("https://") || cleaned.hasPrefix("http://") { return cleaned }
+        if cleaned.contains(".r2.cloudflarestorage.com") { return "https://\(cleaned)" }
         return "https://\(cleaned).r2.cloudflarestorage.com"
     }
 
@@ -274,7 +275,7 @@ public struct WebDAVSyncConfig: Codable, Equatable, Sendable {
     public var password: String
     public var prefix: String
 
-    public init(url: String = "", username: String = "", password: String = "", prefix: String = "wispad-sync") {
+    public init(url: String = "", username: String = "", password: String = "", prefix: String = "") {
         self.url = url
         self.username = username
         self.password = password
@@ -323,13 +324,22 @@ public struct SyncPairingConfig: Codable, Equatable, Sendable {
     public static func parse(uri: String) -> SyncPairingConfig? {
         let trimmed = uri.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let components = URLComponents(string: trimmed),
-              components.scheme == Self.scheme,
+              components.scheme?.lowercased() == Self.scheme,
+              (components.host ?? "").lowercased() == "v1",
               let dataParam = components.queryItems?.first(where: { $0.name == "data" })?.value,
               let raw = SyncKey.decodeBase64URL(dataParam),
               let config = try? JSONDecoder().decode(SyncPairingConfig.self, from: raw),
+              config.version == 1,
               (try? SyncKey(base64URL: config.syncKey)) != nil else {
             return nil
         }
-        return config
+        switch config.backend {
+        case .s3 where config.s3?.isConfigured != true:
+            return nil
+        case .webdav where config.webdav?.isConfigured != true:
+            return nil
+        default:
+            return config
+        }
     }
 }

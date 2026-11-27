@@ -414,7 +414,11 @@ extension DictationCoordinator {
             guard !Task.isCancelled else { return }
             winner.resolve(.success(nil))
         }
-        let result = (try? await winner.value()) ?? nil
+        let result = await withTaskCancellationHandler {
+            (try? await winner.value()) ?? nil
+        } onCancel: {
+            winner.resolve(.success(nil))
+        }
         streamWatcher.cancel()
         fileWatcher.cancel()
         return result

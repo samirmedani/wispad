@@ -77,6 +77,7 @@ enum DesignPreview {
             }
             dependencies.refreshKeys = { customerPreview || keysPreview }
             model = try AppModel(supportDirectory: directory, settings: AppSettings(), dependencies: dependencies)
+            model.sync.config.deviceName = "MacBook Pro"
             if keysPreview { model.settings.disabledKeys = [APIKeys.typesafe] }
             if arguments.contains("--add-key-preview") { model.newKeyDraft = "sk-" + String(repeating: "0", count: 28) + "beef" }
             var audioURL: URL?

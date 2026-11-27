@@ -39,18 +39,18 @@
     },
     "NSAudioCaptureUsageDescription" : {
       "comment" : "Privacy - System Audio Capture Usage Description",
-      "extractionState" : "extracted_with_value",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wispad can capture system audio during a bot-free meeting to transcribe it locally alongside your microphone."
+            "value" : "Wispad can capture system audio during a bot-free meeting to transcribe it with the provider you chose."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Wispad peut capturer l'audio système pendant une réunion sans bot pour le transcrire localement avec ta voix."
+            "value" : "Wispad peut capturer l'audio système pendant une réunion sans bot pour le transcrire avec le fournisseur choisi."
           }
         }
       }

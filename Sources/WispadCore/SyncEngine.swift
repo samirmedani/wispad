@@ -14,6 +14,7 @@ public struct SyncReport: Equatable, Sendable {
     public var pulledDictations: Int
     public var pulledMeetings: Int
     public var pulledTerms: Int
+    public var skippedPeerBlobs: Int
     public var updatedSharedSettings: Bool
     public var remoteSharedSettings: SyncSharedSettings?
     public var syncedAt: Date
@@ -26,6 +27,7 @@ public struct SyncReport: Equatable, Sendable {
         pulledDictations: Int = 0,
         pulledMeetings: Int = 0,
         pulledTerms: Int = 0,
+        skippedPeerBlobs: Int = 0,
         updatedSharedSettings: Bool = false,
         remoteSharedSettings: SyncSharedSettings? = nil,
         syncedAt: Date = Date()
@@ -37,6 +39,7 @@ public struct SyncReport: Equatable, Sendable {
         self.pulledDictations = pulledDictations
         self.pulledMeetings = pulledMeetings
         self.pulledTerms = pulledTerms
+        self.skippedPeerBlobs = skippedPeerBlobs
         self.updatedSharedSettings = updatedSharedSettings
         self.remoteSharedSettings = remoteSharedSettings
         self.syncedAt = syncedAt
@@ -47,12 +50,15 @@ public struct SyncReport: Equatable, Sendable {
 }
 
 /// Moteur local-first de synchronisation E2EE BYOS :
-/// - chaque appareil écrit uniquement dans son dossier `devices/<deviceId>/<seq>.wsp.enc` (zéro conflit d'écriture) ;
-/// - seuls le texte, le dictionnaire, les réunions et les réglages partagés transitent (quelques Ko, jamais l'audio) ;
-/// - chaque dictée distante garde l'identité de son appareil d'origine (`sourceDeviceName`, `sourceDevicePlatform`).
+/// - chaque appareil écrit uniquement dans `devices/<deviceId>/<seq:06>.wsp.enc` (zéro conflit d'écriture) ;
+/// - suit uniquement les mutations locales via `sync_outbox` (zéro boucle d'écho, zéro perte par dérive d'horloge) ;
+/// - exécute toutes les lectures/écritures SQLite hors du pool coopératif Swift (`BlockingQueue`) ;
+/// - isole les fichiers partiels/corrompus d'un pair sans bloquer les autres pairs ni l'envoi local.
 public enum WispadSyncEngine {
     public static let manifestPath = "manifest.json"
     public static let devicesPrefix = "devices"
+    public static let maxItemsPerDelta = 500
+    private static let storeQueue = BlockingQueue(label: "wispad.sync.store", qos: .utility)
 
     public static func deltaPath(deviceId: String, sequence: Int) -> String {
         let padded = String(format: "%06d", sequence)
@@ -91,118 +97,144 @@ public enum WispadSyncEngine {
     }
 
     /// Exécute un cycle complet pull + push sur le stockage BYOS chiffré.
+    /// `localSharedSettings` ne doit être passé (non nil) que si les réglages locaux ont réellement changé depuis le dernier push,
+    /// ou avec son horodatage réel de dernière modification locale (jamais `Date()` à chaque tick).
     public static func sync(
         store: HistoryStore,
         device: DeviceIdentity,
         key: SyncKey,
         transport: any SyncTransport,
         localSharedSettings: SyncSharedSettings? = nil,
+        localSharedSettingsDirty: Bool = false,
         applySharedSettings: ((SyncSharedSettings) -> Void)? = nil
     ) async throws -> SyncReport {
         _ = try await verifyOrInitialize(transport: transport, key: key)
         var report = SyncReport()
 
-        // 1. PULL : lire les nouveaux deltas de chaque autre appareil.
+        // 1. LIST : recenser les deltas distants et le plus grand numéro déjà présent pour cet appareil (survie réinstallation).
         let allPaths = try await transport.list(prefix: devicesPrefix)
-        let remoteDeltas = allPaths
-            .compactMap { path -> (path: String, deviceId: String, sequence: Int)? in
-                guard let parsed = parseDeltaPath(path), parsed.deviceId != device.deviceId else { return nil }
-                return (path, parsed.deviceId, parsed.sequence)
+        var maxSelfRemoteSequence = 0
+        var remoteDeltas: [(path: String, deviceId: String, sequence: Int)] = []
+        for path in allPaths {
+            guard let parsed = parseDeltaPath(path) else { continue }
+            if parsed.deviceId == device.deviceId {
+                maxSelfRemoteSequence = max(maxSelfRemoteSequence, parsed.sequence)
+            } else {
+                remoteDeltas.append((path, parsed.deviceId, parsed.sequence))
             }
-            .sorted { $0.deviceId == $1.deviceId ? $0.sequence < $1.sequence : $0.deviceId < $1.deviceId }
+        }
+        remoteDeltas.sort { $0.deviceId == $1.deviceId ? $0.sequence < $1.sequence : $0.deviceId < $1.deviceId }
 
+        // 2. PULL : lire et appliquer les nouveaux deltas de chaque pair (une transaction SQLite atomique par delta).
         var latestRemoteSettings: SyncSharedSettings?
         var appliedByDevice: [String: Int] = [:]
+        var stalledPeers: Set<String> = []
         for entry in remoteDeltas {
+            if stalledPeers.contains(entry.deviceId) { continue }
             let lastApplied: Int
             if let cached = appliedByDevice[entry.deviceId] {
                 lastApplied = cached
             } else {
-                lastApplied = try store.syncCursor(for: entry.deviceId)
+                lastApplied = try await storeQueue.run { try store.syncCursor(for: entry.deviceId) }
+                appliedByDevice[entry.deviceId] = lastApplied
             }
             guard entry.sequence > lastApplied else { continue }
             guard let encrypted = try await transport.get(path: entry.path) else { continue }
-            let plaintext = try key.open(encrypted, relativePath: entry.path)
-            let delta = try JSONDecoder().decode(SyncDelta.self, from: plaintext)
 
-            for item in delta.dictations {
-                if try store.applySyncedDictation(item, localDeviceID: device.deviceId) {
-                    report.pulledDictations += 1
-                }
+            // Un fichier partiellement synchronisé par Dropbox/OneDrive ne bloque pas les autres pairs ni le push.
+            let delta: SyncDelta
+            do {
+                let plaintext = try key.open(encrypted, relativePath: entry.path)
+                delta = try JSONDecoder().decode(SyncDelta.self, from: plaintext)
+            } catch {
+                stalledPeers.insert(entry.deviceId)
+                report.skippedPeerBlobs += 1
+                continue
             }
-            for meeting in delta.meetings {
-                if try store.applySyncedMeeting(meeting) {
-                    report.pulledMeetings += 1
-                }
+
+            let counts = try await storeQueue.run {
+                try store.applyRemoteDelta(delta, peerDeviceID: entry.deviceId, sequence: entry.sequence)
             }
-            for term in delta.dictionary {
-                if try store.applySyncedDictionaryTerm(term) {
-                    report.pulledTerms += 1
-                }
-            }
-            for refusal in delta.refusals {
-                try store.rememberRefusal(refusal.term)
-            }
+            report.pulledDictations += counts.dictations
+            report.pulledMeetings += counts.meetings
+            report.pulledTerms += counts.terms
+
             if let remoteSettings = delta.sharedSettings {
                 if latestRemoteSettings == nil || remoteSettings.updatedAt > (latestRemoteSettings?.updatedAt ?? 0) {
                     latestRemoteSettings = remoteSettings
                 }
             }
-            try store.setSyncCursor(deviceID: entry.deviceId, sequence: entry.sequence)
             appliedByDevice[entry.deviceId] = entry.sequence
         }
 
+        var remoteSettingsApplied = false
         if let remoteSettings = latestRemoteSettings {
             let localStamp = localSharedSettings?.updatedAt ?? 0
             if remoteSettings.updatedAt > localStamp {
                 applySharedSettings?(remoteSettings)
                 report.remoteSharedSettings = remoteSettings
                 report.updatedSharedSettings = true
+                remoteSettingsApplied = true
             }
         }
 
-        // 2. PUSH : publier les changements locaux depuis la dernière synchro (texte seul, zéro audio).
-        let lastPushAt = try store.lastSyncPushTimestamp()
-        let nextSequence = (try store.syncCursor(for: device.deviceId)) + 1
-        let now = Date().timeIntervalSince1970
-
-        let dictationsToPush = try store.dictationsForSync(modifiedAfter: lastPushAt, localDevice: device)
-        let meetingsToPush = try store.meetingsForSync(modifiedAfter: lastPushAt, localDevice: device)
-        let termsToPush = try store.dictionaryForSync(modifiedAfter: lastPushAt)
-        let refusalsToPush = try store.refusalsForSync(createdAfter: lastPushAt)
-        let settingsToPush: SyncSharedSettings? = {
-            guard let local = localSharedSettings, local.updatedAt > lastPushAt else { return nil }
-            return local
+        // 3. PUSH : publier uniquement la boîte d'envoi locale (`sync_outbox`) par lots bornés (max 500 éléments).
+        let (localCursor, lastPushAt) = try await storeQueue.run {
+            (try store.syncCursor(for: device.deviceId), (try? store.lastSyncPushTimestamp()) ?? 0)
+        }
+        var nextSequence = max(localCursor, maxSelfRemoteSequence) + 1
+        var pendingSettingsToPush: SyncSharedSettings? = {
+            guard !remoteSettingsApplied, let local = localSharedSettings else { return nil }
+            if localSharedSettingsDirty { return local }
+            return local.updatedAt > lastPushAt ? local : nil
         }()
 
-        let delta = SyncDelta(
-            deviceId: device.deviceId,
-            deviceName: device.deviceName,
-            devicePlatform: device.platform.rawValue,
-            sequence: nextSequence,
-            createdAt: now,
-            dictations: dictationsToPush,
-            meetings: meetingsToPush,
-            dictionary: termsToPush,
-            refusals: refusalsToPush,
-            sharedSettings: settingsToPush
-        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
 
-        if !delta.isEmpty {
+        while true {
+            let batch = try await storeQueue.run {
+                try store.pendingSyncBatch(localDevice: device, limit: maxItemsPerDelta)
+            }
+            let settingsForThisDelta = pendingSettingsToPush
+            if batch.isEmpty && settingsForThisDelta == nil {
+                break
+            }
+            let now = Date().timeIntervalSince1970
+            let delta = SyncDelta(
+                deviceId: device.deviceId,
+                deviceName: device.deviceName,
+                devicePlatform: device.platform.rawValue,
+                sequence: nextSequence,
+                createdAt: now,
+                dictations: batch.dictations,
+                meetings: batch.meetings,
+                dictionary: batch.dictionary,
+                refusals: batch.refusals,
+                sharedSettings: settingsForThisDelta
+            )
             let path = deltaPath(deviceId: device.deviceId, sequence: nextSequence)
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
             let json = try encoder.encode(delta)
             let encrypted = try key.seal(json, relativePath: path)
             try await transport.put(path: path, data: encrypted)
-            try store.setSyncCursor(deviceID: device.deviceId, sequence: nextSequence)
-            try store.setLastSyncPushTimestamp(now)
-            report.pushedSequence = nextSequence
-            report.pushedDictations = dictationsToPush.count
-            report.pushedMeetings = meetingsToPush.count
-            report.pushedTerms = termsToPush.count
+
+            let committedSeq = nextSequence
+            try await storeQueue.run {
+                try store.clearSyncOutbox(batch)
+                try store.setSyncCursor(deviceID: device.deviceId, sequence: committedSeq)
+                try store.setLastSyncPushTimestamp(now)
+            }
+            report.pushedSequence = committedSeq
+            report.pushedDictations += batch.dictations.count
+            report.pushedMeetings += batch.meetings.count
+            report.pushedTerms += batch.dictionary.count
+            pendingSettingsToPush = nil
+            nextSequence += 1
+
+            let batchSize = batch.dictations.count + batch.meetings.count + batch.dictionary.count + batch.refusals.count
+            if batchSize < maxItemsPerDelta { break }
         }
-        report.syncedAt = Date()
+
         return report
     }
 }

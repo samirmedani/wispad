@@ -41,87 +41,23 @@ struct HomeView: View {
     private var period: StatsPeriod { model.settings.homePeriod }
 
     var body: some View {
-        let snap = model.homeSnapshot(for: period)
-        let usage = model.usageSummary(for: period)
-        let allEntries = model.historyStreamEntries(query: appliedQuery, filter: model.historyFilter)
-        let blurred = model.settings.blurRecentDictations
-        let activeAudioID = model.historyPlayer.recordID
-        let localDeviceID = model.sync.config.deviceId
-
         VStack(spacing: 0) {
-            if subTab == .meetings {
-                VStack(spacing: 0) {
-                    HStack(spacing: 14) {
-                        PillPicker(options: HomeSubTab.allCases, selection: $subTab, title: \.title)
-                        Spacer()
-                    }
-                    .padding(.horizontal, 26)
-                    .padding(.vertical, 14)
-                    Rectangle().fill(Theme.cardBorder).frame(height: 1)
-                    MeetingsView()
-                }
-            } else {
-            VStack(alignment: .leading, spacing: 14) {
-                summaryRibbon(snap: snap, spendUSD: usage.totalUSD)
-                Rectangle().fill(Theme.cardBorder).frame(height: 1)
-                flatSearchBar(blurred: blurred)
-                if let filter = model.historyFilter {
-                    filterBanner(filter)
-                }
-            }
-            .padding(.horizontal, 32)
-            .padding(.top, 20)
-            .padding(.bottom, 10)
-            .frame(maxWidth: 780)
-            .frame(maxWidth: .infinity)
-
-            if allEntries.isEmpty {
-                EmptyState(
-                    symbol: appliedQuery.isEmpty ? "waveform" : "magnifyingglass",
-                    title: appliedQuery.isEmpty ? String(localized: "Aucune dictée") : String(localized: "Aucun résultat"),
-                    message: appliedQuery.isEmpty
-                        ? String(localized: "Maintiens la touche du raccourci et parle : ta première dictée apparaîtra ici.")
-                        : String(localized: "Aucune dictée ne contient « \(appliedQuery) ».")
-                )
+            HStack(spacing: 14) {
+                PillPicker(options: HomeSubTab.allCases, selection: $subTab, title: \.title)
                 Spacer()
-            } else {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 0) {
-                        ForEach(allEntries) { entry in
-                            switch entry {
-                            case .header(day: _, title: let title, count: let count):
-                                StreamDayHeader(title: title, count: count)
-                            case let .record(record, isLastInDay):
-                                let item = HistoryRowCache.shared.item(for: record, localDeviceID: localDeviceID)
-                                StreamDictationRow(
-                                    item: item,
-                                    isLastInDay: isLastInDay,
-                                    blurred: blurred,
-                                    playingThis: activeAudioID == record.id,
-                                    scrollActivity: scrollActivity,
-                                    onCopy: { model.copy(record.finalText) },
-                                    onPlay: item.hasAudio ? { model.play(record) } : nil,
-                                    onRetranscribe: item.hasAudio ? { Task { await model.coordinator.retranscribe(record) } } : nil,
-                                    onDetails: { detailRecord = record },
-                                    onDelete: { model.deleteHistory(record) }
-                                )
-                                .equatable()
-                                .onAppear {
-                                    didRender?(record.id)
-                                }
-                            }
-                        }
-                        shortcutsFootnote
-                            .padding(.top, 22)
-                    }
-                    .padding(.horizontal, 32)
-                    .padding(.bottom, 28)
-                    .frame(maxWidth: 780)
-                    .frame(maxWidth: .infinity)
+                if subTab == .dictations {
+                    dictateTrigger
                 }
-                .scrollIndicators(.automatic)
-                .modifier(HistoryScrollPhase(activity: scrollActivity))
             }
+            .padding(.horizontal, 26)
+            .padding(.top, 14)
+            .padding(.bottom, 10)
+            Rectangle().fill(Theme.cardBorder).frame(height: 1)
+
+            if subTab == .meetings {
+                MeetingsView()
+            } else {
+                dictationsBody
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) { HistoryAudioDock() }
@@ -142,6 +78,78 @@ struct HomeView: View {
         }
     }
 
+    @ViewBuilder
+    private var dictationsBody: some View {
+        let snap = model.homeSnapshot(for: period)
+        let usage = model.usageSummary(for: period)
+        let allEntries = model.historyStreamEntries(query: appliedQuery, filter: model.historyFilter)
+        let blurred = model.settings.blurRecentDictations
+        let activeAudioID = model.historyPlayer.recordID
+        let localDeviceID = model.sync.config.deviceId
+
+        VStack(alignment: .leading, spacing: 14) {
+            summaryRibbon(snap: snap, spendUSD: usage.totalUSD)
+            Rectangle().fill(Theme.cardBorder).frame(height: 1)
+            flatSearchBar(blurred: blurred)
+            if let filter = model.historyFilter {
+                filterBanner(filter)
+            }
+        }
+        .padding(.horizontal, 32)
+        .padding(.top, 16)
+        .padding(.bottom, 10)
+        .frame(maxWidth: 780)
+        .frame(maxWidth: .infinity)
+
+        if allEntries.isEmpty {
+            EmptyState(
+                symbol: appliedQuery.isEmpty ? "waveform" : "magnifyingglass",
+                title: appliedQuery.isEmpty ? String(localized: "Aucune dictée") : String(localized: "Aucun résultat"),
+                message: appliedQuery.isEmpty
+                    ? String(localized: "Maintiens la touche du raccourci et parle : ta première dictée apparaîtra ici.")
+                    : String(localized: "Aucune dictée ne contient « \(appliedQuery) ».")
+            )
+            Spacer()
+        } else {
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(allEntries) { entry in
+                        switch entry {
+                        case .header(day: _, title: let title, count: let count):
+                            StreamDayHeader(title: title, count: count)
+                        case let .record(record, isLastInDay):
+                            let item = HistoryRowCache.shared.item(for: record, localDeviceID: localDeviceID)
+                            StreamDictationRow(
+                                item: item,
+                                isLastInDay: isLastInDay,
+                                blurred: blurred,
+                                playingThis: activeAudioID == record.id,
+                                scrollActivity: scrollActivity,
+                                onCopy: { model.copy(record.finalText) },
+                                onPlay: item.hasAudio ? { model.play(record) } : nil,
+                                onRetranscribe: item.hasAudio ? { Task { await model.coordinator.retranscribe(record) } } : nil,
+                                onDetails: { detailRecord = record },
+                                onDelete: { model.deleteHistory(record) }
+                            )
+                            .equatable()
+                            .onAppear {
+                                didRender?(record.id)
+                            }
+                        }
+                    }
+                    shortcutsFootnote
+                        .padding(.top, 22)
+                }
+                .padding(.horizontal, 32)
+                .padding(.bottom, 28)
+                .frame(maxWidth: 780)
+                .frame(maxWidth: .infinity)
+            }
+            .scrollIndicators(.automatic)
+            .modifier(HistoryScrollPhase(activity: scrollActivity))
+        }
+    }
+
     private func summaryRibbon(snap: HomeSnapshot, spendUSD: Double) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .center, spacing: 14) {
@@ -157,10 +165,8 @@ struct HomeView: View {
                 }
                 Spacer(minLength: 8)
                 MiniSpectrumBars(bars: snap.bars, peak: snap.peakWords)
-                dictateTrigger
             }
             HStack(alignment: .center, spacing: 12) {
-                PillPicker(options: HomeSubTab.allCases, selection: $subTab, title: \.title)
                 PillPicker(selection: Binding(
                     get: { model.settings.homePeriod },
                     set: { model.setDisplayChoice(\.homePeriod, $0) }
@@ -387,6 +393,7 @@ private struct StreamDictationRow: View, Equatable {
                                 .font(.system(size: 9.5))
                             Text(deviceName)
                                 .font(.system(size: 10, weight: .medium))
+                                .lineLimit(1)
                         }
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 6)

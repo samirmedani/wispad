@@ -44,6 +44,6 @@
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Wispad utilise le microphone uniquement pendant une dictée, pour la transcrire avec le fournisseur choisi.</string>
 	<key>NSAudioCaptureUsageDescription</key>
-	<string>Wispad peut capturer l'audio système pendant une réunion sans bot pour le transcrire localement avec ta voix.</string>
+	<string>Wispad peut capturer l'audio système pendant une réunion sans bot pour le transcrire avec le fournisseur choisi.</string>
 </dict>
 </plist>

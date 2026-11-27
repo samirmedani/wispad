@@ -12,32 +12,48 @@ final class MeetingAudioRecorder: @unchecked Sendable {
         case micAndSystem
     }
 
-    private let queue = DispatchQueue(label: "com.yatofix.wispad.meeting-audio", qos: .userInitiated)
+    private let controlQueue = DispatchQueue(label: "com.yatofix.wispad.meeting-audio.control", qos: .userInitiated)
+    /// File série dédiée aux écritures WAV et au mixage : aucune course entre le fil temps réel CoreAudio et `stop()`.
+    private let ioQueue = DispatchQueue(label: "com.yatofix.wispad.meeting-audio.io", qos: .userInitiated)
     private var micEngine: AVAudioEngine?
     private var converter: AVAudioConverter?
     private var wav: WAVStream?
     private var outputURL: URL?
     private var startedAt: Date?
+    private var isRunning = false
     private var systemTapID: AudioObjectID = kAudioObjectUnknown
     private var aggregateDeviceID: AudioObjectID = kAudioObjectUnknown
     private var systemIOProcID: AudioDeviceIOProcID?
     private let mixLock = NSLock()
     private var systemBuffer: [Float] = []
+    private var resamplePhase: Double = 0
+    private var lastResampleSample: Float = 0
     private(set) var activeMode: SourceMode = .micOnly
     private static let sampleRate = 16_000
     private static let log = Logger.wispad("reunion-audio")
 
+    deinit {
+        _ = stop()
+    }
+
     func start(directory: URL, includeSystemAudio: Bool) throws -> (url: URL, mode: SourceMode) {
-        try queue.sync {
+        try controlQueue.sync {
+            guard !isRunning else {
+                throw AudioCaptureError.engine(String(localized: "Un enregistrement de réunion est déjà en cours."))
+            }
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             let url = directory.appendingPathComponent("meeting-\(UUID().uuidString).wav")
             let stream = try WAVStream(url: url, sampleRate: Self.sampleRate)
-            self.wav = stream
             self.outputURL = url
             self.startedAt = Date()
             self.activeMode = .micOnly
+            self.ioQueue.sync {
+                self.wav = stream
+            }
             self.mixLock.lock()
             self.systemBuffer.removeAll(keepingCapacity: true)
+            self.resamplePhase = 0
+            self.lastResampleSample = 0
             self.mixLock.unlock()
 
             if includeSystemAudio {
@@ -52,8 +68,7 @@ final class MeetingAudioRecorder: @unchecked Sendable {
             let input = engine.inputNode
             let inputFormat = input.outputFormat(forBus: 0)
             guard inputFormat.sampleRate > 0, inputFormat.channelCount > 0 else {
-                stopSystemAudioTap()
-                stream.close()
+                cleanupFailedStart(url: url)
                 throw AudioCaptureError.noInput
             }
             guard let targetFormat = AVAudioFormat(
@@ -62,8 +77,7 @@ final class MeetingAudioRecorder: @unchecked Sendable {
                 channels: 1,
                 interleaved: true
             ), let conv = AVAudioConverter(from: inputFormat, to: targetFormat) else {
-                stopSystemAudioTap()
-                stream.close()
+                cleanupFailedStart(url: url)
                 throw AudioCaptureError.engine(String(localized: "Format audio indisponible."))
             }
             self.converter = conv
@@ -72,26 +86,58 @@ final class MeetingAudioRecorder: @unchecked Sendable {
                 self?.handleMicBuffer(buffer, targetFormat: targetFormat, converter: conv)
             }
             engine.prepare()
-            try engine.start()
+            do {
+                try engine.start()
+            } catch {
+                input.removeTap(onBus: 0)
+                engine.stop()
+                self.micEngine = nil
+                self.converter = nil
+                cleanupFailedStart(url: url)
+                throw error
+            }
+            self.isRunning = true
             return (url, activeMode)
         }
     }
 
     func stop() -> (url: URL?, duration: TimeInterval) {
-        queue.sync {
+        controlQueue.sync {
+            guard isRunning || micEngine != nil || aggregateDeviceID != kAudioObjectUnknown else {
+                return (nil, 0)
+            }
+            isRunning = false
             micEngine?.inputNode.removeTap(onBus: 0)
             micEngine?.stop()
             micEngine = nil
             converter = nil
             stopSystemAudioTap()
-            wav?.close()
-            wav = nil
+            // Draine toutes les écritures en vol sur `ioQueue` avant de finaliser l'en-tête WAV.
+            ioQueue.sync {
+                wav?.close()
+                wav = nil
+            }
+            mixLock.lock()
+            systemBuffer.removeAll(keepingCapacity: false)
+            mixLock.unlock()
             let elapsed = startedAt.map { Date().timeIntervalSince($0) } ?? 0
             let url = outputURL
             outputURL = nil
             startedAt = nil
             return (url, max(0, elapsed))
         }
+    }
+
+    private func cleanupFailedStart(url: URL) {
+        stopSystemAudioTap()
+        ioQueue.sync {
+            wav?.close()
+            wav = nil
+        }
+        outputURL = nil
+        startedAt = nil
+        activeMode = .micOnly
+        try? FileManager.default.removeItem(at: url)
     }
 
     private func handleMicBuffer(_ buffer: AVAudioPCMBuffer, targetFormat: AVAudioFormat, converter: AVAudioConverter) {
@@ -124,13 +170,16 @@ final class MeetingAudioRecorder: @unchecked Sendable {
         }
         mixLock.unlock()
         let data = Data(bytes: int16Ptr, count: count * MemoryLayout<Int16>.size)
-        wav?.append(data)
+        ioQueue.async { [weak self] in
+            self?.wav?.append(data)
+        }
     }
 
     @available(macOS 14.2, *)
     private func startSystemAudioTap() -> Bool {
-        let description = CATapDescription(stereoGlobalTapButExcludeProcesses: [])
+        let description = CATapDescription(monoGlobalTapButExcludeProcesses: [])
         description.uuid = UUID()
+        description.isPrivate = true
         description.muteBehavior = .unmuted
         var tapID: AudioObjectID = kAudioObjectUnknown
         let tapStatus = AudioHardwareCreateProcessTap(description, &tapID)
@@ -140,11 +189,22 @@ final class MeetingAudioRecorder: @unchecked Sendable {
         }
         self.systemTapID = tapID
 
+        // Lire le format natif du tap (taux d'échantillonnage réel, 44.1 kHz ou 48 kHz selon la sortie active).
+        var tapASBD = AudioStreamBasicDescription()
+        var asbdSize = UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
+        var tapFormatAddress = AudioObjectPropertyAddress(
+            mSelector: kAudioTapPropertyFormat,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        let formatStatus = AudioObjectGetPropertyData(tapID, &tapFormatAddress, 0, nil, &asbdSize, &tapASBD)
+
         let tapUID = description.uuid.uuidString
         let aggDesc: [String: Any] = [
             kAudioAggregateDeviceNameKey as String: "WispadMeetingTap",
             kAudioAggregateDeviceUIDKey as String: "com.yatofix.wispad.meetingtap.\(tapUID)",
             kAudioAggregateDeviceIsPrivateKey as String: true,
+            kAudioAggregateDeviceTapAutoStartKey as String: true,
             kAudioAggregateDeviceTapListKey as String: [
                 [
                     kAudioSubTapUIDKey as String: tapUID,
@@ -161,39 +221,87 @@ final class MeetingAudioRecorder: @unchecked Sendable {
         }
         self.aggregateDeviceID = aggID
 
-        // Lit le taux d'échantillonnage nominal du périphérique d'agrégation pour sous-échantillonner à 16 kHz.
-        var nominalRate: Float64 = 48_000
-        var rateSize = UInt32(MemoryLayout<Float64>.size)
-        var rateAddress = AudioObjectPropertyAddress(
-            mSelector: kAudioDevicePropertyNominalSampleRate,
-            mScope: kAudioObjectPropertyScopeGlobal,
-            mElement: kAudioObjectPropertyElementMain
-        )
-        _ = AudioObjectGetPropertyData(aggID, &rateAddress, 0, nil, &rateSize, &nominalRate)
-        let step = max(1, Int((nominalRate / Double(Self.sampleRate)).rounded()))
+        var nominalRate: Float64 = (formatStatus == noErr && tapASBD.mSampleRate > 0) ? tapASBD.mSampleRate : 48_000
+        if formatStatus != noErr || tapASBD.mSampleRate <= 0 {
+            var rateSize = UInt32(MemoryLayout<Float64>.size)
+            var rateAddress = AudioObjectPropertyAddress(
+                mSelector: kAudioDevicePropertyNominalSampleRate,
+                mScope: kAudioObjectPropertyScopeGlobal,
+                mElement: kAudioObjectPropertyElementMain
+            )
+            _ = AudioObjectGetPropertyData(aggID, &rateAddress, 0, nil, &rateSize, &nominalRate)
+        }
+        let stepRatio = max(0.5, nominalRate / Double(Self.sampleRate))
 
         var procID: AudioDeviceIOProcID?
         let createStatus = AudioDeviceCreateIOProcIDWithBlock(&procID, aggID, nil) { [weak self] _, inInputData, _, _, _ in
             guard let self else { return }
             let bufferList = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: inInputData))
-            guard let first = bufferList.first, let dataPtr = first.mData else { return }
-            let channels = max(1, Int(first.mNumberChannels))
-            let floatCount = Int(first.mDataByteSize) / MemoryLayout<Float>.size
-            let frames = floatCount / channels
-            guard frames > 0 else { return }
-            let samples = dataPtr.assumingMemoryBound(to: Float.self)
-            var downsampled: [Float] = []
-            downsampled.reserveCapacity(frames / step + 1)
-            var idx = 0
-            while idx < frames {
-                var sum: Float = 0
-                for ch in 0..<channels {
-                    sum += samples[idx * channels + ch]
+            guard !bufferList.isEmpty else { return }
+
+            // Gère à la fois les buffers entrelacés (1 buffer, N canaux) et non-entrelacés (M buffers, 1 canal chacun).
+            var monoFrames: [Float] = []
+            if bufferList.count == 1, let first = bufferList.first, let dataPtr = first.mData {
+                let channels = max(1, Int(first.mNumberChannels))
+                let floatCount = Int(first.mDataByteSize) / MemoryLayout<Float>.size
+                let frames = floatCount / channels
+                guard frames > 0 else { return }
+                let samples = dataPtr.assumingMemoryBound(to: Float.self)
+                monoFrames.reserveCapacity(frames)
+                if channels == 1 {
+                    for i in 0..<frames { monoFrames.append(samples[i]) }
+                } else {
+                    let scale = 1.0 / Float(channels)
+                    for i in 0..<frames {
+                        var sum: Float = 0
+                        for ch in 0..<channels { sum += samples[i * channels + ch] }
+                        monoFrames.append(sum * scale)
+                    }
                 }
-                downsampled.append(sum / Float(channels))
-                idx += step
+            } else {
+                var minFrames = Int.max
+                for buf in bufferList {
+                    guard buf.mData != nil else { continue }
+                    let ch = max(1, Int(buf.mNumberChannels))
+                    let frames = (Int(buf.mDataByteSize) / MemoryLayout<Float>.size) / ch
+                    minFrames = min(minFrames, frames)
+                }
+                guard minFrames > 0, minFrames != Int.max else { return }
+                monoFrames = Array(repeating: 0, count: minFrames)
+                var totalChannels = 0
+                for buf in bufferList {
+                    guard let ptr = buf.mData else { continue }
+                    let ch = max(1, Int(buf.mNumberChannels))
+                    let samples = ptr.assumingMemoryBound(to: Float.self)
+                    for i in 0..<minFrames {
+                        for c in 0..<ch { monoFrames[i] += samples[i * ch + c] }
+                    }
+                    totalChannels += ch
+                }
+                if totalChannels > 1 {
+                    let scale = 1.0 / Float(totalChannels)
+                    for i in 0..<minFrames { monoFrames[i] *= scale }
+                }
             }
+            guard !monoFrames.isEmpty else { return }
+
+            // Rééchantillonnage linéaire fractionnaire (évite la dérive de +9 % sur les sorties 44,1 kHz).
             self.mixLock.lock()
+            var pos = self.resamplePhase
+            let prev = self.lastResampleSample
+            let count = monoFrames.count
+            var downsampled: [Float] = []
+            downsampled.reserveCapacity(Int(Double(count) / stepRatio) + 2)
+            while pos < Double(count) {
+                let idx = Int(floor(pos))
+                let frac = Float(pos - Double(idx))
+                let s0 = idx < 0 ? prev : monoFrames[idx]
+                let s1 = (idx + 1) < count ? monoFrames[idx + 1] : monoFrames[count - 1]
+                downsampled.append(s0 + (s1 - s0) * frac)
+                pos += stepRatio
+            }
+            self.resamplePhase = pos - Double(count)
+            self.lastResampleSample = monoFrames[count - 1]
             if self.systemBuffer.count < Self.sampleRate * 10 {
                 self.systemBuffer.append(contentsOf: downsampled)
             }

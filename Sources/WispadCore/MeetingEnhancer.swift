@@ -67,9 +67,9 @@ extension TextCleaner {
     ) async -> CleanupOutcome {
         let english = (language == .auto ? TranscriptLanguage.guess(userNotes + " " + transcript) : language) == .english
         let combined = userNotes.trimmingCharacters(in: .whitespacesAndNewlines) + transcript.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !combined.isEmpty else { return CleanupOutcome(text: userNotes) }
+        guard !combined.isEmpty else { return CleanupOutcome(text: "") }
         let routes = Array(routes(speech).prefix(2))
-        guard !routes.isEmpty else { return CleanupOutcome(text: userNotes) }
+        guard !routes.isEmpty else { return CleanupOutcome(text: "") }
         let requests = RequestLog()
         let systemPrompt = MeetingPrompt.system(english: english)
         let userPrompt = MeetingPrompt.userText(title: title, userNotes: userNotes, transcript: transcript, english: english)
@@ -93,7 +93,7 @@ extension TextCleaner {
                         requestTimeout: timeout
                     )
                 }
-                let text = CorrectionPrompt.cleanModelOutput(reply.content, fallback: userNotes)
+                let text = CorrectionPrompt.cleanModelOutput(reply.content, fallback: "")
                 var failed = requests.events
                 let usage = failed.popLast()
                 return CleanupOutcome(
@@ -109,6 +109,6 @@ extension TextCleaner {
         }
         var failed = requests.events
         let last = failed.popLast()
-        return CleanupOutcome(text: userNotes, usage: last, failedUsages: failed)
+        return CleanupOutcome(text: "", usage: last, failedUsages: failed)
     }
 }

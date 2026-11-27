@@ -255,7 +255,7 @@ struct HistoryRow: View {
     var body: some View {
         let _ = didRender?(record.id)
         let cache = HistoryRowCache.shared
-        let item = cache.item(for: record)
+        let item = cache.item(for: record, localDeviceID: model.sync.config.deviceId)
         let selected = model.historyPlayer.recordID == record.id
         let actionsWidth = Self.actionsWidth(text: !item.text.isEmpty, audio: item.hasAudio)
         let accessoryWidth = actionsWidth + (onDetails == nil ? 0 : 28)

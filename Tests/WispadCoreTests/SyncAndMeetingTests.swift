@@ -3,13 +3,18 @@ import Testing
 @testable import WispadCore
 
 struct SyncAndMeetingTests {
-    @Test func syncKeyRoundTripsAndDetectsTampering() throws {
+    @Test func syncKeyRoundTripsEmptyAndNonEmptyAndDetectsTampering() throws {
         let key = SyncKey.generate()
         #expect(key.base64URL.count == 43)
         let parsed = try SyncKey(base64URL: key.base64URL)
         #expect(parsed == key)
         #expect(parsed.vaultID == key.vaultID)
         #expect(parsed.vaultID.count == 16)
+
+        // Plaintext vide autorisé (header 4 + nonce 12 + tag 16 = 32 octets).
+        let emptyBlob = try key.seal(Data(), relativePath: "devices/dev-mac/empty.wsp.enc")
+        #expect(emptyBlob.count == 32)
+        #expect(try parsed.open(emptyBlob, relativePath: "devices/dev-mac/empty.wsp.enc").isEmpty)
 
         let path = "devices/dev-mac/000001.wsp.enc"
         let plaintext = Data("{\"hello\":\"wispad\"}".utf8)
@@ -43,7 +48,7 @@ struct SyncAndMeetingTests {
         #expect(key.vaultID.count == 16)
     }
 
-    @Test func pairingURIRoundTripsForCloudflareR2AndFolder() throws {
+    @Test func pairingURIRoundTripsAndRejectsMalformedURIs() throws {
         let key = SyncKey.generate()
         let config = SyncPairingConfig(
             syncKey: key.base64URL,
@@ -58,13 +63,21 @@ struct SyncAndMeetingTests {
             )
         )
         #expect(config.s3?.endpoint == "https://abc123def.r2.cloudflarestorage.com")
+        // Pas de double suffixe si l'utilisateur colle l'hôte complet sans https://
+        #expect(S3SyncConfig.cloudflareR2Endpoint(accountID: "abc123def.r2.cloudflarestorage.com") == "https://abc123def.r2.cloudflarestorage.com")
         let uri = try config.pairingURI()
         #expect(uri.hasPrefix("wispad-sync://v1?data="))
         let restored = try #require(SyncPairingConfig.parse(uri: uri))
         #expect(restored == config)
+
+        // Mauvais hôte de version ou config S3 incomplète refusés.
+        #expect(SyncPairingConfig.parse(uri: uri.replacingOccurrences(of: "wispad-sync://v1", with: "wispad-sync://v99")) == nil)
+        let incompleteS3 = SyncPairingConfig(syncKey: key.base64URL, backend: .s3, s3: S3SyncConfig())
+        let badURI = try incompleteS3.pairingURI()
+        #expect(SyncPairingConfig.parse(uri: badURI) == nil)
     }
 
-    @Test func bidirectionalBYOSFolderSyncTransfersTextOnlyAndPreservesDeviceOrigin() async throws {
+    @Test func bidirectionalBYOSFolderSyncTransfersTextOnlyWithZeroEchoLoopAndNoResurrection() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("wispad-sync-test-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: root) }
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
@@ -118,6 +131,14 @@ struct SyncAndMeetingTests {
         #expect(pull1.pulledDictations == 1)
         #expect(pull1.pulledMeetings == 1)
         #expect(pull1.pulledTerms == 1)
+        // Zéro boucle d'écho : Windows ne repousse rien qu'il vient de recevoir du Mac.
+        #expect(pull1.totalPushed == 0)
+        #expect(pull1.pushedSequence == nil)
+
+        // Second cycle sans mutation : zéro push, zéro pull.
+        let noopWin = try await WispadSyncEngine.sync(store: winStore, device: win, key: key, transport: transport)
+        #expect(noopWin.totalPushed == 0)
+        #expect(noopWin.totalPulled == 0)
 
         let winDictations = try winStore.dictations()
         #expect(winDictations.count == 1)
@@ -154,6 +175,7 @@ struct SyncAndMeetingTests {
 
         let pull2 = try await WispadSyncEngine.sync(store: macStore, device: mac, key: key, transport: transport)
         #expect(pull2.pulledDictations == 1)
+        #expect(pull2.totalPushed == 0)
         let macAll = try macStore.dictations()
         #expect(macAll.count == 2)
         let fromWin = try #require(macAll.first(where: { $0.id == "dict-win-1" }))
@@ -166,56 +188,136 @@ struct SyncAndMeetingTests {
         #expect(ownMac.audioPath == "/tmp/local-only.wav")
         #expect(!ownMac.isFromRemoteDevice(localDeviceID: mac.deviceId))
 
-        // Suppression propagée par tombstone
+        // Suppression propagée par tombstone (dictée + réunion + terme)
         try macStore.deleteDictation(id: "dict-mac-1")
+        try macStore.deleteMeeting(id: "meet-1")
+        if let term = try macStore.dictionary().first {
+            try macStore.deleteTerm(id: term.id)
+        }
         _ = try await WispadSyncEngine.sync(store: macStore, device: mac, key: key, transport: transport)
         _ = try await WispadSyncEngine.sync(store: winStore, device: win, key: key, transport: transport)
         #expect(try winStore.dictations().map(\.id) == ["dict-win-1"])
+        #expect(try winStore.meetings().isEmpty)
+        #expect(try winStore.dictionary().isEmpty)
+
+        // Survie réinstallation : nouvelle base locale avec le même deviceId n'écrase jamais 000001.wsp.enc.
+        let freshMacStore = try HistoryStore(path: root.appendingPathComponent("mac-reinstall.sqlite").path)
+        try freshMacStore.insert(DictationRecord(id: "dict-mac-reinstall", finalText: "Après réinstallation.", rawText: "après réinstallation", durationSeconds: 1.2, wordCount: 2, provider: "xai", model: "grok", insertionStatus: "inserted"))
+        let reinstallSync = try await WispadSyncEngine.sync(store: freshMacStore, device: mac, key: key, transport: transport)
+        #expect((reinstallSync.pushedSequence ?? 0) >= 3)
+
+        // Isolation d'un fichier pair corrompu : n'empêche pas le push local ni les autres pairs.
+        try await transport.put(path: "devices/dev-corrupt/000001.wsp.enc", data: Data("corrupted".utf8))
+        let isolated = try await WispadSyncEngine.sync(store: winStore, device: win, key: key, transport: transport)
+        #expect(isolated.skippedPeerBlobs == 1)
     }
 
-    @Test func s3SigV4SignsRequestsAndParsesListXML() throws {
+    @Test func s3SigV4SignsRequestsWithUnicodeAndBasePathAndParsesXML() throws {
         let cfg = S3SyncConfig(
-            endpoint: "https://acct.r2.cloudflarestorage.com",
+            endpoint: "https://acct.r2.cloudflarestorage.com:443/custom-base",
             bucket: "my-bucket",
             region: "auto",
             prefix: "wispad-sync",
-            accessKeyId: "AKIAEXAMPLE",
-            secretAccessKey: "SECRETEXAMPLE"
+            accessKeyId: "TESTACCESSKEY",
+            secretAccessKey: "TESTSECRETKEY"
         )
         let req = try S3SyncTransport.signedRequest(
             method: "GET",
             config: cfg,
-            objectKey: "wispad-sync/manifest.json",
-            queryItems: [],
+            objectKey: "wispad-sync/devices/café 1/000001.wsp.enc",
+            queryItems: [("list-type", "2")],
             payload: Data(),
             date: Date(timeIntervalSince1970: 1_764_200_000)
         )
-        #expect(req.url?.absoluteString == "https://acct.r2.cloudflarestorage.com/my-bucket/wispad-sync/manifest.json")
-        #expect(req.value(forHTTPHeaderField: "Authorization")?.hasPrefix("AWS4-HMAC-SHA256 Credential=AKIAEXAMPLE/") == true)
+        let urlString = try #require(req.url?.absoluteString)
+        #expect(urlString.contains("/custom-base/my-bucket/wispad-sync/devices/caf%C3%A9%201/000001.wsp.enc"))
+        #expect(req.value(forHTTPHeaderField: "Authorization")?.hasPrefix("AWS4-HMAC-SHA256 Credential=TESTACCESSKEY/") == true)
         #expect(req.value(forHTTPHeaderField: "x-amz-content-sha256")?.count == 64)
 
         let xml = Data("""
-        <ListBucketResult><IsTruncated>false</IsTruncated>
-        <Contents><Key>wispad-sync/devices/a/000001.wsp.enc</Key></Contents>
-        <Contents><Key>wispad-sync/devices/b/000002.wsp.enc</Key></Contents>
+        <?xml version="1.0" encoding="UTF-8"?>
+        <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+          <IsTruncated>true</IsTruncated>
+          <NextContinuationToken>tok+1/2=</NextContinuationToken>
+          <Contents><Key>wispad-sync/devices/a&amp;b/000001.wsp.enc</Key></Contents>
+          <Contents><Key>wispad-sync/devices/b/000002.wsp.enc</Key></Contents>
         </ListBucketResult>
         """.utf8)
         let parsed = S3SyncTransport.parseListObjectsV2XML(xml)
-        #expect(parsed.keys.count == 2)
-        #expect(parsed.nextToken == nil)
+        #expect(parsed.keys == ["wispad-sync/devices/a&b/000001.wsp.enc", "wispad-sync/devices/b/000002.wsp.enc"])
+        #expect(parsed.nextToken == "tok+1/2=")
     }
 
-    @Test func webdavPropfindParserExtractsHrefs() {
+    @Test func webdavPropfindParserExtractsHrefsAndCollections() {
         let xml = Data("""
         <?xml version="1.0"?>
         <d:multistatus xmlns:d="DAV:">
-          <d:response><d:href>/remote.php/dav/files/u/wispad-sync/devices/</d:href></d:response>
-          <d:response><d:href>/remote.php/dav/files/u/wispad-sync/devices/dev1/000001.wsp.enc</d:href></d:response>
+          <d:response>
+            <d:href>/remote.php/dav/files/u/Mon%20Dossier/devices</d:href>
+            <d:propstat><d:prop><d:resourcetype><d:collection/></d:resourcetype></d:prop></d:propstat>
+          </d:response>
+          <d:response>
+            <d:href>/remote.php/dav/files/u/Mon%20Dossier/devices/dev1/000001.wsp.enc</d:href>
+            <d:propstat><d:prop><d:resourcetype/></d:prop></d:propstat>
+          </d:response>
         </d:multistatus>
         """.utf8)
-        let hrefs = WebDAVSyncTransport.parsePropfindHrefs(xml)
-        #expect(hrefs.count == 2)
-        #expect(hrefs[1].hasSuffix("000001.wsp.enc"))
+        let entries = WebDAVSyncTransport.parsePropfindEntries(xml)
+        #expect(entries.count == 2)
+        #expect(entries[0].isCollection == true)
+        #expect(entries[1].isCollection == false)
+        #expect(entries[1].href.hasSuffix("000001.wsp.enc"))
+    }
+
+    @Test func wavChunkerSplitsOversizedWAVIntoValidAlignedChunks() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("wispad-chunk-test-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+
+        let wavURL = root.appendingPathComponent("long-meeting.wav")
+        let pcmBytes = 10_000
+        var wav = WAVHeader.make(dataBytes: pcmBytes, sampleRate: 16_000)
+        wav.append(Data(repeating: 0x11, count: pcmBytes))
+        try wav.write(to: wavURL)
+
+        // Sous la limite : retourne le fichier original sans découpage.
+        let single = try WAVChunker.splitIfNeeded(fileURL: wavURL, maxChunkBytes: 20_000)
+        #expect(single.urls == [wavURL])
+        #expect(single.temporaryURLs.isEmpty)
+
+        // Au-dessus de la limite : découpe en morceaux WAV alignés sur 2 octets avec en-tête RIFF valide.
+        let split = try WAVChunker.splitIfNeeded(fileURL: wavURL, maxChunkBytes: 4_000)
+        defer { for url in split.temporaryURLs { try? FileManager.default.removeItem(at: url) } }
+        #expect(split.urls.count == 3)
+        var totalPCM = 0
+        for chunkURL in split.urls {
+            let chunkData = try Data(contentsOf: chunkURL)
+            #expect(chunkData.prefix(4) == Data("RIFF".utf8))
+            #expect((chunkData.count - 44) % 2 == 0)
+            totalPCM += chunkData.count - 44
+        }
+        #expect(totalPCM == pcmBytes)
+    }
+
+    @Test func meetingEnhancerReturnsEmptyWithoutRoutesInsteadOfEchoingNotes() async {
+        let speech = SpeechRequest(
+            provider: .xai,
+            liveModel: "grok",
+            fileModel: "grok",
+            apiKey: "",
+            language: .french,
+            keyterms: [],
+            prompt: ""
+        )
+        let outcome = await TextCleaner.enhanceMeeting(
+            title: "Point",
+            userNotes: "- ne pas recopier ceci comme synthèse IA",
+            transcript: "",
+            language: .french,
+            speech: speech
+        )
+        #expect(outcome.text.isEmpty)
+        #expect(outcome.usage == nil)
     }
 
     @Test func meetingPromptBuildsFrenchAndEnglishInstructions() {

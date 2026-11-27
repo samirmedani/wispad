@@ -8,10 +8,17 @@ struct SyncSettingsView: View {
     @Environment(AppModel.self) private var model
     @State private var pairingInput = ""
     @State private var showQR = false
+    @State private var cachedQRURI = ""
+    @State private var cachedQRImage: NSImage?
+    @State private var detectedFolders: [DetectedCloudFolder] = []
     @State private var copiedLink = false
     @State private var importFeedback: String?
 
     private var sync: SyncController { model.sync }
+
+    private var effectiveBackend: SyncBackendKind {
+        sync.config.backend == .off ? .folder : sync.config.backend
+    }
 
     var body: some View {
         Section {
@@ -34,15 +41,39 @@ struct SyncSettingsView: View {
             }
             .padding(.vertical, 4)
         }
+        .onAppear {
+            detectedFolders = SyncController.detectedCloudFolders()
+            refreshQRCacheIfNeeded()
+        }
+        .alert(
+            String(localized: "Rejoindre ce coffre de synchronisation ?"),
+            isPresented: Binding(
+                get: { sync.pendingPairingURI != nil },
+                set: { if !$0 { sync.cancelPendingPairing() } }
+            )
+        ) {
+            Button(String(localized: "Annuler"), role: .cancel) {
+                sync.cancelPendingPairing()
+            }
+            Button(String(localized: "Connecter")) {
+                sync.confirmPendingPairing(model: model)
+                refreshQRCacheIfNeeded()
+            }
+        } message: {
+            Text(String(localized: "Ce lien remplacera ta configuration de synchronisation actuelle par : \(sync.pendingPairingSummary ?? ""). Ne valide que si ce lien vient de l'un de tes appareils."))
+        }
 
         Section("Activation") {
             Toggle("Activer la synchronisation", isOn: Binding(
                 get: { sync.config.enabled },
                 set: { enabled in
+                    if enabled && sync.config.backend == .off {
+                        sync.config.backend = .folder
+                    }
                     sync.config.enabled = enabled
                     if enabled { _ = sync.ensureSyncKey() }
                     sync.saveConfig()
-                    if enabled {
+                    if enabled, sync.config.isStorageConfigured {
                         Task { await sync.syncNow(model: model) }
                     }
                 }
@@ -59,16 +90,21 @@ struct SyncSettingsView: View {
 
         Section("Stockage (BYOS)") {
             Picker("Mode de stockage", selection: Binding(
-                get: { sync.config.backend },
-                set: { sync.config.backend = $0; sync.connectionStatus = .idle; sync.saveConfig() }
+                get: { effectiveBackend },
+                set: {
+                    sync.config.backend = $0
+                    sync.connectionStatus = .idle
+                    sync.saveConfig()
+                    refreshQRCacheIfNeeded()
+                }
             )) {
-                Text("Dossier synchronisé (iCloud, OneDrive…)").tag(SyncBackendKind.folder)
+                Text("Dossier").tag(SyncBackendKind.folder)
                 Text("Cloudflare R2 / S3").tag(SyncBackendKind.s3)
-                Text("WebDAV (Nextcloud, NAS)").tag(SyncBackendKind.webdav)
+                Text("WebDAV").tag(SyncBackendKind.webdav)
             }
             .pickerStyle(.segmented)
 
-            switch sync.config.backend {
+            switch effectiveBackend {
             case .off, .folder:
                 folderConfig
             case .s3:
@@ -89,7 +125,7 @@ struct SyncSettingsView: View {
                     Task { await sync.syncNow(model: model) }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(!sync.config.enabled || sync.isSyncing)
+                .disabled(!sync.config.enabled || !sync.config.isStorageConfigured || sync.isSyncing)
 
                 Spacer()
                 statusLabel
@@ -111,9 +147,10 @@ struct SyncSettingsView: View {
                 HStack(spacing: 10) {
                     Button(showQR ? String(localized: "Masquer le QR code") : String(localized: "Afficher le QR code")) {
                         showQR.toggle()
+                        if showQR { refreshQRCacheIfNeeded() }
                     }
                     Button(copiedLink ? String(localized: "Lien copié") : String(localized: "Copier le lien d'appairage")) {
-                        model.copy(uri)
+                        sync.copyPairingURI(uri)
                         copiedLink = true
                         Task { @MainActor in
                             try? await Task.sleep(for: .seconds(1.5))
@@ -121,7 +158,7 @@ struct SyncSettingsView: View {
                         }
                     }
                 }
-                if showQR, let image = SyncController.qrImage(from: uri, dimension: 190) {
+                if showQR, let image = cachedQRImage {
                     HStack(spacing: 16) {
                         Image(nsImage: image)
                             .interpolation(.none)
@@ -150,13 +187,16 @@ struct SyncSettingsView: View {
                 Text("Rejoindre un coffre existant")
                     .font(.system(size: 12, weight: .medium))
                 HStack(spacing: 8) {
-                    SecureField("wispad-sync://v1?data=…", text: $pairingInput)
+                    SecureField("", text: $pairingInput, prompt: Text(verbatim: "wispad-sync://v1?data=…"))
                         .textFieldStyle(.roundedBorder)
                     Button("Connecter") {
                         if sync.applyPairingURI(pairingInput) {
                             pairingInput = ""
+                            refreshQRCacheIfNeeded()
                             importFeedback = String(localized: "Coffre connecté : synchronisation lancée.")
-                            Task { await sync.syncNow(model: model) }
+                            if sync.config.enabled {
+                                Task { await sync.syncNow(model: model) }
+                            }
                         } else {
                             importFeedback = sync.lastError
                         }
@@ -172,21 +212,30 @@ struct SyncSettingsView: View {
         }
     }
 
+    private func refreshQRCacheIfNeeded() {
+        let uri = sync.pairingURI() ?? ""
+        guard uri != cachedQRURI else { return }
+        cachedQRURI = uri
+        cachedQRImage = uri.isEmpty ? nil : SyncController.qrImage(from: uri, dimension: 190)
+    }
+
     @ViewBuilder
     private var folderConfig: some View {
-        let detected = SyncController.detectedCloudFolders()
-        if !detected.isEmpty {
+        if !detectedFolders.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Configuration en un clic")
                     .font(.system(size: 11.5, weight: .medium))
                     .foregroundStyle(.secondary)
                 HStack(spacing: 8) {
-                    ForEach(detected) { folder in
+                    ForEach(detectedFolders) { folder in
                         Button {
+                            sync.config.backend = .folder
                             sync.config.folderPath = folder.path
                             _ = sync.ensureSyncKey()
                             sync.config.enabled = true
+                            sync.connectionStatus = .idle
                             sync.saveConfig()
+                            refreshQRCacheIfNeeded()
                             Task { await sync.syncNow(model: model) }
                         } label: {
                             Label(folder.name, systemImage: folder.symbol)
@@ -200,7 +249,7 @@ struct SyncSettingsView: View {
         HStack(spacing: 8) {
             TextField("Chemin du dossier", text: Binding(
                 get: { sync.config.folderPath },
-                set: { sync.config.folderPath = $0; sync.saveConfig() }
+                set: { sync.config.folderPath = $0; sync.connectionStatus = .idle; sync.saveConfig(); refreshQRCacheIfNeeded() }
             ))
             .textFieldStyle(.roundedBorder)
             Button("Choisir…") {
@@ -226,34 +275,34 @@ struct SyncSettingsView: View {
         }
         Toggle("Endpoint S3 personnalisé (Backblaze B2, MinIO, AWS)", isOn: Binding(
             get: { sync.config.useCustomS3Endpoint },
-            set: { sync.config.useCustomS3Endpoint = $0; sync.saveConfig() }
+            set: { sync.config.useCustomS3Endpoint = $0; sync.connectionStatus = .idle; sync.saveConfig(); refreshQRCacheIfNeeded() }
         ))
         if !sync.config.useCustomS3Endpoint {
             TextField("ID de compte Cloudflare", text: Binding(
                 get: { sync.config.cloudflareAccountId },
-                set: { sync.config.cloudflareAccountId = $0; sync.saveConfig() }
+                set: { sync.config.cloudflareAccountId = $0; sync.connectionStatus = .idle; sync.saveConfig(); refreshQRCacheIfNeeded() }
             ))
         } else {
             TextField("Endpoint S3 (https://…)", text: Binding(
                 get: { sync.config.s3.endpoint },
-                set: { sync.config.s3.endpoint = $0; sync.saveConfig() }
+                set: { sync.config.s3.endpoint = $0; sync.connectionStatus = .idle; sync.saveConfig(); refreshQRCacheIfNeeded() }
             ))
             TextField("Région (ex. auto, us-east-1)", text: Binding(
                 get: { sync.config.s3.region },
-                set: { sync.config.s3.region = $0; sync.saveConfig() }
+                set: { sync.config.s3.region = $0; sync.connectionStatus = .idle; sync.saveConfig(); refreshQRCacheIfNeeded() }
             ))
         }
         TextField("Nom du bucket", text: Binding(
             get: { sync.config.s3.bucket },
-            set: { sync.config.s3.bucket = $0; sync.saveConfig() }
+            set: { sync.config.s3.bucket = $0; sync.connectionStatus = .idle; sync.saveConfig(); refreshQRCacheIfNeeded() }
         ))
         TextField("Access Key ID", text: Binding(
             get: { sync.config.s3.accessKeyId },
-            set: { sync.config.s3.accessKeyId = $0; sync.saveConfig() }
+            set: { sync.config.s3.accessKeyId = $0; sync.connectionStatus = .idle; sync.saveConfig(); refreshQRCacheIfNeeded() }
         ))
         SecureField("Secret Access Key", text: Binding(
             get: { sync.config.s3.secretAccessKey },
-            set: { sync.config.s3.secretAccessKey = $0; sync.saveConfig() }
+            set: { sync.config.s3.secretAccessKey = $0; sync.connectionStatus = .idle; sync.saveConfig(); refreshQRCacheIfNeeded() }
         ))
     }
 
@@ -261,15 +310,19 @@ struct SyncSettingsView: View {
     private var webdavConfig: some View {
         TextField("URL WebDAV (ex. https://cloud.exemple.org/remote.php/dav/files/nom/WispadSync)", text: Binding(
             get: { sync.config.webdav.url },
-            set: { sync.config.webdav.url = $0; sync.saveConfig() }
+            set: { sync.config.webdav.url = $0; sync.connectionStatus = .idle; sync.saveConfig(); refreshQRCacheIfNeeded() }
+        ))
+        TextField("Sous-dossier optionnel (laisser vide si déjà dans l'URL)", text: Binding(
+            get: { sync.config.webdav.prefix },
+            set: { sync.config.webdav.prefix = $0; sync.connectionStatus = .idle; sync.saveConfig(); refreshQRCacheIfNeeded() }
         ))
         TextField("Identifiant", text: Binding(
             get: { sync.config.webdav.username },
-            set: { sync.config.webdav.username = $0; sync.saveConfig() }
+            set: { sync.config.webdav.username = $0; sync.connectionStatus = .idle; sync.saveConfig(); refreshQRCacheIfNeeded() }
         ))
         SecureField("Mot de passe ou mot de passe d'application", text: Binding(
             get: { sync.config.webdav.password },
-            set: { sync.config.webdav.password = $0; sync.saveConfig() }
+            set: { sync.config.webdav.password = $0; sync.connectionStatus = .idle; sync.saveConfig(); refreshQRCacheIfNeeded() }
         ))
     }
 
@@ -311,9 +364,12 @@ struct SyncSettingsView: View {
         panel.canCreateDirectories = true
         panel.prompt = String(localized: "Choisir")
         if panel.runModal() == .OK, let url = panel.url {
+            sync.config.backend = .folder
             sync.config.folderPath = url.path
             _ = sync.ensureSyncKey()
+            sync.connectionStatus = .idle
             sync.saveConfig()
+            refreshQRCacheIfNeeded()
         }
     }
 }

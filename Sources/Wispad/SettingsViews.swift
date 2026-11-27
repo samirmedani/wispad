@@ -350,8 +350,8 @@ private struct SettingsTabButton: View {
                         .fixedSize()
                 }
             }
-            .padding(.horizontal, labeled ? 10 : 9)
-            .frame(minWidth: labeled ? 64 : 38)
+            .padding(.horizontal, labeled ? 7 : 8)
+            .frame(minWidth: labeled ? 56 : 36)
             .frame(height: labeled ? 48 : 34)
             .background {
                 if selected {

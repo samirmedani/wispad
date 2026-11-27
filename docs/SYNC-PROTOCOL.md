@@ -38,7 +38,7 @@ devices/
 ```
 
 - `manifest.json` (en clair, sans aucune donnée personnelle) : `{"format":"wispad-sync","version":1,"vaultId":"<16hex>","createdAt":<timestamp>}`.
-- Chaque fichier `.wsp.enc` déchiffré est un JSON `SyncDelta` contenant `version`, `deviceId`, `deviceName`, `platform`, `sequence`, `createdAt`, `dictations`, `meetings`, `dictionary`, `refusals` et optionnellement `settings`.
+- Chaque fichier `.wsp.enc` déchiffré est un JSON `SyncDelta` contenant `version`, `deviceId`, `deviceName`, `devicePlatform`, `sequence`, `createdAt`, `dictations`, `meetings`, `dictionary`, `refusals` et optionnellement `sharedSettings` (`{ "updatedAt": <Double>, "fieldsJSON": "<JSON>" }`).
 
 ## Appairage (QR code / URI)
 

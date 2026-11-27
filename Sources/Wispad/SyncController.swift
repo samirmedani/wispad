@@ -1,6 +1,8 @@
 import AppKit
 import CoreImage
+import CryptoKit
 import Foundation
+import SystemConfiguration
 import os
 import WispadCore
 
@@ -18,11 +20,25 @@ struct SyncLocalConfig: Codable, Equatable, Sendable {
     var s3 = S3SyncConfig()
     var webdav = WebDAVSyncConfig()
     var syncSharedSettings = true
+    var sharedSettingsHash = ""
+    var sharedSettingsUpdatedAt: Double = 0
+    var sharedSettingsDirty = false
+
+    static func defaultDeviceName() -> String {
+        if let name = SCDynamicStoreCopyComputerName(nil, nil) as String?,
+           !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return name
+        }
+        let host = ProcessInfo.processInfo.hostName
+            .replacingOccurrences(of: ".local", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return host.isEmpty ? "Mac" : host
+    }
 
     init(
         enabled: Bool = false,
         deviceId: String = UUID().uuidString,
-        deviceName: String = Host.current().localizedName ?? "Mac",
+        deviceName: String = SyncLocalConfig.defaultDeviceName(),
         backend: SyncBackendKind = .folder,
         syncKeyBase64URL: String = "",
         folderPath: String = "",
@@ -30,7 +46,10 @@ struct SyncLocalConfig: Codable, Equatable, Sendable {
         useCustomS3Endpoint: Bool = false,
         s3: S3SyncConfig = S3SyncConfig(),
         webdav: WebDAVSyncConfig = WebDAVSyncConfig(),
-        syncSharedSettings: Bool = true
+        syncSharedSettings: Bool = true,
+        sharedSettingsHash: String = "",
+        sharedSettingsUpdatedAt: Double = 0,
+        sharedSettingsDirty: Bool = false
     ) {
         self.enabled = enabled
         self.deviceId = deviceId
@@ -43,6 +62,27 @@ struct SyncLocalConfig: Codable, Equatable, Sendable {
         self.s3 = s3
         self.webdav = webdav
         self.syncSharedSettings = syncSharedSettings
+        self.sharedSettingsHash = sharedSettingsHash
+        self.sharedSettingsUpdatedAt = sharedSettingsUpdatedAt
+        self.sharedSettingsDirty = sharedSettingsDirty
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        enabled = try c.decodeIfPresent(Bool.self, forKey: .enabled) ?? false
+        deviceId = try c.decodeIfPresent(String.self, forKey: .deviceId) ?? UUID().uuidString
+        deviceName = try c.decodeIfPresent(String.self, forKey: .deviceName) ?? SyncLocalConfig.defaultDeviceName()
+        backend = try c.decodeIfPresent(SyncBackendKind.self, forKey: .backend) ?? .folder
+        syncKeyBase64URL = try c.decodeIfPresent(String.self, forKey: .syncKeyBase64URL) ?? ""
+        folderPath = try c.decodeIfPresent(String.self, forKey: .folderPath) ?? ""
+        cloudflareAccountId = try c.decodeIfPresent(String.self, forKey: .cloudflareAccountId) ?? ""
+        useCustomS3Endpoint = try c.decodeIfPresent(Bool.self, forKey: .useCustomS3Endpoint) ?? false
+        s3 = try c.decodeIfPresent(S3SyncConfig.self, forKey: .s3) ?? S3SyncConfig()
+        webdav = try c.decodeIfPresent(WebDAVSyncConfig.self, forKey: .webdav) ?? WebDAVSyncConfig()
+        syncSharedSettings = try c.decodeIfPresent(Bool.self, forKey: .syncSharedSettings) ?? true
+        sharedSettingsHash = try c.decodeIfPresent(String.self, forKey: .sharedSettingsHash) ?? ""
+        sharedSettingsUpdatedAt = try c.decodeIfPresent(Double.self, forKey: .sharedSettingsUpdatedAt) ?? 0
+        sharedSettingsDirty = try c.decodeIfPresent(Bool.self, forKey: .sharedSettingsDirty) ?? false
     }
 
     var effectiveS3Config: S3SyncConfig {
@@ -56,6 +96,15 @@ struct SyncLocalConfig: Codable, Equatable, Sendable {
         }
         return resolved
     }
+
+    var isStorageConfigured: Bool {
+        switch backend {
+        case .off: return false
+        case .folder: return !folderPath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case .s3: return effectiveS3Config.isConfigured
+        case .webdav: return webdav.isConfigured
+        }
+    }
 }
 
 /// Raccourci d'un dossier cloud déjà installé sur ce Mac (iCloud Drive, OneDrive, Dropbox, Google Drive).
@@ -67,15 +116,16 @@ struct DetectedCloudFolder: Identifiable, Equatable {
 }
 
 /// Sous-ensemble portable des réglages partagés entre Mac, iOS et Windows (jamais de clés API ni de réglages machine).
+/// Champs optionnels pour tolérer une évolution de schéma ou un pair d'une autre plateforme.
 private struct SharedSettingsFields: Codable, Equatable {
-    var language: String
-    var cleanupEnabled: Bool
-    var structureDictation: Bool
-    var autoParagraphs: Bool
-    var selectionCommands: Bool
-    var speakerAgreement: String
-    var tones: [String: String]
-    var typingWPM: Double
+    var language: String?
+    var cleanupEnabled: Bool?
+    var structureDictation: Bool?
+    var autoParagraphs: Bool?
+    var selectionCommands: Bool?
+    var speakerAgreement: String?
+    var tones: [String: String]?
+    var typingWPM: Double?
 }
 
 /// Pilote la synchronisation texte seul chiffrée de bout en bout (BYOS, zéro serveur central).
@@ -96,11 +146,18 @@ final class SyncController {
     private(set) var lastSummary: String?
     var connectionStatus: ConnectionStatus = .idle
 
+    /// Import d'un lien `wispad-sync://` ouvert depuis l'extérieur : toujours confirmé par l'utilisateur avant application.
+    var pendingPairingURI: String?
+    var pendingPairingSummary: String?
+
     @ObservationIgnored private let configURL: URL
     @ObservationIgnored private let persists: Bool
     @ObservationIgnored private var scheduledTask: Task<Void, Never>?
     @ObservationIgnored private var activeSyncTask: Task<Void, Never>?
-    @ObservationIgnored nonisolated private static let log = Logger.wispad("synchro")
+    @ObservationIgnored private var pendingResync = false
+    @ObservationIgnored private var applyingRemoteSettings = false
+    nonisolated private static let configQueue = BlockingQueue(label: "wispad.sync-config", qos: .utility)
+    nonisolated private static let log = Logger.wispad("synchro")
 
     init(supportURL: URL, persists: Bool = true) {
         self.configURL = supportURL.appendingPathComponent("sync-config.json")
@@ -117,7 +174,7 @@ final class SyncController {
         let name = config.deviceName.trimmingCharacters(in: .whitespacesAndNewlines)
         return DeviceIdentity(
             deviceId: config.deviceId,
-            deviceName: name.isEmpty ? (Host.current().localizedName ?? "Mac") : name,
+            deviceName: name.isEmpty ? SyncLocalConfig.defaultDeviceName() : name,
             platform: .macos
         )
     }
@@ -139,20 +196,38 @@ final class SyncController {
         saveConfig()
     }
 
+    /// Sauvegarde atomique sérialisée en permissions 0600 dès la création du fichier temporaire (zéro fenêtre 0644).
     func saveConfig() {
         guard persists else { return }
         let snapshot = config
         let url = configURL
         Task.detached(priority: .utility) {
-            do {
-                let encoder = JSONEncoder()
-                encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-                let data = try encoder.encode(snapshot)
-                try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-                try data.write(to: url, options: [.atomic])
-                try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
-            } catch {
-                Self.log.error("écriture sync-config impossible")
+            await Self.configQueue.run {
+                do {
+                    let encoder = JSONEncoder()
+                    encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+                    let data = try encoder.encode(snapshot)
+                    let fm = FileManager.default
+                    let dir = url.deletingLastPathComponent()
+                    try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+                    let staged = dir.appendingPathComponent(".sync-config-\(UUID().uuidString).json")
+                    guard fm.createFile(atPath: staged.path, contents: data, attributes: [.posixPermissions: 0o600]) else {
+                        throw CocoaError(.fileWriteNoPermission)
+                    }
+                    do {
+                        if fm.fileExists(atPath: url.path) {
+                            _ = try fm.replaceItemAt(url, withItemAt: staged)
+                        } else {
+                            try fm.moveItem(at: staged, to: url)
+                        }
+                        try? fm.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+                    } catch {
+                        try? fm.removeItem(at: staged)
+                        throw error
+                    }
+                } catch {
+                    Self.log.error("écriture sync-config impossible")
+                }
             }
         }
     }
@@ -183,7 +258,9 @@ final class SyncController {
         case .off:
             return nil
         case .folder:
-            let hint = URL(fileURLWithPath: config.folderPath).lastPathComponent
+            let path = config.folderPath.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !path.isEmpty else { return nil }
+            let hint = URL(fileURLWithPath: path).lastPathComponent
             pairing = SyncPairingConfig(syncKey: key.base64URL, backend: .folder, folderHint: hint.isEmpty ? "WispadSync" : hint)
         case .s3:
             let s3 = config.effectiveS3Config
@@ -194,6 +271,18 @@ final class SyncController {
             pairing = SyncPairingConfig(syncKey: key.base64URL, backend: .webdav, webdav: config.webdav)
         }
         return try? pairing.pairingURI()
+    }
+
+    /// Copie le lien d'appairage en marquant le presse-papiers comme confidentiel et transitoire
+    /// (ignoré par les gestionnaires d'historique de presse-papiers).
+    func copyPairingURI(_ uri: String) {
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        let item = NSPasteboardItem()
+        item.setString(uri, forType: .string)
+        item.setData(Data(), forType: NSPasteboard.PasteboardType("org.nspasteboard.ConcealedType"))
+        item.setData(Data(), forType: NSPasteboard.PasteboardType("org.nspasteboard.TransientType"))
+        pb.writeObjects([item])
     }
 
     /// Génère une image nette de QR code (CoreImage) sans dépendance externe.
@@ -210,7 +299,47 @@ final class SyncController {
         return image
     }
 
-    /// Importe un lien `wispad-sync://v1?data=...` collé ou ouvert par URL scheme.
+    /// Prépare l'import d'un lien `wispad-sync://` ouvert depuis l'extérieur et demande confirmation.
+    func stagePairingImport(_ raw: String) {
+        guard let pairing = SyncPairingConfig.parse(uri: raw) else {
+            lastError = String(localized: "Lien d'appairage invalide ou incomplet.")
+            return
+        }
+        pendingPairingURI = raw
+        switch pairing.backend {
+        case .folder:
+            let hint = pairing.folderHint ?? "WispadSync"
+            pendingPairingSummary = String(localized: "Dossier local ou cloud (« \(hint) »)")
+        case .s3:
+            let host = pairing.s3.flatMap { URL(string: $0.endpoint)?.host } ?? "S3"
+            let bucket = pairing.s3?.bucket ?? ""
+            pendingPairingSummary = String(localized: "Stockage S3/R2 : \(host) (bucket \(bucket))")
+        case .webdav:
+            let host = pairing.webdav.flatMap { URL(string: $0.url)?.host } ?? "WebDAV"
+            pendingPairingSummary = String(localized: "Serveur WebDAV : \(host)")
+        case .off:
+            pendingPairingSummary = String(localized: "Désactivation de la synchronisation")
+        }
+    }
+
+    func confirmPendingPairing(model: AppModel) {
+        guard let raw = pendingPairingURI else { return }
+        pendingPairingURI = nil
+        pendingPairingSummary = nil
+        if applyPairingURI(raw) {
+            model.statusBanner = String(localized: "Synchronisation configurée : synchronisation lancée.")
+            if config.enabled {
+                Task { await syncNow(model: model) }
+            }
+        }
+    }
+
+    func cancelPendingPairing() {
+        pendingPairingURI = nil
+        pendingPairingSummary = nil
+    }
+
+    /// Importe un lien `wispad-sync://v1?data=...` collé ou confirmé par l'utilisateur.
     @discardableResult
     func applyPairingURI(_ raw: String) -> Bool {
         guard let pairing = SyncPairingConfig.parse(uri: raw) else {
@@ -226,12 +355,13 @@ final class SyncController {
             if config.folderPath.isEmpty, let first = Self.detectedCloudFolders().first {
                 config.folderPath = first.path
             }
-            config.enabled = true
+            // Ne pas activer si aucun dossier n'a encore été choisi.
+            config.enabled = !config.folderPath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         case .s3:
             if let s3 = pairing.s3 {
                 config.s3 = s3
-                if s3.endpoint.hasSuffix(".r2.cloudflarestorage.com"),
-                   let host = URL(string: s3.endpoint)?.host,
+                if let host = URL(string: s3.endpoint)?.host?.lowercased(),
+                   host.hasSuffix(".r2.cloudflarestorage.com"),
                    let account = host.split(separator: ".").first {
                     config.cloudflareAccountId = String(account)
                     config.useCustomS3Endpoint = false
@@ -239,12 +369,12 @@ final class SyncController {
                     config.useCustomS3Endpoint = true
                 }
             }
-            config.enabled = true
+            config.enabled = config.effectiveS3Config.isConfigured
         case .webdav:
             if let dav = pairing.webdav {
                 config.webdav = dav
             }
-            config.enabled = true
+            config.enabled = config.webdav.isConfigured
         }
         lastError = nil
         connectionStatus = .idle
@@ -267,38 +397,77 @@ final class SyncController {
         }
     }
 
+    /// Vérifie si les réglages d'écriture partagés ont réellement changé localement.
+    /// Évite d'écrire un delta à chaque minute ou de boucler après réception d'un réglage distant.
+    @discardableResult
+    func noteSettingsChanged(_ settings: AppSettings) -> Bool {
+        guard !applyingRemoteSettings else { return false }
+        guard let json = Self.encodeSharedSettingsJSON(from: settings) else { return false }
+        let digest = Self.sha256Hex(json)
+        if config.sharedSettingsHash.isEmpty {
+            config.sharedSettingsHash = digest
+            if config.sharedSettingsUpdatedAt == 0 {
+                config.sharedSettingsUpdatedAt = Date().timeIntervalSince1970
+            }
+            saveConfig()
+            return false
+        }
+        guard digest != config.sharedSettingsHash else { return false }
+        config.sharedSettingsHash = digest
+        config.sharedSettingsUpdatedAt = Date().timeIntervalSince1970
+        config.sharedSettingsDirty = true
+        saveConfig()
+        return true
+    }
+
     /// Déclenche une synchronisation différée (2 s) pour regrouper les éditions rapprochées.
     func scheduleSyncIfEnabled(model: AppModel) {
-        guard config.enabled else { return }
+        guard config.enabled, config.isStorageConfigured else { return }
         scheduledTask?.cancel()
         scheduledTask = Task { @MainActor [weak self, weak model] in
             try? await Task.sleep(for: .seconds(2))
             guard !Task.isCancelled, let self, let model, self.config.enabled else { return }
-            await self.syncNow(model: model)
+            await self.syncNow(model: model, automatic: true)
         }
     }
 
-    func syncNow(model: AppModel) async {
+    func syncNow(model: AppModel, automatic: Bool = false) async {
         if let active = activeSyncTask {
+            pendingResync = true
             await active.value
             return
         }
         guard config.enabled else { return }
+        // Hors ligne en synchro automatique : inutile de lancer S3/WebDAV. Le mode dossier local fonctionne hors ligne.
+        if automatic, config.backend != .folder, !model.dependencies.isOnline() {
+            return
+        }
         let key = ensureSyncKey()
         let transport: any SyncTransport
         do {
             transport = try buildTransport()
         } catch {
-            lastError = Self.describe(error)
+            if !automatic { lastError = Self.describe(error) }
             return
         }
         let device = deviceIdentity
         let store = model.store
-        let sharedSettings = config.syncSharedSettings ? Self.extractSharedSettings(from: model.settings) : nil
-        let shouldApplyRemoteSettings = config.syncSharedSettings
+        let shouldSyncSettings = config.syncSharedSettings
+        let localShared: SyncSharedSettings? = {
+            guard shouldSyncSettings, let json = Self.encodeSharedSettingsJSON(from: model.settings) else { return nil }
+            let digest = Self.sha256Hex(json)
+            if config.sharedSettingsHash != digest {
+                config.sharedSettingsHash = digest
+                if config.sharedSettingsUpdatedAt == 0 {
+                    config.sharedSettingsUpdatedAt = Date().timeIntervalSince1970
+                }
+            }
+            return SyncSharedSettings(updatedAt: config.sharedSettingsUpdatedAt, fieldsJSON: json)
+        }()
+        let dirtySettings = shouldSyncSettings && config.sharedSettingsDirty
 
         isSyncing = true
-        lastError = nil
+        if !automatic { lastError = nil }
         let task = Task { @MainActor [weak self, weak model] in
             defer {
                 self?.isSyncing = false
@@ -310,11 +479,15 @@ final class SyncController {
                     device: device,
                     key: key,
                     transport: transport,
-                    localSharedSettings: sharedSettings
+                    localSharedSettings: localShared,
+                    localSharedSettingsDirty: dirtySettings
                 )
                 guard let self, let model else { return }
-                if shouldApplyRemoteSettings, let remote = report.remoteSharedSettings {
-                    Self.applySharedSettings(remote, to: model)
+                if shouldSyncSettings, let remote = report.remoteSharedSettings {
+                    self.applySharedSettings(remote, to: model)
+                } else if dirtySettings && report.pushedSequence != nil {
+                    self.config.sharedSettingsDirty = false
+                    self.saveConfig()
                 }
                 if report.totalPulled > 0 {
                     model.reloadHistory()
@@ -332,26 +505,55 @@ final class SyncController {
         }
         activeSyncTask = task
         await task.value
+        if pendingResync {
+            pendingResync = false
+            await syncNow(model: model, automatic: automatic)
+        }
     }
 
     /// Détecte les dossiers de synchronisation cloud courants sur macOS pour une configuration en un clic.
     static func detectedCloudFolders(home: URL = FileManager.default.homeDirectoryForCurrentUser) -> [DetectedCloudFolder] {
         let fm = FileManager.default
-        let candidates: [(name: String, base: URL, symbol: String)] = [
-            ("iCloud Drive", home.appendingPathComponent("Library/Mobile Documents/com~apple~CloudDocs", isDirectory: true), "icloud"),
-            ("OneDrive", home.appendingPathComponent("Library/CloudStorage/OneDrive-Personal", isDirectory: true), "cloud"),
-            ("Dropbox", home.appendingPathComponent("Library/CloudStorage/Dropbox", isDirectory: true), "shippingbox"),
-            ("Google Drive", home.appendingPathComponent("Library/CloudStorage/GoogleDrive", isDirectory: true), "externaldrive.connected.to.line.below"),
-        ]
         var found: [DetectedCloudFolder] = []
-        for item in candidates where fm.fileExists(atPath: item.base.path) {
-            let target = item.base.appendingPathComponent("WispadSync", isDirectory: true).path
-            found.append(DetectedCloudFolder(name: item.name, path: target, symbol: item.symbol))
+        var seenPaths: Set<String> = []
+
+        func appendCandidate(name: String, base: URL, symbol: String) {
+            var isDir: ObjCBool = false
+            guard fm.fileExists(atPath: base.path, isDirectory: &isDir), isDir.boolValue else { return }
+            let target = base.appendingPathComponent("WispadSync", isDirectory: true).path
+            if seenPaths.insert(target).inserted {
+                found.append(DetectedCloudFolder(name: name, path: target, symbol: symbol))
+            }
+        }
+
+        // iCloud Drive
+        appendCandidate(
+            name: "iCloud Drive",
+            base: home.appendingPathComponent("Library/Mobile Documents/com~apple~CloudDocs", isDirectory: true),
+            symbol: "icloud"
+        )
+
+        // CloudStorage dynamique (OneDrive-*, Dropbox*, GoogleDrive-*)
+        let cloudStorage = home.appendingPathComponent("Library/CloudStorage", isDirectory: true)
+        if let items = try? fm.contentsOfDirectory(at: cloudStorage, includingPropertiesForKeys: [.isDirectoryKey], options: [.skipsHiddenFiles]) {
+            for item in items.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
+                let name = item.lastPathComponent
+                if name.hasPrefix("OneDrive") {
+                    appendCandidate(name: "OneDrive", base: item, symbol: "cloud")
+                } else if name.hasPrefix("Dropbox") {
+                    appendCandidate(name: "Dropbox", base: item, symbol: "shippingbox")
+                } else if name.hasPrefix("GoogleDrive") {
+                    let myDriveEn = item.appendingPathComponent("My Drive", isDirectory: true)
+                    let myDriveFr = item.appendingPathComponent("Mon Drive", isDirectory: true)
+                    let base = fm.fileExists(atPath: myDriveEn.path) ? myDriveEn : (fm.fileExists(atPath: myDriveFr.path) ? myDriveFr : item)
+                    appendCandidate(name: "Google Drive", base: base, symbol: "externaldrive.connected.to.line.below")
+                }
+            }
         }
         return found
     }
 
-    static func extractSharedSettings(from settings: AppSettings) -> SyncSharedSettings? {
+    static func encodeSharedSettingsJSON(from settings: AppSettings) -> String? {
         let fields = SharedSettingsFields(
             language: settings.language.rawValue,
             cleanupEnabled: settings.cleanupEnabled,
@@ -364,50 +566,73 @@ final class SyncController {
         )
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
-        guard let data = try? encoder.encode(fields),
-              let json = String(data: data, encoding: .utf8) else { return nil }
-        return SyncSharedSettings(updatedAt: Date().timeIntervalSince1970, fieldsJSON: json)
+        guard let data = try? encoder.encode(fields) else { return nil }
+        return String(data: data, encoding: .utf8)
     }
 
-    static func applySharedSettings(_ remote: SyncSharedSettings, to model: AppModel) {
+    static func extractSharedSettings(from settings: AppSettings, updatedAt: Double = Date().timeIntervalSince1970) -> SyncSharedSettings? {
+        guard let json = encodeSharedSettingsJSON(from: settings) else { return nil }
+        return SyncSharedSettings(updatedAt: updatedAt, fieldsJSON: json)
+    }
+
+    func applySharedSettings(_ remote: SyncSharedSettings, to model: AppModel) {
         guard let fields = try? JSONDecoder().decode(SharedSettingsFields.self, from: Data(remote.fieldsJSON.utf8)) else {
             return
         }
+        applyingRemoteSettings = true
+        defer { applyingRemoteSettings = false }
+
         var changed = false
-        if let lang = DictationLanguage(rawValue: fields.language), model.settings.language != lang {
+        if let rawLang = fields.language, let lang = DictationLanguage(rawValue: rawLang), model.settings.language != lang {
             model.settings.language = lang; changed = true
         }
-        if model.settings.cleanupEnabled != fields.cleanupEnabled {
-            model.settings.cleanupEnabled = fields.cleanupEnabled; changed = true
+        if let cleanup = fields.cleanupEnabled, model.settings.cleanupEnabled != cleanup {
+            model.settings.cleanupEnabled = cleanup; changed = true
         }
-        if model.settings.structureDictation != fields.structureDictation {
-            model.settings.structureDictation = fields.structureDictation; changed = true
+        if let structure = fields.structureDictation, model.settings.structureDictation != structure {
+            model.settings.structureDictation = structure; changed = true
         }
-        if model.settings.autoParagraphs != fields.autoParagraphs {
-            model.settings.autoParagraphs = fields.autoParagraphs; changed = true
+        if let paragraphs = fields.autoParagraphs, model.settings.autoParagraphs != paragraphs {
+            model.settings.autoParagraphs = paragraphs; changed = true
         }
-        if model.settings.selectionCommands != fields.selectionCommands {
-            model.settings.selectionCommands = fields.selectionCommands; changed = true
+        if let commands = fields.selectionCommands, model.settings.selectionCommands != commands {
+            model.settings.selectionCommands = commands; changed = true
         }
-        if let agr = SpeakerAgreement(rawValue: fields.speakerAgreement), model.settings.speakerAgreement != agr {
+        if let rawAgr = fields.speakerAgreement, let agr = SpeakerAgreement(rawValue: rawAgr), model.settings.speakerAgreement != agr {
             model.settings.speakerAgreement = agr; changed = true
         }
-        if (1...1_000).contains(fields.typingWPM), abs(model.settings.typingWPM - fields.typingWPM) > 0.1 {
-            model.settings.typingWPM = fields.typingWPM; changed = true
+        if let wpm = fields.typingWPM, (1...1_000).contains(wpm), abs(model.settings.typingWPM - wpm) > 0.1 {
+            model.settings.typingWPM = wpm; changed = true
         }
-        var parsedTones: [String: DictationTone] = [:]
-        for (k, v) in fields.tones {
-            if let tone = DictationTone(rawValue: v) { parsedTones[k] = tone }
-        }
-        if !parsedTones.isEmpty, model.settings.tones != parsedTones {
-            model.settings.tones = parsedTones; changed = true
+        if let rawTones = fields.tones {
+            var parsedTones: [String: DictationTone] = [:]
+            for (k, v) in rawTones {
+                if let tone = DictationTone(rawValue: v) { parsedTones[k] = tone }
+            }
+            if model.settings.tones != parsedTones {
+                model.settings.tones = parsedTones; changed = true
+            }
         }
         if changed { model.saveSettings() }
+
+        // Synchronise l'empreinte et l'horodatage locaux pour éviter toute boucle d'écho.
+        if let json = Self.encodeSharedSettingsJSON(from: model.settings) {
+            config.sharedSettingsHash = Self.sha256Hex(json)
+        }
+        config.sharedSettingsUpdatedAt = max(config.sharedSettingsUpdatedAt, remote.updatedAt)
+        config.sharedSettingsDirty = false
+        saveConfig()
+    }
+
+    private static func sha256Hex(_ text: String) -> String {
+        SHA256.hash(data: Data(text.utf8)).map { String(format: "%02x", $0) }.joined()
     }
 
     private static func formatReport(_ report: SyncReport) -> String {
         if report.totalPulled == 0 && report.totalPushed == 0 {
-            return String(localized: "Tout est déjà à jour.")
+            return report.skippedPeerBlobs > 0
+                ? String(localized: "À jour (\(report.skippedPeerBlobs) fichier(s) en attente).")
+                : String(localized: "Tout est déjà à jour.")
         }
         return String(localized: "Reçu : \(report.totalPulled) · Envoyé : \(report.totalPushed)")
     }
@@ -424,6 +649,8 @@ final class SyncController {
             return String(localized: "Ce stockage contient un autre coffre Wispad (clé différente).")
         case SyncEngineError.incompatibleVersion:
             return String(localized: "Ce coffre nécessite une version plus récente de Wispad.")
+        case SyncEngineError.unreadableManifest:
+            return String(localized: "Le manifeste distant est illisible ou endommagé.")
         case is SyncCryptoError:
             return String(localized: "Clé de synchronisation incorrecte : déchiffrement impossible.")
         default:

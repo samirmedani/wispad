@@ -168,9 +168,23 @@ public final class HistoryStore: @unchecked Sendable {
         db = connection
         if path != ":memory:", !path.isEmpty {
             try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: path)
+            for suffix in ["-wal", "-shm"] {
+                let sidecar = path + suffix
+                if FileManager.default.fileExists(atPath: sidecar) {
+                    try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: sidecar)
+                }
+            }
         }
         sqlite3_busy_timeout(connection, 2_000)
         try execute("PRAGMA journal_mode = WAL;")
+        if path != ":memory:", !path.isEmpty {
+            for suffix in ["-wal", "-shm"] {
+                let sidecar = path + suffix
+                if FileManager.default.fileExists(atPath: sidecar) {
+                    try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: sidecar)
+                }
+            }
+        }
         try execute("PRAGMA foreign_keys = ON;")
         try execute(
             """
@@ -237,6 +251,17 @@ public final class HistoryStore: @unchecked Sendable {
                 entity_type TEXT NOT NULL,
                 entity_id TEXT NOT NULL,
                 deleted_at REAL NOT NULL,
+                PRIMARY KEY (entity_type, entity_id)
+            );
+            """
+        )
+        // Boîte d'envoi locale : suit uniquement les mutations locales à pousser (évite toute boucle d'écho
+        // et toute perte par dérive d'horloge, sans toucher au schéma de `dictionary`).
+        try execute(
+            """
+            CREATE TABLE IF NOT EXISTS sync_outbox (
+                entity_type TEXT NOT NULL,
+                entity_id TEXT NOT NULL,
                 PRIMARY KEY (entity_type, entity_id)
             );
             """
@@ -361,6 +386,37 @@ public final class HistoryStore: @unchecked Sendable {
         }
         if !metadata.contains("usage_accuracy_v1") { try migrateUsageAccuracy() }
         if !metadata.contains("retired_values_v1") { try forgetRetiredValues() }
+        if !metadata.contains("dictations_fts_v1") { try backfillDictationsFTS() }
+        if !metadata.contains("sync_outbox_v1") { try seedSyncOutbox() }
+    }
+
+    /// Peuple une seule fois l'index FTS5 pour les bases déjà existantes avant l'introduction de `dictations_fts`.
+    private func backfillDictationsFTS() throws {
+        try transaction {
+            let done = try queryOnQueue("SELECT value FROM app_metadata WHERE key = 'dictations_fts_v1';") { column(0, $0) }
+            guard done.isEmpty else { return }
+            try? executeOnQueue("DELETE FROM dictations_fts;")
+            try? executeOnQueue(
+                """
+                INSERT INTO dictations_fts (id, final_text, raw_text, alternative_text)
+                SELECT id, final_text, raw_text, alternative_text FROM dictations;
+                """
+            )
+            try executeOnQueue("INSERT OR IGNORE INTO app_metadata (key, value) VALUES ('dictations_fts_v1', '1');")
+        }
+    }
+
+    /// Enregistre dans `sync_outbox` les données déjà présentes avant l'introduction du suivi dirty par boîte d'envoi.
+    private func seedSyncOutbox() throws {
+        try transaction {
+            let done = try queryOnQueue("SELECT value FROM app_metadata WHERE key = 'sync_outbox_v1';") { column(0, $0) }
+            guard done.isEmpty else { return }
+            try executeOnQueue("INSERT OR IGNORE INTO sync_outbox (entity_type, entity_id) SELECT 'dictation', id FROM dictations;")
+            try executeOnQueue("INSERT OR IGNORE INTO sync_outbox (entity_type, entity_id) SELECT 'meeting', id FROM meetings;")
+            try executeOnQueue("INSERT OR IGNORE INTO sync_outbox (entity_type, entity_id) SELECT 'dictionary', id FROM dictionary;")
+            try executeOnQueue("INSERT OR IGNORE INTO sync_outbox (entity_type, entity_id) SELECT 'refusal', term FROM learning_refusals;")
+            try executeOnQueue("INSERT OR IGNORE INTO app_metadata (key, value) VALUES ('sync_outbox_v1', '1');")
+        }
     }
 
     /// Répare une seule fois les estimations anciennes, sans reconstruire de jetons perdus.
@@ -468,6 +524,7 @@ public final class HistoryStore: @unchecked Sendable {
                 sqlite3_bind_double(statement, 19, updated)
             }
             indexFTSOnQueue(id: record.id, finalText: record.finalText, rawText: record.rawText, alternativeText: record.alternativeText)
+            try markOutboxOnQueue(entityType: "dictation", entityID: record.id)
         }
     }
 
@@ -520,6 +577,9 @@ public final class HistoryStore: @unchecked Sendable {
     public func updateTranscript(id: String, finalText: String, rawText: String, wordCount: Int) throws {
         let now = Date().timeIntervalSince1970
         try transaction {
+            let alt = try queryOnQueue("SELECT alternative_text FROM dictations WHERE id = ?;", bind: { bind(id, at: 1, $0) }) {
+                optionalColumn(0, $0)
+            }.first ?? nil
             try runOnQueue("UPDATE dictations SET final_text = ?, raw_text = ?, word_count = ?, updated_at = ? WHERE id = ?;") { statement in
                 bind(finalText, at: 1, statement)
                 bind(rawText, at: 2, statement)
@@ -527,15 +587,19 @@ public final class HistoryStore: @unchecked Sendable {
                 sqlite3_bind_double(statement, 4, now)
                 bind(id, at: 5, statement)
             }
-            indexFTSOnQueue(id: id, finalText: finalText, rawText: rawText, alternativeText: nil)
+            indexFTSOnQueue(id: id, finalText: finalText, rawText: rawText, alternativeText: alt)
+            try markOutboxOnQueue(entityType: "dictation", entityID: id)
         }
     }
 
     public func updateStatus(id: String, status: String) throws {
-        try run("UPDATE dictations SET insertion_status = ?, updated_at = ? WHERE id = ?;") { statement in
-            bind(status, at: 1, statement)
-            sqlite3_bind_double(statement, 2, Date().timeIntervalSince1970)
-            bind(id, at: 3, statement)
+        try transaction {
+            try runOnQueue("UPDATE dictations SET insertion_status = ?, updated_at = ? WHERE id = ?;") { statement in
+                bind(status, at: 1, statement)
+                sqlite3_bind_double(statement, 2, Date().timeIntervalSince1970)
+                bind(id, at: 3, statement)
+            }
+            try markOutboxOnQueue(entityType: "dictation", entityID: id)
         }
     }
 
@@ -543,19 +607,24 @@ public final class HistoryStore: @unchecked Sendable {
     /// Une app inconnue (nil) laisse celle déjà enregistrée, sauf si la destination a explicitement changé.
     public func updateDelivery(id: String, status: String, targetApp: String?, targetBundle: String?, usageCategory: String?,
                                preserveUnknownTarget: Bool = true) throws {
-        try run(
-            """
-            UPDATE dictations SET insertion_status = ?, target_app = \(preserveUnknownTarget ? "COALESCE(?, target_app)" : "?"),
-                target_bundle = \(preserveUnknownTarget ? "COALESCE(?, target_bundle)" : "?"),
-                usage_category = \(preserveUnknownTarget ? "COALESCE(?, usage_category)" : "?")
-            WHERE id = ?;
-            """
-        ) { statement in
-            bind(status, at: 1, statement)
-            bindOptional(targetApp, at: 2, statement)
-            bindOptional(targetBundle, at: 3, statement)
-            bindOptional(usageCategory, at: 4, statement)
-            bind(id, at: 5, statement)
+        try transaction {
+            try runOnQueue(
+                """
+                UPDATE dictations SET insertion_status = ?, target_app = \(preserveUnknownTarget ? "COALESCE(?, target_app)" : "?"),
+                    target_bundle = \(preserveUnknownTarget ? "COALESCE(?, target_bundle)" : "?"),
+                    usage_category = \(preserveUnknownTarget ? "COALESCE(?, usage_category)" : "?"),
+                    updated_at = ?
+                WHERE id = ?;
+                """
+            ) { statement in
+                bind(status, at: 1, statement)
+                bindOptional(targetApp, at: 2, statement)
+                bindOptional(targetBundle, at: 3, statement)
+                bindOptional(usageCategory, at: 4, statement)
+                sqlite3_bind_double(statement, 5, Date().timeIntervalSince1970)
+                bind(id, at: 6, statement)
+            }
+            try markOutboxOnQueue(entityType: "dictation", entityID: id)
         }
     }
 
@@ -593,6 +662,7 @@ public final class HistoryStore: @unchecked Sendable {
             }
             try? runOnQueue("DELETE FROM dictations_fts WHERE id = ?;") { bind(id, at: 1, $0) }
             try recordTombstoneOnQueue(entityType: "dictation", entityID: id, at: now)
+            try markOutboxOnQueue(entityType: "dictation", entityID: id)
         }
     }
 
@@ -604,6 +674,7 @@ public final class HistoryStore: @unchecked Sendable {
             try? executeOnQueue("DELETE FROM dictations_fts;")
             for id in ids {
                 try recordTombstoneOnQueue(entityType: "dictation", entityID: id, at: now)
+                try markOutboxOnQueue(entityType: "dictation", entityID: id)
             }
         }
     }
@@ -806,20 +877,28 @@ public final class HistoryStore: @unchecked Sendable {
         let cleaned = term.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleaned.isEmpty else { return }
         let heard = heard?.trimmingCharacters(in: .whitespacesAndNewlines)
-        try run(
-            """
-            INSERT OR IGNORE INTO dictionary (id, term, created_at, origin, judge_provider, judge_model, heard, source)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?);
-            """
-        ) { statement in
-            bind(UUID().uuidString, at: 1, statement)
-            bind(cleaned, at: 2, statement)
-            sqlite3_bind_double(statement, 3, createdAt.timeIntervalSince1970)
-            bindOptional(origin.storedValue, at: 4, statement)
-            bindOptional(origin.judge?.provider, at: 5, statement)
-            bindOptional(origin.judge?.model, at: 6, statement)
-            bindOptional(heard?.isEmpty == false ? heard : nil, at: 7, statement)
-            bindOptional(source?.rawValue, at: 8, statement)
+        let newID = UUID().uuidString
+        try transaction {
+            let existing = try queryOnQueue("SELECT id FROM dictionary WHERE term = ? COLLATE NOCASE LIMIT 1;", bind: { bind(cleaned, at: 1, $0) }) {
+                column(0, $0)
+            }.first
+            guard existing == nil else { return }
+            try runOnQueue(
+                """
+                INSERT OR IGNORE INTO dictionary (id, term, created_at, origin, judge_provider, judge_model, heard, source)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+                """
+            ) { statement in
+                bind(newID, at: 1, statement)
+                bind(cleaned, at: 2, statement)
+                sqlite3_bind_double(statement, 3, createdAt.timeIntervalSince1970)
+                bindOptional(origin.storedValue, at: 4, statement)
+                bindOptional(origin.judge?.provider, at: 5, statement)
+                bindOptional(origin.judge?.model, at: 6, statement)
+                bindOptional(heard?.isEmpty == false ? heard : nil, at: 7, statement)
+                bindOptional(source?.rawValue, at: 8, statement)
+            }
+            try markOutboxOnQueue(entityType: "dictionary", entityID: newID)
         }
     }
 
@@ -839,6 +918,7 @@ public final class HistoryStore: @unchecked Sendable {
                 bind(cleaned, at: 1, statement)
                 bind(id, at: 2, statement)
             }
+            try markOutboxOnQueue(entityType: "dictionary", entityID: id)
             return true
         }
     }
@@ -848,14 +928,22 @@ public final class HistoryStore: @unchecked Sendable {
     public func confirmLearnedTerm(_ term: String) throws {
         let cleaned = term.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleaned.isEmpty else { return }
-        try run(
-            """
-            UPDATE dictionary SET confirmed_at = ?
-            WHERE term = ? AND origin IN ('jev', 'model') AND confirmed_at IS NULL;
-            """
-        ) { statement in
-            sqlite3_bind_double(statement, 1, Date().timeIntervalSince1970)
-            bind(cleaned, at: 2, statement)
+        try transaction {
+            let ids = try queryOnQueue(
+                "SELECT id FROM dictionary WHERE term = ? AND origin IN ('jev', 'model') AND confirmed_at IS NULL;",
+                bind: { bind(cleaned, at: 1, $0) }
+            ) { column(0, $0) }
+            guard !ids.isEmpty else { return }
+            try runOnQueue(
+                """
+                UPDATE dictionary SET confirmed_at = ?
+                WHERE term = ? AND origin IN ('jev', 'model') AND confirmed_at IS NULL;
+                """
+            ) { statement in
+                sqlite3_bind_double(statement, 1, Date().timeIntervalSince1970)
+                bind(cleaned, at: 2, statement)
+            }
+            for id in ids { try markOutboxOnQueue(entityType: "dictionary", entityID: id) }
         }
     }
 
@@ -866,6 +954,7 @@ public final class HistoryStore: @unchecked Sendable {
                 bind(id, at: 1, statement)
             }
             try recordTombstoneOnQueue(entityType: "dictionary", entityID: id, at: now)
+            try markOutboxOnQueue(entityType: "dictionary", entityID: id)
         }
     }
 
@@ -896,35 +985,38 @@ public final class HistoryStore: @unchecked Sendable {
     }
 
     public func upsertMeeting(_ meeting: MeetingRecord) throws {
-        try run(
-            """
-            INSERT INTO meetings (
-                id, title, created_at, updated_at, duration_seconds, user_notes, raw_transcript, enhanced_notes,
-                source_device_id, source_device_name, source_device_platform
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET
-                title = excluded.title,
-                updated_at = excluded.updated_at,
-                duration_seconds = excluded.duration_seconds,
-                user_notes = excluded.user_notes,
-                raw_transcript = excluded.raw_transcript,
-                enhanced_notes = excluded.enhanced_notes,
-                source_device_id = COALESCE(excluded.source_device_id, meetings.source_device_id),
-                source_device_name = COALESCE(excluded.source_device_name, meetings.source_device_name),
-                source_device_platform = COALESCE(excluded.source_device_platform, meetings.source_device_platform);
-            """
-        ) { statement in
-            bind(meeting.id, at: 1, statement)
-            bind(meeting.title, at: 2, statement)
-            sqlite3_bind_double(statement, 3, meeting.createdAt.timeIntervalSince1970)
-            sqlite3_bind_double(statement, 4, meeting.updatedAt.timeIntervalSince1970)
-            sqlite3_bind_double(statement, 5, meeting.durationSeconds)
-            bind(meeting.userNotes, at: 6, statement)
-            bind(meeting.rawTranscript, at: 7, statement)
-            bind(meeting.enhancedNotes, at: 8, statement)
-            bindOptional(meeting.sourceDeviceID, at: 9, statement)
-            bindOptional(meeting.sourceDeviceName, at: 10, statement)
-            bindOptional(meeting.sourceDevicePlatform, at: 11, statement)
+        try transaction {
+            try runOnQueue(
+                """
+                INSERT INTO meetings (
+                    id, title, created_at, updated_at, duration_seconds, user_notes, raw_transcript, enhanced_notes,
+                    source_device_id, source_device_name, source_device_platform
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    title = excluded.title,
+                    updated_at = excluded.updated_at,
+                    duration_seconds = excluded.duration_seconds,
+                    user_notes = excluded.user_notes,
+                    raw_transcript = excluded.raw_transcript,
+                    enhanced_notes = excluded.enhanced_notes,
+                    source_device_id = COALESCE(excluded.source_device_id, meetings.source_device_id),
+                    source_device_name = COALESCE(excluded.source_device_name, meetings.source_device_name),
+                    source_device_platform = COALESCE(excluded.source_device_platform, meetings.source_device_platform);
+                """
+            ) { statement in
+                bind(meeting.id, at: 1, statement)
+                bind(meeting.title, at: 2, statement)
+                sqlite3_bind_double(statement, 3, meeting.createdAt.timeIntervalSince1970)
+                sqlite3_bind_double(statement, 4, meeting.updatedAt.timeIntervalSince1970)
+                sqlite3_bind_double(statement, 5, meeting.durationSeconds)
+                bind(meeting.userNotes, at: 6, statement)
+                bind(meeting.rawTranscript, at: 7, statement)
+                bind(meeting.enhancedNotes, at: 8, statement)
+                bindOptional(meeting.sourceDeviceID, at: 9, statement)
+                bindOptional(meeting.sourceDeviceName, at: 10, statement)
+                bindOptional(meeting.sourceDevicePlatform, at: 11, statement)
+            }
+            try markOutboxOnQueue(entityType: "meeting", entityID: meeting.id)
         }
     }
 
@@ -933,6 +1025,7 @@ public final class HistoryStore: @unchecked Sendable {
         try transaction {
             try runOnQueue("DELETE FROM meetings WHERE id = ?;") { bind(id, at: 1, $0) }
             try recordTombstoneOnQueue(entityType: "meeting", entityID: id, at: now)
+            try markOutboxOnQueue(entityType: "meeting", entityID: id)
         }
     }
 
@@ -1105,162 +1198,468 @@ public final class HistoryStore: @unchecked Sendable {
         }
     }
 
-    /// Fusionne une dictée reçue par synchro : préserve l'audio local s'il s'agit du même appareil, sinon laisse
+    /// Lot de mutations locales en attente d'envoi dans `sync_outbox`.
+    public struct SyncOutboxBatch: Sendable {
+        public var dictations: [SyncDictation]
+        public var meetings: [SyncMeeting]
+        public var dictionary: [SyncDictionaryTerm]
+        public var refusals: [SyncRefusal]
+
+        public var isEmpty: Bool {
+            dictations.isEmpty && meetings.isEmpty && dictionary.isEmpty && refusals.isEmpty
+        }
+    }
+
+    public func pendingSyncBatch(localDevice: DeviceIdentity, limit: Int = 500) throws -> SyncOutboxBatch {
+        let cap = max(1, limit)
+        return try queue.sync {
+            var remaining = cap
+            var dictations: [SyncDictation] = []
+            var meetings: [SyncMeeting] = []
+            var terms: [SyncDictionaryTerm] = []
+            var refusals: [SyncRefusal] = []
+
+            let dictIDs = try queryOnQueue(
+                "SELECT entity_id FROM sync_outbox WHERE entity_type = 'dictation' LIMIT ?;",
+                bind: { sqlite3_bind_int64($0, 1, Int64(remaining)) }
+            ) { column(0, $0) }
+            for id in dictIDs {
+                let rows: [SyncDictation] = try queryOnQueue(
+                    """
+                    SELECT id, created_at, final_text, raw_text, duration_seconds, word_count,
+                        provider, model, target_app, target_bundle, usage_category, insertion_status,
+                        source_device_id, source_device_name, source_device_platform, COALESCE(updated_at, created_at)
+                    FROM dictations WHERE id = ?;
+                    """,
+                    bind: { bind(id, at: 1, $0) }
+                ) { statement in
+                    SyncDictation(
+                        id: column(0, statement),
+                        createdAt: sqlite3_column_double(statement, 1),
+                        updatedAt: sqlite3_column_double(statement, 15),
+                        deletedAt: nil,
+                        finalText: column(2, statement),
+                        rawText: column(3, statement),
+                        durationSeconds: sqlite3_column_double(statement, 4),
+                        wordCount: Int(sqlite3_column_int(statement, 5)),
+                        provider: column(6, statement),
+                        model: column(7, statement),
+                        targetApp: optionalColumn(8, statement),
+                        targetBundle: optionalColumn(9, statement),
+                        usageCategory: optionalColumn(10, statement),
+                        insertionStatus: column(11, statement),
+                        sourceDeviceId: optionalColumn(12, statement) ?? localDevice.deviceId,
+                        sourceDeviceName: optionalColumn(13, statement) ?? localDevice.deviceName,
+                        sourceDevicePlatform: optionalColumn(14, statement) ?? localDevice.platform.rawValue
+                    )
+                }
+                if let row = rows.first {
+                    dictations.append(row)
+                } else {
+                    let tombstones: [Double] = try queryOnQueue(
+                        "SELECT deleted_at FROM sync_tombstones WHERE entity_type = 'dictation' AND entity_id = ?;",
+                        bind: { bind(id, at: 1, $0) }
+                    ) { sqlite3_column_double($0, 0) }
+                    if let ts = tombstones.first {
+                        dictations.append(SyncDictation(
+                            id: id, createdAt: ts, updatedAt: ts, deletedAt: ts,
+                            finalText: "", rawText: "", durationSeconds: 0, wordCount: 0,
+                            provider: "", model: "", insertionStatus: "deleted",
+                            sourceDeviceId: localDevice.deviceId,
+                            sourceDeviceName: localDevice.deviceName,
+                            sourceDevicePlatform: localDevice.platform.rawValue
+                        ))
+                    } else {
+                        try clearOutboxOnQueue(entityType: "dictation", entityID: id)
+                    }
+                }
+            }
+            remaining = max(0, remaining - dictations.count)
+
+            if remaining > 0 {
+                let meetIDs = try queryOnQueue(
+                    "SELECT entity_id FROM sync_outbox WHERE entity_type = 'meeting' LIMIT ?;",
+                    bind: { sqlite3_bind_int64($0, 1, Int64(remaining)) }
+                ) { column(0, $0) }
+                for id in meetIDs {
+                    let rows: [SyncMeeting] = try queryOnQueue(
+                        """
+                        SELECT id, title, created_at, updated_at, duration_seconds, user_notes, raw_transcript, enhanced_notes,
+                            source_device_id, source_device_name, source_device_platform
+                        FROM meetings WHERE id = ?;
+                        """,
+                        bind: { bind(id, at: 1, $0) }
+                    ) { statement in
+                        SyncMeeting(
+                            id: column(0, statement),
+                            title: column(1, statement),
+                            createdAt: sqlite3_column_double(statement, 2),
+                            updatedAt: sqlite3_column_double(statement, 3),
+                            deletedAt: nil,
+                            durationSeconds: sqlite3_column_double(statement, 4),
+                            userNotes: column(5, statement),
+                            rawTranscript: column(6, statement),
+                            enhancedNotes: column(7, statement),
+                            sourceDeviceId: optionalColumn(8, statement) ?? localDevice.deviceId,
+                            sourceDeviceName: optionalColumn(9, statement) ?? localDevice.deviceName,
+                            sourceDevicePlatform: optionalColumn(10, statement) ?? localDevice.platform.rawValue
+                        )
+                    }
+                    if let row = rows.first {
+                        meetings.append(row)
+                    } else {
+                        let tombstones: [Double] = try queryOnQueue(
+                            "SELECT deleted_at FROM sync_tombstones WHERE entity_type = 'meeting' AND entity_id = ?;",
+                            bind: { bind(id, at: 1, $0) }
+                        ) { sqlite3_column_double($0, 0) }
+                        if let ts = tombstones.first {
+                            meetings.append(SyncMeeting(
+                                id: id, title: "", createdAt: ts, updatedAt: ts, deletedAt: ts,
+                                durationSeconds: 0, userNotes: "", rawTranscript: "", enhancedNotes: "",
+                                sourceDeviceId: localDevice.deviceId,
+                                sourceDeviceName: localDevice.deviceName,
+                                sourceDevicePlatform: localDevice.platform.rawValue
+                            ))
+                        } else {
+                            try clearOutboxOnQueue(entityType: "meeting", entityID: id)
+                        }
+                    }
+                }
+                remaining = max(0, remaining - meetings.count)
+            }
+
+            if remaining > 0 {
+                let termIDs = try queryOnQueue(
+                    "SELECT entity_id FROM sync_outbox WHERE entity_type = 'dictionary' LIMIT ?;",
+                    bind: { sqlite3_bind_int64($0, 1, Int64(remaining)) }
+                ) { column(0, $0) }
+                for id in termIDs {
+                    let rows: [SyncDictionaryTerm] = try queryOnQueue(
+                        """
+                        SELECT id, term, created_at, COALESCE(confirmed_at, created_at), origin, judge_provider, judge_model, heard, source
+                        FROM dictionary WHERE id = ?;
+                        """,
+                        bind: { bind(id, at: 1, $0) }
+                    ) { statement in
+                        SyncDictionaryTerm(
+                            id: column(0, statement),
+                            term: column(1, statement),
+                            createdAt: sqlite3_column_double(statement, 2),
+                            updatedAt: sqlite3_column_double(statement, 3),
+                            deletedAt: nil,
+                            origin: optionalColumn(4, statement),
+                            judgeProvider: optionalColumn(5, statement),
+                            judgeModel: optionalColumn(6, statement),
+                            heard: optionalColumn(7, statement),
+                            source: optionalColumn(8, statement)
+                        )
+                    }
+                    if let row = rows.first {
+                        terms.append(row)
+                    } else {
+                        let tombstones: [Double] = try queryOnQueue(
+                            "SELECT deleted_at FROM sync_tombstones WHERE entity_type = 'dictionary' AND entity_id = ?;",
+                            bind: { bind(id, at: 1, $0) }
+                        ) { sqlite3_column_double($0, 0) }
+                        if let ts = tombstones.first {
+                            terms.append(SyncDictionaryTerm(id: id, term: "", createdAt: ts, updatedAt: ts, deletedAt: ts))
+                        } else {
+                            try clearOutboxOnQueue(entityType: "dictionary", entityID: id)
+                        }
+                    }
+                }
+                remaining = max(0, remaining - terms.count)
+            }
+
+            if remaining > 0 {
+                let refTerms = try queryOnQueue(
+                    "SELECT entity_id FROM sync_outbox WHERE entity_type = 'refusal' LIMIT ?;",
+                    bind: { sqlite3_bind_int64($0, 1, Int64(remaining)) }
+                ) { column(0, $0) }
+                for term in refTerms {
+                    let rows: [SyncRefusal] = try queryOnQueue(
+                        "SELECT term, created_at FROM learning_refusals WHERE term = ? COLLATE NOCASE LIMIT 1;",
+                        bind: { bind(term, at: 1, $0) }
+                    ) { statement in
+                        SyncRefusal(term: column(0, statement), createdAt: sqlite3_column_double(statement, 1))
+                    }
+                    if let row = rows.first {
+                        refusals.append(row)
+                    } else {
+                        try clearOutboxOnQueue(entityType: "refusal", entityID: term)
+                    }
+                }
+            }
+
+            return SyncOutboxBatch(dictations: dictations, meetings: meetings, dictionary: terms, refusals: refusals)
+        }
+    }
+
+    public func clearSyncOutbox(_ batch: SyncOutboxBatch) throws {
+        try transaction {
+            for item in batch.dictations { try clearOutboxOnQueue(entityType: "dictation", entityID: item.id) }
+            for item in batch.meetings { try clearOutboxOnQueue(entityType: "meeting", entityID: item.id) }
+            for item in batch.dictionary { try clearOutboxOnQueue(entityType: "dictionary", entityID: item.id) }
+            for item in batch.refusals { try clearOutboxOnQueue(entityType: "refusal", entityID: item.term) }
+        }
+    }
+
+    /// Applique un delta distant et avance le curseur de son appareil dans une unique transaction atomique SQLite
+    /// (jamais de ré-ajout dans `sync_outbox` -> zéro boucle d'écho).
+    public func applyRemoteDelta(
+        _ delta: SyncDelta,
+        peerDeviceID: String,
+        sequence: Int
+    ) throws -> (dictations: Int, meetings: Int, terms: Int) {
+        try transaction {
+            var pulledDictations = 0
+            var pulledMeetings = 0
+            var pulledTerms = 0
+            for item in delta.dictations {
+                if try applySyncedDictationOnQueue(item) { pulledDictations += 1 }
+            }
+            for meeting in delta.meetings {
+                if try applySyncedMeetingOnQueue(meeting) { pulledMeetings += 1 }
+            }
+            for term in delta.dictionary {
+                if try applySyncedDictionaryTermOnQueue(term) { pulledTerms += 1 }
+            }
+            for refusal in delta.refusals {
+                try applySyncedRefusalOnQueue(refusal.term, createdAt: refusal.createdAt)
+            }
+            try runOnQueue(
+                """
+                INSERT INTO sync_peers (device_id, last_sequence, updated_at) VALUES (?, ?, ?)
+                ON CONFLICT(device_id) DO UPDATE SET last_sequence = excluded.last_sequence, updated_at = excluded.updated_at;
+                """
+            ) { statement in
+                bind(peerDeviceID, at: 1, statement)
+                sqlite3_bind_int64(statement, 2, Int64(sequence))
+                sqlite3_bind_double(statement, 3, Date().timeIntervalSince1970)
+            }
+            return (pulledDictations, pulledMeetings, pulledTerms)
+        }
+    }
+
+    /// Fusionne une dictée reçue par synchro : préserve l'audio local s'il existe déjà, sinon laisse
     /// `audio_path = NULL` et conserve `source_device_name` / `source_device_platform`.
     @discardableResult
-    public func applySyncedDictation(_ item: SyncDictation, localDeviceID: String) throws -> Bool {
-        try transaction {
-            if let deletedAt = item.deletedAt {
-                let existingUpdated = try queryOnQueue(
-                    "SELECT COALESCE(updated_at, created_at) FROM dictations WHERE id = ?;",
-                    bind: { bind(item.id, at: 1, $0) }
-                ) { sqlite3_column_double($0, 0) }.first
-                if let existingUpdated, existingUpdated > deletedAt { return false }
-                try runOnQueue("DELETE FROM dictations WHERE id = ?;") { bind(item.id, at: 1, $0) }
-                try? runOnQueue("DELETE FROM dictations_fts WHERE id = ?;") { bind(item.id, at: 1, $0) }
-                try recordTombstoneOnQueue(entityType: "dictation", entityID: item.id, at: deletedAt)
-                return existingUpdated != nil
-            }
-            let localTombstone = try queryOnQueue(
-                "SELECT deleted_at FROM sync_tombstones WHERE entity_type = 'dictation' AND entity_id = ?;",
-                bind: { bind(item.id, at: 1, $0) }
-            ) { sqlite3_column_double($0, 0) }.first
-            if let localTombstone, localTombstone >= item.updatedAt { return false }
+    public func applySyncedDictation(_ item: SyncDictation, localDeviceID: String = "") throws -> Bool {
+        _ = localDeviceID
+        return try transaction { try applySyncedDictationOnQueue(item) }
+    }
 
+    private func applySyncedDictationOnQueue(_ item: SyncDictation) throws -> Bool {
+        if let deletedAt = item.deletedAt {
             let existingUpdated = try queryOnQueue(
                 "SELECT COALESCE(updated_at, created_at) FROM dictations WHERE id = ?;",
                 bind: { bind(item.id, at: 1, $0) }
             ) { sqlite3_column_double($0, 0) }.first
-            if let existingUpdated, existingUpdated >= item.updatedAt { return false }
-
-            try runOnQueue(
-                """
-                INSERT INTO dictations (
-                    id, created_at, final_text, raw_text, duration_seconds, word_count,
-                    provider, model, target_app, target_bundle, usage_category,
-                    insertion_status, audio_path, audio_expires_at, alternative_text,
-                    source_device_id, source_device_name, source_device_platform, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?, ?, ?, ?)
-                ON CONFLICT(id) DO UPDATE SET
-                    final_text = excluded.final_text,
-                    raw_text = excluded.raw_text,
-                    word_count = excluded.word_count,
-                    target_app = COALESCE(excluded.target_app, dictations.target_app),
-                    target_bundle = COALESCE(excluded.target_bundle, dictations.target_bundle),
-                    usage_category = COALESCE(excluded.usage_category, dictations.usage_category),
-                    insertion_status = excluded.insertion_status,
-                    source_device_id = COALESCE(dictations.source_device_id, excluded.source_device_id),
-                    source_device_name = COALESCE(dictations.source_device_name, excluded.source_device_name),
-                    source_device_platform = COALESCE(dictations.source_device_platform, excluded.source_device_platform),
-                    updated_at = excluded.updated_at;
-                """
-            ) { statement in
-                bind(item.id, at: 1, statement)
-                sqlite3_bind_double(statement, 2, item.createdAt)
-                bind(item.finalText, at: 3, statement)
-                bind(item.rawText, at: 4, statement)
-                sqlite3_bind_double(statement, 5, item.durationSeconds)
-                sqlite3_bind_int(statement, 6, Int32(clamping: item.wordCount))
-                bind(item.provider, at: 7, statement)
-                bind(item.model, at: 8, statement)
-                bindOptional(item.targetApp, at: 9, statement)
-                bindOptional(item.targetBundle, at: 10, statement)
-                bindOptional(item.usageCategory, at: 11, statement)
-                bind(item.insertionStatus, at: 12, statement)
-                bind(item.sourceDeviceId, at: 13, statement)
-                bind(item.sourceDeviceName, at: 14, statement)
-                bind(item.sourceDevicePlatform, at: 15, statement)
-                sqlite3_bind_double(statement, 16, item.updatedAt)
-            }
-            indexFTSOnQueue(id: item.id, finalText: item.finalText, rawText: item.rawText, alternativeText: nil)
-            return true
+            if let existingUpdated, existingUpdated > deletedAt { return false }
+            try runOnQueue("DELETE FROM dictations WHERE id = ?;") { bind(item.id, at: 1, $0) }
+            try? runOnQueue("DELETE FROM dictations_fts WHERE id = ?;") { bind(item.id, at: 1, $0) }
+            try recordTombstoneOnQueue(entityType: "dictation", entityID: item.id, at: deletedAt)
+            try clearOutboxOnQueue(entityType: "dictation", entityID: item.id)
+            return existingUpdated != nil
         }
+        let localTombstone = try queryOnQueue(
+            "SELECT deleted_at FROM sync_tombstones WHERE entity_type = 'dictation' AND entity_id = ?;",
+            bind: { bind(item.id, at: 1, $0) }
+        ) { sqlite3_column_double($0, 0) }.first
+        if let localTombstone, localTombstone >= item.updatedAt { return false }
+
+        let existing = try queryOnQueue(
+            "SELECT COALESCE(updated_at, created_at), alternative_text FROM dictations WHERE id = ?;",
+            bind: { bind(item.id, at: 1, $0) }
+        ) { (sqlite3_column_double($0, 0), optionalColumn(1, $0)) }.first
+        if let existing, existing.0 >= item.updatedAt { return false }
+
+        try runOnQueue(
+            """
+            INSERT INTO dictations (
+                id, created_at, final_text, raw_text, duration_seconds, word_count,
+                provider, model, target_app, target_bundle, usage_category,
+                insertion_status, audio_path, audio_expires_at, alternative_text,
+                source_device_id, source_device_name, source_device_platform, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                final_text = excluded.final_text,
+                raw_text = excluded.raw_text,
+                word_count = excluded.word_count,
+                target_app = COALESCE(excluded.target_app, dictations.target_app),
+                target_bundle = COALESCE(excluded.target_bundle, dictations.target_bundle),
+                usage_category = COALESCE(excluded.usage_category, dictations.usage_category),
+                insertion_status = excluded.insertion_status,
+                source_device_id = COALESCE(dictations.source_device_id, excluded.source_device_id),
+                source_device_name = COALESCE(dictations.source_device_name, excluded.source_device_name),
+                source_device_platform = COALESCE(dictations.source_device_platform, excluded.source_device_platform),
+                updated_at = excluded.updated_at;
+            """
+        ) { statement in
+            bind(item.id, at: 1, statement)
+            sqlite3_bind_double(statement, 2, item.createdAt)
+            bind(item.finalText, at: 3, statement)
+            bind(item.rawText, at: 4, statement)
+            sqlite3_bind_double(statement, 5, item.durationSeconds)
+            sqlite3_bind_int(statement, 6, Int32(clamping: item.wordCount))
+            bind(item.provider, at: 7, statement)
+            bind(item.model, at: 8, statement)
+            bindOptional(item.targetApp, at: 9, statement)
+            bindOptional(item.targetBundle, at: 10, statement)
+            bindOptional(item.usageCategory, at: 11, statement)
+            bind(item.insertionStatus, at: 12, statement)
+            bind(item.sourceDeviceId, at: 13, statement)
+            bind(item.sourceDeviceName, at: 14, statement)
+            bind(item.sourceDevicePlatform, at: 15, statement)
+            sqlite3_bind_double(statement, 16, item.updatedAt)
+        }
+        indexFTSOnQueue(id: item.id, finalText: item.finalText, rawText: item.rawText, alternativeText: existing?.1)
+        try clearOutboxOnQueue(entityType: "dictation", entityID: item.id)
+        return true
     }
 
     @discardableResult
     public func applySyncedMeeting(_ item: SyncMeeting) throws -> Bool {
-        try transaction {
-            if let deletedAt = item.deletedAt {
-                let existing = try queryOnQueue("SELECT updated_at FROM meetings WHERE id = ?;", bind: { bind(item.id, at: 1, $0) }) {
-                    sqlite3_column_double($0, 0)
-                }.first
-                if let existing, existing > deletedAt { return false }
-                try runOnQueue("DELETE FROM meetings WHERE id = ?;") { bind(item.id, at: 1, $0) }
-                try recordTombstoneOnQueue(entityType: "meeting", entityID: item.id, at: deletedAt)
-                return existing != nil
-            }
+        try transaction { try applySyncedMeetingOnQueue(item) }
+    }
+
+    private func applySyncedMeetingOnQueue(_ item: SyncMeeting) throws -> Bool {
+        if let deletedAt = item.deletedAt {
             let existing = try queryOnQueue("SELECT updated_at FROM meetings WHERE id = ?;", bind: { bind(item.id, at: 1, $0) }) {
                 sqlite3_column_double($0, 0)
             }.first
-            if let existing, existing >= item.updatedAt { return false }
-            try runOnQueue(
-                """
-                INSERT INTO meetings (
-                    id, title, created_at, updated_at, duration_seconds, user_notes, raw_transcript, enhanced_notes,
-                    source_device_id, source_device_name, source_device_platform
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(id) DO UPDATE SET
-                    title = excluded.title,
-                    updated_at = excluded.updated_at,
-                    duration_seconds = excluded.duration_seconds,
-                    user_notes = excluded.user_notes,
-                    raw_transcript = excluded.raw_transcript,
-                    enhanced_notes = excluded.enhanced_notes,
-                    source_device_id = COALESCE(meetings.source_device_id, excluded.source_device_id),
-                    source_device_name = COALESCE(meetings.source_device_name, excluded.source_device_name),
-                    source_device_platform = COALESCE(meetings.source_device_platform, excluded.source_device_platform);
-                """
-            ) { statement in
-                bind(item.id, at: 1, statement)
-                bind(item.title, at: 2, statement)
-                sqlite3_bind_double(statement, 3, item.createdAt)
-                sqlite3_bind_double(statement, 4, item.updatedAt)
-                sqlite3_bind_double(statement, 5, item.durationSeconds)
-                bind(item.userNotes, at: 6, statement)
-                bind(item.rawTranscript, at: 7, statement)
-                bind(item.enhancedNotes, at: 8, statement)
-                bind(item.sourceDeviceId, at: 9, statement)
-                bind(item.sourceDeviceName, at: 10, statement)
-                bind(item.sourceDevicePlatform, at: 11, statement)
-            }
-            return true
+            if let existing, existing > deletedAt { return false }
+            try runOnQueue("DELETE FROM meetings WHERE id = ?;") { bind(item.id, at: 1, $0) }
+            try recordTombstoneOnQueue(entityType: "meeting", entityID: item.id, at: deletedAt)
+            try clearOutboxOnQueue(entityType: "meeting", entityID: item.id)
+            return existing != nil
         }
+        let localTombstone = try queryOnQueue(
+            "SELECT deleted_at FROM sync_tombstones WHERE entity_type = 'meeting' AND entity_id = ?;",
+            bind: { bind(item.id, at: 1, $0) }
+        ) { sqlite3_column_double($0, 0) }.first
+        if let localTombstone, localTombstone >= item.updatedAt { return false }
+
+        let existing = try queryOnQueue("SELECT updated_at FROM meetings WHERE id = ?;", bind: { bind(item.id, at: 1, $0) }) {
+            sqlite3_column_double($0, 0)
+        }.first
+        if let existing, existing >= item.updatedAt { return false }
+        try runOnQueue(
+            """
+            INSERT INTO meetings (
+                id, title, created_at, updated_at, duration_seconds, user_notes, raw_transcript, enhanced_notes,
+                source_device_id, source_device_name, source_device_platform
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                title = excluded.title,
+                updated_at = excluded.updated_at,
+                duration_seconds = excluded.duration_seconds,
+                user_notes = excluded.user_notes,
+                raw_transcript = excluded.raw_transcript,
+                enhanced_notes = excluded.enhanced_notes,
+                source_device_id = COALESCE(meetings.source_device_id, excluded.source_device_id),
+                source_device_name = COALESCE(meetings.source_device_name, excluded.source_device_name),
+                source_device_platform = COALESCE(meetings.source_device_platform, excluded.source_device_platform);
+            """
+        ) { statement in
+            bind(item.id, at: 1, statement)
+            bind(item.title, at: 2, statement)
+            sqlite3_bind_double(statement, 3, item.createdAt)
+            sqlite3_bind_double(statement, 4, item.updatedAt)
+            sqlite3_bind_double(statement, 5, item.durationSeconds)
+            bind(item.userNotes, at: 6, statement)
+            bind(item.rawTranscript, at: 7, statement)
+            bind(item.enhancedNotes, at: 8, statement)
+            bind(item.sourceDeviceId, at: 9, statement)
+            bind(item.sourceDeviceName, at: 10, statement)
+            bind(item.sourceDevicePlatform, at: 11, statement)
+        }
+        try clearOutboxOnQueue(entityType: "meeting", entityID: item.id)
+        return true
     }
 
     @discardableResult
     public func applySyncedDictionaryTerm(_ item: SyncDictionaryTerm) throws -> Bool {
-        try transaction {
-            if let deletedAt = item.deletedAt {
-                let existing = try queryOnQueue("SELECT COALESCE(confirmed_at, created_at) FROM dictionary WHERE id = ?;", bind: { bind(item.id, at: 1, $0) }) {
-                    sqlite3_column_double($0, 0)
-                }.first
-                if let existing, existing > deletedAt { return false }
-                try runOnQueue("DELETE FROM dictionary WHERE id = ?;") { bind(item.id, at: 1, $0) }
-                try recordTombstoneOnQueue(entityType: "dictionary", entityID: item.id, at: deletedAt)
-                return existing != nil
-            }
-            let cleaned = item.term.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !cleaned.isEmpty else { return false }
-            let already = try queryOnQueue("SELECT id FROM dictionary WHERE term = ? COLLATE NOCASE LIMIT 1;", bind: { bind(cleaned, at: 1, $0) }) {
-                column(0, $0)
+        try transaction { try applySyncedDictionaryTermOnQueue(item) }
+    }
+
+    private func applySyncedDictionaryTermOnQueue(_ item: SyncDictionaryTerm) throws -> Bool {
+        if let deletedAt = item.deletedAt {
+            let existing = try queryOnQueue("SELECT COALESCE(confirmed_at, created_at) FROM dictionary WHERE id = ?;", bind: { bind(item.id, at: 1, $0) }) {
+                sqlite3_column_double($0, 0)
             }.first
-            guard already == nil else { return false }
-            try runOnQueue(
-                """
-                INSERT OR IGNORE INTO dictionary (id, term, created_at, origin, judge_provider, judge_model, heard, source)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?);
-                """
-            ) { statement in
-                bind(item.id, at: 1, statement)
-                bind(cleaned, at: 2, statement)
-                sqlite3_bind_double(statement, 3, item.createdAt)
-                bindOptional(item.origin, at: 4, statement)
-                bindOptional(item.judgeProvider, at: 5, statement)
-                bindOptional(item.judgeModel, at: 6, statement)
-                bindOptional(item.heard, at: 7, statement)
-                bindOptional(item.source, at: 8, statement)
-            }
-            return true
+            if let existing, existing > deletedAt { return false }
+            try runOnQueue("DELETE FROM dictionary WHERE id = ?;") { bind(item.id, at: 1, $0) }
+            try recordTombstoneOnQueue(entityType: "dictionary", entityID: item.id, at: deletedAt)
+            try clearOutboxOnQueue(entityType: "dictionary", entityID: item.id)
+            return existing != nil
+        }
+        let localTombstone = try queryOnQueue(
+            "SELECT deleted_at FROM sync_tombstones WHERE entity_type = 'dictionary' AND entity_id = ?;",
+            bind: { bind(item.id, at: 1, $0) }
+        ) { sqlite3_column_double($0, 0) }.first
+        if let localTombstone, localTombstone >= item.updatedAt { return false }
+
+        let cleaned = item.term.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else { return false }
+        let conflictOther = try queryOnQueue(
+            "SELECT id FROM dictionary WHERE term = ? COLLATE NOCASE AND id <> ? LIMIT 1;",
+            bind: { bind(cleaned, at: 1, $0); bind(item.id, at: 2, $0) }
+        ) { column(0, $0) }.first
+        guard conflictOther == nil else { return false }
+
+        let existing = try queryOnQueue("SELECT term FROM dictionary WHERE id = ?;", bind: { bind(item.id, at: 1, $0) }) {
+            column(0, $0)
+        }.first
+        if existing == cleaned { return false }
+
+        try runOnQueue(
+            """
+            INSERT INTO dictionary (id, term, created_at, origin, judge_provider, judge_model, heard, source)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                term = excluded.term,
+                origin = COALESCE(dictionary.origin, excluded.origin),
+                judge_provider = COALESCE(dictionary.judge_provider, excluded.judge_provider),
+                judge_model = COALESCE(dictionary.judge_model, excluded.judge_model),
+                heard = COALESCE(dictionary.heard, excluded.heard),
+                source = COALESCE(dictionary.source, excluded.source);
+            """
+        ) { statement in
+            bind(item.id, at: 1, statement)
+            bind(cleaned, at: 2, statement)
+            sqlite3_bind_double(statement, 3, item.createdAt)
+            bindOptional(item.origin, at: 4, statement)
+            bindOptional(item.judgeProvider, at: 5, statement)
+            bindOptional(item.judgeModel, at: 6, statement)
+            bindOptional(item.heard, at: 7, statement)
+            bindOptional(item.source, at: 8, statement)
+        }
+        try clearOutboxOnQueue(entityType: "dictionary", entityID: item.id)
+        return true
+    }
+
+    private func applySyncedRefusalOnQueue(_ term: String, createdAt: Double) throws {
+        let cleaned = term.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else { return }
+        try runOnQueue("INSERT OR IGNORE INTO learning_refusals (term, created_at) VALUES (?, ?);") { statement in
+            bind(cleaned, at: 1, statement)
+            sqlite3_bind_double(statement, 2, createdAt)
+        }
+        try clearOutboxOnQueue(entityType: "refusal", entityID: cleaned)
+    }
+
+    private func markOutboxOnQueue(entityType: String, entityID: String) throws {
+        try runOnQueue("INSERT OR IGNORE INTO sync_outbox (entity_type, entity_id) VALUES (?, ?);") { statement in
+            bind(entityType, at: 1, statement)
+            bind(entityID, at: 2, statement)
+        }
+    }
+
+    private func clearOutboxOnQueue(entityType: String, entityID: String) throws {
+        try runOnQueue("DELETE FROM sync_outbox WHERE entity_type = ? AND entity_id = ?;") { statement in
+            bind(entityType, at: 1, statement)
+            bind(entityID, at: 2, statement)
         }
     }
 
@@ -1291,9 +1690,12 @@ public final class HistoryStore: @unchecked Sendable {
     public func rememberRefusal(_ term: String) throws {
         let cleaned = term.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleaned.isEmpty else { return }
-        try run("INSERT OR IGNORE INTO learning_refusals (term, created_at) VALUES (?, ?);") { statement in
-            bind(cleaned, at: 1, statement)
-            sqlite3_bind_double(statement, 2, Date().timeIntervalSince1970)
+        try transaction {
+            try runOnQueue("INSERT OR IGNORE INTO learning_refusals (term, created_at) VALUES (?, ?);") { statement in
+                bind(cleaned, at: 1, statement)
+                sqlite3_bind_double(statement, 2, Date().timeIntervalSince1970)
+            }
+            try markOutboxOnQueue(entityType: "refusal", entityID: cleaned)
         }
     }
 

@@ -115,6 +115,63 @@ public final class WAVStream: @unchecked Sendable {
     }
 }
 
+/// Découpe un fichier WAV PCM 16 bits mono en tranches bornées (par défaut 16 Mo, soit ~8,5 min à 16 kHz)
+/// pour respecter la limite 25 Mo des APIs de transcription sur les réunions longues.
+public enum WAVChunker {
+    public static let defaultMaxChunkBytes = 16 * 1_024 * 1_024
+
+    public struct SplitResult: Sendable {
+        public var urls: [URL]
+        public var temporaryURLs: [URL]
+    }
+
+    public static func splitIfNeeded(
+        fileURL: URL,
+        maxChunkBytes: Int = defaultMaxChunkBytes,
+        sampleRate: Int = 16_000
+    ) throws -> SplitResult {
+        let headerSize = WAVHeader.make(dataBytes: 0, sampleRate: sampleRate).count
+        let attrs = try FileManager.default.attributesOfItem(atPath: fileURL.path)
+        let totalSize = (attrs[.size] as? NSNumber)?.intValue ?? 0
+        guard totalSize > maxChunkBytes + headerSize, maxChunkBytes >= 1024 else {
+            return SplitResult(urls: [fileURL], temporaryURLs: [])
+        }
+        let alignedMax = maxChunkBytes - (maxChunkBytes % 2)
+        let reader = try FileHandle(forReadingFrom: fileURL)
+        defer { try? reader.close() }
+        try reader.seek(toOffset: UInt64(headerSize))
+
+        let tempDir = fileURL.deletingLastPathComponent()
+        let baseName = fileURL.deletingPathExtension().lastPathComponent
+        var chunks: [URL] = []
+        var index = 0
+        while true {
+            guard let slice = try reader.read(upToCount: alignedMax), !slice.isEmpty else { break }
+            let usable = slice.count - (slice.count % 2)
+            guard usable > 0 else { break }
+            let pcm = usable == slice.count ? slice : slice.prefix(usable)
+            let chunkURL = tempDir.appendingPathComponent("\(baseName)-part-\(index).wav")
+            FileManager.default.createFile(atPath: chunkURL.path, contents: nil, attributes: [.posixPermissions: 0o600])
+            let writer = try FileHandle(forWritingTo: chunkURL)
+            do {
+                try writer.write(contentsOf: WAVHeader.make(dataBytes: pcm.count, sampleRate: sampleRate))
+                try writer.write(contentsOf: pcm)
+                try writer.close()
+            } catch {
+                try? writer.close()
+                for created in chunks + [chunkURL] { try? FileManager.default.removeItem(at: created) }
+                throw error
+            }
+            chunks.append(chunkURL)
+            index += 1
+        }
+        if chunks.isEmpty {
+            return SplitResult(urls: [fileURL], temporaryURLs: [])
+        }
+        return SplitResult(urls: chunks, temporaryURLs: chunks)
+    }
+}
+
 /// La dictée dont le micro écrit le fichier, notée dès son début : si Wispad se ferme sans prévenir (plantage), son
 /// audio est retrouvé au lancement suivant et rangé dans l'historique, prêt à transcrire. Aucun texte ni contexte.
 public struct InterruptedDictation: Equatable, Sendable {

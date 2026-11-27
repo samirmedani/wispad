@@ -96,9 +96,16 @@ struct DictationDetailView: View {
                         .background(Theme.subtleFill, in: RoundedRectangle(cornerRadius: 10))
                     }
                     if traces.isEmpty {
+                        let isRemote = current.isFromRemoteDevice(localDeviceID: model.sync.config.deviceId)
                         VStack(alignment: .leading, spacing: 6) {
                             Text(loadFailed ? String(localized: "Mesures indisponibles") : String(localized: "Pas de mesures pour cette dictée")).font(.headline)
-                            Text(loadFailed ? String(localized: "Le détail technique n’a pas pu être lu.") : String(localized: "Le suivi commence avec cette mise à jour. Les anciennes durées ne peuvent pas être reconstituées."))
+                            Text(
+                                loadFailed
+                                    ? String(localized: "Le détail technique n’a pas pu être lu.")
+                                    : (isRemote
+                                        ? String(localized: "Les mesures techniques restent sur l'appareil qui a enregistré cette dictée.")
+                                        : String(localized: "Le suivi commence avec cette mise à jour. Les anciennes durées ne peuvent pas être reconstituées."))
+                            )
                                 .font(.callout).foregroundStyle(.secondary)
                         }
                         .padding(16).frame(maxWidth: .infinity, alignment: .leading)

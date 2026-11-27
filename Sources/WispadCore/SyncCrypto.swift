@@ -85,7 +85,7 @@ public struct SyncKey: Equatable, Sendable {
 
     /// Déchiffre et authentifie un bloc `.wsp.enc` pour `relativePath`.
     public func open(_ blob: Data, relativePath: String) throws -> Data {
-        guard blob.count > 4 + 12 + 16, blob.prefix(4) == Self.magic else {
+        guard blob.count >= 4 + 12 + 16, blob.prefix(4) == Self.magic else {
             throw SyncCryptoError.invalidBlob
         }
         let combined = blob.dropFirst(4)
