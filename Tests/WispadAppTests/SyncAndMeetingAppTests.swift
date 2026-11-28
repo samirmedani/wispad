@@ -125,4 +125,92 @@ struct SyncAndMeetingAppTests {
         #expect(syncedMeeting.title == "Point architecture")
         #expect(syncedMeeting.enhancedNotes.contains("Protocole BYOS"))
     }
+
+    @Test func sharedSettingsCarryEveryPortableSettingButNotTheDeviceOnesNorNavigation() throws {
+        var settings = AppSettings()
+        settings.typingWPM = 55
+        settings.soundsEnabled = false
+        settings.appearance = .light
+        settings.microphoneUID = "micro-exemple"
+        settings.launchAtLogin = true
+        let json = try #require(SyncController.encodeSharedSettingsJSON(from: settings))
+        let object = try #require(try JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any])
+
+        // Les huit clés lues par Wispad 0.9.0, au même format.
+        for key in ["language", "cleanupEnabled", "structureDictation", "autoParagraphs", "selectionCommands",
+                    "speakerAgreement", "tones", "typingWPM"] {
+            #expect(object[key] != nil, "clé historique absente : \(key)")
+        }
+        #expect((object["typingWPM"] as? Double) == 55)
+        #expect((object["soundsEnabled"] as? Bool) == false)
+        #expect((object["appearance"] as? String) == "light")
+        #expect(object["provider"] != nil)
+        // Ni réglages de l'appareil, ni navigation.
+        for key in AppSettings.deviceOnlyKeys.union(SyncController.navigationKeys) {
+            #expect(object[key] == nil, "clé non partageable envoyée : \(key)")
+        }
+    }
+
+    @Test func joiningDeviceAdoptsTheVaultSettingsInsteadOfImposingItsDefaults() async throws {
+        let dirA = try makeTempDir()
+        let dirB = try makeTempDir()
+        let vaultDir = try makeTempDir()
+        defer {
+            try? FileManager.default.removeItem(at: dirA)
+            try? FileManager.default.removeItem(at: dirB)
+            try? FileManager.default.removeItem(at: vaultDir)
+        }
+
+        var customized = AppSettings()
+        customized.typingWPM = 55
+        customized.soundsEnabled = false
+        customized.appearance = .light
+        let modelA = try AppModel(supportDirectory: dirA, settings: customized)
+        let modelB = try AppModel(supportDirectory: dirB, settings: AppSettings())
+
+        modelA.sync.config.backend = .folder
+        modelA.sync.config.folderPath = vaultDir.path
+        _ = modelA.sync.ensureSyncKey()
+        modelA.sync.config.enabled = true
+
+        // Premier appareil, coffre vide : ses réglages deviennent la référence et partent au passage suivant.
+        await modelA.sync.syncNow(model: modelA)
+        #expect(modelA.sync.config.sharedSettingsAdopted)
+        await modelA.sync.syncNow(model: modelA)
+
+        let pairingURI = try #require(modelA.sync.pairingURI())
+        #expect(modelB.sync.applyPairingURI(pairingURI))
+        modelB.sync.config.folderPath = vaultDir.path
+        modelB.sync.config.enabled = true
+        #expect(!modelB.sync.config.sharedSettingsAdopted)
+
+        // L'appareil qui rejoint prend les réglages du coffre, au lieu d'imposer les siens par défaut.
+        await modelB.sync.syncNow(model: modelB)
+        #expect(modelB.settings.typingWPM == 55)
+        #expect(modelB.settings.soundsEnabled == false)
+        #expect(modelB.settings.appearance == .light)
+        #expect(modelB.sync.config.sharedSettingsAdopted)
+
+        // Et le premier appareil garde les siens.
+        await modelA.sync.syncNow(model: modelA)
+        #expect(modelA.settings.typingWPM == 55)
+        #expect(modelA.settings.soundsEnabled == false)
+
+        // Un réglage changé ensuite sur B arrive sur A.
+        modelB.settings.soundsEnabled = true
+        modelB.saveSettings()
+        await modelB.sync.syncNow(model: modelB)
+        await modelA.sync.syncNow(model: modelA)
+        #expect(modelA.settings.soundsEnabled == true)
+        #expect(modelA.settings.typingWPM == 55)
+    }
+
+    @Test func previousVersionConfigurationKeepsItsSettingsAuthority() throws {
+        // sync-config.json d'une 0.9.0 déjà synchronisée : ses réglages ont été comparés au coffre.
+        let legacy = #"{"enabled":true,"deviceId":"mac-1","sharedSettingsHash":"abc","sharedSettingsUpdatedAt":1800000000}"#
+        let config = try JSONDecoder().decode(SyncLocalConfig.self, from: Data(legacy.utf8))
+        #expect(config.sharedSettingsAdopted)
+        let fresh = try JSONDecoder().decode(SyncLocalConfig.self, from: Data(#"{"enabled":true,"deviceId":"mac-2"}"#.utf8))
+        #expect(!fresh.sharedSettingsAdopted)
+    }
 }

@@ -359,7 +359,7 @@ Wispad te rend service ? Une ⭐ sur GitHub aide d'autres personnes à le trouve
 
 ## Roadmap
 
-Windows, iPhone et iPad, dictée hors connexion, nouvelles langues, commandes vocales… Les pistes à venir sont sur
+Windows, dictée hors connexion, nouvelles langues, commandes vocales… Les pistes à venir sont sur
 [yatofix.com/wispad](https://yatofix.com/wispad#roadmap), où chacun peut voter oui ou non. Rien n'y est daté : les
 plus demandées passent en premier. Une autre idée ? Ouvre une issue.
 

@@ -9,6 +9,8 @@ public enum SyncTransportError: Error, Equatable, Sendable {
     case unauthorized
     case httpStatus(Int)
     case ioFailure
+    /// Dossier de synchronisation absent (disque retiré, partage réseau démonté) : jamais recréé par la synchro.
+    case folderUnavailable
 }
 
 /// Interface minimale commune aux 3 connecteurs BYOS (Dossier synchronisé, Cloudflare R2 / S3, WebDAV).
@@ -84,8 +86,15 @@ public struct FolderSyncTransport: SyncTransport {
 
     public func put(path: String, data: Data) async throws {
         let fileURL = try resolvedURL(for: path)
+        let root = rootURL
         try await queue.run {
             let fm = FileManager.default
+            // Le dossier choisi n'est jamais recréé ici : absent (disque retiré, partage démonté), un coffre vide prendrait
+            // sa place et les envois s'y perdraient.
+            var rootIsDirectory: ObjCBool = false
+            guard fm.fileExists(atPath: root.path, isDirectory: &rootIsDirectory), rootIsDirectory.boolValue else {
+                throw SyncTransportError.folderUnavailable
+            }
             let dir = fileURL.deletingLastPathComponent()
             try fm.createDirectory(at: dir, withIntermediateDirectories: true)
             let tmp = dir.appendingPathComponent(".tmp-\(UUID().uuidString)")

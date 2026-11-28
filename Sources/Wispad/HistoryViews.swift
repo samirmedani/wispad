@@ -586,7 +586,8 @@ struct HistoryStatus: Equatable {
     init(_ raw: String) {
         switch raw {
         case InsertionStatus.inserted.rawValue: (text, tint) = (String(localized: "Inséré"), .green)
-        case InsertionStatus.pasteSent.rawValue: (text, tint) = (String(localized: "Collage envoyé"), .blue)
+        // « pasteSent » : graphie des premières versions de Wispad Windows.
+        case InsertionStatus.pasteSent.rawValue, "pasteSent": (text, tint) = (String(localized: "Collage envoyé"), .blue)
         case InsertionStatus.pending.rawValue: (text, tint) = (String(localized: "Prêt à copier"), .secondary)
         case InsertionStatus.transcriptionFailed.rawValue: (text, tint) = (String(localized: "À retranscrire"), .orange)
         case InsertionStatus.cancelled.rawValue: (text, tint) = (String(localized: "Annulé"), .secondary)

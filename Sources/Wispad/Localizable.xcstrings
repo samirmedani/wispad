@@ -5028,6 +5028,16 @@
         }
       }
     },
+    "Colle ce lien dans Wispad sur ton PC Windows ou un autre Mac.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paste this link into Wispad on your Windows PC or another Mac."
+          }
+        }
+      }
+    },
     "Colle la clé ici": {
       "localizations": {
         "en": {
@@ -6354,6 +6364,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Folder"
+          }
+        }
+      }
+    },
+    "Dossier de synchronisation introuvable : disque ou partage déconnecté ?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sync folder not found: is the disk or network share disconnected?"
           }
         }
       }
@@ -13131,16 +13151,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "No tax"
-          }
-        }
-      }
-    },
-    "Scanne ce QR code depuis Wispad iOS, ou colle le lien sur Wispad Windows.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Scan this QR code from Wispad iOS, or paste the link in Wispad Windows."
           }
         }
       }

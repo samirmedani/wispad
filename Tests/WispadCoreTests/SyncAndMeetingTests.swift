@@ -85,6 +85,8 @@ struct SyncAndMeetingTests {
         let macStore = try HistoryStore(path: root.appendingPathComponent("mac.sqlite").path)
         let winStore = try HistoryStore(path: root.appendingPathComponent("win.sqlite").path)
         let syncFolder = root.appendingPathComponent("cloud-folder")
+        // Dossier choisi par l'utilisateur : il existe, la synchro ne le crée jamais.
+        try FileManager.default.createDirectory(at: syncFolder, withIntermediateDirectories: true)
         let transport = FolderSyncTransport(rootURL: syncFolder)
         let key = SyncKey.generate()
 
@@ -327,5 +329,69 @@ struct SyncAndMeetingTests {
         let user = MeetingPrompt.userText(title: "Sync", userNotes: "- budget", transcript: "Le budget est validé.", english: false)
         #expect(user.contains("Notes prises pendant la réunion"))
         #expect(user.contains("Transcription"))
+    }
+
+    @Test func apiCallsReachTheOtherDeviceOnceWithTheirCostAndNoEcho() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("wispad-sync-api-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let folder = root.appendingPathComponent("coffre", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let macStore = try HistoryStore(path: root.appendingPathComponent("mac.sqlite").path)
+        let winStore = try HistoryStore(path: root.appendingPathComponent("win.sqlite").path)
+        let transport = FolderSyncTransport(rootURL: folder)
+        let key = SyncKey.generate()
+        let mac = DeviceIdentity(deviceId: "dev-mac", deviceName: "MacBook Pro", platform: .macos)
+        let win = DeviceIdentity(deviceId: "dev-win", deviceName: "PC Windows", platform: .windows)
+
+        try macStore.insertUsage(UsageEvent(
+            id: "appel-1", createdAt: Date(timeIntervalSince1970: 1_800_000_000), api: .deepSeekCleanup,
+            model: "deepseek-flash", tokens: TokenUsage(input: 120, cachedInput: 40, output: 30), costUSD: 0.00012,
+            latencyMs: 310
+        ))
+        try macStore.insertUsage(UsageEvent(
+            id: "appel-2", createdAt: Date(timeIntervalSince1970: 1_800_000_010), api: .xaiStreaming,
+            model: "grok-voice-transcribe-2.0", audioSeconds: 12, costUSD: nil, succeeded: false, failureCause: .timeout
+        ))
+
+        let pushed = try await WispadSyncEngine.sync(store: macStore, device: mac, key: key, transport: transport)
+        #expect(pushed.pushedSequence == 1)
+        _ = try await WispadSyncEngine.sync(store: winStore, device: win, key: key, transport: transport)
+
+        let received = try winStore.usageEvents()
+        #expect(received.count == 2)
+        let cleanup = try #require(received.first(where: { $0.id == "appel-1" }))
+        #expect(cleanup.api == .deepSeekCleanup)
+        #expect(cleanup.costUSD == 0.00012)
+        #expect(cleanup.tokens == TokenUsage(input: 120, cachedInput: 40, output: 30))
+        let failed = try #require(received.first(where: { $0.id == "appel-2" }))
+        #expect(failed.costUSD == nil)
+        #expect(!failed.succeeded)
+        #expect(failed.failureCause == .timeout)
+
+        // Reçus d'un autre appareil : jamais renvoyés, jamais comptés deux fois.
+        #expect(try winStore.pendingSyncBatch(localDevice: win).apiCalls.isEmpty)
+        _ = try await WispadSyncEngine.sync(store: winStore, device: win, key: key, transport: transport)
+        _ = try await WispadSyncEngine.sync(store: macStore, device: mac, key: key, transport: transport)
+        #expect(try macStore.usageEvents().count == 2)
+        #expect(try winStore.usageEvents().count == 2)
+    }
+
+    @Test func folderTransportNeverRecreatesAMissingSyncFolder() async throws {
+        let parent = FileManager.default.temporaryDirectory.appendingPathComponent("wispad-partage-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: parent) }
+        // Partage démonté : le dossier choisi n'existe plus.
+        let root = parent.appendingPathComponent("WispadSync", isDirectory: true)
+        let transport = FolderSyncTransport(rootURL: root)
+        #expect(try await transport.list(prefix: "devices").isEmpty)
+        #expect(try await transport.get(path: "manifest.json") == nil)
+        await #expect(throws: SyncTransportError.folderUnavailable) {
+            try await transport.put(path: "manifest.json", data: Data("{}".utf8))
+        }
+        #expect(!FileManager.default.fileExists(atPath: root.path))
+
+        // Partage revenu : l'écriture reprend, sous-dossiers compris.
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try await transport.put(path: "devices/dev-mac/000001.wsp.enc", data: Data([1, 2, 3]))
+        #expect(FileManager.default.fileExists(atPath: root.appendingPathComponent("devices/dev-mac/000001.wsp.enc").path))
     }
 }
