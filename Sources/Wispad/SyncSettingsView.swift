@@ -167,7 +167,7 @@ struct SyncSettingsView: View {
                             .padding(8)
                             .background(Color.white, in: RoundedRectangle(cornerRadius: 10))
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("Scanne ce QR code depuis Wispad iOS, ou colle le lien sur Wispad Windows.")
+                            Text("Colle ce lien dans Wispad sur ton PC Windows ou un autre Mac.")
                                 .font(.system(size: 12))
                                 .foregroundStyle(.secondary)
                             Text("Ce lien contient ta clé de chiffrement locale : ne le partage jamais publiquement.")

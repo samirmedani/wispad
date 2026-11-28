@@ -1,6 +1,6 @@
 # Protocole WispadSync v1 (BYOS chiffré de bout en bout)
 
-Wispad est 100 % open source et n'héberge aucun serveur central. La synchronisation multiplateforme (macOS, iOS, Windows) est entièrement **facultative** et repose sur le stockage de l'utilisateur (**BYOS** : Bring Your Own Storage) avec chiffrement de bout en bout côté client.
+Wispad est 100 % open source et n'héberge aucun serveur central. La synchronisation multiplateforme (macOS, Windows) est entièrement **facultative** et repose sur le stockage de l'utilisateur (**BYOS** : Bring Your Own Storage) avec chiffrement de bout en bout côté client.
 
 ## Principes
 

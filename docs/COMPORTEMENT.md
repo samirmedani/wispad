@@ -1770,7 +1770,7 @@ Réglages › Synchro : entièrement facultative, 100 % open source, sans compte
   s'arrête avec « Dossier de synchronisation introuvable : disque ou partage déconnecté ? » au lieu de créer un coffre
   vide à sa place. Le dossier se crée seulement au choix d'un dossier détecté ou au test de la connexion, si son
   dossier parent existe.
-- **Provenance de l'appareil** : une dictée enregistrée sur un autre appareil (Mac, iPhone, PC Windows) affiche un
+- **Provenance de l'appareil** : une dictée enregistrée sur un autre appareil (Mac, PC Windows) affiche un
   badge discret avec le nom de cet appareil et précise « Enregistré sur <Nom> : l'audio reste sur cet appareil ». Les
   boutons Écouter et Retranscrire ne sont montrés que si le fichier audio existe localement.
 - **Trois supports BYOS** : dossier synchronisé (iCloud Drive, OneDrive, Dropbox, Google Drive, Syncthing avec
