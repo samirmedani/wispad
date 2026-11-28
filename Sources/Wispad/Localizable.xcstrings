@@ -6358,6 +6358,16 @@
         }
       }
     },
+    "Dossier de synchronisation introuvable : disque ou partage déconnecté ?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sync folder not found: is the disk or network share disconnected?"
+          }
+        }
+      }
+    },
     "Dossier local ou cloud (« %@ »)": {
       "localizations": {
         "en": {

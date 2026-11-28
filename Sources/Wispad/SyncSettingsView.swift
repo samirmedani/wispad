@@ -231,6 +231,7 @@ struct SyncSettingsView: View {
                         Button {
                             sync.config.backend = .folder
                             sync.config.folderPath = folder.path
+                            SyncController.prepareFolder(folder.path)
                             _ = sync.ensureSyncKey()
                             sync.config.enabled = true
                             sync.connectionStatus = .idle

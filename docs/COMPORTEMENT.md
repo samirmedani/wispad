@@ -1754,8 +1754,20 @@ tentatives les plus anciennes sont retirées, et une phrase le dit.
 Réglages › Synchro : entièrement facultative, 100 % open source, sans compte ni serveur central Yatofix.
 
 - **Texte seul chiffré de bout en bout (AES-256-GCM)** : synchronise uniquement le texte et ses métadonnées (dictées,
-  notes de réunion, dictionnaire personnel, refus d'apprentissage et réglages d'écriture portables). Aucun fichier
-  audio WAV ni aucune clé API ne sont synchronisés.
+  notes de réunion, dictionnaire personnel, refus d'apprentissage et réglages portables). Aucun fichier audio WAV ni
+  aucune clé API ne sont synchronisés.
+- **Réglages portables** : tous ceux d'un export de configuration (voix, correction, relais, tons, sons, bulle,
+  apparence, profil...), sauf ceux de l'appareil (`AppSettings.deviceOnlyKeys` : micro, ouverture à la connexion,
+  clés coupées...) et la navigation (onglet, période, tri ou filtre affichés). Appliqués comme un import : une valeur
+  illisible ici (autre plateforme, version plus récente) garde la valeur actuelle, une clé inconnue est ignorée. Les
+  huit réglages lus par la 0.9.0 en font partie au même format. Le dernier bloc modifié l'emporte en entier.
+- **Appareil qui rejoint un coffre** : à sa première synchro, les réglages déjà présents dans le coffre l'emportent sur
+  les siens ; il n'impose jamais ses réglages par défaut aux autres. Coffre sans réglages : les siens deviennent la
+  référence et partent aussitôt.
+- **Dossier jamais recréé** : la synchro n'écrit que dans un dossier existant. Disque retiré ou partage démonté, elle
+  s'arrête avec « Dossier de synchronisation introuvable : disque ou partage déconnecté ? » au lieu de créer un coffre
+  vide à sa place. Le dossier se crée seulement au choix d'un dossier détecté ou au test de la connexion, si son
+  dossier parent existe.
 - **Provenance de l'appareil** : une dictée enregistrée sur un autre appareil (Mac, iPhone, PC Windows) affiche un
   badge discret avec le nom de cet appareil et précise « Enregistré sur <Nom> : l'audio reste sur cet appareil ». Les
   boutons Écouter et Retranscrire ne sont montrés que si le fichier audio existe localement.

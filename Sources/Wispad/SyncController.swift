@@ -23,6 +23,9 @@ struct SyncLocalConfig: Codable, Equatable, Sendable {
     var sharedSettingsHash = ""
     var sharedSettingsUpdatedAt: Double = 0
     var sharedSettingsDirty = false
+    /// Faux jusqu'à la première synchro : les réglages déjà présents dans le coffre l'emportent alors sur ceux de cet
+    /// appareil, pour qu'un appareil qui rejoint le coffre n'impose pas ses réglages par défaut aux autres.
+    var sharedSettingsAdopted = false
 
     static func defaultDeviceName() -> String {
         if let name = SCDynamicStoreCopyComputerName(nil, nil) as String?,
@@ -49,7 +52,8 @@ struct SyncLocalConfig: Codable, Equatable, Sendable {
         syncSharedSettings: Bool = true,
         sharedSettingsHash: String = "",
         sharedSettingsUpdatedAt: Double = 0,
-        sharedSettingsDirty: Bool = false
+        sharedSettingsDirty: Bool = false,
+        sharedSettingsAdopted: Bool = false
     ) {
         self.enabled = enabled
         self.deviceId = deviceId
@@ -65,6 +69,7 @@ struct SyncLocalConfig: Codable, Equatable, Sendable {
         self.sharedSettingsHash = sharedSettingsHash
         self.sharedSettingsUpdatedAt = sharedSettingsUpdatedAt
         self.sharedSettingsDirty = sharedSettingsDirty
+        self.sharedSettingsAdopted = sharedSettingsAdopted
     }
 
     init(from decoder: Decoder) throws {
@@ -83,6 +88,8 @@ struct SyncLocalConfig: Codable, Equatable, Sendable {
         sharedSettingsHash = try c.decodeIfPresent(String.self, forKey: .sharedSettingsHash) ?? ""
         sharedSettingsUpdatedAt = try c.decodeIfPresent(Double.self, forKey: .sharedSettingsUpdatedAt) ?? 0
         sharedSettingsDirty = try c.decodeIfPresent(Bool.self, forKey: .sharedSettingsDirty) ?? false
+        // Configuration d'une version précédente : ses réglages ont déjà été comparés au coffre s'ils ont un horodatage.
+        sharedSettingsAdopted = try c.decodeIfPresent(Bool.self, forKey: .sharedSettingsAdopted) ?? (sharedSettingsUpdatedAt > 0)
     }
 
     var effectiveS3Config: S3SyncConfig {
@@ -113,19 +120,6 @@ struct DetectedCloudFolder: Identifiable, Equatable {
     var name: String
     var path: String
     var symbol: String
-}
-
-/// Sous-ensemble portable des réglages partagés entre Mac, iOS et Windows (jamais de clés API ni de réglages machine).
-/// Champs optionnels pour tolérer une évolution de schéma ou un pair d'une autre plateforme.
-private struct SharedSettingsFields: Codable, Equatable {
-    var language: String?
-    var cleanupEnabled: Bool?
-    var structureDictation: Bool?
-    var autoParagraphs: Bool?
-    var selectionCommands: Bool?
-    var speakerAgreement: String?
-    var tones: [String: String]?
-    var typingWPM: Double?
 }
 
 /// Pilote la synchronisation texte seul chiffrée de bout en bout (BYOS, zéro serveur central).
@@ -386,6 +380,7 @@ final class SyncController {
         connectionStatus = .testing
         do {
             let key = ensureSyncKey()
+            if config.backend == .folder { Self.prepareFolder(config.folderPath) }
             let transport = try buildTransport()
             _ = try await WispadSyncEngine.verifyOrInitialize(transport: transport, key: key)
             connectionStatus = .ok
@@ -455,16 +450,20 @@ final class SyncController {
         let shouldSyncSettings = config.syncSharedSettings
         let localShared: SyncSharedSettings? = {
             guard shouldSyncSettings, let json = Self.encodeSharedSettingsJSON(from: model.settings) else { return nil }
+            // Première synchro : horodatage nul, les réglages déjà dans le coffre l'emportent.
+            guard config.sharedSettingsAdopted else { return SyncSharedSettings(updatedAt: 0, fieldsJSON: json) }
             let digest = Self.sha256Hex(json)
             if config.sharedSettingsHash != digest {
+                // Réglages changés hors de l'enregistrement habituel, ou bloc enrichi par une mise à jour de l'app :
+                // les autres appareils doivent les recevoir.
                 config.sharedSettingsHash = digest
-                if config.sharedSettingsUpdatedAt == 0 {
-                    config.sharedSettingsUpdatedAt = Date().timeIntervalSince1970
-                }
+                config.sharedSettingsUpdatedAt = Date().timeIntervalSince1970
+                config.sharedSettingsDirty = true
+                saveConfig()
             }
             return SyncSharedSettings(updatedAt: config.sharedSettingsUpdatedAt, fieldsJSON: json)
         }()
-        let dirtySettings = shouldSyncSettings && config.sharedSettingsDirty
+        let dirtySettings = shouldSyncSettings && config.sharedSettingsAdopted && config.sharedSettingsDirty
 
         isSyncing = true
         if !automatic { lastError = nil }
@@ -485,6 +484,10 @@ final class SyncController {
                 guard let self, let model else { return }
                 if shouldSyncSettings, let remote = report.remoteSharedSettings {
                     self.applySharedSettings(remote, to: model)
+                } else if shouldSyncSettings && !self.config.sharedSettingsAdopted {
+                    // Aucun réglage dans le coffre : ceux de cet appareil deviennent la référence, envoyés aussitôt.
+                    self.adoptLocalSharedSettings(model.settings)
+                    self.scheduleSyncIfEnabled(model: model)
                 } else if dirtySettings && report.pushedSequence != nil {
                     self.config.sharedSettingsDirty = false
                     self.saveConfig()
@@ -553,20 +556,24 @@ final class SyncController {
         return found
     }
 
+    /// Réglages jamais synchronisés en plus de ceux de l'appareil (`AppSettings.deviceOnlyKeys`) : la navigation
+    /// (onglet, période, tri ou filtre affichés), qui change à chaque clic et ne concerne que cet écran.
+    static let navigationKeys: Set<String> = [
+        "statsTab", "homePeriod", "usagePeriod", "profilePeriod", "dictionaryPeriod", "dictionarySort",
+        "dictionaryKind", "dictionaryOriginFilter",
+    ]
+
+    /// Réglages partagés avec les autres appareils : tous ceux d'un export de configuration, sans la navigation.
+    /// Les huit clés lues par Wispad 0.9.0 (`language`, `cleanupEnabled`, `structureDictation`, `autoParagraphs`,
+    /// `selectionCommands`, `speakerAgreement`, `tones`, `typingWPM`) en font partie, au même format.
+    static func sharedSettingsObject(from settings: AppSettings) -> [String: Any] {
+        settings.exportedObject.filter { !navigationKeys.contains($0.key) }
+    }
+
     static func encodeSharedSettingsJSON(from settings: AppSettings) -> String? {
-        let fields = SharedSettingsFields(
-            language: settings.language.rawValue,
-            cleanupEnabled: settings.cleanupEnabled,
-            structureDictation: settings.structureDictation,
-            autoParagraphs: settings.autoParagraphs,
-            selectionCommands: settings.selectionCommands,
-            speakerAgreement: settings.speakerAgreement.rawValue,
-            tones: settings.tones.mapValues(\.rawValue),
-            typingWPM: settings.typingWPM
-        )
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.sortedKeys]
-        guard let data = try? encoder.encode(fields) else { return nil }
+        let object = sharedSettingsObject(from: settings)
+        guard JSONSerialization.isValidJSONObject(object),
+              let data = try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys]) else { return nil }
         return String(data: data, encoding: .utf8)
     }
 
@@ -575,45 +582,26 @@ final class SyncController {
         return SyncSharedSettings(updatedAt: updatedAt, fieldsJSON: json)
     }
 
+    /// Réglages reçus d'un autre appareil, appliqués par-dessus ceux-ci comme un import de configuration : ceux de
+    /// l'appareil et la navigation restent, une valeur illisible ici (autre plateforme, version plus récente) garde la
+    /// valeur actuelle, une clé inconnue est ignorée.
     func applySharedSettings(_ remote: SyncSharedSettings, to model: AppModel) {
-        guard let fields = try? JSONDecoder().decode(SharedSettingsFields.self, from: Data(remote.fieldsJSON.utf8)) else {
+        guard let object = (try? JSONSerialization.jsonObject(with: Data(remote.fieldsJSON.utf8))) as? [String: Any] else {
             return
         }
         applyingRemoteSettings = true
         defer { applyingRemoteSettings = false }
 
-        var changed = false
-        if let rawLang = fields.language, let lang = DictationLanguage(rawValue: rawLang), model.settings.language != lang {
-            model.settings.language = lang; changed = true
+        let incoming = object.filter { !Self.navigationKeys.contains($0.key) }
+        if model.settings.changes(applying: incoming) > 0 {
+            let updated = model.settings.applying(incoming)
+            model.settings = updated
+            model.saveSettings()
+            // Sans application (tests), rien à repeindre.
+            if NSApp != nil { AppearanceSwitcher.apply(updated.appearance, animated: true) }
+            model.overlay.bubbleStyleChanged()
+            model.settleRelays()
         }
-        if let cleanup = fields.cleanupEnabled, model.settings.cleanupEnabled != cleanup {
-            model.settings.cleanupEnabled = cleanup; changed = true
-        }
-        if let structure = fields.structureDictation, model.settings.structureDictation != structure {
-            model.settings.structureDictation = structure; changed = true
-        }
-        if let paragraphs = fields.autoParagraphs, model.settings.autoParagraphs != paragraphs {
-            model.settings.autoParagraphs = paragraphs; changed = true
-        }
-        if let commands = fields.selectionCommands, model.settings.selectionCommands != commands {
-            model.settings.selectionCommands = commands; changed = true
-        }
-        if let rawAgr = fields.speakerAgreement, let agr = SpeakerAgreement(rawValue: rawAgr), model.settings.speakerAgreement != agr {
-            model.settings.speakerAgreement = agr; changed = true
-        }
-        if let wpm = fields.typingWPM, (1...1_000).contains(wpm), abs(model.settings.typingWPM - wpm) > 0.1 {
-            model.settings.typingWPM = wpm; changed = true
-        }
-        if let rawTones = fields.tones {
-            var parsedTones: [String: DictationTone] = [:]
-            for (k, v) in rawTones {
-                if let tone = DictationTone(rawValue: v) { parsedTones[k] = tone }
-            }
-            if model.settings.tones != parsedTones {
-                model.settings.tones = parsedTones; changed = true
-            }
-        }
-        if changed { model.saveSettings() }
 
         // Synchronise l'empreinte et l'horodatage locaux pour éviter toute boucle d'écho.
         if let json = Self.encodeSharedSettingsJSON(from: model.settings) {
@@ -621,7 +609,36 @@ final class SyncController {
         }
         config.sharedSettingsUpdatedAt = max(config.sharedSettingsUpdatedAt, remote.updatedAt)
         config.sharedSettingsDirty = false
+        config.sharedSettingsAdopted = true
         saveConfig()
+    }
+
+    /// Premier passage sans réglage dans le coffre : les réglages de cet appareil deviennent la référence.
+    func adoptLocalSharedSettings(_ settings: AppSettings) {
+        if let json = Self.encodeSharedSettingsJSON(from: settings) {
+            config.sharedSettingsHash = Self.sha256Hex(json)
+        }
+        config.sharedSettingsUpdatedAt = Date().timeIntervalSince1970
+        config.sharedSettingsDirty = true
+        config.sharedSettingsAdopted = true
+        saveConfig()
+    }
+
+    /// Crée le dossier de synchronisation choisi s'il manque, seulement si son dossier parent existe (dossier cloud,
+    /// disque ou partage branché). Seul endroit où ce dossier est créé : la synchro ne le recrée jamais, sinon un coffre
+    /// vide prendrait sa place quand un disque ou un partage est déconnecté.
+    @discardableResult
+    static func prepareFolder(_ path: String) -> Bool {
+        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+        let url = URL(fileURLWithPath: (trimmed as NSString).expandingTildeInPath, isDirectory: true)
+        let fm = FileManager.default
+        var isDirectory: ObjCBool = false
+        if fm.fileExists(atPath: url.path, isDirectory: &isDirectory) { return isDirectory.boolValue }
+        var parentIsDirectory: ObjCBool = false
+        guard fm.fileExists(atPath: url.deletingLastPathComponent().path, isDirectory: &parentIsDirectory),
+              parentIsDirectory.boolValue else { return false }
+        return (try? fm.createDirectory(at: url, withIntermediateDirectories: false)) != nil
     }
 
     private static func sha256Hex(_ text: String) -> String {
@@ -643,6 +660,8 @@ final class SyncController {
             return String(localized: "Configuration incomplète : vérifie les champs requis.")
         case SyncTransportError.unauthorized:
             return String(localized: "Accès refusé : vérifie tes identifiants de stockage.")
+        case SyncTransportError.folderUnavailable:
+            return String(localized: "Dossier de synchronisation introuvable : disque ou partage déconnecté ?")
         case SyncTransportError.httpStatus(let code):
             return String(localized: "Le serveur distant a répondu HTTP \(code).")
         case SyncEngineError.vaultMismatch:

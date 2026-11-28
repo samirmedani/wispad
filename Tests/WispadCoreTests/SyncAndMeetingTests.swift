@@ -85,6 +85,8 @@ struct SyncAndMeetingTests {
         let macStore = try HistoryStore(path: root.appendingPathComponent("mac.sqlite").path)
         let winStore = try HistoryStore(path: root.appendingPathComponent("win.sqlite").path)
         let syncFolder = root.appendingPathComponent("cloud-folder")
+        // Dossier choisi par l'utilisateur : il existe, la synchro ne le crée jamais.
+        try FileManager.default.createDirectory(at: syncFolder, withIntermediateDirectories: true)
         let transport = FolderSyncTransport(rootURL: syncFolder)
         let key = SyncKey.generate()
 
@@ -327,5 +329,24 @@ struct SyncAndMeetingTests {
         let user = MeetingPrompt.userText(title: "Sync", userNotes: "- budget", transcript: "Le budget est validé.", english: false)
         #expect(user.contains("Notes prises pendant la réunion"))
         #expect(user.contains("Transcription"))
+    }
+
+    @Test func folderTransportNeverRecreatesAMissingSyncFolder() async throws {
+        let parent = FileManager.default.temporaryDirectory.appendingPathComponent("wispad-partage-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: parent) }
+        // Partage démonté : le dossier choisi n'existe plus.
+        let root = parent.appendingPathComponent("WispadSync", isDirectory: true)
+        let transport = FolderSyncTransport(rootURL: root)
+        #expect(try await transport.list(prefix: "devices").isEmpty)
+        #expect(try await transport.get(path: "manifest.json") == nil)
+        await #expect(throws: SyncTransportError.folderUnavailable) {
+            try await transport.put(path: "manifest.json", data: Data("{}".utf8))
+        }
+        #expect(!FileManager.default.fileExists(atPath: root.path))
+
+        // Partage revenu : l'écriture reprend, sous-dossiers compris.
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try await transport.put(path: "devices/dev-mac/000001.wsp.enc", data: Data([1, 2, 3]))
+        #expect(FileManager.default.fileExists(atPath: root.appendingPathComponent("devices/dev-mac/000001.wsp.enc").path))
     }
 }
