@@ -211,7 +211,8 @@ public enum WispadSyncEngine {
                 meetings: batch.meetings,
                 dictionary: batch.dictionary,
                 refusals: batch.refusals,
-                sharedSettings: settingsForThisDelta
+                sharedSettings: settingsForThisDelta,
+                apiCalls: batch.apiCalls.isEmpty ? nil : batch.apiCalls
             )
             let path = deltaPath(deviceId: device.deviceId, sequence: nextSequence)
             let json = try encoder.encode(delta)
@@ -232,6 +233,7 @@ public enum WispadSyncEngine {
             nextSequence += 1
 
             let batchSize = batch.dictations.count + batch.meetings.count + batch.dictionary.count + batch.refusals.count
+                + batch.apiCalls.count
             if batchSize < maxItemsPerDelta { break }
         }
 

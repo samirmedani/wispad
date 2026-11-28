@@ -173,6 +173,52 @@ public struct SyncSharedSettings: Codable, Equatable, Sendable {
     }
 }
 
+/// Appel d'API compté dans Consommation (transcription, correction, juge), synchronisé sans aucun texte pour que
+/// chaque appareil affiche la dépense de tous. Jamais supprimé, comme la consommation locale.
+public struct SyncApiCall: Codable, Equatable, Sendable {
+    public var id: String
+    public var createdAt: Double
+    /// Valeur brute de `UsageAPI` (`xai.stt.stream`, `deepseek.cleanup`...).
+    public var api: String
+    public var model: String
+    public var audioSeconds: Double
+    public var inputTokens: Int
+    public var cachedTokens: Int
+    public var outputTokens: Int
+    public var costUSD: Double?
+    public var latencyMs: Int
+    public var succeeded: Bool
+    public var fallbackFromAPI: String?
+    public var fallbackStage: String?
+    public var fallbackReason: String?
+    public var failureCause: String?
+    public var retryOf: String?
+
+    public init(
+        id: String, createdAt: Double, api: String, model: String, audioSeconds: Double = 0,
+        inputTokens: Int = 0, cachedTokens: Int = 0, outputTokens: Int = 0, costUSD: Double? = nil,
+        latencyMs: Int = 0, succeeded: Bool = true, fallbackFromAPI: String? = nil, fallbackStage: String? = nil,
+        fallbackReason: String? = nil, failureCause: String? = nil, retryOf: String? = nil
+    ) {
+        self.id = id
+        self.createdAt = createdAt
+        self.api = api
+        self.model = model
+        self.audioSeconds = audioSeconds
+        self.inputTokens = inputTokens
+        self.cachedTokens = cachedTokens
+        self.outputTokens = outputTokens
+        self.costUSD = costUSD
+        self.latencyMs = latencyMs
+        self.succeeded = succeeded
+        self.fallbackFromAPI = fallbackFromAPI
+        self.fallbackStage = fallbackStage
+        self.fallbackReason = fallbackReason
+        self.failureCause = failureCause
+        self.retryOf = retryOf
+    }
+}
+
 /// Un lot immuable publié par un appareil dans `devices/<deviceId>/<seq>.wsp.enc`.
 public struct SyncDelta: Codable, Equatable, Sendable {
     public var version: Int
@@ -186,6 +232,8 @@ public struct SyncDelta: Codable, Equatable, Sendable {
     public var dictionary: [SyncDictionaryTerm]
     public var refusals: [SyncRefusal]
     public var sharedSettings: SyncSharedSettings?
+    /// Facultatif : absent des lots de Wispad 0.9.0, ignoré par elle.
+    public var apiCalls: [SyncApiCall]?
 
     public init(
         version: Int = 1,
@@ -198,7 +246,8 @@ public struct SyncDelta: Codable, Equatable, Sendable {
         meetings: [SyncMeeting] = [],
         dictionary: [SyncDictionaryTerm] = [],
         refusals: [SyncRefusal] = [],
-        sharedSettings: SyncSharedSettings? = nil
+        sharedSettings: SyncSharedSettings? = nil,
+        apiCalls: [SyncApiCall]? = nil
     ) {
         self.version = version
         self.deviceId = deviceId
@@ -211,10 +260,12 @@ public struct SyncDelta: Codable, Equatable, Sendable {
         self.dictionary = dictionary
         self.refusals = refusals
         self.sharedSettings = sharedSettings
+        self.apiCalls = apiCalls
     }
 
     public var isEmpty: Bool {
         dictations.isEmpty && meetings.isEmpty && dictionary.isEmpty && refusals.isEmpty && sharedSettings == nil
+            && (apiCalls?.isEmpty ?? true)
     }
 }
 

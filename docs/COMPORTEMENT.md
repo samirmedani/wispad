@@ -1764,6 +1764,8 @@ Réglages › Synchro : entièrement facultative, 100 % open source, sans compte
 - **Appareil qui rejoint un coffre** : à sa première synchro, les réglages déjà présents dans le coffre l'emportent sur
   les siens ; il n'impose jamais ses réglages par défaut aux autres. Coffre sans réglages : les siens deviennent la
   référence et partent aussitôt.
+- **Consommation de tous les appareils** : chaque appel d'API compté (sans texte) part aux autres appareils, une seule
+  fois ; Consommation et les dépenses affichées comptent ainsi les appels de tous les appareils du coffre.
 - **Dossier jamais recréé** : la synchro n'écrit que dans un dossier existant. Disque retiré ou partage démonté, elle
   s'arrête avec « Dossier de synchronisation introuvable : disque ou partage déconnecté ? » au lieu de créer un coffre
   vide à sa place. Le dossier se crée seulement au choix d'un dossier détecté ou au test de la connexion, si son

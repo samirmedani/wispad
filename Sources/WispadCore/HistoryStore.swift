@@ -388,6 +388,18 @@ public final class HistoryStore: @unchecked Sendable {
         if !metadata.contains("retired_values_v1") { try forgetRetiredValues() }
         if !metadata.contains("dictations_fts_v1") { try backfillDictationsFTS() }
         if !metadata.contains("sync_outbox_v1") { try seedSyncOutbox() }
+        if !metadata.contains("sync_outbox_api_v1") { try seedSyncApiOutbox() }
+    }
+
+    /// Enregistre une seule fois dans `sync_outbox` les appels d'API déjà comptés avant leur synchronisation : à cette
+    /// ouverture, la table ne contient que les appels de cet appareil.
+    private func seedSyncApiOutbox() throws {
+        try transaction {
+            let done = try queryOnQueue("SELECT value FROM app_metadata WHERE key = 'sync_outbox_api_v1';") { column(0, $0) }
+            guard done.isEmpty else { return }
+            try executeOnQueue("INSERT OR IGNORE INTO sync_outbox (entity_type, entity_id) SELECT 'api_call', id FROM api_usage;")
+            try executeOnQueue("INSERT OR IGNORE INTO app_metadata (key, value) VALUES ('sync_outbox_api_v1', '1');")
+        }
     }
 
     /// Peuple une seule fois l'index FTS5 pour les bases déjà existantes avant l'introduction de `dictations_fts`.
@@ -770,36 +782,40 @@ public final class HistoryStore: @unchecked Sendable {
     }
 
     /// La consommation reste comptée même si l'historique des dictées est effacé.
+    /// L'appel part aussi dans `sync_outbox` : les autres appareils le comptent dans leur consommation.
     public func insertUsage(_ event: UsageEvent) throws {
-        try run(
-            """
-            INSERT INTO api_usage (
-                id, created_at, api, model, audio_seconds, input_tokens, cached_tokens,
-                output_tokens, cost_usd, latency_ms, succeeded,
-                fallback_from_api, fallback_stage, fallback_reason, failure_cause, retry_of
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-            """
-        ) { statement in
-            bind(event.id, at: 1, statement)
-            sqlite3_bind_double(statement, 2, event.createdAt.timeIntervalSince1970)
-            bind(event.api.rawValue, at: 3, statement)
-            bind(event.model, at: 4, statement)
-            sqlite3_bind_double(statement, 5, event.audioSeconds)
-            sqlite3_bind_int64(statement, 6, Int64(event.tokens.input))
-            sqlite3_bind_int64(statement, 7, Int64(event.tokens.cachedInput))
-            sqlite3_bind_int64(statement, 8, Int64(event.tokens.output))
-            if let cost = event.costUSD {
-                sqlite3_bind_double(statement, 9, cost)
-            } else {
-                sqlite3_bind_null(statement, 9)
+        try transaction {
+            try runOnQueue(
+                """
+                INSERT INTO api_usage (
+                    id, created_at, api, model, audio_seconds, input_tokens, cached_tokens,
+                    output_tokens, cost_usd, latency_ms, succeeded,
+                    fallback_from_api, fallback_stage, fallback_reason, failure_cause, retry_of
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                """
+            ) { statement in
+                bind(event.id, at: 1, statement)
+                sqlite3_bind_double(statement, 2, event.createdAt.timeIntervalSince1970)
+                bind(event.api.rawValue, at: 3, statement)
+                bind(event.model, at: 4, statement)
+                sqlite3_bind_double(statement, 5, event.audioSeconds)
+                sqlite3_bind_int64(statement, 6, Int64(event.tokens.input))
+                sqlite3_bind_int64(statement, 7, Int64(event.tokens.cachedInput))
+                sqlite3_bind_int64(statement, 8, Int64(event.tokens.output))
+                if let cost = event.costUSD {
+                    sqlite3_bind_double(statement, 9, cost)
+                } else {
+                    sqlite3_bind_null(statement, 9)
+                }
+                sqlite3_bind_int64(statement, 10, Int64(event.latencyMs))
+                sqlite3_bind_int(statement, 11, event.succeeded ? 1 : 0)
+                bindOptional(event.fallback?.fromAPI.rawValue, at: 12, statement)
+                bindOptional(event.fallback?.stage.rawValue, at: 13, statement)
+                bindOptional(event.fallback?.reason.rawValue, at: 14, statement)
+                bindOptional(event.failureCause?.rawValue, at: 15, statement)
+                bindOptional(event.retryOf, at: 16, statement)
             }
-            sqlite3_bind_int64(statement, 10, Int64(event.latencyMs))
-            sqlite3_bind_int(statement, 11, event.succeeded ? 1 : 0)
-            bindOptional(event.fallback?.fromAPI.rawValue, at: 12, statement)
-            bindOptional(event.fallback?.stage.rawValue, at: 13, statement)
-            bindOptional(event.fallback?.reason.rawValue, at: 14, statement)
-            bindOptional(event.failureCause?.rawValue, at: 15, statement)
-            bindOptional(event.retryOf, at: 16, statement)
+            try markOutboxOnQueue(entityType: "api_call", entityID: event.id)
         }
     }
 
@@ -1204,9 +1220,10 @@ public final class HistoryStore: @unchecked Sendable {
         public var meetings: [SyncMeeting]
         public var dictionary: [SyncDictionaryTerm]
         public var refusals: [SyncRefusal]
+        public var apiCalls: [SyncApiCall] = []
 
         public var isEmpty: Bool {
-            dictations.isEmpty && meetings.isEmpty && dictionary.isEmpty && refusals.isEmpty
+            dictations.isEmpty && meetings.isEmpty && dictionary.isEmpty && refusals.isEmpty && apiCalls.isEmpty
         }
     }
 
@@ -1389,9 +1406,56 @@ public final class HistoryStore: @unchecked Sendable {
                         try clearOutboxOnQueue(entityType: "refusal", entityID: term)
                     }
                 }
+                remaining = max(0, remaining - refusals.count)
             }
 
-            return SyncOutboxBatch(dictations: dictations, meetings: meetings, dictionary: terms, refusals: refusals)
+            var apiCalls: [SyncApiCall] = []
+            if remaining > 0 {
+                let callIDs = try queryOnQueue(
+                    "SELECT entity_id FROM sync_outbox WHERE entity_type = 'api_call' LIMIT ?;",
+                    bind: { sqlite3_bind_int64($0, 1, Int64(remaining)) }
+                ) { column(0, $0) }
+                for id in callIDs {
+                    let rows: [SyncApiCall] = try queryOnQueue(
+                        """
+                        SELECT id, created_at, api, model, audio_seconds, input_tokens, cached_tokens, output_tokens,
+                            cost_usd, latency_ms, succeeded, fallback_from_api, fallback_stage, fallback_reason,
+                            failure_cause, retry_of
+                        FROM api_usage WHERE id = ?;
+                        """,
+                        bind: { bind(id, at: 1, $0) }
+                    ) { statement in
+                        SyncApiCall(
+                            id: column(0, statement),
+                            createdAt: sqlite3_column_double(statement, 1),
+                            api: column(2, statement),
+                            model: column(3, statement),
+                            audioSeconds: sqlite3_column_double(statement, 4),
+                            inputTokens: Int(sqlite3_column_int64(statement, 5)),
+                            cachedTokens: Int(sqlite3_column_int64(statement, 6)),
+                            outputTokens: Int(sqlite3_column_int64(statement, 7)),
+                            costUSD: sqlite3_column_type(statement, 8) == SQLITE_NULL
+                                ? nil : sqlite3_column_double(statement, 8),
+                            latencyMs: Int(sqlite3_column_int64(statement, 9)),
+                            succeeded: sqlite3_column_int(statement, 10) != 0,
+                            fallbackFromAPI: optionalColumn(11, statement),
+                            fallbackStage: optionalColumn(12, statement),
+                            fallbackReason: optionalColumn(13, statement),
+                            failureCause: optionalColumn(14, statement),
+                            retryOf: optionalColumn(15, statement)
+                        )
+                    }
+                    if let row = rows.first {
+                        apiCalls.append(row)
+                    } else {
+                        try clearOutboxOnQueue(entityType: "api_call", entityID: id)
+                    }
+                }
+            }
+
+            return SyncOutboxBatch(
+                dictations: dictations, meetings: meetings, dictionary: terms, refusals: refusals, apiCalls: apiCalls
+            )
         }
     }
 
@@ -1401,6 +1465,7 @@ public final class HistoryStore: @unchecked Sendable {
             for item in batch.meetings { try clearOutboxOnQueue(entityType: "meeting", entityID: item.id) }
             for item in batch.dictionary { try clearOutboxOnQueue(entityType: "dictionary", entityID: item.id) }
             for item in batch.refusals { try clearOutboxOnQueue(entityType: "refusal", entityID: item.term) }
+            for item in batch.apiCalls { try clearOutboxOnQueue(entityType: "api_call", entityID: item.id) }
         }
     }
 
@@ -1426,6 +1491,39 @@ public final class HistoryStore: @unchecked Sendable {
             }
             for refusal in delta.refusals {
                 try applySyncedRefusalOnQueue(refusal.term, createdAt: refusal.createdAt)
+            }
+            // Appels d'un autre appareil : comptés ici, jamais renvoyés (pas de `sync_outbox`), jamais en double.
+            for call in delta.apiCalls ?? [] where !call.id.isEmpty && !call.api.isEmpty {
+                try runOnQueue(
+                    """
+                    INSERT OR IGNORE INTO api_usage (
+                        id, created_at, api, model, audio_seconds, input_tokens, cached_tokens,
+                        output_tokens, cost_usd, latency_ms, succeeded,
+                        fallback_from_api, fallback_stage, fallback_reason, failure_cause, retry_of
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                    """
+                ) { statement in
+                    bind(call.id, at: 1, statement)
+                    sqlite3_bind_double(statement, 2, call.createdAt)
+                    bind(call.api, at: 3, statement)
+                    bind(call.model, at: 4, statement)
+                    sqlite3_bind_double(statement, 5, call.audioSeconds)
+                    sqlite3_bind_int64(statement, 6, Int64(call.inputTokens))
+                    sqlite3_bind_int64(statement, 7, Int64(call.cachedTokens))
+                    sqlite3_bind_int64(statement, 8, Int64(call.outputTokens))
+                    if let cost = call.costUSD {
+                        sqlite3_bind_double(statement, 9, cost)
+                    } else {
+                        sqlite3_bind_null(statement, 9)
+                    }
+                    sqlite3_bind_int64(statement, 10, Int64(call.latencyMs))
+                    sqlite3_bind_int(statement, 11, call.succeeded ? 1 : 0)
+                    bindOptional(call.fallbackFromAPI, at: 12, statement)
+                    bindOptional(call.fallbackStage, at: 13, statement)
+                    bindOptional(call.fallbackReason, at: 14, statement)
+                    bindOptional(call.failureCause, at: 15, statement)
+                    bindOptional(call.retryOf, at: 16, statement)
+                }
             }
             try runOnQueue(
                 """

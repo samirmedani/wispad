@@ -48,6 +48,12 @@ devices/
 - Résolution : le bloc au `updatedAt` le plus récent l'emporte en entier. À sa première synchro, un appareil prend les réglages déjà présents dans le coffre ; un coffre sans réglages reçoit les siens.
 - Mode dossier : le dossier racine n'est jamais créé par la synchro ; absent, l'écriture échoue (`folderUnavailable`).
 
+## Appels d'API (`apiCalls`, facultatif)
+
+- Chaque appel compté dans Consommation (transcription, correction, juge) part une fois, sans aucun texte : `id`, `createdAt`, `api` (valeur de `UsageAPI` : `xai.stt.stream`, `deepseek.cleanup`...), `model`, `audioSeconds`, `inputTokens`, `cachedTokens`, `outputTokens`, `costUSD` (absent si inconnu), `latencyMs`, `succeeded`, et les champs de relais et d'échec (`fallbackFromAPI`, `fallbackStage`, `fallbackReason`, `failureCause`, `retryOf`).
+- Le receveur l'ajoute à sa consommation s'il ne l'a pas déjà (même `id`), sans jamais le renvoyer. Un appel n'est jamais supprimé, comme la consommation locale.
+- Champ absent des lots de la 0.9.0, qui l'ignore.
+
 ## Appairage (QR code / URI)
 
 Format d'URI : `wispad-sync://v1?data=<base64url-sans-padding du JSON SyncPairingConfig>`.

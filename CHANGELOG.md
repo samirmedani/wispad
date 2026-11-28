@@ -9,6 +9,7 @@ Wispad 0.9.1 synchronise tous tes réglages entre tes appareils et protège la s
 
 **Amélioré**
 - **Tous les réglages se synchronisent** : voix, correction, relais, tons, sons, bulle, apparence et profil suivent d'un appareil à l'autre, Mac comme PC Windows, sauf ceux propres à l'appareil (micro, ouverture à la connexion, clés coupées) et la navigation. Un appareil qui rejoint un coffre prend les réglages déjà présents au lieu d'imposer les siens par défaut.
+- **Consommation de tous tes appareils** : les appels d'API (sans aucun texte) se synchronisent aussi, pour que Consommation compte la dépense de ton Mac et de ton PC.
 
 **Corrigé**
 - **Synchro en mode dossier** : un disque retiré ou un partage démonté ne crée plus un coffre vide à la place du dossier choisi ; la synchro s'arrête avec un message clair et reprend quand le dossier revient.
